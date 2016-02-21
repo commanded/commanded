@@ -1,0 +1,2 @@
+defmodule EventStore do
+end
