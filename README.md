@@ -1,6 +1,8 @@
 # EventStore
 
-**TODO: Add description**
+CQRS Event Store implemented in Elixir.
+
+Uses Postgres as the underlying storage.
 
 ## Installation
 
