@@ -1,5 +1,5 @@
 defmodule EventStore.Sql.Statements do
-  def all do
+  def initializers do
     [
       create_streams,
       create_stream_uuid_index,
@@ -9,7 +9,7 @@ defmodule EventStore.Sql.Statements do
   end
 
   def create_streams do
-    """
+"""
 CREATE TABLE IF NOT EXISTS streams
 (
     stream_id BIGSERIAL PRIMARY KEY NOT NULL,
@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS streams
   end
 
   def create_stream_uuid_index do
-    """
+"""
 CREATE UNIQUE INDEX IF NOT EXISTS ix_streams_stream_uuid ON streams (stream_uuid);
 """
   end
 
   def create_events do
-    """
+"""
 CREATE TABLE IF NOT EXISTS events
 (
     event_id BIGSERIAL PRIMARY KEY NOT NULL,
@@ -42,9 +42,17 @@ CREATE TABLE IF NOT EXISTS events
 """
   end
 
-    def create_event_stream_id_index do
-    """
+  def create_event_stream_id_index do
+"""
 CREATE INDEX IF NOT EXISTS ix_events_stream_id ON events (stream_id);
 """
+  end
+
+  def create_stream do
+"""
+INSERT INTO streams (stream_uuid, created_at, type)
+VALUES ($1, NOW(), $2)
+RETURNING stream_id;
+"""    
   end
 end
