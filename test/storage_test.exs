@@ -6,6 +6,7 @@ defmodule EventStore.StorageTest do
 
   setup do
     {:ok, store} = Storage.start_link
+    Storage.initialize_store!(store)
     {:ok, store: store}
   end
 
@@ -13,17 +14,25 @@ defmodule EventStore.StorageTest do
     Storage.initialize_store!(store)
   end
 
+  @tag :wip
   test "append to new stream", %{store: store} do
     uuid = UUID.uuid4()
+    events = [%{key: "value"}]
 
-    {:ok, stream_id} = Storage.append_to_stream(store, uuid, 0, %{key: "value"})
-    assert is_number(stream_id)
+    {:ok, 1} = Storage.append_to_stream(store, uuid, 0, events)
   end
 
-  test "append to new stream but stream already exists", %{store: store} do
+  test "append to new stream, but stream already exists", %{store: store} do
+    uuid = UUID.uuid4()
+    events = [%{key: "value"}]
+
+    {:ok, 1} = Storage.append_to_stream(store, uuid, 0, events)
+    {:error, :wrong_expected_version} = Storage.append_to_stream(store, uuid, 0, events)
+  end
+
+  test "append to existing stream, but stream does not exist", %{store: store} do
     uuid = UUID.uuid4()
 
-    {:ok, stream_id} = Storage.append_to_stream(store, uuid, 0, %{key: "value"})
-    {:error, :wrong_expected_version} = Storage.append_to_stream(store, uuid, 0, %{key: "value"})
+    {:error, :stream_not_found} = Storage.append_to_stream(store, uuid, 1, %{key: "value"})
   end
 end

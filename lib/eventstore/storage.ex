@@ -2,8 +2,8 @@ defmodule EventStore.Storage do
   use GenServer
   require Logger
 
-  alias EventStore.Sql.Statements
   alias EventStore.Storage
+  alias EventStore.Storage.Stream
 
   def start_link do
     config = Application.get_env(:eventstore, Storage)
@@ -14,11 +14,8 @@ defmodule EventStore.Storage do
     GenServer.call(storage, :initialize_store)
   end
 
-  def append_to_stream(storage, stream_uuid, expected_version, events) when expected_version == 0 do
-    GenServer.call(storage, {:create_stream, stream_uuid})
-  end
-
   def append_to_stream(storage, stream_uuid, expected_version, events) do
+    GenServer.call(storage, {:append_to_stream, stream_uuid, expected_version, events})
   end
 
   def init(config) do
@@ -26,12 +23,12 @@ defmodule EventStore.Storage do
   end
 
   def handle_call(:initialize_store, _from, conn) do
-    EventStore.Storage.Initializer.run!(conn)
+    Storage.Initializer.run!(conn)
     {:reply, :ok, conn}
   end
 
-  def handle_call({:create_stream, stream_uuid}, _from, conn) do
-    reply = Storage.Stream.create(conn, stream_uuid)
+  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, conn) do
+    reply = Stream.append_to_stream(conn, stream_uuid, expected_version, events)
     {:reply, reply, conn}
   end
 end

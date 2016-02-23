@@ -2,7 +2,7 @@
 
 CQRS Event Store implemented in Elixir.
 
-Uses Postgres as the underlying storage.
+Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Requires version 9.5 or newer.
 
 ## Installation
 
