@@ -1,24 +1,25 @@
 defmodule EventStore.Storage.Stream do
   require Logger
 
+  alias EventStore.EventData
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Stream
-  alias EventStore.Storage.Event
+  alias EventStore.Storage.Appender
 
-  def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version == 0 do
+  def append_to_stream(conn, stream_uuid, expected_version, [%EventData{}] = events) when expected_version == 0 do
     conn
     |> create_stream(stream_uuid)
     |> append_events(conn, expected_version, events)
   end
 
-  def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version > 0 do
+  def append_to_stream(conn, stream_uuid, expected_version, [%EventData{}] = events) when expected_version > 0 do
     conn
     |> lookup_stream_id(stream_uuid)
     |> append_events(conn, expected_version, events)
   end
 
   defp append_events({:ok, stream_id}, conn, expected_version, events) when is_number(stream_id) do
-    Event.append(conn, stream_id, expected_version, events)
+    Appender.append(conn, stream_id, expected_version, events)
   end
 
   defp append_events({:error, reason}, conn, expected_version, events) do
