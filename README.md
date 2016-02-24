@@ -25,6 +25,7 @@ events = [
   }
 ]
 
+# append events to the stream
 {:ok, events} = EventStore.Storage.append_to_stream(store, uuid, 0, events)
 ```
 

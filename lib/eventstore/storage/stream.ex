@@ -6,13 +6,13 @@ defmodule EventStore.Storage.Stream do
   alias EventStore.Storage.Stream
   alias EventStore.Storage.Appender
 
-  def append_to_stream(conn, stream_uuid, expected_version, [%EventData{}] = events) when expected_version == 0 do
+  def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version == 0 do
     conn
     |> create_stream(stream_uuid)
     |> append_events(conn, expected_version, events)
   end
 
-  def append_to_stream(conn, stream_uuid, expected_version, [%EventData{}] = events) when expected_version > 0 do
+  def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version > 0 do
     conn
     |> lookup_stream_id(stream_uuid)
     |> append_events(conn, expected_version, events)
@@ -61,9 +61,8 @@ defmodule EventStore.Storage.Stream do
     {:error, :stream_not_found}
   end
 
-  defp handle_lookup_response({:ok, reply}, _stream_uuid) do
-    IO.inspect reply
-    stream_id = reply.rows |> List.first |> List.first
+  defp handle_lookup_response({:ok, %Postgrex.Result{rows: rows}}, _stream_uuid) do
+    stream_id = rows |> List.first |> List.first
     {:ok, stream_id}
   end
 end
