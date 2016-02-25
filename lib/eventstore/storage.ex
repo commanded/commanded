@@ -18,6 +18,10 @@ defmodule EventStore.Storage do
     GenServer.call(storage, {:append_to_stream, stream_uuid, expected_version, events})
   end
 
+  def read_stream_forward(storage, stream_uuid, start_version, count \\ nil) do
+    GenServer.call(storage, {:read_stream_forward, stream_uuid, start_version, count})
+  end
+
   def init(config) do
     Postgrex.start_link(config)
   end
@@ -29,6 +33,11 @@ defmodule EventStore.Storage do
 
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, conn) do
     reply = Stream.append_to_stream(conn, stream_uuid, expected_version, events)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:read_stream_forward, stream_uuid, start_version, count}, _from, conn) do
+    reply = Stream.read_stream_forward(conn, stream_uuid, start_version, count)
     {:reply, reply, conn}
   end
 end

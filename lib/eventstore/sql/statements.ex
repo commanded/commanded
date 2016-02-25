@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS events
     correlation_id char(36),
     headers bytea NULL,
     payload bytea NOT NULL,
-    created_at timestamp NOT NULL    
+    created_at timestamp NOT NULL
 );
 """
   end
@@ -83,6 +83,23 @@ SELECT stream_version FROM events
 WHERE stream_id = $1
 ORDER BY stream_version DESC
 LIMIT 1;
+"""
+  end
+
+  def read_events_forward do
+"""
+SELECT 
+  event_id,
+  stream_id,
+  stream_version,
+  event_type,
+  correlation_id,
+  headers,
+  payload,
+  created_at
+FROM events
+WHERE stream_id = $1 and stream_version >= $2
+ORDER BY stream_version ASC;
 """
   end
 end

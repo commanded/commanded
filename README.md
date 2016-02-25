@@ -7,14 +7,18 @@ Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Require
 ## Sample usage
 
 ```elixir
-# start the `EventStore` process
+# start the Storage process
 {:ok, store} = EventStore.Storage.start_link
 
 # ensure PostgreSQL tables exist (create if not present) 
 EventStore.Storage.initialize_store!(store)
+```
 
+### Writing to a Stream
+
+```elixir
 # create a unique identity for the stream (e.g. an aggregate id)
-uuid = UUID.uuid4()
+stream_uuid = UUID.uuid4()
 
 # list of events to persist
 events = [
@@ -26,8 +30,15 @@ events = [
 ]
 
 # append events to the stream
-{:ok, events} = EventStore.Storage.append_to_stream(store, uuid, 0, events)
+{:ok, events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
 ```
+
+### Reading Events
+
+```elixir
+{:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
+```
+
 
 ## Installation
 

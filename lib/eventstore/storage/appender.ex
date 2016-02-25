@@ -34,24 +34,25 @@ defmodule EventStore.Storage.Appender do
 
     initial_stream_version = expected_version + 1
 
-    rollback =
+    persisted_events =
       events
       |> Enum.map(&assign_stream_id(&1, stream_id))
       |> Enum.with_index(initial_stream_version)
       |> Enum.map(&assign_stream_version/1)
+      |> Enum.map(&assign_event_type/1)
       |> Enum.map(&encode_headers/1)
       |> Enum.map(&encode_payload/1)
-      |> Enum.any?(fn event ->
+      |> Enum.reduce_while({:ok, []}, fn(event, {:ok, events}) ->
          case append_event(transaction, query, event) do
-           {:ok, _} -> false
-           _ -> true
+           {:ok, _} -> {:cont, {:ok, [event | events]}}
+           {:error, %Postgrex.Error{postgres: %{message: reason}}} -> {:halt, {:error, reason}}
+           response -> {:halt, response}
          end
       end)
 
-    if rollback do
-      Postgrex.rollback(transaction)
-    else
-      length(events)
+    case persisted_events do
+      {:ok, events} -> length(events)
+      {:error, reason} -> Postgrex.rollback(transaction, reason)
     end
   end
 
@@ -59,8 +60,13 @@ defmodule EventStore.Storage.Appender do
     %EventData{event | stream_id: stream_id}
   end
 
-  def assign_stream_version({%EventData{} = event, stream_version}) do
+  defp assign_stream_version({%EventData{} = event, stream_version}) do
     %EventData{event | stream_version: stream_version}
+  end
+
+  defp assign_event_type(%EventData{payload: payload} = event) do
+    event_type = payload.__struct__ |> Atom.to_string
+    %EventData{event | event_type: event_type}
   end
 
   defp encode_headers(%EventData{headers: headers} = event) do
