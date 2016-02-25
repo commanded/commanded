@@ -17,25 +17,25 @@ EventStore.Storage.initialize_store!(store)
 ### Writing to a Stream
 
 ```elixir
-# create a unique identity for the stream (e.g. an aggregate id)
+# create a unique identity for the stream
 stream_uuid = UUID.uuid4()
 
 # list of events to persist
 events = [
   %EventStore.EventData{
-  	event_type: "ExampleEvent",
-    headers: %{user: "someuser@example.com"},
+  	headers: %{user: "someuser@example.com"},
     payload: %ExampleEvent{key: "value"}
   }
 ]
 
-# append events to the stream
+# append events to a stream (as expected version is 0, a new stream will be created)
 {:ok, events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
 ```
 
 ### Reading Events
 
 ```elixir
+# read all events from the stream, starting at the beginning (as from version is 0)
 {:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
 ```
 

@@ -18,6 +18,7 @@ defmodule EventStore.Mixfile do
   def application do
     [applications: [
       :logger,
+      :poison,
       :postgrex
       ]
     ]
@@ -34,6 +35,8 @@ defmodule EventStore.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+      {:ex_doc, "~> 0.11.4", only: :dev},
+      {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:poison, "~> 2.1"},
       {:postgrex, "~> 0.11.1"},
