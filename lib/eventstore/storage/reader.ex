@@ -53,9 +53,7 @@ defmodule EventStore.Storage.Reader do
       %EventData{event | payload: Poison.decode!(payload, as: event_type)}
     end
 
-    @doc """
-    Convert the string representation of the event type to an Elixir atom and struct
-    """
+    # Convert the string representation of the event type to an Elixir atom and struct
     defp event_type_to_struct(%EventData{event_type: event_type}) do
       event_type
       |> String.to_atom
@@ -74,7 +72,7 @@ defmodule EventStore.Storage.Reader do
       {:ok, []}
     end
 
-    defp handle_response({:ok, %Postgrex.Result{rows: rows}} = result) do
+    defp handle_response({:ok, %Postgrex.Result{rows: rows}}) do
       {:ok, rows}
     end
   end

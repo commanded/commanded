@@ -14,7 +14,7 @@ defmodule EventStore.Sql.Statements do
 CREATE TABLE IF NOT EXISTS streams
 (
     stream_id BIGSERIAL PRIMARY KEY NOT NULL,
-    stream_uuid char(36) NOT NULL,
+    stream_uuid text NOT NULL,
     stream_type text NOT NULL,
     created_at timestamp NOT NULL
 );
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS events
     stream_id bigint NOT NULL,
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
-    correlation_id char(36),
+    correlation_id text,
     headers bytea NULL,
     payload bytea NOT NULL,
     created_at timestamp NOT NULL
