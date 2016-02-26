@@ -10,6 +10,14 @@ defmodule EventStore.Storage do
     GenServer.start_link(__MODULE__, config)
   end
 
+  def start_link(config) do
+    GenServer.start_link(__MODULE__, config)
+  end
+
+  def initialize_store(storage) do
+    GenServer.call(storage, :initialize_store)
+  end
+
   def initialize_store!(storage) do
     GenServer.call(storage, :initialize_store)
   end
