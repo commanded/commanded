@@ -2,6 +2,8 @@ defmodule EventStore.ReadEventsTest do
   use ExUnit.Case
   doctest EventStore.Storage
 
+  @moduletag :capture_log
+  
   alias EventStore
   alias EventStore.EventData
   alias EventStore.EventFactory
@@ -9,7 +11,6 @@ defmodule EventStore.ReadEventsTest do
 
   setup do
     {:ok, store} = Storage.start_link
-    Storage.initialize_store!(store)
     {:ok, store: store}
   end
 
