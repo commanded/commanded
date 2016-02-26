@@ -13,10 +13,6 @@ defmodule Mix.Tasks.EventStore.Drop do
 
       mix event_store.drop
 
-  ## Command line options
-
-    * `--no-compile` - do not compile before stopping
-
   """
 
   @doc false
