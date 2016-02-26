@@ -57,8 +57,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_events_stream_id_stream_version ON events (
 
   def create_stream do
 """
-INSERT INTO streams (stream_uuid, created_at, stream_type)
-VALUES ($1, NOW(), $2)
+INSERT INTO streams (stream_uuid, stream_type, created_at)
+VALUES ($1, $2, NOW())
 RETURNING stream_id;
 """
   end

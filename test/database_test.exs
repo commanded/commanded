@@ -5,8 +5,6 @@ defmodule EventStore.DatabaseTest do
   alias EventStore.Storage
   alias EventStore.Storage.Database
 
-  @moduletag :capture_log
-
   def temp_database_config do
     config = Application.get_env(:eventstore, Storage)
     Keyword.merge(config, [database: config[:database] <> "_temp"])

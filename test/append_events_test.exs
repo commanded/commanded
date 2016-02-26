@@ -1,8 +1,6 @@
 defmodule EventStore.AppendEventsTest do
   use ExUnit.Case
   doctest EventStore.Storage
-
-  @moduletag :capture_log
   
   alias EventStore
   alias EventStore.EventData

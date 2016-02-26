@@ -40,6 +40,14 @@ events = [
 ```
 
 
+### Benchmark EventStore performance
+
+Logging is disabled for benchmarking. By using `bench` environment and `config/bench.exs`.
+
+```
+MIX_ENV=bench mix do es.reset, app.start, bench
+```
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
