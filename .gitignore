@@ -1,5 +1,6 @@
 /_build
-/bench
+/bench/graphs
+/bench/snapshots
 /cover
 /deps
 /doc
