@@ -1,56 +1,12 @@
 # EventStore
 
-CQRS Event Store implemented in Elixir.
+CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Requires version 9.5 or newer. 
 
-Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Requires version 9.5 or newer.
+License is MIT.
 
-## Sample usage
+## Getting started
 
-```elixir
-# start the Storage process
-{:ok, store} = EventStore.Storage.start_link
-
-# ensure PostgreSQL tables exist (create if not present) 
-EventStore.Storage.initialize_store!(store)
-```
-
-### Writing to a Stream
-
-```elixir
-# create a unique identity for the stream
-stream_uuid = UUID.uuid4()
-
-# list of events to persist
-events = [
-  %EventStore.EventData{
-  	headers: %{user: "someuser@example.com"},
-    payload: %ExampleEvent{key: "value"}
-  }
-]
-
-# append events to a stream (as expected version is 0, a new stream will be created)
-{:ok, events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
-```
-
-### Reading Events
-
-```elixir
-# read all events from the stream, starting at the beginning (as from version is 0)
-{:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
-```
-
-
-### Benchmark EventStore performance
-
-Logging is disabled for benchmarking. By using `bench` environment and `config/bench.exs`.
-
-```
-MIX_ENV=bench mix do es.reset, app.start, bench
-```
-
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+EventStore is [available in Hex](https://hex.pm/packages/eventstore), the package can be installed as follows:
 
   1. Add eventstore to your list of dependencies in `mix.exs`:
 
@@ -64,3 +20,63 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
           [applications: [:eventstore]]
         end
 
+  3. Add an `eventstore` config entry containing the PostgreSQL connection details to each environment's mix config file (e.g. `config/dev.exs`).
+
+    ```elixir
+    config :eventstore, EventStore.Storage,
+      username: "postgres",
+      password: "postgres",
+      database: "eventstore_dev",
+      hostname: "localhost"
+    ```
+
+  4. Create the EventStore database using the `mix` task
+
+    ```
+    mix event_store.create
+    ```
+
+    This will create the database and tables.
+
+## Sample usage
+
+```elixir
+# start the Storage process
+{:ok, store} = EventStore.Storage.start_link
+```
+
+### Writing to a Stream
+
+```elixir
+# create a unique identity for the stream
+stream_uuid = UUID.uuid4()
+
+# a new stream will be created when the expected version is zero
+expected_version = 0
+
+# list of events to persist
+events = [
+  %EventStore.EventData{
+  	headers: %{user: "someuser@example.com"},
+    payload: %ExampleEvent{key: "value"}
+  }
+]
+
+# append events to stream
+{:ok, events} = EventStore.append_to_stream(store, stream_uuid, expected_version, events)
+```
+
+### Reading Events
+
+```elixir
+# read all events from the stream, starting at the beginning (as from version is 0)
+{:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
+```
+
+## Benchmark EventStore performance
+
+Run the benchmark suite using mix with the `bench` environment, as configured in `config/bench.exs`. Logging is disabled for benchmarking. 
+
+```
+MIX_ENV=bench mix do es.reset, app.start, bench
+```
