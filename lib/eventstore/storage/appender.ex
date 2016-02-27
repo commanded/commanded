@@ -7,7 +7,7 @@ defmodule EventStore.Storage.Appender do
 
   def append(conn, stream_id, expected_version, events) do
     case Appender.Query.latest_version(conn, stream_id) do
-      {:ok, ^expected_version} -> execute(conn, stream_id, expected_version, events)
+      {:ok, ^expected_version} -> execute_using_multirow_value_insert(conn, stream_id, expected_version, events)
       {:ok, latest_version} -> wrong_expected_version(stream_id, expected_version, latest_version)
       {:error, reason} -> failed_to_append(stream_id, reason)
     end
@@ -23,37 +23,44 @@ defmodule EventStore.Storage.Appender do
     {:error, reason}
   end
 
-  defp execute(conn, stream_id, expected_version, events) do
+  defp execute_using_multirow_value_insert(conn, stream_id, expected_version, events) do
+    statement = build_insert_statement(events)
+    parameters = build_insert_parameters(stream_id, expected_version, events)
+
     conn
-    |> Postgrex.transaction(&execute_within_transaction(&1, stream_id, expected_version, events))
+    |> Postgrex.query(statement, parameters)
     |> handle_response(stream_id)
   end
 
-  defp execute_within_transaction(transaction, stream_id, expected_version, events) do
-    {:ok, query} = prepare_query(transaction)
+  defp build_insert_statement(events) do
+    Statements.create_event(length(events))
+  end
 
+  defp build_insert_parameters(stream_id, expected_version, events) do
+    events
+    |> prepare_events(stream_id, expected_version)
+    |> Enum.reduce([], fn(event, parameters) ->
+      parameters ++ [
+        event.stream_id,
+        event.stream_version,
+        event.correlation_id,
+        event.event_type,
+        event.headers,
+        event.payload
+      ]
+    end)
+  end
+
+  defp prepare_events(events, stream_id, expected_version) do
     initial_stream_version = expected_version + 1
 
-    persisted_events =
-      events
-      |> Enum.map(&assign_stream_id(&1, stream_id))
-      |> Enum.with_index(initial_stream_version)
-      |> Enum.map(&assign_stream_version/1)
-      |> Enum.map(&assign_event_type/1)
-      |> Enum.map(&encode_headers/1)
-      |> Enum.map(&encode_payload/1)
-      |> Enum.reduce_while({:ok, []}, fn(event, {:ok, events}) ->
-         case append_event(transaction, query, event) do
-           {:ok, _} -> {:cont, {:ok, [event | events]}}
-           {:error, %Postgrex.Error{postgres: %{message: reason}}} -> {:halt, {:error, reason}}
-           response -> {:halt, response}
-         end
-      end)
-
-    case persisted_events do
-      {:ok, events} -> length(events)
-      {:error, reason} -> Postgrex.rollback(transaction, reason)
-    end
+    events
+    |> Enum.map(&assign_stream_id(&1, stream_id))
+    |> Enum.with_index(initial_stream_version)
+    |> Enum.map(&assign_stream_version/1)
+    |> Enum.map(&assign_event_type/1)
+    |> Enum.map(&encode_headers/1)
+    |> Enum.map(&encode_payload/1)
   end
 
   defp assign_stream_id(%EventData{} = event, stream_id) do
@@ -77,24 +84,9 @@ defmodule EventStore.Storage.Appender do
     %EventData{event | payload: Poison.encode!(payload)}
   end
 
-  defp prepare_query(transaction) do
-    Postgrex.prepare(transaction, "create_event", Statements.create_event)
-  end
-
-  defp append_event(transaction, query, %EventData{} = event) do
-    Postgrex.execute(transaction, query, [
-      event.stream_id,
-      event.stream_version,
-      event.correlation_id,
-      event.event_type,
-      event.headers,
-      event.payload
-    ])
-  end
-
-  defp handle_response({:ok, result}, stream_id) do
-    Logger.info "appended #{result} events to stream id #{stream_id}"
-    {:ok, result}
+  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows}}, stream_id) do
+    Logger.info "appended #{num_rows} events to stream id #{stream_id}"
+    {:ok, num_rows}
   end
 
   defp handle_response({:error, reason}, stream_id) do

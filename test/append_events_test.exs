@@ -1,9 +1,8 @@
 defmodule EventStore.AppendEventsTest do
   use ExUnit.Case
   doctest EventStore.Storage
-  
+
   alias EventStore
-  alias EventStore.EventData
   alias EventStore.EventFactory
   alias EventStore.Storage
 

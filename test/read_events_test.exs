@@ -3,7 +3,6 @@ defmodule EventStore.ReadEventsTest do
   doctest EventStore.Storage
 
   alias EventStore
-  alias EventStore.EventData
   alias EventStore.EventFactory
   alias EventStore.Storage
 
@@ -15,7 +14,6 @@ defmodule EventStore.ReadEventsTest do
   test "read stream forwards, when not exists"
   test "read stream forwards, when empty"
 
-  @tag :wip
   test "read stream with single event forward", %{store: store} do
     uuid = UUID.uuid4()
     events = EventFactory.create_events(1)

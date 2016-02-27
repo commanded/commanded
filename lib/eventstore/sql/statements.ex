@@ -63,12 +63,19 @@ RETURNING stream_id;
 """
   end
 
-  def create_event do
-"""
-INSERT INTO events (stream_id, stream_version, created_at, correlation_id, event_type, headers, payload)
-VALUES ($1, $2, NOW(), $3, $4, $5, $6);
-"""
+  def create_event(number_of_events \\ 1) do
+    sql = "INSERT INTO events (stream_id, stream_version, created_at, correlation_id, event_type, headers, payload) VALUES"
+
+    params = 1..number_of_events
+    |> Enum.map(fn event_number -> 
+      index = (event_number - 1) * 6
+      "($#{index + 1}, $#{index + 2}, NOW(), $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6})"
+    end)
+    |> Enum.join(",")
+
+    sql <> params <> ";"
   end
+
 
   def query_stream_id do
 """

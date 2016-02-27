@@ -80,3 +80,12 @@ Run the benchmark suite using mix with the `bench` environment, as configured in
 ```
 MIX_ENV=bench mix do es.reset, app.start, bench
 ```
+
+Example output:
+
+```
+## AppendEventsBench
+append events, single writer         200   9738.10 µs/op
+## ReadEventsBench
+read events, single reader           500   3151.80 µs/op
+```
