@@ -45,7 +45,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 {:ok, store} = EventStore.Storage.start_link
 ```
 
-### Writing to a Stream
+### Writing to a stream
 
 ```elixir
 # create a unique identity for the stream
@@ -66,14 +66,14 @@ events = [
 {:ok, events} = EventStore.append_to_stream(store, stream_uuid, expected_version, events)
 ```
 
-### Reading Events
+### Reading from a stream
 
 ```elixir
 # read all events from the stream, starting at the beginning (as from version is 0)
 {:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
 ```
 
-## Benchmark EventStore performance
+## Benchmarking performance
 
 Run the benchmark suite using mix with the `bench` environment, as configured in `config/bench.exs`. Logging is disabled for benchmarking. 
 

@@ -11,8 +11,8 @@ defmodule EventStore.ReadEventsTest do
     {:ok, store: store}
   end
 
-  test "read stream forwards, when not exists"
-  test "read stream forwards, when empty"
+  # test "read stream forwards, when not exists"
+  # test "read stream forwards, when empty"
 
   test "read stream with single event forward", %{store: store} do
     uuid = UUID.uuid4()
