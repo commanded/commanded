@@ -1,8 +1,7 @@
-defmodule EventStore.SubscriptionTest do
+defmodule EventStore.Subscription.SubscriptionTest do
   use ExUnit.Case
   doctest EventStore.Storage
 
-  alias EventStore
   alias EventStore.EventFactory
   alias EventStore.Storage
   alias EventStore.Subscriptions
@@ -47,7 +46,7 @@ defmodule EventStore.SubscriptionTest do
     events = EventFactory.create_events(1)
 
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, subscription} = EventStore.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name, subscriber)
+    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name, subscriber)
 
     {:ok, _} = EventStore.append_to_stream(store, stream_uuid, 0, events)
   end

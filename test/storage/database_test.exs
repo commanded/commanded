@@ -1,4 +1,4 @@
-defmodule EventStore.DatabaseTest do
+defmodule EventStore.Storage.DatabaseTest do
   use ExUnit.Case
   doctest EventStore.Storage.Database
 

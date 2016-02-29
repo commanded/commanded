@@ -1,8 +1,7 @@
-defmodule EventStore.ReadEventsTest do
+defmodule EventStore.Storage.ReadEventsTest do
   use ExUnit.Case
   doctest EventStore.Storage
 
-  alias EventStore
   alias EventStore.EventFactory
   alias EventStore.Storage
 
@@ -18,8 +17,8 @@ defmodule EventStore.ReadEventsTest do
     uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, _} = EventStore.append_to_stream(store, uuid, 0, events)
-    {:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
+    {:ok, _} = Storage.append_to_stream(store, uuid, 0, events)
+    {:ok, recorded_events} = Storage.read_stream_forward(store, uuid, 0)
 
     created_event = hd(events)
     recorded_event = hd(recorded_events)
