@@ -16,7 +16,16 @@ defmodule EventStore.Subscriptions.Subscription do
     })
   end
 
+  def notify_events(subscription, stream_uuid, stream_version, events) do
+    GenServer.cast(subscription, {:notify_events, stream_uuid, stream_version, events})
+  end
+
   def init(%Subscription{} = subscription) do
     {:ok, subscription}
+  end
+
+  def handle_cast({:notify_events, stream_uuid, stream_version, events}, %Subscription{} = state) do
+    send(state.subscriber, {:events, stream_uuid, stream_version, events})
+    {:noreply, state}
   end
 end
