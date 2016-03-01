@@ -32,6 +32,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
     end
   end
 
+  @all_stream "$all"
   @subscription_name "unit_test_subscription"
 
   setup do
@@ -41,7 +42,6 @@ defmodule EventStore.Subscription.SubscribeToStream do
     {:ok, storage: storage, supervisor: supervisor, subscriptions: subscriptions}
   end
 
-  @tag :wip
   test "subscribe to stream", %{storage: storage, subscriptions: subscriptions} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
@@ -57,5 +57,46 @@ defmodule EventStore.Subscription.SubscribeToStream do
     assert received_stream_version == 1
     assert received_events == events
     assert Subscriber.received_events(subscriber) == events
+  end
+
+  test "subscribe to stream, ignore events from another stream", %{storage: storage, subscriptions: subscriptions} do
+    interested_stream_uuid = UUID.uuid4()
+    other_stream_uuid = UUID.uuid4()
+    events = EventFactory.create_events(1)
+
+    {:ok, subscriber} = Subscriber.start_link(self)
+    {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, interested_stream_uuid, @subscription_name, subscriber)
+
+    Subscriptions.notify_events(subscriptions, other_stream_uuid, length(events), events)
+    
+    refute_receive {:events, received_stream_uuid, received_stream_version, received_events}
+
+    assert Subscriber.received_events(subscriber) == []
+  end
+
+  test "subscribe to $all stream, receive events from all streams", %{storage: storage, subscriptions: subscriptions} do
+    stream1_uuid = UUID.uuid4()
+    stream2_uuid = UUID.uuid4()
+    stream1_events = EventFactory.create_events(1)
+    stream2_events = EventFactory.create_events(1)
+
+    {:ok, subscriber} = Subscriber.start_link(self)
+    {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, @all_stream, @subscription_name, subscriber)
+
+    Subscriptions.notify_events(subscriptions, stream1_uuid, length(stream1_events), stream1_events)
+    Subscriptions.notify_events(subscriptions, stream2_uuid, length(stream2_events), stream2_events)
+    
+    assert_receive {:events, received_stream1_uuid, received_stream1_version, stream1_received_events}
+    assert_receive {:events, received_stream2_uuid, received_stream2_version, stream2_received_events}
+
+    assert received_stream1_uuid == stream1_uuid
+    assert received_stream1_version == 1
+    assert stream1_received_events == stream1_events
+    
+    assert received_stream2_uuid == stream2_uuid
+    assert received_stream2_version == 1
+    assert stream2_received_events == stream2_events
+
+    assert Subscriber.received_events(subscriber) == stream1_events ++ stream2_events
   end
 end

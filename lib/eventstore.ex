@@ -13,6 +13,8 @@ defmodule EventStore do
   alias EventStore.Storage
   alias EventStore.Subscriptions
 
+  @all_stream "$all"
+
   @doc """
   Append one or more events to a stream atomically.
     
@@ -63,5 +65,9 @@ defmodule EventStore do
   """
   def subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber) do
     Subscriptions.Supervisor.subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber)
+  end
+
+  def subscribe_to_all_streams(subscriptions, subscription_name, subscriber) do
+    Subscriptions.Supervisor.subscribe_to_stream(subscriptions, @all_stream, subscription_name, subscriber)
   end
 end
