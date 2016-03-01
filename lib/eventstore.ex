@@ -64,10 +64,10 @@ defmodule EventStore do
     Returns `{:ok, subscription}` when subscription succeeds. 
   """
   def subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber) do
-    Subscriptions.Supervisor.subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber)
+    Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber)
   end
 
   def subscribe_to_all_streams(subscriptions, subscription_name, subscriber) do
-    Subscriptions.Supervisor.subscribe_to_stream(subscriptions, @all_stream, subscription_name, subscriber)
+    Subscriptions.subscribe_to_stream(subscriptions, @all_stream, subscription_name, subscriber)
   end
 end

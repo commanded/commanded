@@ -42,7 +42,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 
 ```elixir
 # start the Storage process
-{:ok, store} = EventStore.Storage.start_link
+{:ok, storage} = EventStore.Storage.start_link
 ```
 
 ### Writing to a stream
@@ -63,15 +63,67 @@ events = [
 ]
 
 # append events to stream
-{:ok, events} = EventStore.append_to_stream(store, stream_uuid, expected_version, events)
+{:ok, events} = EventStore.append_to_stream(storage, stream_uuid, expected_version, events)
 ```
 
 ### Reading from a stream
 
 ```elixir
 # read all events from the stream, starting at the beginning (as from version is 0)
-{:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
+{:ok, recorded_events} = EventStore.read_stream_forward(storage, uuid, 0)
 ```
+
+### Subscribe to all streams
+
+Subscriptions are in progress, the usage will be further refined using a supervision tree.
+
+#### Transient subscriptions
+
+Events are received in batches after being persisted. Only events published while the subscription is active will be recevied.
+
+```elixir
+# using an example subscriber
+defmodule Subscriber do
+  use GenServer
+
+  def start_link do
+    GenServer.start_link(__MODULE__, [])
+  end
+
+  def received_events(server) do
+    GenServer.call(server, :received_events)
+  end
+
+  def init(events) do
+    {:ok, %{events: events}}
+  end
+
+  def handle_info({:events, stream_uuid, stream_version, events}, state) do
+    {:noreply, %{state | events: events ++ state.events}}
+  end
+
+  def handle_call(:received_events, _from, state) do
+    result = state.events |> Enum.reverse
+    {:reply, result, state}
+  end
+end
+```
+
+```elixir
+# create subscriptions supervisor
+{:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
+{:ok, subscriptions} = Subscriptions.start_link(supervisor)
+```
+
+```elixir
+# create subscriber and subscribe to all streams
+{:ok, subscriber} = Subscriber.start_link
+{:ok, subscription} = EventStore.subscribe_to_all_streams(subscriptions, "example_subscription", subscriber)
+```
+
+#### Persistent subscriptions (not yet implemented)
+
+These will ensure at least once delivery of every persisted event. Each subscription may be independently paused, then later resume from where it stopped.
 
 ## Benchmarking performance
 
