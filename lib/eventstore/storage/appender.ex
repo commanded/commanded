@@ -1,4 +1,8 @@
 defmodule EventStore.Storage.Appender do
+  @moduledoc """
+  Append-only storage of events for a stream
+  """
+  
   require Logger
 
   alias EventStore.EventData
@@ -6,7 +10,7 @@ defmodule EventStore.Storage.Appender do
   alias EventStore.Storage.Appender
 
   def append(conn, stream_id, expected_version, events) do
-    case Appender.Query.latest_version(conn, stream_id) do
+    case Appender.Query.query_latest_version(conn, stream_id) do
       {:ok, ^expected_version} -> execute_using_multirow_value_insert(conn, stream_id, expected_version, events)
       {:ok, latest_version} -> wrong_expected_version(stream_id, expected_version, latest_version)
       {:error, reason} -> failed_to_append(stream_id, reason)
@@ -95,7 +99,7 @@ defmodule EventStore.Storage.Appender do
   end
 
   defmodule Query do
-    def latest_version(conn, stream_id) do
+    def query_latest_version(conn, stream_id) do
       conn
       |> Postgrex.query(Statements.query_latest_version, [stream_id])
       |> handle_response

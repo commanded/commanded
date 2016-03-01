@@ -1,4 +1,8 @@
 defmodule EventStore.Storage.Stream do
+  @moduledoc """
+  Streams are an abstraction around a stream of events for a given stream identity
+  """
+
   require Logger
 
   alias EventStore.EventData

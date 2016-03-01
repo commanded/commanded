@@ -1,4 +1,8 @@
 defmodule EventStore.Sql.Statements do
+  @moduledoc """
+  PostgreSQL statements to intialize the event store schema and read/write streams and events.
+  """
+
   def initializers do
     [
       create_streams,

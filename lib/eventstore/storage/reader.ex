@@ -1,4 +1,8 @@
 defmodule EventStore.Storage.Reader do
+  @moduledoc """
+  Reads events for a given stream identity
+  """
+
   require Logger
 
   alias EventStore.EventData
@@ -23,6 +27,10 @@ defmodule EventStore.Storage.Reader do
   end
 
   defmodule EventAdapter do
+    @moduledoc """
+    Deserialization of event data from the database
+    """
+
     def to_event_data(rows) do
       rows
       |> Enum.map(&to_event_data_from_row/1)

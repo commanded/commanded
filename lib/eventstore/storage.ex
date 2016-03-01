@@ -1,4 +1,8 @@
 defmodule EventStore.Storage do
+  @moduledoc """
+  Storage of events to a PostgreSQL database
+  """
+
   use GenServer
   require Logger
 

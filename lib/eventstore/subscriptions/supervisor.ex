@@ -1,4 +1,8 @@
 defmodule EventStore.Subscriptions.Supervisor do
+  @moduledoc """
+  Supervise zero, one or more subscriptions to an event stream
+  """
+
   use Supervisor
 
   def start_link(storage) do
