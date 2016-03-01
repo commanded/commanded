@@ -10,7 +10,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
     use GenServer
 
     def start_link(sender) do
-      GenServer.start_link(__MODULE__, sender, name: __MODULE__)
+      GenServer.start_link(__MODULE__, sender, [])
     end
 
     def received_events(server) do
@@ -50,7 +50,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
     {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name, subscriber)
 
     Subscriptions.notify_events(subscriptions, stream_uuid, length(events), events)
-    
+
     assert_receive {:events, received_stream_uuid, received_stream_version, received_events}
 
     assert received_stream_uuid == stream_uuid
@@ -68,7 +68,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
     {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, interested_stream_uuid, @subscription_name, subscriber)
 
     Subscriptions.notify_events(subscriptions, other_stream_uuid, length(events), events)
-    
+
     refute_receive {:events, received_stream_uuid, received_stream_version, received_events}
 
     assert Subscriber.received_events(subscriber) == []
@@ -85,18 +85,58 @@ defmodule EventStore.Subscription.SubscribeToStream do
 
     Subscriptions.notify_events(subscriptions, stream1_uuid, length(stream1_events), stream1_events)
     Subscriptions.notify_events(subscriptions, stream2_uuid, length(stream2_events), stream2_events)
-    
+
     assert_receive {:events, received_stream1_uuid, received_stream1_version, stream1_received_events}
     assert_receive {:events, received_stream2_uuid, received_stream2_version, stream2_received_events}
 
     assert received_stream1_uuid == stream1_uuid
     assert received_stream1_version == 1
     assert stream1_received_events == stream1_events
-    
+
     assert received_stream2_uuid == stream2_uuid
     assert received_stream2_version == 1
     assert stream2_received_events == stream2_events
 
     assert Subscriber.received_events(subscriber) == stream1_events ++ stream2_events
+  end
+
+  test "should monitor each subscription, terminate subscriber on error", %{storage: storage, subscriptions: subscriptions} do
+    stream_uuid = UUID.uuid4()
+    events = EventFactory.create_events(1)
+
+    {:ok, subscriber1} = Subscriber.start_link(self)
+    {:ok, subscriber2} = Subscriber.start_link(self)
+
+    {:ok, subscription1} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name <> "1", subscriber1)
+    {:ok, subscription2} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name <> "2", subscriber2)
+
+    # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
+    Process.unlink(subscriber1)
+
+    shutdown(subscription1)
+
+    # should still notify subscription 2
+    Subscriptions.notify_events(subscriptions, stream_uuid, length(events), events)
+
+    # should kill subscription and subscriber
+    assert Process.alive?(subscription1) == false
+    assert Process.alive?(subscriber1) == false
+
+    # subscription 2 should still receive events
+    assert_receive {:events, received_stream_uuid, received_stream_version, received_events}
+
+    assert received_stream_uuid == stream_uuid
+    assert received_stream_version == 1
+    assert received_events == events
+    assert Subscriber.received_events(subscriber2) == events
+  end
+
+  # stop the process with non-normal reason
+  defp shutdown(pid) do
+    Process.unlink(pid)
+    Process.exit(pid, :shutdown)
+
+    ref = Process.monitor(pid)
+    assert_receive {:DOWN, ^ref, _, _, _}
   end
 end
