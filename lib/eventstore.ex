@@ -1,8 +1,6 @@
 defmodule EventStore do
   @moduledoc """
-  EventStore client API to read and write events to a logical event stream
-
-  Each of the following client functions expects to receive an already started & initialised `EventStore.Storage` pid.
+  EventStore process to read and write events to a logical event stream
 
   ## Example usage
 
