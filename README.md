@@ -41,8 +41,8 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 ## Sample usage
 
 ```elixir
-# start the Storage process
-{:ok, storage} = EventStore.Storage.start_link
+# start the EventStore process
+{:ok, store} = EventStore.start_link
 ```
 
 ### Writing to a stream
@@ -63,19 +63,17 @@ events = [
 ]
 
 # append events to stream
-{:ok, events} = EventStore.append_to_stream(storage, stream_uuid, expected_version, events)
+{:ok, events} = EventStore.append_to_stream(store, stream_uuid, expected_version, events)
 ```
 
 ### Reading from a stream
 
 ```elixir
-# read all events from the stream, starting at the beginning (as from version is 0)
-{:ok, recorded_events} = EventStore.read_stream_forward(storage, uuid, 0)
+# read all events from the stream, starting at the beginning
+{:ok, recorded_events} = EventStore.read_stream_forward(store, stream_uuid)
 ```
 
 ### Subscribe to all streams
-
-Subscriptions are in progress, the usage will be further refined using a supervision tree.
 
 #### Transient subscriptions
 
@@ -110,20 +108,16 @@ end
 ```
 
 ```elixir
-# create subscriptions supervisor
-{:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
-{:ok, subscriptions} = Subscriptions.start_link(supervisor)
-```
-
-```elixir
 # create subscriber and subscribe to all streams
 {:ok, subscriber} = Subscriber.start_link
-{:ok, subscription} = EventStore.subscribe_to_all_streams(subscriptions, "example_subscription", subscriber)
+{:ok, subscription} = EventStore.subscribe_to_all_streams(store, "example_subscription", subscriber)
 ```
 
-#### Persistent subscriptions (not yet implemented)
+#### Persistent subscriptions
 
 These will ensure at least once delivery of every persisted event. Each subscription may be independently paused, then later resume from where it stopped.
+
+*Persistent subscriptions are not yet implemented.*
 
 ## Benchmarking performance
 

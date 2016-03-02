@@ -10,15 +10,16 @@ defmodule EventStore.Subscriptions do
   alias EventStore.Subscriptions
   alias EventStore.Subscriptions.Subscription
 
-  defstruct all_stream: [], single_stream: %{}, supervisor: nil
+  defstruct all_stream: [], single_stream: %{}, storage: nil, supervisor: nil
 
   @all_stream "$all"
 
-  def start_link(supervisor) do
+  def start_link(storage) do
+
     GenServer.start_link(__MODULE__, %Subscriptions{
       all_stream: [],
       single_stream: %{},
-      supervisor: supervisor
+      storage: storage
     })
   end
 
@@ -30,7 +31,11 @@ defmodule EventStore.Subscriptions do
     GenServer.cast(subscriptions, {:notify_events, stream_uuid, stream_version, events})
   end
 
-  def init(%Subscriptions{} = subscriptions) do
+  def init(%Subscriptions{storage: storage} = subscriptions) do
+    {:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
+    
+    subscriptions = %Subscriptions{subscriptions | supervisor: supervisor}
+
     {:ok, subscriptions}
   end
 
