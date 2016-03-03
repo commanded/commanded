@@ -27,16 +27,29 @@ defmodule EventStore.Storage do
     GenServer.call(storage, {:read_stream_forward, stream_uuid, start_version, count})
   end
 
+  @doc """
+  Create, or locate an existing, persistent subscription to a stream using a unique name
+  """
   def subscribe_to_stream(storage, stream_uuid, subscription_name) do
     GenServer.call(storage, {:subscribe_to_stream, stream_uuid, subscription_name})
   end
 
+  @doc """
+  Acknowledge receipt of an event by id, for a single subscription
+  """
+  def ack_last_seen_event(storage, stream_uuid, subscription_name, last_seen_event_id) when is_number(last_seen_event_id) do
+    GenServer.call(storage, {:ack_last_seen_event, stream_uuid, subscription_name, last_seen_event_id})
+  end
+
+  @doc """
+  Unsubscribe from an existing named subscription to a stream
+  """
   def unsubscribe_from_stream(storage, stream_uuid, subscription_name) do
     GenServer.call(storage, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
 
   @doc """
-  Get all known subscriptions
+  Get all known subscriptions, to any stream
   """
   def subscriptions(storage) do
     GenServer.call(storage, {:subscriptions})
@@ -68,6 +81,11 @@ defmodule EventStore.Storage do
 
   def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, conn) do
     reply = Subscription.unsubscribe_from_stream(conn, stream_uuid, subscription_name)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:ack_last_seen_event, stream_uuid, subscription_name, last_seen_event_id}, _from, conn) do
+    reply = Subscription.ack_last_seen_event(conn, stream_uuid, subscription_name, last_seen_event_id)
     {:reply, reply, conn}
   end
 

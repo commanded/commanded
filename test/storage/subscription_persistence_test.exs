@@ -50,11 +50,21 @@ defmodule EventStore.Storage.SubsriptionPersistenceTest do
     :ok = Storage.unsubscribe_from_stream(store, @all_stream, @subscription_name)
   end
 
-  defp verify_subscription(subscription) do
+  test "ack last seen event", %{store: store} do
+    {:ok, subscription} = Storage.subscribe_to_stream(store, @all_stream, @subscription_name)
+    
+    :ok = Storage.ack_last_seen_event(store, @all_stream, @subscription_name, 1)
+
+    {:ok, [subscriptions]} = Storage.subscriptions(store)
+
+    verify_subscription(subscription, 1)
+  end
+
+  defp verify_subscription(subscription, last_seen_event_id \\ 0) do
     assert subscription.subscription_id > 0
     assert subscription.stream_uuid == @all_stream
     assert subscription.subscription_name == @subscription_name
-    assert subscription.last_seen_event_id == 0
+    assert subscription.last_seen_event_id == last_seen_event_id
     assert subscription.created_at != nil
   end
 end

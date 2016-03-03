@@ -25,6 +25,10 @@ defmodule EventStore.Storage.Subscription do
     end
   end
 
+  def ack_last_seen_event(conn, stream_uuid, subscription_name, last_seen_event_id) do
+    Subscription.Ack.execute(conn, stream_uuid, subscription_name, last_seen_event_id)
+  end
+
   def unsubscribe_from_stream(conn, stream_uuid, subscription_name) do
     Subscription.Unsubscribe.execute(conn, stream_uuid, subscription_name)
   end
@@ -86,9 +90,26 @@ defmodule EventStore.Storage.Subscription do
     end
   end
 
+  defmodule Ack do
+    def execute(conn, stream_uuid, subscription_name, last_seen_event_id) do
+      conn
+      |> Postgrex.query(Statements.ack_last_seen_event, [stream_uuid, subscription_name, last_seen_event_id])
+      |> handle_response(stream_uuid, subscription_name)
+    end
+
+    defp handle_response({:ok, _result}, stream_uuid, subscription_name) do
+      :ok
+    end
+
+    defp handle_response({:error, error}, stream_uuid, subscription_name) do
+      Logger.warn "failed to ack last seen event on stream #{stream_uuid} named #{subscription_name} due to: #{error}"
+      {:error, error}
+    end
+  end
+
   defmodule Unsubscribe do
     def execute(conn, stream_uuid, subscription_name) do
-      Logger.debug "attempting to unsubscribe stream #{stream_uuid} named #{subscription_name}"
+      Logger.debug "attempting to unsubscribe from stream #{stream_uuid} named #{subscription_name}"
 
       conn
       |> Postgrex.query(Statements.delete_subscription, [stream_uuid, subscription_name])
