@@ -11,19 +11,38 @@ defmodule EventStore.Storage.Subscription do
 
   defstruct subscription_id: nil, stream_uuid: nil, subscription_name: nil, last_seen_event_id: nil, created_at: nil
 
+  @doc """
+  List all known subscriptions
+  """
+  def subscriptions(conn) do
+    Subscription.All.execute(conn)
+  end
+
   def subscribe_to_stream(conn, stream_uuid, subscription_name) do
-    case get_subscription(conn, stream_uuid, subscription_name) do
+    case Subscription.Query.execute(conn, stream_uuid, subscription_name) do
       {:ok, subscription} -> {:ok, subscription}
-      {:error, :subscription_not_found} -> create_subscription(conn, stream_uuid, subscription_name)
+      {:error, :subscription_not_found} -> Subscription.Subscribe.execute(conn, stream_uuid, subscription_name)
     end
   end
 
-  defp get_subscription(conn, stream_uuid, subscription_name) do
-    Subscription.Query.execute(conn, stream_uuid, subscription_name)
+  def unsubscribe_from_stream(conn, stream_uuid, subscription_name) do
+    Subscription.Unsubscribe.execute(conn, stream_uuid, subscription_name)
   end
 
-  defp create_subscription(conn, stream_uuid, subscription_name) do
-    Subscription.Create.execute(conn, stream_uuid, subscription_name)
+  defmodule All do
+    def execute(conn) do
+      conn
+      |> Postgrex.query(Statements.query_all_subscriptions, [])
+      |> handle_response
+    end
+
+    defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}) do
+      {:ok, []}
+    end
+
+    defp handle_response({:ok, %Postgrex.Result{rows: rows}}) do
+      {:ok, Subscription.Adapter.to_subscriptions(rows)}
+    end
   end
 
   defmodule Query do
@@ -42,7 +61,7 @@ defmodule EventStore.Storage.Subscription do
     end
   end
 
-  defmodule Create do
+  defmodule Subscribe do
     def execute(conn, stream_uuid, subscription_name) do
       Logger.debug "attempting to create subscription on stream #{stream_uuid} named #{subscription_name}"
 
@@ -67,7 +86,32 @@ defmodule EventStore.Storage.Subscription do
     end
   end
 
+  defmodule Unsubscribe do
+    def execute(conn, stream_uuid, subscription_name) do
+      Logger.debug "attempting to unsubscribe stream #{stream_uuid} named #{subscription_name}"
+
+      conn
+      |> Postgrex.query(Statements.delete_subscription, [stream_uuid, subscription_name])
+      |> handle_response(stream_uuid, subscription_name)
+    end
+
+    defp handle_response({:ok, _result}, stream_uuid, subscription_name) do
+      Logger.debug "unsubscribed from stream #{stream_uuid} named #{subscription_name}"
+      :ok
+    end
+
+    defp handle_response({:error, error}, stream_uuid, subscription_name) do
+      Logger.warn "failed to unsubscribe from stream #{stream_uuid} named #{subscription_name} due to: #{error}"
+      {:error, error}
+    end
+  end
+
   defmodule Adapter do
+    def to_subscriptions(rows) do
+      rows
+      |> Enum.map(&to_subscription_from_row/1)
+    end
+
     def to_subscription(rows) do
       rows
       |> List.first

@@ -31,6 +31,17 @@ defmodule EventStore.Storage do
     GenServer.call(storage, {:subscribe_to_stream, stream_uuid, subscription_name})
   end
 
+  def unsubscribe_from_stream(storage, stream_uuid, subscription_name) do
+    GenServer.call(storage, {:unsubscribe_from_stream, stream_uuid, subscription_name})
+  end
+
+  @doc """
+  Get all known subscriptions
+  """
+  def subscriptions(storage) do
+    GenServer.call(storage, {:subscriptions})
+  end
+
   def init(config) do
     Postgrex.start_link(config)
   end
@@ -52,6 +63,16 @@ defmodule EventStore.Storage do
 
   def handle_call({:subscribe_to_stream, stream_uuid, subscription_name}, _from, conn) do
     reply = Subscription.subscribe_to_stream(conn, stream_uuid, subscription_name)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, conn) do
+    reply = Subscription.unsubscribe_from_stream(conn, stream_uuid, subscription_name)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:subscriptions}, _from, conn) do
+    reply = Subscription.subscriptions(conn)
     {:reply, reply, conn}
   end
 end

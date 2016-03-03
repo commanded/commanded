@@ -109,6 +109,21 @@ RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, c
 """
   end
 
+  def delete_subscription do
+"""
+DELETE FROM subscriptions
+WHERE stream_uuid = $1 AND subscription_name = $2;
+"""    
+  end
+
+  def query_all_subscriptions do
+"""
+SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at
+FROM subscriptions
+ORDER BY created_at;
+"""    
+  end
+
   def query_get_subscription do
 """
 SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at
