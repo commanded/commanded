@@ -95,6 +95,14 @@ defmodule EventStore do
     GenServer.call(store, {:subscribe_to_stream, @all_stream, subscription_name, subscriber})
   end
 
+  def unsubscribe_from_stream(store, stream_uuid, subscription_name) do
+    GenServer.call(store, {:unsubscribe_from_stream, stream_uuid, subscription_name})
+  end
+
+  def unsubscribe_from_all_streams(store, subscription_name) do
+    GenServer.call(store, {:unsubscribe_from_stream, @all_stream, subscription_name})
+  end
+
   def init([]) do
     {:ok, storage} = EventStore.Storage.start_link
     {:ok, subscriptions} = EventStore.Subscriptions.start_link(storage)
@@ -114,6 +122,11 @@ defmodule EventStore do
 
   def handle_call({:subscribe_to_stream, stream_uuid, subscription_name, subscriber}, _from, %{subscriptions: subscriptions} = state) do
     reply = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber)
+    {:reply, reply, state}
+  end
+
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %{subscriptions: subscriptions} = state) do
+    reply = Subscriptions.unsubscribe_from_stream(subscriptions, stream_uuid, subscription_name)
     {:reply, reply, state}
   end
 end

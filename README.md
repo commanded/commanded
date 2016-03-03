@@ -75,9 +75,14 @@ events = [
 
 ### Subscribe to all streams
 
-#### Transient subscriptions
+Subscriptions to a stream will guarantee at least once delivery of every persisted event. Each subscription may be independently paused, then later resumed from where it stopped.
 
-Events are received in batches after being persisted. Only events published while the subscription is active will be recevied.
+Events are received in batches after being persisted to storage. Each batch will contain events from a single stream only.
+
+Receipt of each event, or batch, must be acknowledged by the subscriber. This allows the subscription to resume on failure without missing an event.
+
+Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
+
 
 ```elixir
 # using an example subscriber
@@ -100,9 +105,8 @@ defmodule Subscriber do
     {:noreply, %{state | events: events ++ state.events}}
   end
 
-  def handle_call(:received_events, _from, state) do
-    result = state.events |> Enum.reverse
-    {:reply, result, state}
+  def handle_call(:received_events, _from, %{events: events} = state) do
+    {:reply, events, state}
   end
 end
 ```
@@ -113,11 +117,10 @@ end
 {:ok, subscription} = EventStore.subscribe_to_all_streams(store, "example_subscription", subscriber)
 ```
 
-#### Persistent subscriptions
-
-These will ensure at least once delivery of every persisted event. Each subscription may be independently paused, then later resume from where it stopped.
-
-*Persistent subscriptions are not yet implemented.*
+```elixir
+# unsubscribe from a stream
+{:ok, subscription} = EventStore.unsubscribe_from_all_streams(store, "example_subscription")
+```
 
 ## Benchmarking performance
 

@@ -15,9 +15,9 @@ defmodule EventStore.Subscriptions do
   @all_stream "$all"
 
   def start_link(storage) do
-
     GenServer.start_link(__MODULE__, %Subscriptions{
-      all_stream: [],
+
+      all_stream: [],      
       single_stream: %{},
       storage: storage
     })
@@ -26,14 +26,18 @@ defmodule EventStore.Subscriptions do
   def subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber) do
     GenServer.call(subscriptions, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber})
   end
-  
+
+  def unsubscribe_from_stream(subscriptions, stream_uuid, subscription_name) do
+    GenServer.call(subscriptions, {:unsubscribe_from_stream, stream_uuid, subscription_name})
+  end
+
   def notify_events(subscriptions, stream_uuid, stream_version, events) do
     GenServer.cast(subscriptions, {:notify_events, stream_uuid, stream_version, events})
   end
 
   def init(%Subscriptions{storage: storage} = subscriptions) do
     {:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
-    
+
     subscriptions = %Subscriptions{subscriptions | supervisor: supervisor}
 
     {:ok, subscriptions}
@@ -54,11 +58,25 @@ defmodule EventStore.Subscriptions do
 
   def handle_cast({:notify_events, stream_uuid, stream_version, events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
     interested_subscriptions = all_stream ++ Map.get(single_stream, stream_uuid, [])
-    
+
     interested_subscriptions
     |> Enum.each(&Subscription.notify_events(&1, stream_uuid, stream_version, events))
 
     {:noreply, subscriptions}
+  end
+
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
+    # TODO: get subscription and remove from storage
+    #subscription = 
+
+    # :ok = Subscriptions.Supervisor.unsubscribe_from_stream(supervisor, subscription)
+
+    # subscriptions = case stream_uuid do
+    #   @all_stream -> remove_all_stream_subscription(subscriptions, subscription)
+    #   stream_uuid -> remove_single_stream_subscription(subscriptions, subscription, stream_uuid)
+    # end
+
+    {:reply, :ok, subscriptions}
   end
 
   def handle_info({:DOWN, ref, :process, pid, reason}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
@@ -77,7 +95,7 @@ defmodule EventStore.Subscriptions do
   end
 
   defp append_single_stream_subscription(%Subscriptions{single_stream: single_stream} = subscriptions, subscription, stream_uuid) do
-    {_, single_stream} = Map.get_and_update(single_stream, stream_uuid, fn current_value -> 
+    {_, single_stream} = Map.get_and_update(single_stream, stream_uuid, fn current_value ->
       new_value = case current_value do
         nil -> [subscription]
         current_value -> [subscription | current_value]
@@ -87,5 +105,9 @@ defmodule EventStore.Subscriptions do
     end)
 
     %Subscriptions{subscriptions | single_stream: single_stream}
+  end
+
+  defp remove_all_stream_subscription(%Subscriptions{all_stream: all_stream} = subscriptions, subscription_name) do
+    subscriptions
   end
 end

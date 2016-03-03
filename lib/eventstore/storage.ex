@@ -8,6 +8,7 @@ defmodule EventStore.Storage do
 
   alias EventStore.Storage
   alias EventStore.Storage.Stream
+  alias EventStore.Storage.Subscription
 
   def start_link do
     config = Application.get_env(:eventstore, Storage)
@@ -26,6 +27,10 @@ defmodule EventStore.Storage do
     GenServer.call(storage, {:read_stream_forward, stream_uuid, start_version, count})
   end
 
+  def subscribe_to_stream(storage, stream_uuid, subscription_name) do
+    GenServer.call(storage, {:subscribe_to_stream, stream_uuid, subscription_name})
+  end
+
   def init(config) do
     Postgrex.start_link(config)
   end
@@ -42,6 +47,11 @@ defmodule EventStore.Storage do
 
   def handle_call({:read_stream_forward, stream_uuid, start_version, count}, _from, conn) do
     reply = Stream.read_stream_forward(conn, stream_uuid, start_version, count)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:subscribe_to_stream, stream_uuid, subscription_name}, _from, conn) do
+    reply = Subscription.subscribe_to_stream(conn, stream_uuid, subscription_name)
     {:reply, reply, conn}
   end
 end
