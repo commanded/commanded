@@ -33,7 +33,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
   end
 
   @all_stream "$all"
-  @subscription_name "unit_test_subscription"
+  @subscription_name "test_subscription"
 
   setup do
     {:ok, storage} = Storage.start_link

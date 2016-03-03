@@ -66,16 +66,6 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
-    # TODO: get subscription and remove from storage
-    #subscription = 
-
-    # :ok = Subscriptions.Supervisor.unsubscribe_from_stream(supervisor, subscription)
-
-    # subscriptions = case stream_uuid do
-    #   @all_stream -> remove_all_stream_subscription(subscriptions, subscription)
-    #   stream_uuid -> remove_single_stream_subscription(subscriptions, subscription, stream_uuid)
-    # end
-
     {:reply, :ok, subscriptions}
   end
 

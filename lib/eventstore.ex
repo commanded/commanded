@@ -42,7 +42,9 @@ defmodule EventStore do
     - `events` is a list of `%EventStore.EventData{}` structs
   """
   def append_to_stream(store, stream_uuid, expected_version, events) do
-    GenServer.call(store, {:append_to_stream, stream_uuid, expected_version, events})
+    reply = GenServer.call(store, {:append_to_stream, stream_uuid, expected_version, events})
+    GenServer.cast(store, {:notify_events, stream_uuid, events})
+    reply
   end
 
   @doc """
@@ -113,6 +115,11 @@ defmodule EventStore do
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %{storage: storage} = state) do
     reply = Storage.append_to_stream(storage, stream_uuid, expected_version, events)
     {:reply, reply, state}
+  end
+
+  def handle_cast({:notify_events, stream_uuid, events}, %{subscriptions: subscriptions} = state) do
+    Subscriptions.notify_events(subscriptions, stream_uuid, 0, events) 
+    {:noreply, state}
   end
 
   def handle_call({:read_stream_forward, stream_uuid, start_version, count}, _from, %{storage: storage} = state) do

@@ -3,7 +3,9 @@ defmodule EventStoreTest do
   doctest EventStore.Storage
 
   alias EventStore.EventFactory
-    
+  
+  @subscription_name "test_subscription"
+
   setup do
     {:ok, store} = EventStore.start_link
     {:ok, store: store}
@@ -30,5 +32,16 @@ defmodule EventStoreTest do
     assert recorded_event.stream_id > 0
     assert recorded_event.headers == created_event.headers
     assert recorded_event.payload == created_event.payload
+  end
+
+  test "notify subscribers after event persisted", %{store: store} do
+    uuid = UUID.uuid4()
+    events = EventFactory.create_events(1)
+
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(store, @subscription_name, self)
+
+    {:ok, _} = EventStore.append_to_stream(store, uuid, 0, events)
+
+    assert_receive {:events, stream_uuid, stream_version, events}
   end
 end
