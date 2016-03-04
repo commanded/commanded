@@ -16,7 +16,7 @@ defmodule EventStore.Storage do
   end
 
   @doc """
-  Initialise the PostgreSQL database by creating the tables and indexs
+  Initialise the PostgreSQL database by creating the tables and indexes
   """
   def initialize_store!(storage) do
     GenServer.call(storage, :initialize_store)

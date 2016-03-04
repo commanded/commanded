@@ -15,7 +15,7 @@ defmodule EventStoreTest do
     uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, persisted_events} = EventStore.append_to_stream(store, uuid, 0, events)
+    {:ok, _persisted_events} = EventStore.append_to_stream(store, uuid, 0, events)
   end
 
   test "read stream forward from event store", %{store: store} do
@@ -38,7 +38,7 @@ defmodule EventStoreTest do
     uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(store, @subscription_name, self)
+    {:ok, _subscription} = EventStore.subscribe_to_all_streams(store, @subscription_name, self)
 
     {:ok, _} = EventStore.append_to_stream(store, uuid, 0, events)
 

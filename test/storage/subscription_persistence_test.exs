@@ -2,7 +2,6 @@ defmodule EventStore.Storage.SubscriptionPersistenceTest do
   use EventStore.StorageCase
   doctest EventStore.Storage
 
-  alias EventStore.EventFactory
   alias EventStore.Storage
 
   @all_stream "$all"
@@ -36,7 +35,7 @@ defmodule EventStore.Storage.SubscriptionPersistenceTest do
     {:ok, subscriptions} = Storage.subscriptions(storage)
     initial_length = length(subscriptions)
 
-    {:ok, subscription} = Storage.subscribe_to_stream(storage, @all_stream, @subscription_name)
+    {:ok, _subscription} = Storage.subscribe_to_stream(storage, @all_stream, @subscription_name)
     :ok = Storage.unsubscribe_from_stream(storage, @all_stream, @subscription_name)
 
     {:ok, subscriptions} = Storage.subscriptions(storage)
@@ -48,7 +47,7 @@ defmodule EventStore.Storage.SubscriptionPersistenceTest do
   end
 
   test "ack last seen event", %{storage: storage} do
-    {:ok, subscription} = Storage.subscribe_to_stream(storage, @all_stream, @subscription_name)
+    {:ok, _subscription} = Storage.subscribe_to_stream(storage, @all_stream, @subscription_name)
 
     :ok = Storage.ack_last_seen_event(storage, @all_stream, @subscription_name, 1)
 

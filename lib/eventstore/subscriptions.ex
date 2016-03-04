@@ -16,8 +16,7 @@ defmodule EventStore.Subscriptions do
 
   def start_link(storage) do
     GenServer.start_link(__MODULE__, %Subscriptions{
-
-      all_stream: [],      
+      all_stream: [],
       single_stream: %{},
       storage: storage
     })
@@ -56,6 +55,10 @@ defmodule EventStore.Subscriptions do
     {:reply, {:ok, subscription}, subscriptions}
   end
 
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
+    {:reply, :ok, subscriptions}
+  end
+
   def handle_cast({:notify_events, stream_uuid, stream_version, events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
     interested_subscriptions = all_stream ++ Map.get(single_stream, stream_uuid, [])
 
@@ -63,10 +66,6 @@ defmodule EventStore.Subscriptions do
     |> Enum.each(&Subscription.notify_events(&1, stream_uuid, stream_version, events))
 
     {:noreply, subscriptions}
-  end
-
-  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
-    {:reply, :ok, subscriptions}
   end
 
   def handle_info({:DOWN, ref, :process, pid, reason}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do

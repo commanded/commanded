@@ -21,7 +21,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
       {:ok, %{sender: sender, events: []}}
     end
 
-    def handle_info({:events, stream_uuid, stream_version, events} = message, state) do
+    def handle_info({:events, _stream_uuid, _stream_version, events} = message, state) do
       send(state.sender, message)
       {:noreply, %{state | events: events ++ state.events}}
     end
@@ -43,12 +43,12 @@ defmodule EventStore.Subscription.SubscribeToStream do
     {:ok, storage: storage, supervisor: supervisor, subscriptions: subscriptions}
   end
 
-  test "subscribe to stream", %{storage: storage, subscriptions: subscriptions} do
+  test "subscribe to stream", %{subscriptions: subscriptions} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name, subscriber)
+    {:ok, _subscription} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name, subscriber)
 
     Subscriptions.notify_events(subscriptions, stream_uuid, length(events), events)
 
@@ -60,29 +60,29 @@ defmodule EventStore.Subscription.SubscribeToStream do
     assert Subscriber.received_events(subscriber) == events
   end
 
-  test "subscribe to stream, ignore events from another stream", %{storage: storage, subscriptions: subscriptions} do
+  test "subscribe to stream, ignore events from another stream", %{subscriptions: subscriptions} do
     interested_stream_uuid = UUID.uuid4()
     other_stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, interested_stream_uuid, @subscription_name, subscriber)
+    {:ok, _subscription} = Subscriptions.subscribe_to_stream(subscriptions, interested_stream_uuid, @subscription_name, subscriber)
 
     Subscriptions.notify_events(subscriptions, other_stream_uuid, length(events), events)
 
-    refute_receive {:events, received_stream_uuid, received_stream_version, received_events}
+    refute_receive {:events, _received_stream_uuid, _received_stream_version, _received_events}
 
     assert Subscriber.received_events(subscriber) == []
   end
 
-  test "subscribe to $all stream, receive events from all streams", %{storage: storage, subscriptions: subscriptions} do
+  test "subscribe to $all stream, receive events from all streams", %{subscriptions: subscriptions} do
     stream1_uuid = UUID.uuid4()
     stream2_uuid = UUID.uuid4()
     stream1_events = EventFactory.create_events(1)
     stream2_events = EventFactory.create_events(1)
 
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, subscription} = Subscriptions.subscribe_to_stream(subscriptions, @all_stream, @subscription_name, subscriber)
+    {:ok, _subscription} = Subscriptions.subscribe_to_stream(subscriptions, @all_stream, @subscription_name, subscriber)
 
     Subscriptions.notify_events(subscriptions, stream1_uuid, length(stream1_events), stream1_events)
     Subscriptions.notify_events(subscriptions, stream2_uuid, length(stream2_events), stream2_events)
@@ -101,7 +101,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
     assert Subscriber.received_events(subscriber) == stream1_events ++ stream2_events
   end
 
-  test "should monitor each subscription, terminate subscriber on error", %{storage: storage, subscriptions: subscriptions} do
+  test "should monitor each subscription, terminate subscriber on error", %{subscriptions: subscriptions} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
@@ -109,7 +109,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
     {:ok, subscriber2} = Subscriber.start_link(self)
 
     {:ok, subscription1} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name <> "1", subscriber1)
-    {:ok, subscription2} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name <> "2", subscriber2)
+    {:ok, _subscription2} = Subscriptions.subscribe_to_stream(subscriptions, stream_uuid, @subscription_name <> "2", subscriber2)
 
     # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
     Process.unlink(subscriber1)
