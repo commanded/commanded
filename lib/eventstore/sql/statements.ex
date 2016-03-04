@@ -33,6 +33,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_streams_stream_uuid ON streams (stream_uuid
 """
   end
 
+  def truncate_tables do
+"""
+TRUNCATE TABLE subscriptions, streams, events
+RESTART IDENTITY;
+"""
+  end
+
   def create_events_table do
 """
 CREATE TABLE IF NOT EXISTS events
@@ -113,7 +120,7 @@ RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, c
 """
 DELETE FROM subscriptions
 WHERE stream_uuid = $1 AND subscription_name = $2;
-"""    
+"""
   end
 
   def ack_last_seen_event do
@@ -124,13 +131,12 @@ WHERE stream_uuid = $1 AND subscription_name = $2;
 """
   end
 
-
   def query_all_subscriptions do
 """
 SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at
 FROM subscriptions
 ORDER BY created_at;
-"""    
+"""
   end
 
   def query_get_subscription do

@@ -15,7 +15,7 @@ defmodule Mix.Tasks.EventStore.Create do
 
   ## Command line options
 
-    * `--quiet` - do no log output
+    * `--quiet` - do not log output
 
   """
 

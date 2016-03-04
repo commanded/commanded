@@ -28,7 +28,7 @@ defmodule EventStore.Storage.DatabaseTest do
     assert create_database == {:error, :already_up}
   end
 
-  test "drop database when already exists" do
+  test "drop database when already dropped" do
     create_database
 
     assert drop_database == :ok

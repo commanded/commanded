@@ -37,6 +37,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
 
   setup do
     {:ok, storage} = Storage.start_link
+    :ok = Storage.reset!(storage)
     {:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
     {:ok, subscriptions} = Subscriptions.start_link(supervisor)
     {:ok, storage: storage, supervisor: supervisor, subscriptions: subscriptions}

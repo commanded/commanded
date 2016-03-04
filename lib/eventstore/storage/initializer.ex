@@ -5,4 +5,8 @@ defmodule EventStore.Storage.Initializer do
     Statements.initializers
     |> Enum.each(&(Postgrex.query!(conn, &1, [])))
   end
+
+  def reset!(conn) do
+    Postgrex.query!(conn, Statements.truncate_tables, [])
+  end
 end

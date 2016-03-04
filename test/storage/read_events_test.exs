@@ -1,24 +1,19 @@
 defmodule EventStore.Storage.ReadEventsTest do
-  use ExUnit.Case
+  use EventStore.StorageCase
   doctest EventStore.Storage
 
   alias EventStore.EventFactory
   alias EventStore.Storage
 
-  setup do
-    {:ok, store} = Storage.start_link
-    {:ok, store: store}
-  end
-
   # test "read stream forwards, when not exists"
   # test "read stream forwards, when empty"
 
-  test "read stream with single event forward", %{store: store} do
+  test "read stream with single event forward", %{storage: storage} do
     uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, _} = Storage.append_to_stream(store, uuid, 0, events)
-    {:ok, recorded_events} = Storage.read_stream_forward(store, uuid, 0)
+    {:ok, _} = Storage.append_to_stream(storage, uuid, 0, events)
+    {:ok, recorded_events} = Storage.read_stream_forward(storage, uuid, 0)
 
     created_event = hd(events)
     recorded_event = hd(recorded_events)

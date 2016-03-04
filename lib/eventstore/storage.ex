@@ -15,8 +15,18 @@ defmodule EventStore.Storage do
     GenServer.start_link(__MODULE__, config)
   end
 
+  @doc """
+  Initialise the PostgreSQL database by creating the tables and indexs
+  """
   def initialize_store!(storage) do
     GenServer.call(storage, :initialize_store)
+  end
+
+  @doc """
+  Reset the PostgreSQL database by deleting all rows
+  """
+  def reset!(storage) do
+    GenServer.call(storage, :reset_store)
   end
 
   def append_to_stream(storage, stream_uuid, expected_version, events) do
@@ -61,6 +71,11 @@ defmodule EventStore.Storage do
 
   def handle_call(:initialize_store, _from, conn) do
     Storage.Initializer.run!(conn)
+    {:reply, :ok, conn}
+  end
+
+  def handle_call(:reset_store, _from, conn) do
+    Storage.Initializer.reset!(conn)
     {:reply, :ok, conn}
   end
 
