@@ -27,6 +27,7 @@ defmodule EventStore.Mixfile do
       {:benchfella, "~> 0.3.2", only: :bench},
       {:credo, "~> 0.3", only: [:dev, :test]},
       {:ex_doc, "~> 0.11.4", only: :dev},
+      {:fsm, "~> 0.2.0"},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:poison, "~> 2.1"},
