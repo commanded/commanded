@@ -68,7 +68,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_events_stream_id_stream_version ON events (
 """
   end
 
-    def create_subscriptions_table do
+  def create_subscriptions_table do
 """
 CREATE TABLE IF NOT EXISTS subscriptions
 (
@@ -185,6 +185,23 @@ SELECT
   created_at
 FROM events
 WHERE stream_id = $1 and stream_version >= $2
+ORDER BY stream_version ASC;
+"""
+  end
+
+  def read_all_events_forward do
+"""
+SELECT
+  event_id,
+  stream_id,
+  stream_version,
+  event_type,
+  correlation_id,
+  headers,
+  payload,
+  created_at
+FROM events
+WHERE event_id >= $1
 ORDER BY stream_version ASC;
 """
   end

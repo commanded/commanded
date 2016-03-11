@@ -36,7 +36,6 @@ defmodule EventStore.Subscription.PersistentSubscriptionTest do
     assert subscription.data.latest_event_id == 0
   end
 
-  @tag :wip
   test "catch-up subscription, unseen persisted events", %{storage: storage} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(3)
@@ -51,6 +50,11 @@ defmodule EventStore.Subscription.PersistentSubscriptionTest do
     assert subscription.state == :subscribed
     assert subscription.data.last_seen_event_id == 3
     assert subscription.data.latest_event_id == 3
+
+    assert_receive {:events, received_events}
+
+    assert correlation_id(received_events) == correlation_id(events)
+    assert payload(received_events) == payload(events)
   end
 
   test "notify events", %{storage: storage} do
@@ -64,5 +68,13 @@ defmodule EventStore.Subscription.PersistentSubscriptionTest do
     |> PersistentSubscription.notify_events(events)
 
     assert subscription.state == :subscribed
+
+    assert_receive {:events, received_events}
+
+    assert correlation_id(received_events) == correlation_id(events)
+    assert payload(received_events) == payload(events)
   end
+
+  defp correlation_id(events), do: Enum.map(events, &(&1.correlation_id))
+  defp payload(events), do: Enum.map(events, &(&1.payload))
 end

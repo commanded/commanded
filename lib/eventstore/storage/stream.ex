@@ -30,6 +30,10 @@ defmodule EventStore.Storage.Stream do
     end)
   end
 
+  def read_all_streams_forward(conn, start_event_id, count \\ nil) do
+    Reader.read_all_forward(conn, start_event_id, count)
+  end
+
   def latest_event_id(conn) do
     Stream.Query.execute(conn)
   end

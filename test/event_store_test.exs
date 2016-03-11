@@ -12,18 +12,18 @@ defmodule EventStoreTest do
   end
 
   test "append single event to event store", %{store: store} do
-    uuid = UUID.uuid4()
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, _persisted_events} = EventStore.append_to_stream(store, uuid, 0, events)
+    {:ok, _persisted_events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
   end
 
   test "read stream forward from event store", %{store: store} do
-    uuid = UUID.uuid4()
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, _} = EventStore.append_to_stream(store, uuid, 0, events)
-    {:ok, recorded_events} = EventStore.read_stream_forward(store, uuid, 0)
+    {:ok, _} = EventStore.append_to_stream(store, stream_uuid, 0, events)
+    {:ok, recorded_events} = EventStore.read_stream_forward(store, stream_uuid, 0)
 
     created_event = hd(events)
     recorded_event = hd(recorded_events)
@@ -35,13 +35,14 @@ defmodule EventStoreTest do
   end
 
   test "notify subscribers after event persisted", %{store: store} do
-    uuid = UUID.uuid4()
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, _subscription} = EventStore.subscribe_to_all_streams(store, @subscription_name, self)
+    {:ok, _} = EventStore.subscribe_to_all_streams(store, @subscription_name, self)
+    {:ok, _} = EventStore.append_to_stream(store, stream_uuid, 0, events)
 
-    {:ok, _} = EventStore.append_to_stream(store, uuid, 0, events)
+    assert_receive {:events, events}
 
-    assert_receive {:events, stream_uuid, stream_version, events}
+    assert length(events) == 1
   end
 end

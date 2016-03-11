@@ -15,6 +15,8 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
 
   use Fsm, initial_state: :initial, initial_data: %SubscriptionData{}
 
+  @all_stream "$all"
+
   defstate initial do
     defevent subscribe(storage, stream_uuid, subscription_name, subscriber), data: %SubscriptionData{} = data do
       case subscribe_to_stream(storage, stream_uuid, subscription_name) do
@@ -59,8 +61,10 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   end
 
   defstate subscribed do
-    defevent notify_events(events, latest_event_id), data: %SubscriptionData{} = data do
+    defevent notify_events(events), data: %SubscriptionData{} = data do
       # TODO: move to catching-up state if the event id of the first event is not `data.last_seen_event_id + 1`
+
+      latest_event_id = List.last(events).event_id
 
       notify_subscriber(data, events)
       ack_events(data, events)
@@ -107,14 +111,20 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     }
   end
 
+  defp unseen_events(%SubscriptionData{storage: storage, stream_uuid: @all_stream, last_seen_event_id: last_seen_event_id}) do
+    start_event_id = last_seen_event_id + 1
+
+    Storage.read_all_streams_forward(storage, start_event_id)
+  end
+
   defp unseen_events(%SubscriptionData{storage: storage, stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id}) do
     start_version = last_seen_event_id + 1
 
     Storage.read_stream_forward(storage, stream_uuid, start_version)
   end
 
-  defp notify_subscriber(%SubscriptionData{} = data, events) do
-
+  defp notify_subscriber(%SubscriptionData{subscriber: subscriber} = data, events) do
+    send(subscriber, {:events, events})
   end
 
   defp ack_events(%SubscriptionData{} = data, events) do

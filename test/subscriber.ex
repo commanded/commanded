@@ -13,7 +13,7 @@ defmodule EventStore.Subscriber do
     {:ok, %{sender: sender, events: []}}
   end
 
-  def handle_info({:events, _stream_uuid, _stream_version, events} = message, state) do
+  def handle_info({:events, events} = message, state) do
     send(state.sender, message)
     {:noreply, %{state | events: events ++ state.events}}
   end

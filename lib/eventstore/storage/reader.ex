@@ -8,11 +8,24 @@ defmodule EventStore.Storage.Reader do
   alias EventStore.EventData
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Reader
-  
+
+  @doc """
+  Read events appended to a single stream forward from the given starting version
+  """
   def read_forward(conn, stream_id, start_version, count \\ nil) do
     case Reader.Query.read_events_forward(conn, stream_id, start_version) do
       {:ok, rows} -> map_rows_to_event_data(rows)
       {:error, reason} -> failed_to_read(stream_id, reason)
+    end
+  end
+
+  @doc """
+  Read events appended to all streams forward from the given start event id inclusive
+  """
+  def read_all_forward(conn, start_event_id, count \\ nil) do
+    case Reader.Query.read_all_events_forward(conn, start_event_id) do
+      {:ok, rows} -> map_rows_to_event_data(rows)
+      {:error, reason} -> failed_to_read_all_stream(reason)
     end
   end
 
@@ -23,6 +36,11 @@ defmodule EventStore.Storage.Reader do
 
   defp failed_to_read(stream_id, reason) do
     Logger.warn "failed to read events from stream id #{stream_id} due to #{reason}"
+    {:error, reason}
+  end
+
+  defp failed_to_read_all_stream(reason) do
+    Logger.warn "failed to read events from all streams due to #{reason}"
     {:error, reason}
   end
 
@@ -73,6 +91,12 @@ defmodule EventStore.Storage.Reader do
     def read_events_forward(conn, stream_id, start_version) do
       conn
       |> Postgrex.query(Statements.read_events_forward, [stream_id, start_version])
+      |> handle_response
+    end
+
+    def read_all_events_forward(conn, start_event_id) do
+      conn
+      |> Postgrex.query(Statements.read_all_events_forward, [start_event_id])
       |> handle_response
     end
 

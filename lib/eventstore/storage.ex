@@ -44,6 +44,13 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Read events for all streams forward from the starting event id, use zero for all events for all streams
+  """
+  def read_all_streams_forward(storage, start_event_id, count \\ nil) do
+    GenServer.call(storage, {:read_all_streams_forward, start_event_id, count})
+  end
+
+  @doc """
   Get the id of the last event persisted to storage
   """
   def latest_event_id(storage) do
@@ -99,6 +106,11 @@ defmodule EventStore.Storage do
 
   def handle_call({:read_stream_forward, stream_uuid, start_version, count}, _from, conn) do
     reply = Stream.read_stream_forward(conn, stream_uuid, start_version, count)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:read_all_streams_forward, start_event_id, count}, _from, conn) do
+    reply = Stream.read_all_streams_forward(conn, start_event_id, count)
     {:reply, reply, conn}
   end
 

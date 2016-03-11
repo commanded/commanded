@@ -14,9 +14,8 @@ defmodule EventStore.Subscription.SubscribeToStream do
   setup do
     {:ok, storage} = Storage.start_link
     :ok = Storage.reset!(storage)
-    {:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
-    {:ok, subscriptions} = Subscriptions.start_link(supervisor)
-    {:ok, storage: storage, supervisor: supervisor, subscriptions: subscriptions}
+    {:ok, subscriptions} = Subscriptions.start_link(storage)
+    {:ok, storage: storage, subscriptions: subscriptions}
   end
 
   test "subscribe to stream", %{subscriptions: subscriptions} do
@@ -28,10 +27,8 @@ defmodule EventStore.Subscription.SubscribeToStream do
 
     Subscriptions.notify_events(subscriptions, stream_uuid, length(events), events)
 
-    assert_receive {:events, received_stream_uuid, received_stream_version, received_events}
+    assert_receive {:events, received_events}
 
-    assert received_stream_uuid == stream_uuid
-    assert received_stream_version == 1
     assert received_events == events
     assert Subscriber.received_events(subscriber) == events
   end
@@ -46,7 +43,7 @@ defmodule EventStore.Subscription.SubscribeToStream do
 
     Subscriptions.notify_events(subscriptions, other_stream_uuid, length(events), events)
 
-    refute_receive {:events, _received_stream_uuid, _received_stream_version, _received_events}
+    refute_receive {:events, _received_events}
 
     assert Subscriber.received_events(subscriber) == []
   end
@@ -63,21 +60,16 @@ defmodule EventStore.Subscription.SubscribeToStream do
     Subscriptions.notify_events(subscriptions, stream1_uuid, length(stream1_events), stream1_events)
     Subscriptions.notify_events(subscriptions, stream2_uuid, length(stream2_events), stream2_events)
 
-    assert_receive {:events, received_stream1_uuid, received_stream1_version, stream1_received_events}
-    assert_receive {:events, received_stream2_uuid, received_stream2_version, stream2_received_events}
+    assert_receive {:events, stream1_received_events}
+    assert_receive {:events, stream2_received_events}
 
-    assert received_stream1_uuid == stream1_uuid
-    assert received_stream1_version == 1
     assert stream1_received_events == stream1_events
-
-    assert received_stream2_uuid == stream2_uuid
-    assert received_stream2_version == 1
     assert stream2_received_events == stream2_events
 
     assert Subscriber.received_events(subscriber) == stream1_events ++ stream2_events
   end
 
-  test "should monitor each subscription, terminate subscriber on error", %{subscriptions: subscriptions} do
+  test "should monitor each subscription, terminate single subscriber on error", %{subscriptions: subscriptions} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
@@ -100,10 +92,8 @@ defmodule EventStore.Subscription.SubscribeToStream do
     assert Process.alive?(subscriber1) == false
 
     # subscription 2 should still receive events
-    assert_receive {:events, received_stream_uuid, received_stream_version, received_events}
+    assert_receive {:events, received_events}
 
-    assert received_stream_uuid == stream_uuid
-    assert received_stream_version == 1
     assert received_events == events
     assert Subscriber.received_events(subscriber2) == events
   end
