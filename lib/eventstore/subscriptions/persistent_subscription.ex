@@ -36,8 +36,14 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   defstate catching_up do
     defevent catch_up, data: %SubscriptionData{storage: storage, last_seen_event_id: last_seen_event_id} = data do
       case query_latest_event_id(storage) do
-        0 -> next_state(:subscribed, data) # no published events
-        ^last_seen_event_id -> next_state(:subscribed, data) # already seen latest published event
+        0 ->
+          # no published events
+          next_state(:subscribed, data)
+
+        ^last_seen_event_id ->
+          # already seen latest published event
+          next_state(:subscribed, data)
+
         latest_event_id ->
           # must catch-up with all unseen events
           data = catch_up_to_event(data, latest_event_id)
@@ -55,7 +61,9 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   defstate subscribed do
     defevent notify_events(events, latest_event_id), data: %SubscriptionData{} = data do
       # TODO: move to catching-up state if the event id of the first event is not `data.last_seen_event_id + 1`
-      # TODO: ack events
+
+      notify_subscriber(data, events)
+      ack_events(data, events)
 
       data = %SubscriptionData{data |
         latest_event_id: latest_event_id,
@@ -81,11 +89,35 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     latest_event_id
   end
 
-  defp catch_up_to_event(%SubscriptionData{} = data, latest_event_id) do
+  defp catch_up_to_event(%SubscriptionData{storage: storage, stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id} = data, latest_event_id) do
+    case unseen_events(data) do
+      {:ok, events} ->
+        # chunk events by stream
+        events
+        |> Enum.chunk_by(fn event -> event.stream_id end)
+        |> Enum.each(fn events_by_stream ->
+          notify_subscriber(data, events_by_stream)
+          ack_events(data, events_by_stream)
+        end)
+    end
 
     data = %SubscriptionData{data |
       latest_event_id: latest_event_id,
       last_seen_event_id: latest_event_id
     }
+  end
+
+  defp unseen_events(%SubscriptionData{storage: storage, stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id}) do
+    start_version = last_seen_event_id + 1
+
+    Storage.read_stream_forward(storage, stream_uuid, start_version)
+  end
+
+  defp notify_subscriber(%SubscriptionData{} = data, events) do
+
+  end
+
+  defp ack_events(%SubscriptionData{} = data, events) do
+
   end
 end

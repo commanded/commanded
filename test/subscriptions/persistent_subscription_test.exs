@@ -36,6 +36,7 @@ defmodule EventStore.Subscription.PersistentSubscriptionTest do
     assert subscription.data.latest_event_id == 0
   end
 
+  @tag :wip
   test "catch-up subscription, unseen persisted events", %{storage: storage} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(3)
