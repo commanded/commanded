@@ -29,12 +29,25 @@ defmodule EventStore.Storage do
     GenServer.call(storage, :reset_store)
   end
 
+  @doc """
+  Append the given list of events to the stream, expected version is used for optimistic concurrency
+  """
   def append_to_stream(storage, stream_uuid, expected_version, events) do
     GenServer.call(storage, {:append_to_stream, stream_uuid, expected_version, events})
   end
 
+  @doc """
+  Read events for the given stream forward from the starting version, use zero for all events for the stream
+  """
   def read_stream_forward(storage, stream_uuid, start_version, count \\ nil) do
     GenServer.call(storage, {:read_stream_forward, stream_uuid, start_version, count})
+  end
+
+  @doc """
+  Get the id of the last event persisted to storage
+  """
+  def latest_event_id(storage) do
+    GenServer.call(storage, {:latest_event_id})
   end
 
   @doc """
@@ -86,6 +99,11 @@ defmodule EventStore.Storage do
 
   def handle_call({:read_stream_forward, stream_uuid, start_version, count}, _from, conn) do
     reply = Stream.read_stream_forward(conn, stream_uuid, start_version, count)
+    {:reply, reply, conn}
+  end
+
+  def handle_call({:latest_event_id}, _from, conn) do
+    reply = Stream.latest_event_id(conn)
     {:reply, reply, conn}
   end
 

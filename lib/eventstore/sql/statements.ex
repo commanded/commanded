@@ -165,6 +165,13 @@ LIMIT 1;
 """
   end
 
+  def query_latest_event_id do
+"""
+SELECT COALESCE(MAX(event_id), 0)
+FROM events;
+"""
+  end
+
   def read_events_forward do
 """
 SELECT

@@ -30,6 +30,10 @@ defmodule EventStore.Storage.Stream do
     end)
   end
 
+  def latest_event_id(conn) do
+    Stream.Query.execute(conn)
+  end
+
   defp execute_with_stream_id(conn, stream_uuid, execute_fn) do
     case lookup_stream_id(conn, stream_uuid) do
       {:ok, stream_id} -> execute_fn.(stream_id)
@@ -75,5 +79,22 @@ defmodule EventStore.Storage.Stream do
   defp handle_lookup_response({:ok, %Postgrex.Result{rows: rows}}, _) do
     stream_id = rows |> List.first |> List.first
     {:ok, stream_id}
+  end
+
+  defmodule Query do
+    def execute(conn) do
+      conn
+      |> Postgrex.query(Statements.query_latest_event_id, [])
+      |> handle_response
+    end
+
+    defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}) do
+      {:ok, 0}
+    end
+
+    defp handle_response({:ok, %Postgrex.Result{rows: rows}}) do
+      event_id = rows |> List.first |> List.first
+      {:ok, event_id}
+    end
   end
 end
