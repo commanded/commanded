@@ -25,7 +25,7 @@ defmodule EventStore do
   Start the EventStore process (including storage and subscriptions) and connect to PostgreSQL.
   """
   def start_link do
-    GenServer.start_link(__MODULE__, [])
+    GenServer.start_link(__MODULE__, nil)
   end
 
   @doc """
@@ -40,11 +40,14 @@ defmodule EventStore do
       Any positive number will be used to ensure you can only append to the stream if it is at exactly that version.
 
     - `events` is a list of `%EventStore.EventData{}` structs
+      EventStore does not have any built-in serialization.
+      The payload and headers for each event should already be serialized to binary data before appending to the stream.
   """
   def append_to_stream(store, stream_uuid, expected_version, events) do
-    reply = GenServer.call(store, {:append_to_stream, stream_uuid, expected_version, events})
-    GenServer.cast(store, {:notify_events, stream_uuid, events})
-    reply
+    case GenServer.call(store, {:append_to_stream, stream_uuid, expected_version, events}) do
+      {:ok, persisted_events} -> GenServer.cast(store, {:notify_events, stream_uuid, persisted_events})
+      reply -> reply
+    end
   end
 
   @doc """
@@ -105,11 +108,15 @@ defmodule EventStore do
     GenServer.call(store, {:unsubscribe_from_stream, @all_stream, subscription_name})
   end
 
-  def init([]) do
+  def init(_) do
     {:ok, storage} = EventStore.Storage.start_link
     {:ok, subscriptions} = EventStore.Subscriptions.start_link(storage)
 
     {:ok, %{storage: storage, subscriptions: subscriptions}}
+  end
+
+  def handle_call({:append_to_stream, @all_stream, _expected_version, _events}, _from, state) do
+    {:reply, {:error, :cannot_append_to_all_stream}, state}
   end
 
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %{storage: storage} = state) do
@@ -118,7 +125,7 @@ defmodule EventStore do
   end
 
   def handle_cast({:notify_events, stream_uuid, events}, %{subscriptions: subscriptions} = state) do
-    Subscriptions.notify_events(subscriptions, stream_uuid, 0, events) 
+    Subscriptions.notify_events(subscriptions, stream_uuid, 0, events)
     {:noreply, state}
   end
 

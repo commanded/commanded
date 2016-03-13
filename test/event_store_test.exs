@@ -18,6 +18,12 @@ defmodule EventStoreTest do
     {:ok, _persisted_events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
   end
 
+  test "attempt to append to $all stream should fail", %{store: store} do
+    events = EventFactory.create_events(1)
+
+    {:error, :cannot_append_to_all_stream} = EventStore.append_to_stream(store, "$all", 0, events)
+  end
+
   test "read stream forward from event store", %{store: store} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
