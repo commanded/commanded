@@ -32,7 +32,7 @@ defmodule EventStore.Mixfile do
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:poison, "~> 2.1"},
       {:postgrex, "~> 0.11.1"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1", only: [:bench, :test]}
     ]
   end
 
