@@ -1,6 +1,6 @@
 # EventStore
 
-CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Requires version 9.5 or newer. 
+CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Requires version 9.5 or newer.
 
 License is MIT.
 
@@ -55,10 +55,11 @@ stream_uuid = UUID.uuid4()
 expected_version = 0
 
 # list of events to persist
+# - headers and payload must already be serialized to binary data (e.g. using a JSON encoder)
 events = [
   %EventStore.EventData{
-  	headers: %{user: "someuser@example.com"},
-    payload: %ExampleEvent{key: "value"}
+  	headers: serialize_to_json(%{user: "someuser@example.com"}),
+    payload: serialize_to_json(%ExampleEvent{key: "value"})
   }
 ]
 
@@ -124,7 +125,7 @@ end
 
 ## Benchmarking performance
 
-Run the benchmark suite using mix with the `bench` environment, as configured in `config/bench.exs`. Logging is disabled for benchmarking. 
+Run the benchmark suite using mix with the `bench` environment, as configured in `config/bench.exs`. Logging is disabled for benchmarking.
 
 ```
 MIX_ENV=bench mix do es.reset, app.start, bench
@@ -134,7 +135,7 @@ Example output:
 
 ```
 ## AppendEventsBench
-append events, single writer         200   9738.10 µs/op
+append events, single writer         200   8979.53 µs/op
 ## ReadEventsBench
-read events, single reader           500   3151.80 µs/op
+read events, single reader          1000   2086.79 µs/op
 ```

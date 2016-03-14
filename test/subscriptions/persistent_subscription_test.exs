@@ -59,7 +59,7 @@ defmodule EventStore.Subscription.PersistentSubscriptionTest do
 
   test "notify events", %{storage: storage} do
     stream_uuid = UUID.uuid4()
-    events = EventFactory.create_events(1)
+    events = EventFactory.create_recorded_events(1, stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
 
     subscription = PersistentSubscription.new

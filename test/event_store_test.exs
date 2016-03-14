@@ -3,10 +3,13 @@ defmodule EventStoreTest do
   doctest EventStore.Storage
 
   alias EventStore.EventFactory
+  alias EventStore.Storage
 
   @subscription_name "test_subscription"
 
   setup do
+    {:ok, storage} = Storage.start_link
+    :ok = Storage.reset!(storage)
     {:ok, store} = EventStore.start_link
     {:ok, store: store}
   end
@@ -40,6 +43,7 @@ defmodule EventStoreTest do
     assert recorded_event.payload == created_event.payload
   end
 
+  @tag :wip
   test "notify subscribers after event persisted", %{store: store} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)

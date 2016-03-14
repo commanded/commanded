@@ -5,7 +5,6 @@ defmodule EventStore.Storage.Subscription do
 
   require Logger
 
-  alias EventStore.EventData
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Subscription
 
@@ -141,8 +140,8 @@ defmodule EventStore.Storage.Subscription do
 
     defp to_subscription_from_row([subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at]) do
       %Subscription{
-        subscription_id: subscription_id, 
-        stream_uuid: stream_uuid, 
+        subscription_id: subscription_id,
+        stream_uuid: stream_uuid,
         subscription_name: subscription_name,
         last_seen_event_id: last_seen_event_id,
         created_at: created_at

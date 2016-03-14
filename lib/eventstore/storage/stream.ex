@@ -5,11 +5,8 @@ defmodule EventStore.Storage.Stream do
 
   require Logger
 
-  alias EventStore.EventData
   alias EventStore.Sql.Statements
-  alias EventStore.Storage.Appender
-  alias EventStore.Storage.Reader
-  alias EventStore.Storage.Stream
+  alias EventStore.Storage.{Appender,Reader,Stream}
 
   def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version == 0 do
     case create_stream(conn, stream_uuid) do
@@ -53,8 +50,7 @@ defmodule EventStore.Storage.Stream do
     |> handle_create_response(stream_uuid)
   end
 
-  defp handle_create_response({:ok, reply}, stream_uuid) do
-    stream_id = reply.rows |> List.first |> List.first
+  defp handle_create_response({:ok, %Postgrex.Result{rows: [[stream_id]]}}, stream_uuid) do
     Logger.debug "created stream #{stream_uuid} with id #{stream_id}"
     {:ok, stream_id}
   end
@@ -76,12 +72,11 @@ defmodule EventStore.Storage.Stream do
   end
 
   defp handle_lookup_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_uuid) do
-    Logger.warn("attempted to access missing stream #{stream_uuid}")
+    Logger.warn("attempted to access unknown stream #{stream_uuid}")
     {:error, :stream_not_found}
   end
 
-  defp handle_lookup_response({:ok, %Postgrex.Result{rows: rows}}, _) do
-    stream_id = rows |> List.first |> List.first
+  defp handle_lookup_response({:ok, %Postgrex.Result{rows: [[stream_id]]}}, _) do
     {:ok, stream_id}
   end
 
@@ -96,8 +91,7 @@ defmodule EventStore.Storage.Stream do
       {:ok, 0}
     end
 
-    defp handle_response({:ok, %Postgrex.Result{rows: rows}}) do
-      event_id = rows |> List.first |> List.first
+    defp handle_response({:ok, %Postgrex.Result{rows: [[event_id]]}}) do
       {:ok, event_id}
     end
   end

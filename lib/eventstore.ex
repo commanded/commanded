@@ -44,10 +44,7 @@ defmodule EventStore do
       The payload and headers for each event should already be serialized to binary data before appending to the stream.
   """
   def append_to_stream(store, stream_uuid, expected_version, events) do
-    case GenServer.call(store, {:append_to_stream, stream_uuid, expected_version, events}) do
-      {:ok, persisted_events} -> GenServer.cast(store, {:notify_events, stream_uuid, persisted_events})
-      reply -> reply
-    end
+    GenServer.call(store, {:append_to_stream, stream_uuid, expected_version, events})
   end
 
   @doc """
@@ -119,14 +116,15 @@ defmodule EventStore do
     {:reply, {:error, :cannot_append_to_all_stream}, state}
   end
 
-  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %{storage: storage} = state) do
-    reply = Storage.append_to_stream(storage, stream_uuid, expected_version, events)
-    {:reply, reply, state}
-  end
+  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %{storage: storage, subscriptions: subscriptions} = state) do
+    reply = case Storage.append_to_stream(storage, stream_uuid, expected_version, events) do
+      {:ok, persisted_events} = reply ->
+        Subscriptions.notify_events(subscriptions, stream_uuid, events)
+        reply
+      reply -> reply
+    end
 
-  def handle_cast({:notify_events, stream_uuid, events}, %{subscriptions: subscriptions} = state) do
-    Subscriptions.notify_events(subscriptions, stream_uuid, 0, events)
-    {:noreply, state}
+    {:reply, reply, state}
   end
 
   def handle_call({:read_stream_forward, stream_uuid, start_version, count}, _from, %{storage: storage} = state) do

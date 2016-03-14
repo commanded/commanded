@@ -23,7 +23,7 @@ defmodule EventStore.Subscriptions.Subscription do
     })
   end
 
-  def notify_events(subscription, stream_uuid, stream_version, events) do
+  def notify_events(subscription, events) do
     GenServer.cast(subscription, {:notify_events, events})
   end
 

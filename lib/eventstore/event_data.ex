@@ -1,10 +1,9 @@
 defmodule EventStore.EventData do
-  defstruct event_id: nil,
-    stream_id: nil,
-    stream_version: nil,
-    correlation_id: nil,
-    event_type: nil ,
-    headers: nil,
-    payload: nil,
-    created_at: nil
+  @moduledoc """
+  EventData contains the data for a single event before being persisted to storage
+  """
+  defstruct correlation_id: nil,
+            event_type: nil ,
+            headers: nil,
+            payload: nil
 end

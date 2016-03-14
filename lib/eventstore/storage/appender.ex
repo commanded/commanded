@@ -2,10 +2,10 @@ defmodule EventStore.Storage.Appender do
   @moduledoc """
   Append-only storage of events for a stream
   """
-  
+
   require Logger
 
-  alias EventStore.EventData
+  alias EventStore.{EventData,RecordedEvent}
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Appender
 
@@ -59,33 +59,27 @@ defmodule EventStore.Storage.Appender do
     initial_stream_version = expected_version + 1
 
     events
+    |> Enum.map(&map_to_recorded_event(&1))
     |> Enum.map(&assign_stream_id(&1, stream_id))
     |> Enum.with_index(initial_stream_version)
     |> Enum.map(&assign_stream_version/1)
-    |> Enum.map(&assign_event_type/1)
-    |> Enum.map(&encode_headers/1)
-    |> Enum.map(&encode_payload/1)
   end
 
-  defp assign_stream_id(%EventData{} = event, stream_id) do
-    %EventData{event | stream_id: stream_id}
+  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}) do
+    %RecordedEvent{
+      correlation_id: correlation_id,
+      event_type: event_type,
+      headers: headers,
+      payload: payload
+    }
   end
 
-  defp assign_stream_version({%EventData{} = event, stream_version}) do
-    %EventData{event | stream_version: stream_version}
+  defp assign_stream_id(%RecordedEvent{} = event, stream_id) do
+    %RecordedEvent{event | stream_id: stream_id}
   end
 
-  defp assign_event_type(%EventData{payload: payload} = event) do
-    event_type = payload.__struct__ |> Atom.to_string
-    %EventData{event | event_type: event_type}
-  end
-
-  defp encode_headers(%EventData{headers: headers} = event) do
-    %EventData{event | headers: Poison.encode!(headers)}
-  end
-
-  defp encode_payload(%EventData{payload: payload} = event) do
-    %EventData{event | payload: Poison.encode!(payload)}
+  defp assign_stream_version({%RecordedEvent{} = event, stream_version}) do
+    %RecordedEvent{event | stream_version: stream_version}
   end
 
   defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows}}, stream_id) do
@@ -110,8 +104,7 @@ defmodule EventStore.Storage.Appender do
       {:ok, 0}
     end
 
-    defp handle_response({:ok, %Postgrex.Result{rows: rows}}) do
-      latest_version = rows |> List.first |> List.first
+    defp handle_response({:ok, %Postgrex.Result{rows: [[latest_version]]}}) do
       {:ok, latest_version}
     end
   end

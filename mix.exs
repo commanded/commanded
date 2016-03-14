@@ -16,7 +16,6 @@ defmodule EventStore.Mixfile do
   def application do
     [applications: [
       :logger,
-      :poison,
       :postgrex
       ]
     ]
@@ -25,12 +24,11 @@ defmodule EventStore.Mixfile do
   defp deps do
     [
       {:benchfella, "~> 0.3.2", only: :bench},
-      {:credo, "~> 0.3", only: [:dev, :test]},
+      {:credo, "~> 0.3.7", only: [:dev, :test]},
       {:ex_doc, "~> 0.11.4", only: :dev},
       {:fsm, "~> 0.2.0"},
       {:markdown, github: "devinus/markdown", only: :dev},
-      {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 2.1"},
+      {:mix_test_watch, "~> 0.2.6", only: :dev},
       {:postgrex, "~> 0.11.1"},
       {:uuid, "~> 1.1", only: [:bench, :test]}
     ]

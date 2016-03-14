@@ -30,8 +30,8 @@ defmodule EventStore.Subscriptions do
     GenServer.call(subscriptions, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
 
-  def notify_events(subscriptions, stream_uuid, stream_version, events) do
-    GenServer.cast(subscriptions, {:notify_events, stream_uuid, stream_version, events})
+  def notify_events(subscriptions, stream_uuid, events) do
+    GenServer.cast(subscriptions, {:notify_events, stream_uuid, events})
   end
 
   def init(%Subscriptions{storage: storage} = subscriptions) do
@@ -59,11 +59,11 @@ defmodule EventStore.Subscriptions do
     {:reply, :ok, subscriptions}
   end
 
-  def handle_cast({:notify_events, stream_uuid, stream_version, events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
+  def handle_cast({:notify_events, stream_uuid, events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
     interested_subscriptions = all_stream ++ Map.get(single_stream, stream_uuid, [])
 
     interested_subscriptions
-    |> Enum.each(&Subscription.notify_events(&1, stream_uuid, stream_version, events))
+    |> Enum.each(&Subscription.notify_events(&1, events))
 
     {:noreply, subscriptions}
   end

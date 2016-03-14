@@ -5,7 +5,7 @@ defmodule EventStore.Storage.Reader do
 
   require Logger
 
-  alias EventStore.EventData
+  alias EventStore.RecordedEvent
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Reader
 
@@ -52,12 +52,10 @@ defmodule EventStore.Storage.Reader do
     def to_event_data(rows) do
       rows
       |> Enum.map(&to_event_data_from_row/1)
-      |> Enum.map(&decode_headers/1)
-      |> Enum.map(&decode_payload/1)
     end
 
     def to_event_data_from_row([event_id, stream_id, stream_version, event_type, correlation_id, headers, payload, created_at]) do
-      %EventData{
+      %RecordedEvent{
         event_id: event_id,
         stream_id: stream_id,
         stream_version: stream_version,
@@ -67,23 +65,6 @@ defmodule EventStore.Storage.Reader do
         payload: payload,
         created_at: created_at
       }
-    end
-
-    defp decode_headers(%EventData{headers: headers} = event) do
-      %EventData{event | headers: Poison.decode!(headers)}
-    end
-
-    defp decode_payload(%EventData{payload: payload} = event) do
-      event_type = event_type_to_struct(event)
-
-      %EventData{event | payload: Poison.decode!(payload, as: event_type)}
-    end
-
-    # Convert the string representation of the event type to an Elixir atom and struct
-    defp event_type_to_struct(%EventData{event_type: event_type}) do
-      event_type
-      |> String.to_atom
-      |> struct
     end
   end
 
