@@ -13,6 +13,8 @@
 -[ ] Use `INSERT RETURNING` when appending events to stream so that event id and timestamp can be returned.
      http://www.postgresql.org/docs/9.5/static/sql-insert.html
 
+-[ ] Stream type property when creating an event stream.
+
 -[ ] Limit of ~30,000 parameters per query, so inserts of more than ~5,000 events (30k / 6 params per event insert) will fail.
      Use transaction and batch inserts into ~5k chunks.
 
