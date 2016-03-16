@@ -6,36 +6,36 @@ defmodule EventStore.Subscriptions do
   use GenServer
   require Logger
 
-  alias EventStore.Storage
   alias EventStore.Subscriptions
   alias EventStore.Subscriptions.Subscription
 
-  defstruct all_stream: [], single_stream: %{}, storage: nil, supervisor: nil
+  defstruct all_stream: [], single_stream: %{}, supervisor: nil
 
+  @name :event_store_subscriptions
   @all_stream "$all"
 
-  def start_link(storage) do
+  def start_link do
     GenServer.start_link(__MODULE__, %Subscriptions{
       all_stream: [],
-      single_stream: %{},
-      storage: storage
-    })
+      single_stream: %{}
+    },
+    name: @name)
   end
 
-  def subscribe_to_stream(subscriptions, stream_uuid, subscription_name, subscriber) do
-    GenServer.call(subscriptions, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber})
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do
+    GenServer.call(@name, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber})
   end
 
-  def unsubscribe_from_stream(subscriptions, stream_uuid, subscription_name) do
-    GenServer.call(subscriptions, {:unsubscribe_from_stream, stream_uuid, subscription_name})
+  def unsubscribe_from_stream(stream_uuid, subscription_name) do
+    GenServer.call(@name, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
 
-  def notify_events(subscriptions, stream_uuid, events) do
-    GenServer.cast(subscriptions, {:notify_events, stream_uuid, events})
+  def notify_events(stream_uuid, events) do
+    GenServer.cast(@name, {:notify_events, stream_uuid, events})
   end
 
-  def init(%Subscriptions{storage: storage} = subscriptions) do
-    {:ok, supervisor} = Subscriptions.Supervisor.start_link(storage)
+  def init(%Subscriptions{} = subscriptions) do
+    {:ok, supervisor} = Subscriptions.Supervisor.start_link
 
     subscriptions = %Subscriptions{subscriptions | supervisor: supervisor}
 

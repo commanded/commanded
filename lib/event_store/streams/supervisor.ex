@@ -5,17 +5,17 @@ defmodule EventStore.Streams.Supervisor do
 
   use Supervisor
 
-  def start_link(storage) do
-    Supervisor.start_link(__MODULE__, storage)
+  def start_link do
+    Supervisor.start_link(__MODULE__, nil)
   end
 
   def start_stream(supervisor, stream_uuid) do
     Supervisor.start_child(supervisor, [stream_uuid])
   end
 
-  def init(storage) do
+  def init(_) do
     children = [
-      worker(EventStore.Streams.Stream, [storage], restart: :temporary),
+      worker(EventStore.Streams.Stream, [], restart: :temporary),
     ]
 
     supervise(children, strategy: :simple_one_for_one)

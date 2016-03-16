@@ -2,8 +2,7 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   require Logger
 
   defmodule SubscriptionData do
-    defstruct storage: nil,
-              stream_uuid: nil,
+    defstruct stream_uuid: nil,
               subscription_name: nil,
               subscriber: nil,
               last_seen_event_id: 0,
@@ -18,11 +17,10 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   @all_stream "$all"
 
   defstate initial do
-    defevent subscribe(storage, stream_uuid, subscription_name, subscriber), data: %SubscriptionData{} = data do
-      case subscribe_to_stream(storage, stream_uuid, subscription_name) do
+    defevent subscribe(stream_uuid, subscription_name, subscriber), data: %SubscriptionData{} = data do
+      case subscribe_to_stream(stream_uuid, subscription_name) do
         {:ok, subscription} ->
           data = %SubscriptionData{data |
-            storage: storage,
             stream_uuid: stream_uuid,
             subscription_name: subscription_name,
             subscriber: subscriber,
@@ -36,8 +34,8 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   end
 
   defstate catching_up do
-    defevent catch_up, data: %SubscriptionData{storage: storage, last_seen_event_id: last_seen_event_id} = data do
-      case query_latest_event_id(storage) do
+    defevent catch_up, data: %SubscriptionData{last_seen_event_id: last_seen_event_id} = data do
+      case query_latest_event_id do
         0 ->
           # no published events
           next_state(:subscribed, data)
@@ -84,16 +82,16 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   defstate unsubscribed do
   end
 
-  defp subscribe_to_stream(storage, stream_uuid, subscription_name) do
-    Storage.subscribe_to_stream(storage, stream_uuid, subscription_name)
+  defp subscribe_to_stream(stream_uuid, subscription_name) do
+    Storage.subscribe_to_stream(stream_uuid, subscription_name)
   end
 
-  defp query_latest_event_id(storage) do
-    {:ok, latest_event_id} = Storage.latest_event_id(storage)
+  defp query_latest_event_id do
+    {:ok, latest_event_id} = Storage.latest_event_id
     latest_event_id
   end
 
-  defp catch_up_to_event(%SubscriptionData{storage: storage, stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id} = data, latest_event_id) do
+  defp catch_up_to_event(%SubscriptionData{stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id} = data, latest_event_id) do
     case unseen_events(data) do
       {:ok, events} ->
         # chunk events by stream
@@ -111,16 +109,16 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     }
   end
 
-  defp unseen_events(%SubscriptionData{storage: storage, stream_uuid: @all_stream, last_seen_event_id: last_seen_event_id}) do
+  defp unseen_events(%SubscriptionData{stream_uuid: @all_stream, last_seen_event_id: last_seen_event_id}) do
     start_event_id = last_seen_event_id + 1
 
-    Storage.read_all_streams_forward(storage, start_event_id)
+    Storage.read_all_streams_forward(start_event_id)
   end
 
-  defp unseen_events(%SubscriptionData{storage: storage, stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id}) do
+  defp unseen_events(%SubscriptionData{stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id}) do
     start_version = last_seen_event_id + 1
 
-    Storage.read_stream_forward(storage, stream_uuid, start_version)
+    Storage.read_stream_forward(stream_uuid, start_version)
   end
 
   defp notify_subscriber(%SubscriptionData{subscriber: subscriber} = data, events) do

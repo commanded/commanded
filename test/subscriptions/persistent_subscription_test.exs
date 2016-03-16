@@ -8,12 +8,12 @@ defmodule EventStore.Subscriptions.PersistentSubscriptionTest do
   @all_stream "$all"
   @subscription_name "test_subscription"
 
-  test "create subscription to stream", %{storage: storage} do
+  test "create subscription to stream" do
     stream_uuid = UUID.uuid4()
     {:ok, subscriber} = Subscriber.start_link(self)
 
     subscription = PersistentSubscription.new
-    |> PersistentSubscription.subscribe(storage, stream_uuid, @subscription_name, subscriber)
+    |> PersistentSubscription.subscribe(stream_uuid, @subscription_name, subscriber)
 
     assert subscription.state == :catching_up
     assert subscription.data.stream_uuid == stream_uuid
@@ -23,12 +23,12 @@ defmodule EventStore.Subscriptions.PersistentSubscriptionTest do
     assert subscription.data.latest_event_id == 0
   end
 
-  test "catch-up subscription, no persisted events", %{storage: storage} do
+  test "catch-up subscription, no persisted events" do
     stream_uuid = UUID.uuid4()
     {:ok, subscriber} = Subscriber.start_link(self)
 
     subscription = PersistentSubscription.new
-    |> PersistentSubscription.subscribe(storage, stream_uuid, @subscription_name, subscriber)
+    |> PersistentSubscription.subscribe(stream_uuid, @subscription_name, subscriber)
     |> PersistentSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -36,15 +36,15 @@ defmodule EventStore.Subscriptions.PersistentSubscriptionTest do
     assert subscription.data.latest_event_id == 0
   end
 
-  test "catch-up subscription, unseen persisted events", %{storage: storage} do
+  test "catch-up subscription, unseen persisted events" do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(3)
 
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Storage.append_to_stream(storage, stream_uuid, 0, events)
+    {:ok, _} = Storage.append_to_stream(stream_uuid, 0, events)
 
     subscription = PersistentSubscription.new
-    |> PersistentSubscription.subscribe(storage, stream_uuid, @subscription_name, subscriber)
+    |> PersistentSubscription.subscribe(stream_uuid, @subscription_name, subscriber)
     |> PersistentSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -57,13 +57,13 @@ defmodule EventStore.Subscriptions.PersistentSubscriptionTest do
     assert payload(received_events) == payload(events)
   end
 
-  test "notify events", %{storage: storage} do
+  test "notify events" do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_recorded_events(1, stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
 
     subscription = PersistentSubscription.new
-    |> PersistentSubscription.subscribe(storage, stream_uuid, @subscription_name, subscriber)
+    |> PersistentSubscription.subscribe(stream_uuid, @subscription_name, subscriber)
     |> PersistentSubscription.catch_up
     |> PersistentSubscription.notify_events(events)
 

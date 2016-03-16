@@ -6,25 +6,26 @@ defmodule EventStore.Streams do
   use GenServer
   require Logger
 
-  alias EventStore.Storage
   alias EventStore.Streams
   alias EventStore.Streams.{Stream,Supervisor}
 
-  defstruct streams: %{}, storage: nil, supervisor: nil
+  @name :event_store_streams
 
-  def start_link(storage) do
+  defstruct streams: %{}, supervisor: nil
+
+  def start_link do
     GenServer.start_link(__MODULE__, %Streams{
-      streams: %{},
-      storage: storage
-    })
+      streams: %{}
+    },
+    name: @name)
   end
 
-  def open_stream(streams, stream_uuid) do
-    GenServer.call(streams, {:open_stream, stream_uuid})
+  def open_stream(stream_uuid) do
+    GenServer.call(@name, {:open_stream, stream_uuid})
   end
 
-  def init(%Streams{storage: storage} = state) do
-    {:ok, supervisor} = Streams.Supervisor.start_link(storage)
+  def init(%Streams{} = state) do
+    {:ok, supervisor} = Streams.Supervisor.start_link
 
     state = %Streams{state | supervisor: supervisor}
 

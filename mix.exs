@@ -2,22 +2,26 @@ defmodule EventStore.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :eventstore,
-     version: "0.1.0",
-     elixir: "~> 1.2",
-     description: description,
-     package: package,
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     aliases: aliases,
-     deps: deps]
+    [
+      app: :eventstore,
+      version: "0.2.0",
+      elixir: "~> 1.2",
+      description: description,
+      package: package,
+      build_embedded: Mix.env == :prod,
+      start_permanent: Mix.env == :prod,
+      aliases: aliases,
+      deps: deps
+    ]
   end
 
   def application do
-    [applications: [
-      :logger,
-      :postgrex
-      ]
+    [
+      applications: [
+        :logger,
+        :postgrex
+      ],
+      mod: {EventStore.Application, []}
     ]
   end
 
@@ -29,6 +33,7 @@ defmodule EventStore.Mixfile do
       {:fsm, "~> 0.2.0"},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2.6", only: :dev},
+      {:poolboy, "~> 1.5"},
       {:postgrex, "~> 0.11.1"},
       {:uuid, "~> 1.1", only: [:bench, :test]}
     ]
@@ -36,22 +41,24 @@ defmodule EventStore.Mixfile do
 
   defp description do
 """
-EventStore using Postgres for persistence.
+EventStore using PostgreSQL for persistence.
 """
   end
 
   defp package do
     [
-     files: ["lib", "priv", "mix.exs", "README*", "readme*", "LICENSE*", "license*"],
-     maintainers: ["Ben Smith"],
-     licenses: ["MIT"],
-     links: %{"GitHub" => "https://github.com/slashdotdash/eventstore",
-              "Docs" => "https://github.com/slashdotdash/eventstore"}
+      files: ["lib", "priv", "mix.exs", "README*", "readme*", "LICENSE*", "license*"],
+      maintainers: ["Ben Smith"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/slashdotdash/eventstore",
+               "Docs" => "https://hexdocs.pm/eventstore/"}
     ]
   end
 
   defp aliases do
-    ["es.setup": ["event_store.create"],
-     "es.reset": ["event_store.drop", "es.setup"]]
+    [
+      "es.setup": ["event_store.create"],
+      "es.reset": ["event_store.drop", "event_store.create"]
+    ]
   end
 end

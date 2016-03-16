@@ -6,13 +6,7 @@ defmodule EventStore.StorageCase do
   @all_stream "$all"
 
   setup do
-    {:ok, storage} = create_storage
-    {:ok, storage: storage}
-  end
-
-  defp create_storage do
-    {:ok, storage} = reply = Storage.start_link
-    :ok = Storage.reset!(storage)
-    reply
+    Storage.reset!
+    :ok
   end
 end

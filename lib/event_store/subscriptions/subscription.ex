@@ -11,11 +11,10 @@ defmodule EventStore.Subscriptions.Subscription do
 
   alias EventStore.Subscriptions.{PersistentSubscription,Subscription}
 
-  defstruct storage: nil, stream_uuid: nil, subscription_name: nil, subscriber: nil, subscription: nil
+  defstruct stream_uuid: nil, subscription_name: nil, subscriber: nil, subscription: nil
 
-  def start_link(storage, stream_uuid, subscription_name, subscriber) do
+  def start_link(stream_uuid, subscription_name, subscriber) do
     GenServer.start_link(__MODULE__, %Subscription{
-      storage: storage,
       stream_uuid: stream_uuid,
       subscription_name: subscription_name,
       subscriber: subscriber,
@@ -35,10 +34,10 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
-  def handle_cast({:subscribe}, %Subscription{storage: storage, stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+  def handle_cast({:subscribe}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> PersistentSubscription.subscribe(storage, stream_uuid, subscription_name, subscriber)
+      |> PersistentSubscription.subscribe(stream_uuid, subscription_name, subscriber)
       |> PersistentSubscription.catch_up
 
     {:noreply, %Subscription{state | subscription: subscription}}

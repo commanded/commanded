@@ -11,5 +11,6 @@
   "markdown": {:git, "https://github.com/devinus/markdown.git", "9b3beaf69a9b9c6450526c41d591a94d2eedf1e8", []},
   "mix_test_watch": {:hex, :mix_test_watch, "0.2.6"},
   "poison": {:hex, :poison, "2.1.0"},
+  "poolboy": {:hex, :poolboy, "1.5.1"},
   "postgrex": {:hex, :postgrex, "0.11.1"},
   "uuid": {:hex, :uuid, "1.1.3"}}
