@@ -25,4 +25,19 @@ defmodule ReadEventsBench do
 
     :ok
   end
+
+  bench "read events, 10 concurrent readers" do
+    stream_uuid = bench_context
+    await_timeout_ms = 100_000
+
+    tasks = Enum.map 1..10, fn(n) ->
+      Task.async fn ->
+        {:ok, _} = EventStore.read_stream_forward(stream_uuid)
+      end
+    end
+
+    Enum.each(tasks, &Task.await(&1, await_timeout_ms))
+
+    :ok
+  end
 end

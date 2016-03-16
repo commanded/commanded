@@ -135,7 +135,9 @@ Example output:
 
 ```
 ## AppendEventsBench
-append events, single writer         100   10194.05 µs/op
+append events, single writer                 100   10302.94 µs/op
+append events, 10 concurrent writers          50   44910.74 µs/op
 ## ReadEventsBench
-read events, single reader          1000   1964.64 µs/op
+read events, single reader                  1000   1947.37 µs/op
+read events, 10 concurrent readers           200   11314.01 µs/op
 ```

@@ -20,7 +20,7 @@ defmodule EventStore.Storage.PoolSupervisor do
     children = [
       :poolboy.child_spec(@storage_pool_name, storage_pool_config, storage_config)
     ]
-    
+
     supervise(children, strategy: :one_for_one)
   end
 end
