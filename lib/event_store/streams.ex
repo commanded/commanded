@@ -37,7 +37,7 @@ defmodule EventStore.Streams do
       stream -> stream
     end
 
-    {:reply, {:ok, stream}, %Streams{streams: Map.put(streams, stream_uuid, stream)}}
+    {:reply, {:ok, stream}, %Streams{state | streams: Map.put(streams, stream_uuid, stream)}}
   end
 
   def handle_info({:DOWN, ref, :process, pid, reason}, %Streams{streams: streams} = state) do

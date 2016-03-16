@@ -6,6 +6,7 @@ defmodule EventStore.Streams.Stream do
   use GenServer
   require Logger
 
+  alias EventStore.Storage
   alias EventStore.Streams.Stream
 
   defstruct storage: nil, stream_uuid: nil, stream_id: nil, latest_version: nil
@@ -21,15 +22,12 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
   end
 
-  def init(%Stream{storage: storage, stream_uuid: stream_uuid} = state) do
+  def init(state) do
     {:ok, state}
   end
 
-  def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{} = state) do
-    # TODO: Verify latest_version == expected_version
-
-    # state = %Stream{state | latest_version: latest_version}
-
-    {:reply, {:ok, events}, state}
+  def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{storage: storage, stream_uuid: stream_uuid} = state) do
+    reply = Storage.append_to_stream(storage, stream_uuid, 0, events)
+    {:reply, reply, state}
   end
 end

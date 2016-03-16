@@ -27,16 +27,21 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
-  def init(%Subscription{storage: storage, stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+  def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
+    GenServer.cast(self, :subscribe)
+
+    {:ok, state}
+  end
+
+  def handle_cast({:subscribe}, %Subscription{storage: storage, stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
       |> PersistentSubscription.subscribe(storage, stream_uuid, subscription_name, subscriber)
       |> PersistentSubscription.catch_up
 
-    state = %Subscription{state | subscription: subscription}
-    {:ok, state}
+    {:ok, %Subscription{state | subscription: subscription}}
   end
 
   def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do
@@ -44,7 +49,6 @@ defmodule EventStore.Subscriptions.Subscription do
       subscription
       |> PersistentSubscription.notify_events(events)
 
-    state = %Subscription{state | subscription: subscription}
-    {:noreply, state}
+    {:noreply, %Subscription{state | subscription: subscription}}
   end
 end

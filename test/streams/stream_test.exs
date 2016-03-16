@@ -4,8 +4,10 @@ defmodule EventStore.Streams.StreamTest do
   doctest EventStore.Streams.Stream
 
   alias EventStore.EventFactory
+  alias EventStore.ProcessHelper
   alias EventStore.Storage
   alias EventStore.Streams
+  alias EventStore.Streams.Stream
 
   @all_stream "$all"
 
@@ -24,8 +26,7 @@ defmodule EventStore.Streams.StreamTest do
     assert stream != nil
   end
 
-  @tag :wip
-  test "open stream twice", %{streams: streams} do
+  test "open single stream twice", %{streams: streams} do
     stream_uuid = UUID.uuid4()
 
     {:ok, stream1} = Streams.open_stream(streams, stream_uuid)
@@ -34,5 +35,27 @@ defmodule EventStore.Streams.StreamTest do
     assert stream1 != nil
     assert stream2 != nil
     assert stream1 == stream2
+  end
+
+  test "stream crash should allow starting new stream process", %{streams: streams} do
+    stream_uuid = UUID.uuid4()
+
+    {:ok, stream} = Streams.open_stream(streams, stream_uuid)
+
+    ProcessHelper.shutdown(stream)
+
+    {:ok, stream} = Streams.open_stream(streams, stream_uuid)
+    assert stream != nil
+  end
+
+  @tag :wip
+  test "append events to stream", %{streams: streams} do
+    stream_uuid = UUID.uuid4()
+    events = EventFactory.create_events(3)
+
+    {:ok, stream} = Streams.open_stream(streams, stream_uuid)
+    {:ok, persisted_events} = Stream.append_to_stream(stream, 0, events)
+
+    assert persisted_events == 3
   end
 end

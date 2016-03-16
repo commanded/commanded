@@ -4,6 +4,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   doctest EventStore.Subscriptions.Subscription
 
   alias EventStore.EventFactory
+  alias EventStore.ProcessHelper
   alias EventStore.Storage
   alias EventStore.Subscriptions
   alias EventStore.Subscriber
@@ -82,7 +83,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
     Process.unlink(subscriber1)
 
-    shutdown(subscription1)
+    ProcessHelper.shutdown(subscription1)
 
     # should still notify subscription 2
     Subscriptions.notify_events(subscriptions, stream_uuid, events)
@@ -96,14 +97,5 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     assert received_events == events
     assert Subscriber.received_events(subscriber2) == events
-  end
-
-  # stop the process with non-normal reason
-  defp shutdown(pid) do
-    Process.unlink(pid)
-    Process.exit(pid, :shutdown)
-
-    ref = Process.monitor(pid)
-    assert_receive {:DOWN, ^ref, _, _, _}
   end
 end
