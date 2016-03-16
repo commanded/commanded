@@ -30,7 +30,7 @@ defmodule EventStore.Subscriptions.Subscription do
   def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
-    GenServer.cast(self, :subscribe)
+    GenServer.cast(self, {:subscribe})
 
     {:ok, state}
   end
@@ -41,7 +41,7 @@ defmodule EventStore.Subscriptions.Subscription do
       |> PersistentSubscription.subscribe(storage, stream_uuid, subscription_name, subscriber)
       |> PersistentSubscription.catch_up
 
-    {:ok, %Subscription{state | subscription: subscription}}
+    {:noreply, %Subscription{state | subscription: subscription}}
   end
 
   def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do

@@ -95,8 +95,8 @@ RETURNING stream_id;
 """
   end
 
-  def create_event(number_of_events \\ 1) do
-    sql = "INSERT INTO events (stream_id, stream_version, created_at, correlation_id, event_type, headers, payload) VALUES"
+  def create_events(number_of_events \\ 1) do
+    insert = "INSERT INTO events (stream_id, stream_version, created_at, correlation_id, event_type, headers, payload) VALUES"
 
     params = 1..number_of_events
     |> Enum.map(fn event_number ->
@@ -105,7 +105,9 @@ RETURNING stream_id;
     end)
     |> Enum.join(",")
 
-    sql <> params <> ";"
+    returning = "RETURNING event_id, created_at"
+
+    insert <> " " <> params <> " " <> returning <> ";"
   end
 
   def create_subscription do

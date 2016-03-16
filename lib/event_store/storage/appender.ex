@@ -28,21 +28,21 @@ defmodule EventStore.Storage.Appender do
   end
 
   defp execute_using_multirow_value_insert(conn, stream_id, expected_version, events) do
+    prepared_events = prepare_events(events, stream_id, expected_version)
     statement = build_insert_statement(events)
-    parameters = build_insert_parameters(stream_id, expected_version, events)
+    parameters = build_insert_parameters(prepared_events)
 
     conn
     |> Postgrex.query(statement, parameters)
-    |> handle_response(stream_id)
+    |> handle_response(stream_id, prepared_events)
   end
 
   defp build_insert_statement(events) do
-    Statements.create_event(length(events))
+    Statements.create_events(length(events))
   end
 
-  defp build_insert_parameters(stream_id, expected_version, events) do
-    events
-    |> prepare_events(stream_id, expected_version)
+  defp build_insert_parameters(prepared_events) do
+    prepared_events
     |> Enum.reduce([], fn(event, parameters) ->
       parameters ++ [
         event.stream_id,
@@ -82,12 +82,24 @@ defmodule EventStore.Storage.Appender do
     %RecordedEvent{event | stream_version: stream_version}
   end
 
-  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows}}, stream_id) do
-    Logger.info "appended #{num_rows} events to stream id #{stream_id}"
-    {:ok, num_rows}
+  defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_id, _events) do
+    Logger.info "failed to append any events to stream id #{stream_id}"
+    {:ok, []}
   end
 
-  defp handle_response({:error, reason}, stream_id) do
+  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows, rows: rows}}, stream_id, events) do
+    Logger.info "appended #{num_rows} events to stream id #{stream_id}"
+
+    persisted_events =
+      Enum.zip(events, rows)
+      |> Enum.map(fn {event, [event_id, created_at]} ->
+        %RecordedEvent{event | event_id: event_id, created_at: created_at}
+      end)
+
+    {:ok, persisted_events}
+  end
+
+  defp handle_response({:error, reason}, stream_id, events) do
     Logger.warn "failed to append events to stream id #{stream_id} due to #{reason}"
     {:error, reason}
   end

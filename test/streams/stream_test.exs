@@ -48,7 +48,6 @@ defmodule EventStore.Streams.StreamTest do
     assert stream != nil
   end
 
-  @tag :wip
   test "append events to stream", %{streams: streams} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(3)
@@ -56,6 +55,6 @@ defmodule EventStore.Streams.StreamTest do
     {:ok, stream} = Streams.open_stream(streams, stream_uuid)
     {:ok, persisted_events} = Stream.append_to_stream(stream, 0, events)
 
-    assert persisted_events == 3
+    assert length(persisted_events) == 3
   end
 end

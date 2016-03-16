@@ -18,7 +18,9 @@ defmodule EventStoreTest do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, _persisted_events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
+    {:ok, persisted_events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
+
+    assert length(persisted_events) == 1
   end
 
   test "attempt to append to $all stream should fail", %{store: store} do
@@ -48,10 +50,11 @@ defmodule EventStoreTest do
     events = EventFactory.create_events(1)
 
     {:ok, _} = EventStore.subscribe_to_all_streams(store, @subscription_name, self)
-    {:ok, _} = EventStore.append_to_stream(store, stream_uuid, 0, events)
+    {:ok, persisted_events} = EventStore.append_to_stream(store, stream_uuid, 0, events)
 
-    assert_receive {:events, events}
+    assert_receive {:events, received_events}
 
-    assert length(events) == 1
+    assert length(received_events) == 1
+    assert received_events == persisted_events
   end
 end

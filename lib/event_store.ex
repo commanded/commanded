@@ -122,7 +122,7 @@ defmodule EventStore do
 
     reply = case Stream.append_to_stream(stream, expected_version, events) do
       {:ok, persisted_events} = reply ->
-        Subscriptions.notify_events(subscriptions, stream_uuid, events)
+        Subscriptions.notify_events(subscriptions, stream_uuid, persisted_events)
         reply
       reply -> reply
     end
