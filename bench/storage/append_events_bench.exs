@@ -6,20 +6,20 @@ defmodule AppendEventsBench do
 
   setup_all do
     Code.require_file("event_factory.ex", "test")
-    Storage.start_link
+    Application.ensure_all_started(:eventstore)
   end
 
   before_each_bench(store) do
     events = EventFactory.create_events(100)
-    {:ok, {store, events}}
+    {:ok, events}
   end
 
   bench "append events, single writer" do
-    {store, events} = bench_context
+    events = bench_context
 
     stream_uuid = UUID.uuid4()
 
-    {:ok, _} = EventStore.append_to_stream(store, stream_uuid, 0, events)
+    {:ok, _} = EventStore.append_to_stream(stream_uuid, 0, events)
 
     :ok
   end

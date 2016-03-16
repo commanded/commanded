@@ -41,8 +41,8 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 ## Sample usage
 
 ```elixir
-# start the EventStore process
-{:ok, store} = EventStore.start_link
+# ensure EventStore application is started
+Application.ensure_all_started(:eventstore)
 ```
 
 ### Writing to a stream
@@ -64,14 +64,14 @@ events = [
 ]
 
 # append events to stream
-{:ok, events} = EventStore.append_to_stream(store, stream_uuid, expected_version, events)
+{:ok, events} = EventStore.append_to_stream(stream_uuid, expected_version, events)
 ```
 
 ### Reading from a stream
 
 ```elixir
 # read all events from the stream, starting at the beginning
-{:ok, recorded_events} = EventStore.read_stream_forward(store, stream_uuid)
+{:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
 ```
 
 ### Subscribe to all streams
@@ -115,12 +115,12 @@ end
 ```elixir
 # create subscriber and subscribe to all streams
 {:ok, subscriber} = Subscriber.start_link
-{:ok, subscription} = EventStore.subscribe_to_all_streams(store, "example_subscription", subscriber)
+{:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", subscriber)
 ```
 
 ```elixir
 # unsubscribe from a stream
-{:ok, subscription} = EventStore.unsubscribe_from_all_streams(store, "example_subscription")
+{:ok, subscription} = EventStore.unsubscribe_from_all_streams("example_subscription")
 ```
 
 ## Benchmarking performance
@@ -135,7 +135,7 @@ Example output:
 
 ```
 ## AppendEventsBench
-append events, single writer         200   8979.53 µs/op
+append events, single writer         100   10194.05 µs/op
 ## ReadEventsBench
-read events, single reader          1000   2086.79 µs/op
+read events, single reader          1000   1964.64 µs/op
 ```

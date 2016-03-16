@@ -6,22 +6,23 @@ defmodule ReadEventsBench do
 
   setup_all do
     Code.require_file("event_factory.ex", "test")
-    Storage.start_link
+    Application.ensure_all_started(:eventstore)
   end
 
-  before_each_bench(store) do
+  before_each_bench(_) do
     events = EventFactory.create_events(100)
     stream_uuid = UUID.uuid4()
 
-    {:ok, _} = EventStore.append_to_stream(store, stream_uuid, 0, events)
+    {:ok, _} = EventStore.append_to_stream(stream_uuid, 0, events)
 
-    {:ok, {store, stream_uuid}}
+    {:ok, stream_uuid}
   end
 
   bench "read events, single reader" do
-    {store, stream_uuid} = bench_context
+    stream_uuid = bench_context
 
-    {:ok, _} = EventStore.read_stream_forward(store, stream_uuid, 0)
+    {:ok, _} = EventStore.read_stream_forward(stream_uuid)
+
     :ok
   end
 end
