@@ -11,7 +11,6 @@ defmodule EventStore.Subscriptions do
 
   defstruct all_stream: [], single_stream: %{}, supervisor: nil
 
-  @name :event_store_subscriptions
   @all_stream "$all"
 
   def start_link do
@@ -19,19 +18,19 @@ defmodule EventStore.Subscriptions do
       all_stream: [],
       single_stream: %{}
     },
-    name: @name)
+    name: __MODULE__)
   end
 
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do
-    GenServer.call(@name, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber})
+    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber})
   end
 
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
-    GenServer.call(@name, {:unsubscribe_from_stream, stream_uuid, subscription_name})
+    GenServer.call(__MODULE__, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
 
   def notify_events(stream_uuid, events) do
-    GenServer.cast(@name, {:notify_events, stream_uuid, events})
+    GenServer.cast(__MODULE__, {:notify_events, stream_uuid, events})
   end
 
   def init(%Subscriptions{} = subscriptions) do

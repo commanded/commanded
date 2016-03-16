@@ -8,7 +8,7 @@ defmodule EventStore.Streams.Stream do
 
   alias EventStore.Storage
   alias EventStore.Streams.Stream
-
+  
   defstruct stream_uuid: nil, stream_id: nil, latest_version: nil
 
   def start_link(stream_uuid) do

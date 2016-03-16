@@ -9,19 +9,23 @@ defmodule EventStore.Streams do
   alias EventStore.Streams
   alias EventStore.Streams.{Stream,Supervisor}
 
-  @name :event_store_streams
-
   defstruct streams: %{}, supervisor: nil
+
+  @all_stream "$all"
 
   def start_link do
     GenServer.start_link(__MODULE__, %Streams{
       streams: %{}
     },
-    name: @name)
+    name: __MODULE__)
+  end
+
+  def open_stream(@all_stream) do
+    {:error, :cannot_open_all_stream}
   end
 
   def open_stream(stream_uuid) do
-    GenServer.call(@name, {:open_stream, stream_uuid})
+    GenServer.call(__MODULE__, {:open_stream, stream_uuid})
   end
 
   def init(%Streams{} = state) do
