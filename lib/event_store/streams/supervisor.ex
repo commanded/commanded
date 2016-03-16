@@ -9,7 +9,7 @@ defmodule EventStore.Streams.Supervisor do
     Supervisor.start_link(__MODULE__, storage)
   end
 
-  def create_stream(supervisor, stream_uuid) do
+  def start_stream(supervisor, stream_uuid) do
     Supervisor.start_child(supervisor, [stream_uuid])
   end
 

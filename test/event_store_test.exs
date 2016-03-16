@@ -43,7 +43,6 @@ defmodule EventStoreTest do
     assert recorded_event.payload == created_event.payload
   end
 
-  @tag :wip
   test "notify subscribers after event persisted", %{store: store} do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)

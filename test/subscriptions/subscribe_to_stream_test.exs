@@ -1,4 +1,4 @@
-defmodule EventStore.Subscription.SubscribeToStream do
+defmodule EventStore.Subscriptions.SubscribeToStream do
   use ExUnit.Case
   doctest EventStore.Subscriptions.Supervisor
   doctest EventStore.Subscriptions.Subscription

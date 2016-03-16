@@ -1,4 +1,4 @@
-defmodule EventStore.Subscription.PersistentSubscriptionTest do
+defmodule EventStore.Subscriptions.PersistentSubscriptionTest do
   use EventStore.StorageCase
   doctest EventStore.Subscriptions.PersistentSubscription
 

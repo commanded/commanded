@@ -16,8 +16,8 @@ defmodule EventStore do
 
   use GenServer
 
-  alias EventStore.Storage
-  alias EventStore.Subscriptions
+  alias EventStore.{Storage,Streams,Subscriptions}
+  alias EventStore.Streams.Stream
 
   @all_stream "$all"
 
@@ -106,18 +106,21 @@ defmodule EventStore do
   end
 
   def init(_) do
-    {:ok, storage} = EventStore.Storage.start_link
-    {:ok, subscriptions} = EventStore.Subscriptions.start_link(storage)
+    {:ok, storage} = Storage.start_link
+    {:ok, streams} = Streams.start_link(storage)
+    {:ok, subscriptions} = Subscriptions.start_link(storage)
 
-    {:ok, %{storage: storage, subscriptions: subscriptions}}
+    {:ok, %{storage: storage, streams: streams, subscriptions: subscriptions}}
   end
 
   def handle_call({:append_to_stream, @all_stream, _expected_version, _events}, _from, state) do
     {:reply, {:error, :cannot_append_to_all_stream}, state}
   end
 
-  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %{storage: storage, subscriptions: subscriptions} = state) do
-    reply = case Storage.append_to_stream(storage, stream_uuid, expected_version, events) do
+  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %{storage: storage, streams: streams, subscriptions: subscriptions} = state) do
+    {:ok, stream} = Streams.open_stream(streams, stream_uuid)
+
+    reply = case Stream.append_to_stream(stream, expected_version, events) do
       {:ok, persisted_events} = reply ->
         Subscriptions.notify_events(subscriptions, stream_uuid, events)
         reply
