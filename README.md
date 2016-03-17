@@ -14,7 +14,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
           [{:eventstore, "~> 0.0.1"}]
         end
 
-  2. Ensure eventstore is started before your application:
+  2. Ensure `eventstore` is started before your application:
 
         def application do
           [applications: [:eventstore]]
@@ -30,13 +30,11 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
       hostname: "localhost"
     ```
 
-  4. Create the EventStore database using the `mix` task
+  4. Create the EventStore database and tables using the `mix` task
 
     ```
     mix event_store.create
     ```
-
-    This will create the database and tables.
 
 ## Sample usage
 
@@ -113,14 +111,16 @@ end
 ```
 
 ```elixir
-# create subscriber and subscribe to all streams
+# create your subscriber
 {:ok, subscriber} = Subscriber.start_link
+
+# subscribe to events appended to all streams
 {:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", subscriber)
 ```
 
 ```elixir
 # unsubscribe from a stream
-{:ok, subscription} = EventStore.unsubscribe_from_all_streams("example_subscription")
+:ok = EventStore.unsubscribe_from_all_streams("example_subscription")
 ```
 
 ## Benchmarking performance
