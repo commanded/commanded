@@ -2,12 +2,11 @@ defmodule EventStore.Publishing.PublishEventsTest do
   use EventStore.StorageCase
   doctest EventStore.Publisher
 
-  alias EventStore.{EventFactory,ProcessHelper,Publisher,Subscriptions,Subscriber}
+  alias EventStore.{EventFactory,Publisher,Subscriptions,Subscriber}
 
   @all_stream "$all"
   @subscription_name "test_subscription"
 
-  @tag :wip
   test "should publish events ordered by event id" do
     stream1_uuid = UUID.uuid4()
     stream2_uuid = UUID.uuid4()

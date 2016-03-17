@@ -3,7 +3,6 @@ defmodule EventStoreTest do
   doctest EventStore.Storage
 
   alias EventStore.EventFactory
-  alias EventStore.Storage
 
   @subscription_name "test_subscription"
 

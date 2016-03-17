@@ -4,6 +4,9 @@ defmodule EventStore.StorageCase do
   alias EventStore.Storage
 
   setup do
+    Application.stop(:eventstore)
+    :ok = Application.start(:eventstore)
+
     Storage.reset!
     :ok
   end

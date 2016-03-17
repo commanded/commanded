@@ -5,7 +5,6 @@ defmodule EventStore.Streams.StreamTest do
 
   alias EventStore.EventFactory
   alias EventStore.ProcessHelper
-  alias EventStore.Storage
   alias EventStore.Streams
   alias EventStore.Streams.Stream
 
