@@ -14,11 +14,7 @@ defmodule EventStore.Subscriptions do
   @all_stream "$all"
 
   def start_link do
-    GenServer.start_link(__MODULE__, %Subscriptions{
-      all_stream: [],
-      single_stream: %{}
-    },
-    name: __MODULE__)
+    GenServer.start_link(__MODULE__, %Subscriptions{}, name: __MODULE__)
   end
 
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do

@@ -14,7 +14,7 @@ defmodule EventStore do
       {:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
   """
 
-  alias EventStore.{Storage,Streams,Subscriptions}
+  alias EventStore.{Publisher,Storage,Streams,Subscriptions}
   alias EventStore.Streams.Stream
 
   @all_stream "$all"
@@ -41,7 +41,7 @@ defmodule EventStore do
 
     case Stream.append_to_stream(stream, expected_version, events) do
       {:ok, persisted_events} = reply ->
-        Subscriptions.notify_events(stream_uuid, persisted_events)
+        Publisher.notify_events(stream_uuid, persisted_events)
         reply
       reply -> reply
     end

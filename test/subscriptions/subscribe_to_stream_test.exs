@@ -62,7 +62,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber) == stream1_events ++ stream2_events
   end
 
-  test "should monitor each subscription, terminate single subscriber on error" do
+  test "should monitor each subscription, terminate subscription and subscriber on error" do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_recorded_events(1, stream_uuid)
 

@@ -9,7 +9,8 @@ defmodule EventStore.Supervisor do
     children = [
       supervisor(EventStore.Storage.PoolSupervisor, []),
       worker(EventStore.Streams, []),
-      worker(EventStore.Subscriptions, [])
+      worker(EventStore.Subscriptions, []),
+      worker(EventStore.Publisher, [])
     ]
 
     supervise(children, strategy: :one_for_one)

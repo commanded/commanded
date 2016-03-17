@@ -51,8 +51,8 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
       end
     end
 
+    # ignore event notifications while catching up; but remember the latest event id
     defevent notify_events(events, latest_event_id), data: %SubscriptionData{} = data do
-      # ignore event notification while catching up; but remember the latest event id
       data = %SubscriptionData{data | latest_event_id: latest_event_id}
       next_state(:catching_up, data)
     end
@@ -125,7 +125,10 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     send(subscriber, {:events, events})
   end
 
-  defp ack_events(%SubscriptionData{} = data, events) do
-
+  defp ack_events(%SubscriptionData{subscription_name: subscription_name} = data, events) do
+    # TODO
+    # latest_event_id = List.last(events).event_id
+    #
+    # Storage.ack_last_seen_event(stream_id, subscription_name, latest_event_id)
   end
 end

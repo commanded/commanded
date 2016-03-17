@@ -10,7 +10,7 @@
 
     Resulted in a 58.96% reduction in event append. For 100 events: from 24,479.62 µs/op to 9,738.10 µs/op.
 
--[ ] Use `INSERT RETURNING` when appending events to stream so that event id and timestamp can be returned.
+-[x] Use `INSERT RETURNING` when appending events to stream so that event id and timestamp can be returned.
      http://www.postgresql.org/docs/9.5/static/sql-insert.html
 
 -[ ] Stream type property when creating an event stream.
@@ -18,6 +18,9 @@
 -[ ] Limit of ~30,000 parameters per query, so inserts of more than ~5,000 events (30k / 6 params per event insert) will fail.
      Use transaction and batch inserts into ~5k chunks.
 
--[ ] Connection pool for Postgrex (using [poolboy](https://github.com/devinus/poolboy) library)
+-[x] Connection pool for Postgrex (using [poolboy](https://github.com/devinus/poolboy) library)
 
--[ ] Don't (de)serialize event payload & headers. Persist binary data, allow EventStore consumers to handle serialization.
+-[x] Don't (de)serialize event payload & headers. Persist binary data, allow EventStore consumers to handle serialization.
+
+-[ ] Supervisor for `EventStore.Publisher` and `EventStore.Subscriptions` using `:one_for_all` strategy so that event publishing
+     can safely crash and be restarted if there is a problem with either. 
