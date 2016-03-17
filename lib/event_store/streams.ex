@@ -11,17 +11,11 @@ defmodule EventStore.Streams do
 
   defstruct streams: %{}, supervisor: nil
 
-  @all_stream "$all"
-
   def start_link do
     GenServer.start_link(__MODULE__, %Streams{
       streams: %{}
     },
     name: __MODULE__)
-  end
-
-  def open_stream(@all_stream) do
-    {:error, :cannot_open_all_stream}
   end
 
   def open_stream(stream_uuid) do

@@ -8,8 +8,8 @@ defmodule EventStore.Streams.Stream do
 
   alias EventStore.Storage
   alias EventStore.Streams.Stream
-  
-  defstruct stream_uuid: nil, stream_id: nil, latest_version: nil
+
+  defstruct stream_uuid: nil
 
   def start_link(stream_uuid) do
     GenServer.start_link(__MODULE__, %Stream{
@@ -26,7 +26,7 @@ defmodule EventStore.Streams.Stream do
   end
 
   def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_uuid: stream_uuid} = state) do
-    reply = Storage.append_to_stream(stream_uuid, 0, events)
+    reply = Storage.append_to_stream(stream_uuid, expected_version, events)
     {:reply, reply, state}
   end
 end
