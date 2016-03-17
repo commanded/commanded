@@ -18,9 +18,7 @@ defmodule EventStore.Storage do
   Initialise the PostgreSQL database by creating the tables and indexes
   """
   def initialize_store! do
-    storage_pool(fn conn ->
-      Storage.Initializer.run!(conn)
-    end)
+    execute_using_storage_pool(&Storage.Initializer.run!/1)
     :ok
   end
 
@@ -28,85 +26,67 @@ defmodule EventStore.Storage do
   Reset the PostgreSQL database by deleting all rows
   """
   def reset! do
-    storage_pool(fn conn ->
-      Storage.Initializer.reset!(conn)
-    end)
+    execute_using_storage_pool(&Storage.Initializer.reset!/1)
   end
 
   @doc """
   Append the given list of events to the stream, expected version is used for optimistic concurrency
   """
   def append_to_stream(stream_uuid, expected_version, events) do
-    storage_pool(fn conn ->
-      Stream.append_to_stream(conn, stream_uuid, expected_version, events)
-    end)
+    execute_using_storage_pool(&Stream.append_to_stream(&1, stream_uuid, expected_version, events))
   end
 
   @doc """
   Read events for the given stream forward from the starting version, use zero for all events for the stream
   """
   def read_stream_forward(stream_uuid, start_version, count \\ nil) do
-    storage_pool(fn conn ->
-      Stream.read_stream_forward(conn, stream_uuid, start_version, count)
-    end)
+    execute_using_storage_pool(&Stream.read_stream_forward(&1, stream_uuid, start_version, count))
   end
 
   @doc """
   Read events for all streams forward from the starting event id, use zero for all events for all streams
   """
   def read_all_streams_forward(start_event_id \\ 0, count \\ nil) do
-    storage_pool(fn conn ->
-      Stream.read_all_streams_forward(conn, start_event_id, count)
-    end)
+    execute_using_storage_pool(&Stream.read_all_streams_forward(&1, start_event_id, count))
   end
 
   @doc """
   Get the id of the last event persisted to storage
   """
   def latest_event_id do
-    storage_pool(fn conn ->
-      Stream.latest_event_id(conn)
-    end)
+    execute_using_storage_pool(&Stream.latest_event_id/1)
   end
 
   @doc """
   Create, or locate an existing, persistent subscription to a stream using a unique name
   """
   def subscribe_to_stream(stream_uuid, subscription_name) do
-    storage_pool(fn conn ->
-      Subscription.subscribe_to_stream(conn, stream_uuid, subscription_name)
-    end)
+    execute_using_storage_pool(&Subscription.subscribe_to_stream(&1, stream_uuid, subscription_name))
   end
 
   @doc """
   Acknowledge receipt of an event by id, for a single subscription
   """
   def ack_last_seen_event(stream_uuid, subscription_name, last_seen_event_id) when is_number(last_seen_event_id) do
-    storage_pool(fn conn ->
-      Subscription.ack_last_seen_event(conn, stream_uuid, subscription_name, last_seen_event_id)
-    end)
+    execute_using_storage_pool(&Subscription.ack_last_seen_event(&1, stream_uuid, subscription_name, last_seen_event_id))
   end
 
   @doc """
   Unsubscribe from an existing named subscription to a stream
   """
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
-    storage_pool(fn conn ->
-      Subscription.unsubscribe_from_stream(conn, stream_uuid, subscription_name)
-    end)
+    execute_using_storage_pool(&Subscription.unsubscribe_from_stream(&1, stream_uuid, subscription_name))
   end
 
   @doc """
   Get all known subscriptions, to any stream
   """
   def subscriptions do
-    storage_pool(fn conn ->
-      Subscription.subscriptions(conn)
-    end)
+    execute_using_storage_pool(&Subscription.subscriptions/1)
   end
 
   # Execute the given `transaction` function using a database worker from the pool
-  defp storage_pool(transaction) do
+  defp execute_using_storage_pool(transaction) do
     :poolboy.transaction(@storage_pool_name, transaction)
   end
 end

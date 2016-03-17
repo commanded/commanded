@@ -3,8 +3,6 @@ defmodule EventStore.StorageCase do
 
   alias EventStore.Storage
 
-  @all_stream "$all"
-
   setup do
     Storage.reset!
     :ok
