@@ -26,9 +26,24 @@ defmodule AppendEventsBench do
 
   bench "append events, 10 concurrent writers" do
     events = bench_context
+
+    append_events(events, 10)
+
+    :ok
+  end
+
+  bench "append events, 100 concurrent writers" do
+    events = bench_context
+
+    append_events(events, 100)
+
+    :ok
+  end
+
+  defp append_events(events, concurrency) do
     await_timeout_ms = 100_000
 
-    tasks = Enum.map 1..10, fn(n) ->
+    tasks = Enum.map 1..concurrency, fn (_) ->
       stream_uuid = UUID.uuid4()
 
       Task.async fn ->
@@ -37,7 +52,5 @@ defmodule AppendEventsBench do
     end
 
     Enum.each(tasks, &Task.await(&1, await_timeout_ms))
-
-    :ok
   end
 end
