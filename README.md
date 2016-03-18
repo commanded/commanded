@@ -38,15 +38,20 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 
 ## Sample usage
 
+Including the `eventstore` in the applications section of `mix.exs` will ensure it is started.
+
 ```elixir
-# ensure EventStore application is started
+# manually start the EventStore supervisor
+EventStore.Supervisor.start_link
+
+# ... or ensure EventStore application is started
 Application.ensure_all_started(:eventstore)
 ```
 
 ### Writing to a stream
 
 ```elixir
-# create a unique identity for the stream
+# create a unique identity for the stream (using the `uuid` package)
 stream_uuid = UUID.uuid4()
 
 # a new stream will be created when the expected version is zero
@@ -56,6 +61,7 @@ expected_version = 0
 # - headers and payload must already be serialized to binary data (e.g. using a JSON encoder)
 events = [
   %EventStore.EventData{
+    event_type: "example_event",
   	headers: serialize_to_json(%{user: "someuser@example.com"}),
     payload: serialize_to_json(%ExampleEvent{key: "value"})
   }

@@ -38,6 +38,8 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_call({:subscribe_to_stream, stream_uuid, subscription_name, subscriber}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
+    # TODO: Ensure subscription does not already exist
+
     {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, subscription_name, subscriber)
 
     Process.monitor(subscription)
@@ -50,8 +52,12 @@ defmodule EventStore.Subscriptions do
     {:reply, {:ok, subscription}, subscriptions}
   end
 
-  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
-    {:reply, :ok, subscriptions}
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{} = state) do
+    # TODO: Shutdown subscription process and delete subscription from storage
+
+    state = remove_subscription(state, stream_uuid, subscription_name)
+
+    {:reply, :ok, state}
   end
 
   def handle_cast({:notify_events, stream_uuid, events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
@@ -91,7 +97,11 @@ defmodule EventStore.Subscriptions do
     %Subscriptions{subscriptions | single_stream: single_stream}
   end
 
-  defp remove_all_stream_subscription(%Subscriptions{all_stream: all_stream} = subscriptions, subscription_name) do
-    subscriptions
+  defp remove_subscription(%Subscriptions{all_stream: all_stream, single_stream: single_stream} = state, stream_uuid, subscription_name) do
+    state
+  end
+
+  defp remove_all_stream_subscription(%Subscriptions{all_stream: all_stream} = state, subscription_name) do
+    state
   end
 end

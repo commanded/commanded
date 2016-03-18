@@ -6,10 +6,11 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
               subscription_name: nil,
               subscriber: nil,
               last_seen_event_id: 0,
+              last_seen_stream_version: 0,
               latest_event_id: 0
   end
 
-  alias EventStore.Storage
+  alias EventStore.{RecordedEvent,Storage}
   alias EventStore.Subscriptions.PersistentSubscription
 
   use Fsm, initial_state: :initial, initial_data: %SubscriptionData{}
@@ -62,15 +63,17 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     defevent notify_events(events), data: %SubscriptionData{} = data do
       # TODO: move to catching-up state if the event id of the first event is not `data.last_seen_event_id + 1`
 
-      latest_event_id = List.last(events).event_id
+      last_event = List.last(events)
 
       notify_subscriber(data, events)
-      ack_events(data, events)
+      ack_events(data, events, last_event.event_id)
 
       data = %SubscriptionData{data |
-        latest_event_id: latest_event_id,
-        last_seen_event_id: latest_event_id
+        latest_event_id: last_event.event_id,
+        last_seen_event_id: last_event.event_id,
+        last_seen_stream_version: last_event.stream_version
       }
+
       next_state(:subscribed, data)
     end
 
@@ -80,6 +83,9 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   end
 
   defstate unsubscribed do
+  end
+
+  defstate failed do
   end
 
   defp subscribe_to_stream(stream_uuid, subscription_name) do
@@ -92,20 +98,26 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
   end
 
   defp catch_up_to_event(%SubscriptionData{stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id} = data, latest_event_id) do
-    case unseen_events(data) do
+    last_event = case unseen_events(data) do
       {:ok, events} ->
         # chunk events by stream
         events
         |> Enum.chunk_by(fn event -> event.stream_id end)
-        |> Enum.each(fn events_by_stream ->
+        |> Enum.map(fn events_by_stream ->
+          last_event = List.last(events_by_stream)
+
           notify_subscriber(data, events_by_stream)
-          ack_events(data, events_by_stream)
+          ack_events(data, events_by_stream, last_event.event_id)
+
+          last_event
         end)
+        |> Enum.reduce(fn (last_event, _) -> last_event end)
     end
 
     data = %SubscriptionData{data |
       latest_event_id: latest_event_id,
-      last_seen_event_id: latest_event_id
+      last_seen_event_id: last_event.event_id,
+      last_seen_stream_version: last_event.stream_version
     }
   end
 
@@ -115,8 +127,8 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     Storage.read_all_streams_forward(start_event_id)
   end
 
-  defp unseen_events(%SubscriptionData{stream_uuid: stream_uuid, last_seen_event_id: last_seen_event_id}) do
-    start_version = last_seen_event_id + 1
+  defp unseen_events(%SubscriptionData{stream_uuid: stream_uuid, last_seen_stream_version: last_seen_stream_version}) do
+    start_version = last_seen_stream_version + 1
 
     Storage.read_stream_forward(stream_uuid, start_version)
   end
@@ -125,10 +137,7 @@ defmodule EventStore.Subscriptions.PersistentSubscription do
     send(subscriber, {:events, events})
   end
 
-  defp ack_events(%SubscriptionData{subscription_name: subscription_name} = data, events) do
-    # TODO
-    # latest_event_id = List.last(events).event_id
-    #
-    # Storage.ack_last_seen_event(stream_id, subscription_name, latest_event_id)
+  defp ack_events(%SubscriptionData{stream_uuid: stream_uuid, subscription_name: subscription_name} = data, events, last_event_id) do
+    Storage.ack_last_seen_event(stream_uuid, subscription_name, last_event_id)
   end
 end

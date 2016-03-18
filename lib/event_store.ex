@@ -1,6 +1,6 @@
 defmodule EventStore do
   @moduledoc """
-  EventStore process to read and write events to a logical event stream
+  EventStore client API to read & write events to a logical event stream and subscribe to event notifications
 
   ## Example usage
 

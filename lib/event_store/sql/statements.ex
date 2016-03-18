@@ -204,7 +204,7 @@ SELECT
   created_at
 FROM events
 WHERE event_id >= $1
-ORDER BY stream_version ASC;
+ORDER BY event_id ASC;
 """
   end
 end

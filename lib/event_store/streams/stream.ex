@@ -17,6 +17,11 @@ defmodule EventStore.Streams.Stream do
     })
   end
 
+  @doc """
+  Append the given list of events to the stream, expected version is used for optimistic concurrency
+  
+  Each `Stream` is a GenServer process, so writes to a single logical stream will always be serialized.
+  """
   def append_to_stream(stream, expected_version, events) do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
   end
