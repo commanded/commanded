@@ -9,8 +9,7 @@ defmodule EventStore.Storage do
   require Logger
 
   alias EventStore.Storage
-  alias EventStore.Storage.Stream
-  alias EventStore.Storage.Subscription
+  alias EventStore.Storage.{Stream,Subscription}
 
   @storage_pool_name :event_store_storage_pool
 
@@ -58,6 +57,13 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Get the latest version of events persisted to the given stream
+  """
+  def latest_stream_version(stream_uuid) do
+    execute_using_storage_pool(&Stream.latest_stream_version(&1, stream_uuid))
+  end
+
+  @doc """
   Create, or locate an existing, persistent subscription to a stream using a unique name
   """
   def subscribe_to_stream(stream_uuid, subscription_name) do
@@ -67,8 +73,8 @@ defmodule EventStore.Storage do
   @doc """
   Acknowledge receipt of an event by id, for a single subscription
   """
-  def ack_last_seen_event(stream_uuid, subscription_name, last_seen_event_id) when is_number(last_seen_event_id) do
-    execute_using_storage_pool(&Subscription.ack_last_seen_event(&1, stream_uuid, subscription_name, last_seen_event_id))
+  def ack_last_seen_event(stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version) do
+    execute_using_storage_pool(&Subscription.ack_last_seen_event(&1, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version))
   end
 
   @doc """

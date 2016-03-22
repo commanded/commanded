@@ -34,12 +34,13 @@ defmodule EventStore.Publisher do
 
     state = case initial_event_id do
       ^expected_event_id ->
-        # events are in expected order, immediately notify subscribers
+        # immediately notify subscribers as events are in expected order
         Subscriptions.notify_events(stream_uuid, events)
+
         %Publisher{state | last_published_event_id: last_event_id }
 
       initial_event_id ->
-        # events are out of order
+        # append to pending events as they are out of order
         pending = %PendingEvents{
           initial_event_id: initial_event_id,
           last_event_id: last_event_id,

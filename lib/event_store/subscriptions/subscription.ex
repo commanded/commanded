@@ -9,7 +9,9 @@ defmodule EventStore.Subscriptions.Subscription do
   use GenServer
   require Logger
 
-  alias EventStore.Subscriptions.{PersistentSubscription,Subscription}
+  alias EventStore.Subscriptions.{AllStreamsSubscription,SingleStreamSubscription,Subscription}
+
+  @all_stream "$all"
 
   defstruct stream_uuid: nil, subscription_name: nil, subscriber: nil, subscription: nil
 
@@ -18,7 +20,7 @@ defmodule EventStore.Subscriptions.Subscription do
       stream_uuid: stream_uuid,
       subscription_name: subscription_name,
       subscriber: subscriber,
-      subscription: PersistentSubscription.new
+      subscription: subscription_provider(stream_uuid).new
     })
   end
 
@@ -37,17 +39,47 @@ defmodule EventStore.Subscriptions.Subscription do
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> PersistentSubscription.subscribe(stream_uuid, subscription_name, subscriber)
-      |> PersistentSubscription.catch_up
+      |> subscription_provider(stream_uuid).subscribe(stream_uuid, subscription_name, subscriber)
+
+    handle_subscription_state(subscription.state)
 
     {:noreply, %Subscription{state | subscription: subscription}}
   end
 
-  def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do
+  def handle_cast({:notify_events, events}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
+#IO.puts "notify events #{inspect events}"    
     subscription =
       subscription
-      |> PersistentSubscription.notify_events(events)
+      |> subscription_provider(stream_uuid).notify_events(events)
+
+    handle_subscription_state(subscription.state)
 
     {:noreply, %Subscription{state | subscription: subscription}}
+  end
+
+  def handle_cast({:catch_up}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+    subscription =
+      subscription
+      |> subscription_provider(stream_uuid).catch_up
+
+    handle_subscription_state(subscription.state)
+
+    {:noreply, %Subscription{state | subscription: subscription}}
+  end
+
+  defp handle_subscription_state(:catching_up) do
+    GenServer.cast(self, {:catch_up})
+  end
+
+  defp handle_subscription_state(_) do
+    # no-op
+  end
+
+  defp subscription_provider(@all_stream) do
+    AllStreamsSubscription
+  end
+
+  defp subscription_provider(_stream_uuid) do
+    SingleStreamSubscription
   end
 end

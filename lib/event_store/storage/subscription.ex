@@ -8,7 +8,7 @@ defmodule EventStore.Storage.Subscription do
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Subscription
 
-  defstruct subscription_id: nil, stream_uuid: nil, subscription_name: nil, last_seen_event_id: nil, created_at: nil
+  defstruct subscription_id: nil, stream_uuid: nil, subscription_name: nil, last_seen_event_id: nil, last_seen_stream_version: nil, created_at: nil
 
   @doc """
   List all known subscriptions
@@ -24,8 +24,8 @@ defmodule EventStore.Storage.Subscription do
     end
   end
 
-  def ack_last_seen_event(conn, stream_uuid, subscription_name, last_seen_event_id) do
-    Subscription.Ack.execute(conn, stream_uuid, subscription_name, last_seen_event_id)
+  def ack_last_seen_event(conn, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version) do
+    Subscription.Ack.execute(conn, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version)
   end
 
   def unsubscribe_from_stream(conn, stream_uuid, subscription_name) do
@@ -90,9 +90,9 @@ defmodule EventStore.Storage.Subscription do
   end
 
   defmodule Ack do
-    def execute(conn, stream_uuid, subscription_name, last_seen_event_id) do
+    def execute(conn, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version) do
       conn
-      |> Postgrex.query(Statements.ack_last_seen_event, [stream_uuid, subscription_name, last_seen_event_id])
+      |> Postgrex.query(Statements.ack_last_seen_event, [stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version])
       |> handle_response(stream_uuid, subscription_name)
     end
 
@@ -138,12 +138,13 @@ defmodule EventStore.Storage.Subscription do
       |> to_subscription_from_row
     end
 
-    defp to_subscription_from_row([subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at]) do
+    defp to_subscription_from_row([subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at]) do
       %Subscription{
         subscription_id: subscription_id,
         stream_uuid: stream_uuid,
         subscription_name: subscription_name,
         last_seen_event_id: last_seen_event_id,
+        last_seen_stream_version: last_seen_stream_version,
         created_at: created_at
       }
     end

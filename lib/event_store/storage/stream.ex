@@ -6,8 +6,8 @@ defmodule EventStore.Storage.Stream do
   require Logger
 
   alias EventStore.Sql.Statements
-  alias EventStore.Storage.{Appender,Reader,Stream}
-
+  alias EventStore.Storage.{Appender,QueryLatestEventId,QueryLatestStreamVersion,Reader,Stream}
+  
   def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version == 0 do
     case create_stream(conn, stream_uuid) do
       {:ok, stream_id} -> Appender.append(conn, stream_id, expected_version, events)
@@ -32,7 +32,13 @@ defmodule EventStore.Storage.Stream do
   end
 
   def latest_event_id(conn) do
-    Stream.Query.execute(conn)
+    QueryLatestEventId.execute(conn)
+  end
+
+  def latest_stream_version(conn, stream_uuid) do
+    execute_with_stream_id(conn, stream_uuid, fn stream_id ->
+      QueryLatestStreamVersion.execute(conn, stream_id)
+    end)
   end
 
   defp execute_with_stream_id(conn, stream_uuid, execute_fn) do
@@ -78,21 +84,5 @@ defmodule EventStore.Storage.Stream do
 
   defp handle_lookup_response({:ok, %Postgrex.Result{rows: [[stream_id]]}}, _) do
     {:ok, stream_id}
-  end
-
-  defmodule Query do
-    def execute(conn) do
-      conn
-      |> Postgrex.query(Statements.query_latest_event_id, [])
-      |> handle_response
-    end
-
-    defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}) do
-      {:ok, 0}
-    end
-
-    defp handle_response({:ok, %Postgrex.Result{rows: [[event_id]]}}) do
-      {:ok, event_id}
-    end
   end
 end

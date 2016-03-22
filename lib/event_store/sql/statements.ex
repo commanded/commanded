@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS subscriptions
     subscription_id BIGSERIAL PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
     subscription_name text NOT NULL,
-    last_seen_event_id bigint NOT NULL,
+    last_seen_event_id bigint NULL,
+    last_seen_stream_version bigint NULL,
     created_at timestamp NOT NULL
 );
 """
@@ -112,9 +113,9 @@ RETURNING stream_id;
 
   def create_subscription do
 """
-INSERT INTO subscriptions (stream_uuid, subscription_name, last_seen_event_id, created_at)
-VALUES ($1, $2, 0, NOW())
-RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at;
+INSERT INTO subscriptions (stream_uuid, subscription_name, created_at)
+VALUES ($1, $2, NOW())
+RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at;
 """
   end
 
@@ -128,14 +129,14 @@ WHERE stream_uuid = $1 AND subscription_name = $2;
   def ack_last_seen_event do
 """
 UPDATE subscriptions
-SET last_seen_event_id = $3
+SET last_seen_event_id = $3, last_seen_stream_version = $4
 WHERE stream_uuid = $1 AND subscription_name = $2;
 """
   end
 
   def query_all_subscriptions do
 """
-SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at
+SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at
 FROM subscriptions
 ORDER BY created_at;
 """
@@ -143,7 +144,7 @@ ORDER BY created_at;
 
   def query_get_subscription do
 """
-SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, created_at
+SELECT subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at
 FROM subscriptions
 WHERE stream_uuid = $1 AND subscription_name = $2;
 """
