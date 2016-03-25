@@ -78,7 +78,7 @@ defmodule EventStore.Storage.Subscription do
       {:ok, Subscription.Adapter.to_subscription(rows)}
     end
 
-    defp handle_response({:error, %Postgrex.Error{postgres: %{constraint: "ix_subscriptions_stream_uuid_subscription_name"}}}, stream_uuid, subscription_name) do
+    defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation}}}, stream_uuid, subscription_name) do
       Logger.warn "failed to create subscription on stream #{stream_uuid} named #{subscription_name}, already exists"
       {:error, :subscription_already_exists}
     end
