@@ -1,9 +1,13 @@
 language: elixir
+
 elixir:
   - 1.2.3
+
 otp_release:
   - 18.2.1
+
 services:
   - postgresql
+
 before_script:
   - mix event_store.create

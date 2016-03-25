@@ -47,7 +47,6 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def handle_cast({:notify_events, events}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
-#IO.puts "notify events #{inspect events}"    
     subscription =
       subscription
       |> subscription_provider(stream_uuid).notify_events(events)

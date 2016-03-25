@@ -73,8 +73,12 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
           next_state(:subscribed, data)
         _ ->
           # must catch-up with all unseen events
-          next_state(:catch_up, data)
+          next_state(:catching_up, data)
       end
+    end
+
+    defevent catch_up, data: %SubscriptionData{} = data do
+      next_state(:catching_up, data)
     end
 
     defevent unsubscribe, data: %SubscriptionData{} = data do
