@@ -1,7 +1,9 @@
 %{"connection": {:hex, :connection, "1.0.2"},
   "db_connection": {:hex, :db_connection, "0.2.4"},
   "decimal": {:hex, :decimal, "1.1.1"},
+  "eventsourced": {:git, "https://github.com/slashdotdash/eventsourced.git", "3fd1349b541894bcc0f75135788408a2063d4404", []},
   "eventstore": {:git, "https://github.com/slashdotdash/eventstore.git", "b97e015379fc8dddddfe2dbc7dccabe5d1c6bb21", []},
   "fsm": {:hex, :fsm, "0.2.0"},
   "poolboy": {:hex, :poolboy, "1.5.1"},
-  "postgrex": {:hex, :postgrex, "0.11.1"}}
+  "postgrex": {:hex, :postgrex, "0.11.1"},
+  "uuid": {:hex, :uuid, "1.1.3"}}

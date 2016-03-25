@@ -21,7 +21,8 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:eventstore, github: "slashdotdash/eventstore", only: :dev},
+      {:eventstore, github: "slashdotdash/eventstore"},
+      {:eventsourced, github: "slashdotdash/eventsourced"}
     ]
   end
 end
