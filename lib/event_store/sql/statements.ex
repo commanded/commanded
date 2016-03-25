@@ -17,7 +17,7 @@ defmodule EventStore.Sql.Statements do
 
   def create_streams_table do
 """
-CREATE TABLE IF NOT EXISTS streams
+CREATE TABLE streams
 (
     stream_id BIGSERIAL PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS streams
 
   def create_stream_uuid_index do
 """
-CREATE UNIQUE INDEX IF NOT EXISTS ix_streams_stream_uuid ON streams (stream_uuid);
+CREATE UNIQUE INDEX ix_streams_stream_uuid ON streams (stream_uuid);
 """
   end
 
@@ -42,7 +42,7 @@ RESTART IDENTITY;
 
   def create_events_table do
 """
-CREATE TABLE IF NOT EXISTS events
+CREATE TABLE events
 (
     event_id BIGSERIAL PRIMARY KEY NOT NULL,
     stream_id bigint NOT NULL,
@@ -58,19 +58,19 @@ CREATE TABLE IF NOT EXISTS events
 
   def create_event_stream_id_index do
 """
-CREATE INDEX IF NOT EXISTS ix_events_stream_id ON events (stream_id);
+CREATE INDEX ix_events_stream_id ON events (stream_id);
 """
   end
 
   def create_event_stream_id_and_version_index do
 """
-CREATE UNIQUE INDEX IF NOT EXISTS ix_events_stream_id_stream_version ON events (stream_id, stream_version DESC);
+CREATE UNIQUE INDEX ix_events_stream_id_stream_version ON events (stream_id, stream_version DESC);
 """
   end
 
   def create_subscriptions_table do
 """
-CREATE TABLE IF NOT EXISTS subscriptions
+CREATE TABLE subscriptions
 (
     subscription_id BIGSERIAL PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS subscriptions
 
   def create_subscription_index do
 """
-CREATE UNIQUE INDEX IF NOT EXISTS ix_subscriptions_stream_uuid_subscription_name ON subscriptions (stream_uuid, subscription_name);
+CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscriptions (stream_uuid, subscription_name);
 """
   end
 
