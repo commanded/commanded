@@ -5,10 +5,6 @@ defmodule EventStore.Storage.AppendEventsTest do
   alias EventStore.EventFactory
   alias EventStore.Storage
 
-  test "initialise store" do
-    Storage.initialize_store!
-  end
-
   test "append single event to new stream" do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
