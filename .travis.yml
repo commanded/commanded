@@ -1,0 +1,7 @@
+language: elixir
+
+services:
+  - postgresql
+
+before_script:
+  - mix event_store.create

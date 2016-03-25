@@ -10,15 +10,19 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 
   1. Add eventstore to your list of dependencies in `mix.exs`:
 
-        def deps do
-          [{:eventstore, "~> 0.0.1"}]
-        end
+    ```elixir    
+    def deps do
+      [{:eventstore, "~> 0.0.1"}]
+    end
+    ```
 
   2. Ensure `eventstore` is started before your application:
 
-        def application do
-          [applications: [:eventstore]]
-        end
+    ```elixir
+    def application do
+      [applications: [:eventstore]]
+    end
+    ```
 
   3. Add an `eventstore` config entry containing the PostgreSQL connection details to each environment's mix config file (e.g. `config/dev.exs`).
 
@@ -84,7 +88,7 @@ Subscriptions to a stream will guarantee at least once delivery of every persist
 
 Events are received in batches after being persisted to storage. Each batch will contain events from a single stream only.
 
-Receipt of each event, or batch, must be acknowledged by the subscriber. This allows the subscription to resume on failure without missing an event.
+Receipt of each event, or batch, by the subscriber is acknowledged. This allows the subscription to resume on failure without missing an event.
 
 Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
 
