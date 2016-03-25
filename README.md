@@ -1,8 +1,10 @@
 # EventStore
 
-CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage. Requires version 9.5 or newer.
+CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage engine.
 
-License is MIT.
+MIT License
+
+[![Build Status](https://travis-ci.org/slashdotdash/eventstore.svg?branch=master)](https://travis-ci.org/slashdotdash/eventstore)
 
 ## Getting started
 
