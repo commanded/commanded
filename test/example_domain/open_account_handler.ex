@@ -2,7 +2,7 @@ defmodule Commanded.ExampleDomain.OpenAccountHandler do
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
-  @behaviour Commanded.CommandHandler
+  @behaviour Commanded.Commands.Handler
 
   def aggregate, do: BankAccount
 

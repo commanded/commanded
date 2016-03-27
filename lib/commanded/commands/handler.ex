@@ -1,4 +1,4 @@
-defmodule Commanded.CommandHandler do
+defmodule Commanded.Commands.Handler do
   @doc """
   Define which aggregate applies for this command
   """

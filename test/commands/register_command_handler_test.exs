@@ -1,25 +1,25 @@
 defmodule Commanded.Commands.RegisterCommandHandlerTest do
   use ExUnit.Case
-  doctest Commanded.CommandRegistry
+  doctest Commanded.Commands.Registry
 
-  alias Commanded.CommandRegistry
+  alias Commanded.Commands.Registry
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
   setup do
-    {:ok, command_registry} = CommandRegistry.start_link
+    {:ok, command_registry} = Registry.start_link
     :ok
   end
 
   test "register command handler" do
-    :ok = CommandRegistry.register(OpenAccount, OpenAccountHandler)
+    :ok = Registry.register(OpenAccount, OpenAccountHandler)
 
-    {:ok, handler} = CommandRegistry.handler(OpenAccount)
+    {:ok, handler} = Registry.handler(OpenAccount)
     assert handler == OpenAccountHandler
   end
 
   test "don't allow duplicate registrations for a command" do
-    :ok = CommandRegistry.register(OpenAccount, OpenAccountHandler)
-    {:error, :already_registered} = CommandRegistry.register(OpenAccount, OpenAccountHandler)
+    :ok = Registry.register(OpenAccount, OpenAccountHandler)
+    {:error, :already_registered} = Registry.register(OpenAccount, OpenAccountHandler)
   end
 end

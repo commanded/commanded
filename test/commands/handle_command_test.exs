@@ -1,6 +1,6 @@
 defmodule Commanded.Commands.HandleCommandTest do
   use ExUnit.Case
-  doctest Commanded.CommandHandler
+  doctest Commanded.Commands.Handler
 
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
