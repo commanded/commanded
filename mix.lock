@@ -3,7 +3,12 @@
   "decimal": {:hex, :decimal, "1.1.1"},
   "eventsourced": {:git, "https://github.com/slashdotdash/eventsourced.git", "3fd1349b541894bcc0f75135788408a2063d4404", []},
   "eventstore": {:git, "https://github.com/slashdotdash/eventstore.git", "b97e015379fc8dddddfe2dbc7dccabe5d1c6bb21", []},
+  "ex_doc": {:hex, :ex_doc, "0.11.4"},
+  "fs": {:hex, :fs, "0.9.2"},
   "fsm": {:hex, :fsm, "0.2.0"},
+  "hoedown": {:git, "https://github.com/hoedown/hoedown.git", "980b9c549b4348d50b683ecee6abee470b98acda", []},
+  "markdown": {:git, "https://github.com/devinus/markdown.git", "9b3beaf69a9b9c6450526c41d591a94d2eedf1e8", []},
+  "mix_test_watch": {:hex, :mix_test_watch, "0.2.6"},
   "poolboy": {:hex, :poolboy, "1.5.1"},
   "postgrex": {:hex, :postgrex, "0.11.1"},
   "uuid": {:hex, :uuid, "1.1.3"}}
