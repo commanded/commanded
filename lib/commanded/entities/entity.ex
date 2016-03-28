@@ -1,4 +1,10 @@
 defmodule Commanded.Entities.Entity do
+  @moduledoc """
+  Entity process to provide access to a single event sourced entity.
+
+  Allows execution of commands against and entity and handles persistence of events to the event store.
+  """
+
   use GenServer
 
   def start_link(entity_module, id) do
