@@ -18,6 +18,13 @@ defmodule Commanded.Commands.RegisterCommandHandlerTest do
     assert handler == OpenAccountHandler
   end
 
+  test "lookup command handler by command" do
+    :ok = Registry.register(OpenAccount, OpenAccountHandler)
+
+    {:ok, handler} = Registry.handler(%OpenAccount{})
+    assert handler == OpenAccountHandler
+  end
+
   test "don't allow duplicate registrations for a command" do
     :ok = Registry.register(OpenAccount, OpenAccountHandler)
     {:error, :already_registered} = Registry.register(OpenAccount, OpenAccountHandler)

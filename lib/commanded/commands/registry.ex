@@ -15,8 +15,13 @@ defmodule Commanded.Commands.Registry do
     GenServer.call(__MODULE__, {:register, command, handler})
   end
 
+  @spec handler(map) :: Commanded.Commands.Handler
+  def handler(command) when is_map(command) do
+    GenServer.call(__MODULE__, {:handler, command.__struct__})
+  end
+
   @spec handler(atom) :: Commanded.Commands.Handler
-  def handler(command) do
+  def handler(command) when is_atom(command) do
     GenServer.call(__MODULE__, {:handler, command})
   end
 
