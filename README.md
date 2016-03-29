@@ -4,6 +4,10 @@ Command handling middleware for CQRS applications in Elixir.
 
 Designed to be used with [eventstore](https://github.com/slashdotdash/eventstore) and [eventsourced](https://github.com/slashdotdash/eventsourced) libraries as components that comprise a CQRS framework for Elixir.
 
+MIT License
+
+[![Build Status](https://travis-ci.org/slashdotdash/commanded.svg?branch=master)](https://travis-ci.org/slashdotdash/commanded)
+
 ## Getting started
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
