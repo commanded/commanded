@@ -18,7 +18,8 @@ defmodule Commanded.Mixfile do
   def application do
     [
       applications: [
-        :logger
+        :logger,
+        :eventstore
       ]
     ]
   end
@@ -29,7 +30,8 @@ defmodule Commanded.Mixfile do
       {:eventsourced, github: "slashdotdash/eventsourced"},
       {:ex_doc, "~> 0.11.4", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
-      {:mix_test_watch, "~> 0.2", only: :dev}
+      {:mix_test_watch, "~> 0.2", only: :dev},
+      {:poison, "~> 2.1"}
     ]
   end
 

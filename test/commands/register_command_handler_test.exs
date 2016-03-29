@@ -3,11 +3,11 @@ defmodule Commanded.Commands.RegisterCommandHandlerTest do
   doctest Commanded.Commands.Registry
 
   alias Commanded.Commands.Registry
-  alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler}
+  alias Commanded.ExampleDomain.OpenAccountHandler
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
   setup do
-    {:ok, command_registry} = Registry.start_link
+    {:ok, _} = Registry.start_link
     :ok
   end
 

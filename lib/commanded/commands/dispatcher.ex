@@ -5,9 +5,9 @@ defmodule Commanded.Commands.Dispatcher do
   alias Commanded.Entities
 
   @spec dispatch(struct) :: :ok
-  def dispatch(%{source_uuid: source_uuid} = command) do
+  def dispatch(%{entity_id: entity_id} = command) do
     {:ok, handler} = Commands.Registry.handler(command)
-    {:ok, entity} = Entities.Registry.open_entity(handler.aggregate, source_uuid)
+    {:ok, entity} = Entities.Registry.open_entity(handler.entity, entity_id)
 
     Entities.Entity.execute(entity, command, handler)
 

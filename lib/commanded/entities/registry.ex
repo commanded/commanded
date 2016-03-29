@@ -6,6 +6,7 @@ defmodule Commanded.Entities.Registry do
   use GenServer
   require Logger
 
+  alias Commanded.Entities
   alias Commanded.Entities.{Entity,Registry,Supervisor}
 
   defstruct entities: %{}, supervisor: nil

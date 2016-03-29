@@ -9,8 +9,8 @@ defmodule Commanded.Entities.Supervisor do
     Supervisor.start_link(__MODULE__, nil)
   end
 
-  def start_entity(supervisor, entity_module, entity_uuid) do
-    Supervisor.start_child(supervisor, [entity_module, entity_uuid])
+  def start_entity(supervisor, entity_module, entity_id) do
+    Supervisor.start_child(supervisor, [entity_module, entity_id])
   end
 
   def init(_) do

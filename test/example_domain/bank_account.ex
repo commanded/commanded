@@ -3,7 +3,7 @@ defmodule Commanded.ExampleDomain.BankAccount do
 
   defmodule Commands do
     defmodule OpenAccount do
-      defstruct account_number: nil, initial_balance: nil
+      defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
     end
   end
 

@@ -1,11 +1,11 @@
 defmodule Commanded.Commands.Handler do
   @doc """
-  Define which aggregate applies for this command
+  Define which entity the command applies to
   """
-  @callback aggregate() :: atom
+  @callback entity() :: atom
 
   @doc """
-  Handle the given command, returning state struct containing the aggregate's uuid, all applied events and expected version
+  Handle the given command, returning state struct containing the entity's id, all applied events and current version
   """
   @callback handle(state :: EventSourced.Entity, command :: %{}) :: EventSourced.Entity
 end
