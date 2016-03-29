@@ -26,15 +26,21 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
 ## Sample usage
 
+Start the top level Supervisor process.
+
+```elixir
+{:ok, _} = Commanded.Supervisor.start_link
+```
+
 ### Command handlers
 
-Implement the `Commanded.Commands.Handler` behaviour in each of your command handler modules.
+Implement the `Commanded.Commands.Handler` behaviour in your command handling module.
 
 ```elixir
 defmodule OpenAccountHandler do
   @behaviour Commanded.Commands.Handler
 
-  def aggregate, do: BankAccount
+  def entity, do: BankAccount
 
   def handle(state = %BankAccount{}, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
     state
@@ -43,10 +49,14 @@ defmodule OpenAccountHandler do
 end
 ```
 
-Register the handler with the command registry.
+Register the command handler.
 
 ```elixir
-{:ok, command_registry} = Commanded.Commands.Registry.start_link
+:ok = Commanded.register(OpenAccount, OpenAccountHandler)
+```
 
-:ok = Registry.register(OpenAccount, OpenAccountHandler)
+Dispatch a command.
+
+```elixir
+:ok = Commanded.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```
