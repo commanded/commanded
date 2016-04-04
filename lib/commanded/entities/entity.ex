@@ -8,12 +8,14 @@ defmodule Commanded.Entities.Entity do
   use GenServer
 
   def start_link(entity_module, entity_id) do
-    GenServer.start_link(__MODULE__, {entity_module, entity_module.new(entity_id)})
+    GenServer.start_link(__MODULE__, {entity_module, entity_id})
   end
 
-  def init({entity_module, entity_state}) do
-    GenServer.cast(self, {:load_events, entity_module})
-    {:ok, entity_state}
+  def init({entity_module, entity_id}) do
+    GenServer.cast(self, {:load_events, entity_module, entity_id})
+
+    # initial state populated by loading events from event store
+    {:ok, nil}
   end
 
   @doc """
@@ -24,15 +26,23 @@ defmodule Commanded.Entities.Entity do
   end
 
   @doc """
+  Access the entity's state
+  """
+  def state(server) do
+    GenServer.call(server, {:state})
+  end
+
+  @doc """
   Load any existing events for the entity from storage and repopulate the state using those events
   """
-  def handle_cast({:load_events, entity_module}, %{id: id} = state) do
-    # TODO: deserialize each event.payload
-
-    state = case EventStore.read_stream_forward(id) do
-      {:ok, events} -> entity_module.load(id, events)
-      {:error, :stream_not_found} -> state
+  def handle_cast({:load_events, entity_module, entity_id}, _) do
+    state = case EventStore.read_stream_forward(entity_id) do
+      {:ok, events} -> entity_module.load(entity_id, map_from_recorded_event(events))
+      {:error, :stream_not_found} -> entity_module.new(entity_id)
     end
+
+    # events list should only include uncommitted events
+    state = %{state | events: []}
 
     {:noreply, state}
   end
@@ -51,14 +61,34 @@ defmodule Commanded.Entities.Entity do
     {:reply, :ok, state}
   end
 
+  def handle_call({:state}, _from, state) do
+    {:reply, state, state}
+  end
+
   defp persist_events(%{id: id, events: events} = state, expected_version) do
-    # TODO: serialize each event.payload
     event_data = map_to_event_data(events)
 
     case EventStore.append_to_stream(id, expected_version, event_data) do
       {:ok, _events} -> %{state | events: []}
       {:error, :wrong_expected_version} -> state # TODO: retry
     end
+  end
+
+  defp map_from_recorded_event(recorded_events) when is_list(recorded_events) do
+    Enum.map(recorded_events, &map_from_recorded_event/1)
+  end
+
+  defp map_from_recorded_event(recorded_event) do
+    type =
+      recorded_event.event_type
+      |> String.to_atom
+      |> struct
+
+    deserialize_payload(recorded_event.payload, type)
+  end
+
+  defp deserialize_payload(payload, type) do
+    Poison.decode!(payload, as: type)
   end
 
   defp map_to_event_data(events) when is_list(events) do
