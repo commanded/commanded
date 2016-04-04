@@ -17,4 +17,12 @@ defmodule Commanded.Commands.DispatchCommandTest do
     :ok = Commands.Registry.register(OpenAccount, OpenAccountHandler)
     :ok = Dispatcher.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
   end
+
+  defmodule UnregisteredCommand do
+    defstruct entity_id: UUID.uuid4
+  end
+
+  test "should fail to dispatch unregistered command" do
+    {:error, :unregistered_command} = Dispatcher.dispatch(%UnregisteredCommand{})
+  end
 end

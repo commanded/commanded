@@ -38,7 +38,12 @@ defmodule Commanded.Commands.Registry do
   end
 
   def handle_call({:handler, command}, _from, %Registry{handlers: handlers} = state) do
-    reply = {:ok, Map.get(handlers, command)}
+    reply = case Map.get(handlers, command) do
+      nil -> Logger.warn("attempted to get handler for command `#{inspect command}` but none registered")
+        {:error, :unregistered_command}
+      handler -> {:ok, handler}
+    end
+
     {:reply, reply, state}
   end
 end

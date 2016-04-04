@@ -6,11 +6,8 @@ defmodule Commanded.Commands.Dispatcher do
 
   @spec dispatch(struct) :: :ok
   def dispatch(%{entity_id: entity_id} = command) do
-    {:ok, handler} = Commands.Registry.handler(command)
-    {:ok, entity} = Entities.Registry.open_entity(handler.entity, entity_id)
-
-    Entities.Entity.execute(entity, command, handler)
-
-    :ok
+    with {:ok, handler} <- Commands.Registry.handler(command),
+         {:ok, entity} <- Entities.Registry.open_entity(handler.entity, entity_id),
+      do: Entities.Entity.execute(entity, command, handler)
   end
 end
