@@ -41,12 +41,8 @@ Start the top level Supervisor process.
 Create a module per command, defining the fields with `defstruct`.
 
 ```elixir
-defmodule Commanded.ExampleDomain.BankAccount do
-  defmodule Commands do
-    defmodule OpenAccount do
-      defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
-    end
-  end
+defmodule OpenAccount do
+  defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
 end
 ```
 
