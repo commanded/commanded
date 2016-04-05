@@ -1,9 +1,13 @@
 defmodule Commanded.ExampleDomain.BankAccount do
-  use EventSourced.Entity, fields: [account_number: nil, balance: nil]
+  use EventSourced.Entity, fields: [account_number: nil, balance: 0]
 
   defmodule Commands do
     defmodule OpenAccount do
       defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
+    end
+
+    defmodule DepositMoney do
+      defstruct entity_id: nil, amount: nil
     end
   end
 
@@ -29,18 +33,18 @@ defmodule Commanded.ExampleDomain.BankAccount do
     |> apply(%BankAccountOpened{account_number: account_number, initial_balance: initial_balance})
   end
 
-  def deposit(%BankAccount{} = account, amount) do
+  def deposit(%BankAccount{} = account, amount) when amount > 0 do
     balance = account.state.balance + amount
 
     account
-    |> apply(%MoneyDeposited{ amount: amount, balance: balance })
+    |> apply(%MoneyDeposited{amount: amount, balance: balance})
   end
 
-  def withdraw(%BankAccount{} = account, amount) do
+  def withdraw(%BankAccount{} = account, amount) when amount > 0 do
     balance = account.state.balance - amount
 
     account
-    |> apply(%MoneyWithdrawn{ amount: amount, balance: balance })
+    |> apply(%MoneyWithdrawn{amount: amount, balance: balance})
   end
 
   def apply(%BankAccount{} = account, %BankAccountOpened{} = account_opened) do

@@ -37,7 +37,8 @@ defmodule Commanded.Entities.Registry do
   end
 
   def handle_info({:DOWN, ref, :process, pid, reason}, %Registry{entities: entities} = state) do
-    Logger.warn "entity process down due to: #{reason}"
+    Logger.warn(fn -> "entity process down due to: #{reason}" end)
+
     {:noreply, %Registry{state | entities: remove_entity(entities, pid)}}
   end
 

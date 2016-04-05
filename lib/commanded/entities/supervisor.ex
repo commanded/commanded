@@ -4,12 +4,15 @@ defmodule Commanded.Entities.Supervisor do
   """
 
   use Supervisor
+  require Logger
 
   def start_link do
     Supervisor.start_link(__MODULE__, nil)
   end
 
   def start_entity(supervisor, entity_module, entity_id) do
+    Logger.debug(fn -> "starting entity process for `#{entity_module}` with id #{entity_id}" end)
+    
     Supervisor.start_child(supervisor, [entity_module, entity_id])
   end
 
