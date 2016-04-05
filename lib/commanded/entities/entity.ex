@@ -14,9 +14,9 @@ defmodule Commanded.Entities.Entity do
   end
 
   def init({entity_module, entity_id}) do
+    # initial state is populated by loading events from event store
     GenServer.cast(self, {:load_events, entity_module, entity_id})
 
-    # initial state populated by loading events from event store
     {:ok, nil}
   end
 

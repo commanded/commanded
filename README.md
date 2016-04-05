@@ -38,7 +38,19 @@ Start the top level Supervisor process.
 
 ### Command handlers
 
-Implement the `Commanded.Commands.Handler` behaviour in your command handling module.
+Create a module per command, defining the fields with `defstruct`.
+
+```elixir
+defmodule Commanded.ExampleDomain.BankAccount do
+  defmodule Commands do
+    defmodule OpenAccount do
+      defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
+    end
+  end
+end
+```
+
+Implement the `Commanded.Commands.Handler` behaviour in each of your command handling modules.
 
 ```elixir
 defmodule OpenAccountHandler do
