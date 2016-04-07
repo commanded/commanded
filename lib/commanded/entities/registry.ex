@@ -7,7 +7,7 @@ defmodule Commanded.Entities.Registry do
   require Logger
 
   alias Commanded.Entities
-  alias Commanded.Entities.{Entity,Registry,Supervisor}
+  alias Commanded.Entities.Registry
 
   defstruct entities: %{}, supervisor: nil
 
@@ -36,7 +36,7 @@ defmodule Commanded.Entities.Registry do
     {:reply, {:ok, entity}, %Registry{state | entities: Map.put(entities, entity_id, entity)}}
   end
 
-  def handle_info({:DOWN, ref, :process, pid, reason}, %Registry{entities: entities} = state) do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %Registry{entities: entities} = state) do
     Logger.warn(fn -> "entity process down due to: #{reason}" end)
 
     {:noreply, %Registry{state | entities: remove_entity(entities, pid)}}

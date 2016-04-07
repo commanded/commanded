@@ -46,7 +46,7 @@ defmodule Commanded.Entities.Entity do
   @doc """
   Execute the given command, using the provided handler, against the current entity state
   """
-  def handle_call({:execute_command, command, handler}, _from, %{id: id, version: version} = state) do
+  def handle_call({:execute_command, command, handler}, _from, state) do
     state = execute_command(command, handler, state, @command_retries)
 
     {:reply, :ok, state}
@@ -64,7 +64,7 @@ defmodule Commanded.Entities.Entity do
     end
 
     # events list should only include uncommitted events
-    state = %{state | events: []}
+    %{state | events: []}
   end
 
   defp execute_command(command, handler, %{id: id, version: version} = state, retries) when retries > 0 do
@@ -85,7 +85,7 @@ defmodule Commanded.Entities.Entity do
     end
   end
 
-  defp persist_events(%{id: id, events: events} = state, expected_version) do
+  defp persist_events(%{id: id, events: events}, expected_version) do
     event_data = map_to_event_data(events)
 
     EventStore.append_to_stream(id, expected_version, event_data)
@@ -125,10 +125,5 @@ defmodule Commanded.Entities.Entity do
 
   defp serialize_event(event) do
     Poison.encode!(event)
-  end
-
-  defp raise_error(error_message) do
-    Logger.error(error_message)
-    exit error_message
   end
 end
