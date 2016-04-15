@@ -3,6 +3,7 @@ defmodule Commanded.Event.Handler do
   require Logger
 
   alias Commanded.Event.Handler
+  alias Commanded.Event.Serializer
 
   defstruct handler_name: nil, handler_module: nil, last_seen_event_id: nil
 
@@ -23,16 +24,20 @@ defmodule Commanded.Event.Handler do
     {:noreply, state}
   end
 
-  def handle_info({:events, events} = message, state) do
+  def handle_info({:events, events}, state) do
+    Logger.debug("event handler received events #{inspect events}")
+
     events
     |> Enum.each(fn event -> handle_event(event, state) end)
 
-    state = %Handler{state | last_seen_event_id: tl(events).event_id}
+    state = %Handler{state | last_seen_event_id: List.last(events).event_id}
 
     {:noreply, state}
   end
 
-  defp handle_event(%EventStore.RecordedEvent{event_id: event_id} = event, %Handler{handler_module: handler_module, last_seen_event_id: last_seen_event_id} = state) do
-    handler_module.handle(event)
+  defp handle_event(%EventStore.RecordedEvent{} = event, %Handler{handler_module: handler_module}) do
+    event
+    |> Serializer.map_from_recorded_event
+    |> handler_module.handle
   end
 end

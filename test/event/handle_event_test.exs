@@ -1,17 +1,35 @@
 defmodule Commanded.Event.HandleEventTest do
-  use ExUnit.Case
-  doctest Commanded.Event.Handler
+	use ExUnit.Case
+	doctest Commanded.Event.Handler
 
-  alias Commanded.ExampleDomain.{BankAccount,AccountBalanceHandler}
-  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
+  alias Commanded.Entities.{Entity,Registry}
+	alias Commanded.ExampleDomain.{BankAccount,AccountBalanceHandler}
+	alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
+	alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
+	alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler}
 
-  setup do
-    EventStore.Storage.reset!
-    :ok
-  end
+	setup do
+		EventStore.Storage.reset!
+		Commanded.Supervisor.start_link
+    {:ok, _} = AccountBalanceHandler.start_link
+		:ok
+	end
 
-  test "event handler is notified of events" do
-    {:ok, handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+	@tag :wip
+	test "event handler is notified of events" do
+		{:ok, handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
 
-  end
+		entity_uuid = UUID.uuid4
+
+		{:ok, entity} = Registry.open_entity(BankAccount, entity_uuid)
+
+		:ok = Entity.execute(entity, %OpenAccount{account_number: "ACC123", initial_balance: 1_000}, OpenAccountHandler)
+		:ok = Entity.execute(entity, %DepositMoney{amount: 50}, DepositMoneyHandler)
+
+    :timer.sleep(1_000)
+
+		assert AccountBalanceHandler.current_balance == 1_050
+	end
+
+	#test "should ignore already seen events"
 end

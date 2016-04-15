@@ -7,6 +7,8 @@ defmodule Commanded.Entities.Entity do
   use GenServer
   require Logger
 
+  alias Commanded.Event.Serializer
+
   @command_retries 3
 
   def start_link(entity_module, entity_id) do
@@ -59,7 +61,7 @@ defmodule Commanded.Entities.Entity do
   # load events from the event store and create the entity
   defp load_events(entity_module, entity_id) do
     state = case EventStore.read_stream_forward(entity_id) do
-      {:ok, events} -> entity_module.load(entity_id, map_from_recorded_event(events))
+      {:ok, events} -> entity_module.load(entity_id, map_from_recorded_events(events))
       {:error, :stream_not_found} -> entity_module.new(entity_id)
     end
 
@@ -86,44 +88,13 @@ defmodule Commanded.Entities.Entity do
   end
 
   defp persist_events(%{id: id, events: events}, expected_version) do
-    event_data = map_to_event_data(events)
+    correlation_id = UUID.uuid4
+    event_data = Serializer.map_to_event_data(events, correlation_id)
 
     EventStore.append_to_stream(id, expected_version, event_data)
   end
 
-  defp map_from_recorded_event(recorded_events) when is_list(recorded_events) do
-    Enum.map(recorded_events, &map_from_recorded_event/1)
-  end
-
-  defp map_from_recorded_event(recorded_event) do
-    type =
-      recorded_event.event_type
-      |> String.to_atom
-      |> struct
-
-    deserialize_payload(recorded_event.payload, type)
-  end
-
-  defp deserialize_payload(payload, type) do
-    Poison.decode!(payload, as: type)
-  end
-
-  defp map_to_event_data(events) when is_list(events) do
-    correlation_id = UUID.uuid4
-
-    Enum.map(events, &map_to_event_data(&1, correlation_id))
-  end
-
-  defp map_to_event_data(event, correlation_id) do
-    %EventStore.EventData{
-      correlation_id: correlation_id,
-      event_type: Atom.to_string(event.__struct__),
-      headers: nil,
-      payload: serialize_event(event)
-    }
-  end
-
-  defp serialize_event(event) do
-    Poison.encode!(event)
+  defp map_from_recorded_events(recorded_events) when is_list(recorded_events) do
+    Serializer.map_from_recorded_events(recorded_events)
   end
 end

@@ -7,6 +7,10 @@ defmodule Commanded.Commands.DispatchCommandTest do
   alias Commanded.ExampleDomain.OpenAccountHandler
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
+  defmodule UnregisteredCommand do
+    defstruct entity_id: UUID.uuid4
+  end
+
   setup do
     EventStore.Storage.reset!
     Commanded.Supervisor.start_link
@@ -16,10 +20,6 @@ defmodule Commanded.Commands.DispatchCommandTest do
   test "dispatch command to registered handler" do
     :ok = Commands.Registry.register(OpenAccount, OpenAccountHandler)
     :ok = Dispatcher.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
-  end
-
-  defmodule UnregisteredCommand do
-    defstruct entity_id: UUID.uuid4
   end
 
   test "should fail to dispatch unregistered command" do
