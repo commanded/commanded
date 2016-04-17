@@ -72,3 +72,40 @@ Dispatch a command.
 ```elixir
 :ok = Commanded.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```
+
+### Event handlers
+
+Create an event handler module which implements `handle/1` for each event you are interested in.
+
+Add a catch-all `handle/1` function for all other events to ignore.
+
+```elixir
+defmodule AccountBalanceHandler do
+  def start_link do
+    Agent.start_link(fn -> 0 end, name: __MODULE__)
+  end
+
+  def handle(%BankAccountOpened{initial_balance: initial_balance}) do
+    Agent.update(__MODULE__, fn _ -> initial_balance end)
+  end
+
+  def handle(%MoneyDeposited{balance: balance}) do
+    Agent.update(__MODULE__, fn _ -> balance end)
+  end
+
+  def handle(_) do
+    # ignore all other events
+  end
+
+  def current_balance do
+    Agent.get(__MODULE__, fn balance -> balance end)
+  end
+end
+```
+
+Register the event handler with a given name. The name is used when subscribing to the event store to record the last seen event.
+
+```elixir
+{:ok, _} = AccountBalanceHandler.start_link
+{:ok, _} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+```
