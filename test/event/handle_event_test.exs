@@ -7,6 +7,7 @@ defmodule Commanded.Event.HandleEventTest do
 	alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
 	alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
 	alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler}
+  alias Commanded.Helpers.Wait
 
 	setup do
 		EventStore.Storage.reset!
@@ -26,10 +27,11 @@ defmodule Commanded.Event.HandleEventTest do
 		:ok = Entity.execute(entity, %OpenAccount{account_number: "ACC123", initial_balance: 1_000}, OpenAccountHandler)
 		:ok = Entity.execute(entity, %DepositMoney{amount: 50}, DepositMoneyHandler)
 
-    :timer.sleep(1_000)
-
-		assert AccountBalanceHandler.current_balance == 1_050
+    Wait.until fn ->
+      assert AccountBalanceHandler.current_balance == 1_050
+    end
 	end
 
 	#test "should ignore already seen events"
+  #test "should ignore uninterested events"
 end

@@ -10,8 +10,8 @@ defmodule Commanded.ExampleDomain.AccountBalanceHandler do
     Agent.update(__MODULE__, fn _ -> initial_balance end)
   end
 
-  def handle(%MoneyDeposited{amount: amount}) do
-    Agent.update(__MODULE__, fn balance -> balance + amount end)
+  def handle(%MoneyDeposited{balance: balance}) do
+    Agent.update(__MODULE__, fn _ -> balance end)
   end
 
   def current_balance do
