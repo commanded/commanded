@@ -2,7 +2,7 @@
 
 Command handling middleware for CQRS applications in Elixir.
 
-Use with [eventstore](https://github.com/slashdotdash/eventstore) and [eventsourced](https://github.com/slashdotdash/eventsourced) as components that comprise a CQRS framework for Elixir.
+Use with [eventstore](https://github.com/slashdotdash/eventstore) and [eventsourced](https://github.com/slashdotdash/eventsourced) as components that comprise a [CQRS](http://cqrs.nu/Faq) framework for Elixir.
 
 MIT License
 
