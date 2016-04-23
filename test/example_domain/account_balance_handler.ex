@@ -13,6 +13,10 @@ defmodule Commanded.ExampleDomain.AccountBalanceHandler do
     Agent.update(__MODULE__, fn _ -> balance end)
   end
 
+  def handle(_event) do
+    # ignore any other events
+  end
+
   def current_balance do
     Agent.get(__MODULE__, fn balance -> balance end)
   end
