@@ -1,5 +1,4 @@
 defmodule Commanded.ExampleDomain.AccountBalanceHandler do
-  alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
 
   def start_link do
