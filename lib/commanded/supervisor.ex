@@ -8,7 +8,7 @@ defmodule Commanded.Supervisor do
   def init(_) do
     children = [
       worker(Commanded.Commands.Registry, []),
-      worker(Commanded.Entities.Registry, [])
+      worker(Commanded.Aggregates.Registry, [])
     ]
 
     supervise(children, strategy: :one_for_one)

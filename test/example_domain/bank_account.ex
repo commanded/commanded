@@ -1,13 +1,15 @@
 defmodule Commanded.ExampleDomain.BankAccount do
   use EventSourced.Entity, fields: [account_number: nil, balance: 0]
 
+  alias Commanded.ExampleDomain.BankAccount
+
   defmodule Commands do
     defmodule OpenAccount do
-      defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
+      defstruct aggregate: BankAccount, aggregate_uuid: UUID.uuid4, account_number: nil, initial_balance: nil
     end
 
     defmodule DepositMoney do
-      defstruct entity_id: nil, amount: nil
+      defstruct aggregate: BankAccount, aggregate_uuid: nil, amount: nil
     end
   end
 
@@ -25,7 +27,6 @@ defmodule Commanded.ExampleDomain.BankAccount do
     end
   end
 
-  alias Commanded.ExampleDomain.BankAccount
   alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn}
 
   def open_account(%BankAccount{} = account, account_number, initial_balance) when initial_balance > 0 do

@@ -8,7 +8,7 @@ defmodule Commanded.Commands.DispatchCommandTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
   defmodule UnregisteredCommand do
-    defstruct entity_id: UUID.uuid4
+    defstruct aggregate_uuid: UUID.uuid4
   end
 
   setup do
@@ -25,4 +25,7 @@ defmodule Commanded.Commands.DispatchCommandTest do
   test "should fail to dispatch unregistered command" do
     {:error, :unregistered_command} = Dispatcher.dispatch(%UnregisteredCommand{})
   end
+
+  # test "should fail to dispatch command without an `aggregate_uuid` field"
+  # test "should fail to dispatch command with nil `aggregate_uuid`"
 end

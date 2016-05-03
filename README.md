@@ -38,11 +38,15 @@ Start the top level Supervisor process.
 
 ### Command handlers
 
-Create a module per command, defining the fields with `defstruct`.
+Create a module per command, defining the fields with `defstruct`. Fields must include `aggregate` to specify the target aggregate module and `aggregate_uuid` to identity the aggregate instance.
 
 ```elixir
 defmodule OpenAccount do
-  defstruct entity_id: UUID.uuid4, account_number: nil, initial_balance: nil
+  defstruct [:aggregate, :aggregate_uuid, :account_number, :initial_balance]
+
+  def new do
+    %OpenAccount{aggregate: BankAccount, aggregate_uuid: UUID.uuid4}
+  end
 end
 ```
 
@@ -51,8 +55,6 @@ Implement the `Commanded.Commands.Handler` behaviour in each of your command han
 ```elixir
 defmodule OpenAccountHandler do
   @behaviour Commanded.Commands.Handler
-
-  def entity, do: BankAccount
 
   def handle(%BankAccount{} = state, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
     state

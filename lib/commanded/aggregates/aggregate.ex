@@ -1,8 +1,8 @@
-defmodule Commanded.Entities.Entity do
+defmodule Commanded.Aggregates.Aggregate do
   @moduledoc """
-  Entity process to provide access to a single event sourced entity.
+  Process to provide access to a single event sourced aggregate root.
 
-  Allows execution of commands against an entity and handles persistence of events to the event store.
+  Allows execution of commands against an aggregate and handles persistence of events to the event store.
   """
   use GenServer
   require Logger
@@ -11,42 +11,42 @@ defmodule Commanded.Entities.Entity do
 
   @command_retries 3
 
-  def start_link(entity_module, entity_id) do
-    GenServer.start_link(__MODULE__, {entity_module, entity_id})
+  def start_link(aggregate_module, aggregate_id) do
+    GenServer.start_link(__MODULE__, {aggregate_module, aggregate_id})
   end
 
-  def init({entity_module, entity_id}) do
+  def init({aggregate_module, aggregate_id}) do
     # initial state is populated by loading events from event store
-    GenServer.cast(self, {:load_events, entity_module, entity_id})
+    GenServer.cast(self, {:load_events, aggregate_module, aggregate_id})
 
     {:ok, nil}
   end
 
   @doc """
-  Execute the given command against the entity
+  Execute the given command against the aggregate
   """
   def execute(server, command, handler) do
     GenServer.call(server, {:execute_command, command, handler})
   end
 
   @doc """
-  Access the entity's state
+  Access the aggregate's state
   """
   def state(server) do
     GenServer.call(server, {:state})
   end
 
   @doc """
-  Load any existing events for the entity from storage and repopulate the state using those events
+  Load any existing events for the aggregate from storage and repopulate the state using those events
   """
-  def handle_cast({:load_events, entity_module, entity_id}, nil) do
-    state = load_events(entity_module, entity_id)
+  def handle_cast({:load_events, aggregate_module, aggregate_id}, nil) do
+    state = load_events(aggregate_module, aggregate_id)
 
     {:noreply, state}
   end
 
   @doc """
-  Execute the given command, using the provided handler, against the current entity state
+  Execute the given command, using the provided handler, against the current aggregate state
   """
   def handle_call({:execute_command, command, handler}, _from, state) do
     state = execute_command(command, handler, state, @command_retries)
@@ -58,11 +58,11 @@ defmodule Commanded.Entities.Entity do
     {:reply, state, state}
   end
 
-  # load events from the event store and create the entity
-  defp load_events(entity_module, entity_id) do
-    state = case EventStore.read_stream_forward(entity_id) do
-      {:ok, events} -> entity_module.load(entity_id, map_from_recorded_events(events))
-      {:error, :stream_not_found} -> entity_module.new(entity_id)
+  # load events from the event store and create the aggregate
+  defp load_events(aggregate_module, aggregate_id) do
+    state = case EventStore.read_stream_forward(aggregate_id) do
+      {:ok, events} -> aggregate_module.load(aggregate_id, map_from_recorded_events(events))
+      {:error, :stream_not_found} -> aggregate_module.new(aggregate_id)
     end
 
     # events list should only include uncommitted events
@@ -77,9 +77,9 @@ defmodule Commanded.Entities.Entity do
     case persist_events(state, expected_version) do
       {:ok, _events} -> %{state | events: []}
       {:error, :wrong_expected_version} ->
-        Logger.error("failed to persist events for entity #{id} due to wrong expected version")
+        Logger.error("failed to persist events for aggregate #{id} due to wrong expected version")
 
-        # reload entity's events
+        # reload aggregate's events
         state = load_events(state.__struct__, id)
 
         # retry command

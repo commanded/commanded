@@ -4,11 +4,8 @@ defmodule Commanded.Event.HandleEventTest do
 
   alias Commanded.Event.AppendingEventHandler
   alias Commanded.Helpers.EventFactory
-  alias Commanded.Entities.{Entity,Registry}
-	alias Commanded.ExampleDomain.{BankAccount,AccountBalanceHandler}
-	alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
+  alias Commanded.ExampleDomain.AccountBalanceHandler
 	alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
-	alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler}
   alias Commanded.Helpers.Wait
 
 	setup do
