@@ -11,6 +11,10 @@ defmodule Commanded.ExampleDomain.BankAccount do
     defmodule DepositMoney do
       defstruct aggregate: BankAccount, aggregate_uuid: nil, amount: nil
     end
+
+    defmodule WithdrawMoney do
+      defstruct aggregate: BankAccount, aggregate_uuid: nil, amount: nil
+    end
   end
 
   defmodule Events do
