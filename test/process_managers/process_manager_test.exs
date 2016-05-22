@@ -2,7 +2,7 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
   use ExUnit.Case
   doctest Commanded.ProcessManagers.ProcessManager
 
-  alias Commanded.ProcessManagers.{ProcessManager,Registry}
+  alias Commanded.ProcessManagers.ProcessManager
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.{MoneyTransfer,TransferMoneyHandler}
@@ -21,7 +21,7 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
     account1_uuid = UUID.uuid4
     account2_uuid = UUID.uuid4
 
-    :ok = ProcessManagers.Registry.register(TransferMoneyProcessManager)
+    {:ok, _} = ProcessManager.start_link("transfer_money_process_manager", TransferMoneyProcessRouter)
 
     # create two bank accounts
     :ok = Dispatcher.dispatch(%OpenAccount{aggregate_uuid: account1_uuid, account_number: "ACC123", initial_balance: 1_000})
