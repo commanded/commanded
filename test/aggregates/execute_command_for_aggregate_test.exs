@@ -28,8 +28,8 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     assert bank_account.state.account_number == "ACC123"
     assert bank_account.state.balance == 1_000
-    assert length(bank_account.events) == 0
-    assert bank_account.id == aggregate_uuid
+    assert length(bank_account.pending_events) == 0
+    assert bank_account.uuid == aggregate_uuid
     assert bank_account.version == 1
   end
 

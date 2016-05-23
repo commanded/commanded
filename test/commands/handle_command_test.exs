@@ -11,7 +11,7 @@ defmodule Commanded.Commands.HandleCommandTest do
       |> OpenAccountHandler.handle(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 
     assert bank_account.state.account_number == "ACC123"
-    assert length(bank_account.events) == 1
+    assert length(bank_account.pending_events) == 1
     assert bank_account.version == 1
   end
 end
