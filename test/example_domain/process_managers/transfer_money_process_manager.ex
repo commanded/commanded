@@ -6,7 +6,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
   alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney,WithdrawMoney}
 
-  def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:start, transfer_uuid}
+  def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}), do: {:start, transfer_uuid}
   def interested?(%MoneyWithdrawn{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(_event), do: false
@@ -28,7 +28,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
     }
   end
 
-  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyWithdrawn{} = money_withdrawn) do
+  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
     transfer =
       transfer
       |> dispatch(%DepositMoney{aggregate_uuid: transfer.state.target_account, amount: transfer.state.amount})
@@ -38,7 +38,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
     }
   end
 
-  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = money_deposited) do
+  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = _money_deposited) do
     %TransferMoneyProcessManager{transfer |
       status: :transfer_complete
     }

@@ -16,7 +16,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   end
 
   def init({process_manager_module, process_uuid}) do
-    state = %ProcessManager{process_manager_module: process_manager_module, process_uuid: process_uuid, process_state: struct(process_manager_module)}
+    state = %ProcessManager{
+      process_manager_module: process_manager_module,
+      process_uuid: process_uuid,
+      process_state: process_manager_module.new(process_uuid)
+    }
 
     {:ok, state}
   end
@@ -24,7 +28,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Handle the given event by calling the process manager module
   """
-  def handle(server, event) do
+  def process_event(server, event) do
     GenServer.call(server, {:process_event, event})
   end
 

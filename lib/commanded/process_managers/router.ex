@@ -46,6 +46,12 @@ defmodule Commanded.ProcessManagers.Router do
     {:noreply, state}
   end
 
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %Router{process_managers: process_managers} = state) do
+    Logger.warn(fn -> "process manager process down due to: #{reason}" end)
+
+    {:noreply, %Router{state | process_managers: remove_process_manager(process_managers, pid)}}
+  end
+
   # ignore already seen event
   defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id} = event, %Router{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
     Logger.debug("process manager has already seen event: #{inspect event}")
@@ -65,7 +71,7 @@ defmodule Commanded.ProcessManagers.Router do
       false -> {state, nil}
     end
 
-    delegate_event(process_manager, event)
+    process_event(process_manager, event)
 
     %Router{state | last_seen_event_id: event.event_id}
   end
@@ -76,9 +82,16 @@ defmodule Commanded.ProcessManagers.Router do
     process_manager
   end
 
-  defp delegate_event(nil, _event), do: nil
+  defp remove_process_manager(process_managers, pid) do
+    Enum.reduce(process_managers, process_managers, fn
+      ({process_uuid, process_manager_pid}, acc) when process_manager_pid == pid -> Map.delete(acc, process_uuid)
+      (_, acc) -> acc
+    end)
+  end
 
-  defp delegate_event(process_manager, event) do
-    ProcessManager.handle(process_manager, event)
+  defp process_event(nil, _event), do: nil
+
+  defp process_event(process_manager, event) do
+    ProcessManager.process_event(process_manager, event)
   end
 end
