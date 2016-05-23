@@ -35,13 +35,15 @@ defmodule Commanded.ProcessManagers.Router do
   end
 
   def handle_info({:events, events}, %Router{process_manager_name: process_manager_name} = state) do
-    Logger.debug("process manager \"#{process_manager_name}\" received events: #{inspect events}")
+    Logger.debug("process manager router \"#{process_manager_name}\" received events: #{inspect events}")
 
     state =
       events
       |> Enum.filter(fn event -> !already_seen_event?(event, state) end)
-      |> Enum.map(Serializer.map_from_recorded_event/1)
+      |> Enum.map(&Serializer.map_from_recorded_event/1)
       |> Enum.reduce(state, fn (event, state) -> handle_event(event, state) end)
+
+    state = %Router{state | last_seen_event_id: List.last(events).event_id}
 
     {:noreply, state}
   end
@@ -73,7 +75,7 @@ defmodule Commanded.ProcessManagers.Router do
 
     process_event(process_manager, event)
 
-    %Router{state | last_seen_event_id: event.event_id}
+    state
   end
 
   defp start_process_manager(supervisor, process_manager_module, process_uuid) do
