@@ -4,17 +4,17 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
 
   alias Commanded.ProcessManagers.Router
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
-  alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler}
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.{MoneyTransfer,TransferMoneyHandler}
+  alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,TransferMoneyHandler,WithdrawMoneyHandler}
+  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney,WithdrawMoney}
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
   alias Commanded.Commands.{Dispatcher,Registry}
-  alias Commanded.Helpers
 
   setup do
     EventStore.Storage.reset!
     Commanded.Supervisor.start_link
     :ok = Registry.register(OpenAccount, OpenAccountHandler)
+    :ok = Registry.register(DepositMoney, DepositMoneyHandler)
+    :ok = Registry.register(WithdrawMoney, WithdrawMoneyHandler)
     :ok = Registry.register(TransferMoney, TransferMoneyHandler)
     :ok
   end
@@ -33,7 +33,19 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
     # transfer funds between account 1 and account 2
     :ok = Dispatcher.dispatch(%TransferMoney{source_account: account1_uuid, target_account: account2_uuid, amount: 100})
 
-    # :timer.sleep(1_000)
+    EventStore.subscribe_to_all_streams("unit_test", self)
+
+    assert_receive({:events, events})
+    assert_receive({:events, events})
+    assert_receive({:events, events})
+
+    receive do
+      {:events, events} ->
+        IO.inspect events
+    after
+      1_000 ->
+        flunk("failed to receive expected event")
+    end
 
     # should withdraw from ACC123
     # should deposit into account ACC456

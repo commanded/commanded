@@ -9,11 +9,11 @@ defmodule Commanded.ExampleDomain.BankAccount do
     end
 
     defmodule DepositMoney do
-      defstruct aggregate: BankAccount, aggregate_uuid: nil, amount: nil
+      defstruct aggregate: BankAccount, aggregate_uuid: nil, transfer_uuid: nil, amount: nil
     end
 
     defmodule WithdrawMoney do
-      defstruct aggregate: BankAccount, aggregate_uuid: nil, amount: nil
+      defstruct aggregate: BankAccount, aggregate_uuid: nil, transfer_uuid: nil, amount: nil
     end
   end
 
@@ -38,18 +38,18 @@ defmodule Commanded.ExampleDomain.BankAccount do
     |> update(%BankAccountOpened{account_number: account_number, initial_balance: initial_balance})
   end
 
-  def deposit(%BankAccount{} = account, amount) when amount > 0 do
+  def deposit(%BankAccount{} = account, transfer_uuid, amount) when amount > 0 do
     balance = account.state.balance + amount
 
     account
-    |> update(%MoneyDeposited{amount: amount, balance: balance})
+    |> update(%MoneyDeposited{transfer_uuid: transfer_uuid, amount: amount, balance: balance})
   end
 
-  def withdraw(%BankAccount{} = account, amount) when amount > 0 do
+  def withdraw(%BankAccount{} = account, transfer_uuid, amount) when amount > 0 do
     balance = account.state.balance - amount
 
     account
-    |> update(%MoneyWithdrawn{amount: amount, balance: balance})
+    |> update(%MoneyWithdrawn{transfer_uuid: transfer_uuid, amount: amount, balance: balance})
   end
 
   # event handling callbacks that mutate state

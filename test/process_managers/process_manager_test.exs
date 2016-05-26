@@ -5,7 +5,6 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
   alias Commanded.ProcessManagers.ProcessManager
   alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
-  alias Commanded.Helpers
 
   test "process manager handles an event" do
     process_uuid = UUID.uuid4
