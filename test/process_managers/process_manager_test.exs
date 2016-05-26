@@ -3,8 +3,17 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
   doctest Commanded.ProcessManagers.ProcessManager
 
   alias Commanded.ProcessManagers.ProcessManager
+  alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
+  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
+
+  setup do
+    EventStore.Storage.reset!
+    Commanded.Supervisor.start_link
+    :ok = Commanded.Commands.Registry.register(WithdrawMoney, Commanded.ProcessManager.ProcessManagerTest)
+    :ok
+  end
 
   test "process manager handles an event" do
     process_uuid = UUID.uuid4
@@ -21,5 +30,9 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
     }
 
     :ok = ProcessManager.process_event(process_manager, event)
+  end
+
+  def handle(%BankAccount{} = aggregate, %WithdrawMoney{}) do
+    aggregate
   end
 end

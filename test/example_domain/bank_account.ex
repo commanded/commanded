@@ -33,19 +33,19 @@ defmodule Commanded.ExampleDomain.BankAccount do
 
   alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn}
 
-  def open_account(%BankAccount{} = account, account_number, initial_balance) when initial_balance > 0 do
+  def open_account(%BankAccount{} = account, account_number, initial_balance) when is_number(initial_balance) and initial_balance > 0 do
     account
     |> update(%BankAccountOpened{account_number: account_number, initial_balance: initial_balance})
   end
 
-  def deposit(%BankAccount{} = account, transfer_uuid, amount) when amount > 0 do
+  def deposit(%BankAccount{} = account, transfer_uuid, amount) when is_number(amount) and amount > 0 do
     balance = account.state.balance + amount
 
     account
     |> update(%MoneyDeposited{transfer_uuid: transfer_uuid, amount: amount, balance: balance})
   end
 
-  def withdraw(%BankAccount{} = account, transfer_uuid, amount) when amount > 0 do
+  def withdraw(%BankAccount{} = account, transfer_uuid, amount) when is_number(amount) and amount > 0 do
     balance = account.state.balance - amount
 
     account

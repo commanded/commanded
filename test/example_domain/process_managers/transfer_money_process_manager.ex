@@ -15,23 +15,23 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
     %TransferMoneyProcessManager{transfer_uuid: process_uuid}
   end
 
-  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
+  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
     transfer =
       transfer
-      |> dispatch(%WithdrawMoney{aggregate_uuid: source_account, amount: amount})
+      |> dispatch(%WithdrawMoney{aggregate_uuid: source_account, transfer_uuid: transfer_uuid, amount: amount})
 
     %TransferMoneyProcessManager{transfer |
       source_account: source_account,
       target_account: target_account,
-      amount: target_account,
+      amount: amount,
       status: :withdraw_money_from_source_account
     }
   end
 
-  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
+  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
     transfer =
       transfer
-      |> dispatch(%DepositMoney{aggregate_uuid: transfer.state.target_account, amount: transfer.state.amount})
+      |> dispatch(%DepositMoney{aggregate_uuid: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
 
     %TransferMoneyProcessManager{transfer |
       status: :deposit_money_in_target_account

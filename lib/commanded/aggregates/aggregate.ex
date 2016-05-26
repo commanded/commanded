@@ -87,6 +87,11 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
+  defp persist_events(%{pending_events: []}, _expected_version) do
+    # no pending events to persist, do nothing
+    {:ok, []}
+  end
+
   defp persist_events(%{uuid: uuid, pending_events: pending_events}, expected_version) do
     correlation_id = UUID.uuid4
     event_data = Serializer.map_to_event_data(pending_events, correlation_id)

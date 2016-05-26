@@ -40,14 +40,14 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
     assert_receive({:events, events})
 
     receive do
-      {:events, events} ->
-        IO.inspect events
+      {:events, [recorded_event]} ->
+        event = Commanded.Event.Serializer.map_from_recorded_event(recorded_event)
+
+        assert event.amount == 100
+        assert event.balance == 900
     after
       1_000 ->
         flunk("failed to receive expected event")
     end
-
-    # should withdraw from ACC123
-    # should deposit into account ACC456
   end
 end

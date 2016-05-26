@@ -7,6 +7,7 @@ Code.require_file("account_balance_handler.ex", "test/example_domain/event_handl
 Code.require_file("open_account_handler.ex", "test/example_domain/command_handlers")
 Code.require_file("deposit_money_handler.ex", "test/example_domain/command_handlers")
 Code.require_file("transfer_money_handler.ex", "test/example_domain/command_handlers")
+Code.require_file("withdraw_money_handler.ex", "test/example_domain/command_handlers")
 Code.require_file("transfer_money_process_manager.ex", "test/example_domain/process_managers")
 Code.require_file("event_factory.ex", "test/helpers")
 Code.require_file("process.ex", "test/helpers")

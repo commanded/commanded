@@ -47,7 +47,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
       }
     ])
 
-    Aggregate.execute(aggregate, %DepositMoney{aggregate_uuid: aggregate_uuid, amount: 50}, DepositMoneyHandler)
+    Aggregate.execute(aggregate, %DepositMoney{aggregate_uuid: aggregate_uuid, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler)
 
     bank_account = Aggregate.state(aggregate)
 

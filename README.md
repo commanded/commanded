@@ -56,8 +56,8 @@ Implement the `Commanded.Commands.Handler` behaviour in each of your command han
 defmodule OpenAccountHandler do
   @behaviour Commanded.Commands.Handler
 
-  def handle(%BankAccount{} = state, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
-    state
+  def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
+    aggregate
     |> BankAccount.open_account(account_number, initial_balance)
   end
 end
