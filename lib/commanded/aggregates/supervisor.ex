@@ -18,7 +18,7 @@ defmodule Commanded.Aggregates.Supervisor do
 
   def init(_) do
     children = [
-      worker(Commanded.Aggregates.Aggregate, [], restart: :temporary),
+      worker(Commanded.Aggregates.Aggregate, [], restart: :transient),
     ]
 
     supervise(children, strategy: :simple_one_for_one)

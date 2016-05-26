@@ -66,32 +66,37 @@ defmodule Commanded.Aggregates.Aggregate do
     end
 
     # events list should only include uncommitted events
-    %{state | events: []}
+    %{state | pending_events: []}
   end
 
-  defp execute_command(command, handler, %{id: id, version: version} = state, retries) when retries > 0 do
+  defp execute_command(command, handler, %{uuid: uuid, version: version} = state, retries) when retries > 0 do
     expected_version = version
 
     state = handler.handle(state, command)
 
     case persist_events(state, expected_version) do
-      {:ok, _events} -> %{state | events: []}
+      {:ok, _events} -> %{state | pending_events: []}
       {:error, :wrong_expected_version} ->
-        Logger.error("failed to persist events for aggregate #{id} due to wrong expected version")
+        Logger.error("failed to persist events for aggregate #{uuid} due to wrong expected version")
 
         # reload aggregate's events
-        state = load_events(state.__struct__, id)
+        state = load_events(state.__struct__, uuid)
 
         # retry command
         execute_command(command, handler, state, retries - 1)
     end
   end
 
-  defp persist_events(%{id: id, events: events}, expected_version) do
-    correlation_id = UUID.uuid4
-    event_data = Serializer.map_to_event_data(events, correlation_id)
+  defp persist_events(%{pending_events: []}, _expected_version) do
+    # no pending events to persist, do nothing
+    {:ok, []}
+  end
 
-    EventStore.append_to_stream(id, expected_version, event_data)
+  defp persist_events(%{uuid: uuid, pending_events: pending_events}, expected_version) do
+    correlation_id = UUID.uuid4
+    event_data = Serializer.map_to_event_data(pending_events, correlation_id)
+
+    EventStore.append_to_stream(uuid, expected_version, event_data)
   end
 
   defp map_from_recorded_events(recorded_events) when is_list(recorded_events) do
