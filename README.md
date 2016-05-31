@@ -38,7 +38,7 @@ Start the top level Supervisor process.
 
 ### Command handlers
 
-Create a module per command, defining the fields with `defstruct`. Fields must include `aggregate` to specify the target aggregate module and `aggregate_uuid` to identity the aggregate instance.
+Create a module per command, defining the fields with `defstruct`. Fields must include `aggregate` to specify the target aggregate module and `aggregate_uuid` to identify the aggregate instance.
 
 ```elixir
 defmodule OpenAccount do
@@ -50,7 +50,7 @@ defmodule OpenAccount do
 end
 ```
 
-Implement the `Commanded.Commands.Handler` behaviour in each of your command handling modules.
+Implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate root and the  command to be handled. It must return the aggregate root.
 
 ```elixir
 defmodule OpenAccountHandler do
@@ -69,7 +69,7 @@ Register the command handler.
 :ok = Commanded.register(OpenAccount, OpenAccountHandler)
 ```
 
-Dispatch a command.
+You can dispatch the command once the handler has been registered.
 
 ```elixir
 :ok = Commanded.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
@@ -110,4 +110,72 @@ Register the event handler with a given name. The name is used when subscribing 
 ```elixir
 {:ok, _} = AccountBalanceHandler.start_link
 {:ok, _} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+```
+
+### Process managers
+
+A process manager is responsible for communicating between one or more aggregate roots.
+
+It handles events and dispatches commands in response. Process managers have state that can be used to track which aggregate roots are being coordinated.
+
+A process manager must implement `interested?/1` to indicate which events are used, and to route the event to an existing instance or start a new process. A `handle/2` function must exist for each interested event. It receives the process manager's state and the event to be handled. It must return the state, including any commands that should be dispatched.
+
+```elixir
+defmodule TransferMoneyProcessManager do
+  defstruct commands: [], transfer_uuid: nil, source_account: nil, target_account: nil, amount: nil, status: nil
+
+  def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}), do: {:start, transfer_uuid}
+  def interested?(%MoneyWithdrawn{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
+  def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
+  def interested?(_event), do: false
+
+  def new(process_uuid) do
+    %TransferMoneyProcessManager{transfer_uuid: process_uuid}
+  end
+
+  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
+    transfer =
+      transfer
+      |> dispatch(%WithdrawMoney{aggregate_uuid: source_account, transfer_uuid: transfer_uuid, amount: amount})
+
+    %TransferMoneyProcessManager{transfer |
+      source_account: source_account,
+      target_account: target_account,
+      amount: amount,
+      status: :withdraw_money_from_source_account
+    }
+  end
+
+  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
+    transfer =
+      transfer
+      |> dispatch(%DepositMoney{aggregate_uuid: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
+
+    %TransferMoneyProcessManager{transfer |
+      status: :deposit_money_in_target_account
+    }
+  end
+
+  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = _money_deposited) do
+    %TransferMoneyProcessManager{transfer |
+      status: :transfer_complete
+    }
+  end
+
+  def handle(_transfer, _event) do
+      # ignore any other events
+  end
+
+  defp dispatch(%TransferMoneyProcessManager{commands: commands} = transfer, command) do
+    %TransferMoneyProcessManager{transfer |
+      commands: [command | commands]
+    }
+  end
+end
+```
+
+Register the process manager router, with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
+
+```elixir
+{:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
 ```

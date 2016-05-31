@@ -19,7 +19,6 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
     :ok
   end
 
-  @tag :wip
   test "start a process manager in response to an event" do
     account1_uuid = UUID.uuid4
     account2_uuid = UUID.uuid4
