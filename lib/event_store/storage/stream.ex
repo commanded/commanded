@@ -8,11 +8,16 @@ defmodule EventStore.Storage.Stream do
   alias EventStore.Sql.Statements
   alias EventStore.Storage.{Appender,QueryLatestEventId,QueryLatestStreamVersion,Reader,Stream}
 
-  def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version == 0 do
-    case create_stream(conn, stream_uuid) do
-      {:ok, stream_id} -> Appender.append(conn, stream_id, expected_version, events)
-      response -> response
-    end
+  def create_stream(conn, stream_uuid) do
+    Logger.debug "attempting to create stream #{stream_uuid}"
+
+    conn
+    |> Postgrex.query(Statements.create_stream, [stream_uuid, "default"])
+    |> handle_create_response(stream_uuid)
+  end
+
+  def append_to_stream(conn, stream_id, expected_version, events) when expected_version == 0 do
+    Appender.append(conn, stream_id, expected_version, events)
   end
 
   def append_to_stream(conn, stream_uuid, expected_version, events) when expected_version > 0 do
@@ -48,14 +53,6 @@ defmodule EventStore.Storage.Stream do
     end
   end
 
-  defp create_stream(conn, stream_uuid) do
-    Logger.debug "attempting to create stream #{stream_uuid}"
-
-    conn
-    |> Postgrex.query(Statements.create_stream, [stream_uuid, "default"])
-    |> handle_create_response(stream_uuid)
-  end
-
   defp handle_create_response({:ok, %Postgrex.Result{rows: [[stream_id]]}}, stream_uuid) do
     Logger.debug "created stream #{stream_uuid} with id #{stream_id}"
     {:ok, stream_id}
@@ -63,7 +60,7 @@ defmodule EventStore.Storage.Stream do
 
   defp handle_create_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation}}}, stream_uuid) do
     Logger.warn "failed to create stream #{stream_uuid}, already exists"
-    {:error, :wrong_expected_version}
+    {:error, :stream_exists}
   end
 
   defp handle_create_response({:error, error}, stream_uuid) do

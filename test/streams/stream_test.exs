@@ -10,6 +10,7 @@ defmodule EventStore.Streams.StreamTest do
 
   @all_stream "$all"
 
+  @tag :wip
   test "open a stream" do
     stream_uuid = UUID.uuid4()
 

@@ -29,10 +29,17 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Create a new event stream with the given unique identifier
+  """
+  def create_stream(stream_uuid) do
+    execute_using_storage_pool(&Stream.create_stream(&1, stream_uuid))
+  end
+
+  @doc """
   Append the given list of events to the stream, expected version is used for optimistic concurrency
   """
-  def append_to_stream(stream_uuid, expected_version, events) do
-    execute_using_storage_pool(&Stream.append_to_stream(&1, stream_uuid, expected_version, events))
+  def append_to_stream(stream_id, expected_version, events) do
+    execute_using_storage_pool(&Stream.append_to_stream(&1, stream_id, expected_version, events))
   end
 
   @doc """

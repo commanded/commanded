@@ -19,10 +19,10 @@ defmodule EventStore.Sql.Statements do
 """
 CREATE TABLE streams
 (
-    stream_id BIGSERIAL PRIMARY KEY NOT NULL,
+    stream_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
     stream_type text NOT NULL,
-    created_at timestamp NOT NULL
+    created_at timestamp without time zone default (NOW() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -44,14 +44,14 @@ RESTART IDENTITY;
 """
 CREATE TABLE events
 (
-    event_id BIGSERIAL PRIMARY KEY NOT NULL,
+    event_id bigint PRIMARY KEY NOT NULL,
     stream_id bigint NOT NULL,
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
     correlation_id text,
     headers bytea NULL,
     payload bytea NOT NULL,
-    created_at timestamp NOT NULL
+    created_at timestamp without time zone default (NOW() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -72,12 +72,12 @@ CREATE UNIQUE INDEX ix_events_stream_id_stream_version ON events (stream_id, str
 """
 CREATE TABLE subscriptions
 (
-    subscription_id BIGSERIAL PRIMARY KEY NOT NULL,
+    subscription_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
     subscription_name text NOT NULL,
     last_seen_event_id bigint NULL,
     last_seen_stream_version bigint NULL,
-    created_at timestamp NOT NULL
+    created_at timestamp without time zone default (NOW() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -90,19 +90,19 @@ CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscripti
 
   def create_stream do
 """
-INSERT INTO streams (stream_uuid, stream_type, created_at)
-VALUES ($1, $2, NOW())
+INSERT INTO streams (stream_uuid, stream_type)
+VALUES ($1, $2)
 RETURNING stream_id;
 """
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = "INSERT INTO events (stream_id, stream_version, created_at, correlation_id, event_type, headers, payload) VALUES"
+    insert = "INSERT INTO events (stream_id, stream_version, correlation_id, event_type, headers, payload) VALUES"
 
     params = 1..number_of_events
     |> Enum.map(fn event_number ->
       index = (event_number - 1) * 6
-      "($#{index + 1}, $#{index + 2}, NOW(), $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6})"
+      "($#{index + 1}, $#{index + 2}, $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6})"
     end)
     |> Enum.join(",")
 
@@ -113,8 +113,8 @@ RETURNING stream_id;
 
   def create_subscription do
 """
-INSERT INTO subscriptions (stream_uuid, subscription_name, created_at)
-VALUES ($1, $2, NOW())
+INSERT INTO subscriptions (stream_uuid, subscription_name)
+VALUES ($1, $2)
 RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at;
 """
   end
