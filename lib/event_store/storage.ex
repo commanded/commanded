@@ -9,7 +9,7 @@ defmodule EventStore.Storage do
   require Logger
 
   alias EventStore.Storage
-  alias EventStore.Storage.{Stream,Subscription}
+  alias EventStore.Storage.{Appender,Stream,Subscription}
 
   @storage_pool_name :event_store_storage_pool
 
@@ -33,13 +33,6 @@ defmodule EventStore.Storage do
   """
   def create_stream(stream_uuid) do
     execute_using_storage_pool(&Stream.create_stream(&1, stream_uuid))
-  end
-
-  @doc """
-  Append the given list of events to the stream, expected version is used for optimistic concurrency
-  """
-  def append_to_stream(stream_id, expected_version, events) do
-    execute_using_storage_pool(&Stream.append_to_stream(&1, stream_id, expected_version, events))
   end
 
   @doc """

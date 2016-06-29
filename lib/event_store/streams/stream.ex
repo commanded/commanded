@@ -6,30 +6,26 @@ defmodule EventStore.Streams.Stream do
   use GenServer
   require Logger
 
-  alias EventStore.Storage
+  alias EventStore.{Storage,Writer}
   alias EventStore.Streams.Stream
 
-  defstruct stream_uuid: nil, stream_id: nil, stream_version: nil
+  defstruct stream_uuid: nil, stream_id: nil, stream_version: 0
 
   def start_link(stream_uuid) do
-    GenServer.start_link(__MODULE__, %Stream{
-      stream_uuid: stream_uuid
-    })
+    GenServer.start_link(__MODULE__, %Stream{stream_uuid: stream_uuid})
   end
 
   @doc """
   Append the given list of events to the stream, expected version is used for optimistic concurrency
 
-  A stream is a GenServer process, so writes to a single logical stream will always be serialized.
+  Each logical stream is a separate process; writes to a single stream will always be serialized.
   """
   def append_to_stream(stream, expected_version, events) do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
   end
 
-  def init(state) do
-    # fetch stream id and latest version
+  def init(%Stream{} = state) do
     GenServer.cast(self, {:open_stream})
-
     {:ok, state}
   end
 
@@ -41,22 +37,22 @@ IO.inspect %Stream{state | stream_id: stream_id, stream_version: stream_version}
     {:noreply, %Stream{state | stream_id: stream_id, stream_version: stream_version}}
   end
 
-  def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{} = state) do
+  def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_version: stream_version} = state) do
     {:ok, state, persisted_events} = append_to_storage(expected_version, events, state)
 
-    reply = {:ok, persisted_events}
+    state = %Stream{state | stream_version: stream_version + length(persisted_events)}
 
-    {:reply, reply, state}
+    {:reply, {:ok, persisted_events}, state}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
-         {:ok, persisted_events} <- Storage.append_to_stream(stream_id, expected_version, events),
-    do: {:ok, stream_id, persisted_events}
+         {:ok, persisted_events} <- Writer.append_to_stream(stream_id, events),
+    do: {:ok, %Stream{state | stream_id: stream_id}, persisted_events}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_id: stream_id, stream_version: stream_version} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
-    {:ok, persisted_events} = Storage.append_to_stream(stream_id, expected_version, events)
+    {:ok, persisted_events} = Writer.append_to_stream(stream_id, events)
     {:ok, state, persisted_events}
   end
 
