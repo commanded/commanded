@@ -12,10 +12,7 @@ defmodule EventStore.Streams do
   defstruct streams: %{}, supervisor: nil
 
   def start_link do
-    GenServer.start_link(__MODULE__, %Streams{
-      streams: %{}
-    },
-    name: __MODULE__)
+    GenServer.start_link(__MODULE__, %Streams{}, name: __MODULE__)
   end
 
   def open_stream(stream_uuid) do
@@ -36,12 +33,15 @@ defmodule EventStore.Streams do
       stream -> stream
     end
 
-    {:reply, {:ok, stream}, %Streams{state | streams: Map.put(streams, stream_uuid, stream)}}
+    state = %Streams{state | streams: Map.put(streams, stream_uuid, stream)}
+    {:reply, {:ok, stream}, state}
   end
 
   def handle_info({:DOWN, ref, :process, pid, reason}, %Streams{streams: streams} = state) do
     Logger.warn "stream down due to: #{reason}"
-    {:noreply, %Streams{state | streams: remove_stream(streams, pid)}}
+
+    state = %Streams{state | streams: remove_stream(streams, pid)}
+    {:noreply, state}
   end
 
   defp start_stream(supervisor, stream_uuid) do

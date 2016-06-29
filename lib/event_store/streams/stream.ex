@@ -28,27 +28,36 @@ defmodule EventStore.Streams.Stream do
 
   def init(state) do
     # fetch stream id and latest version
+    GenServer.cast(self, {:open_stream})
+
     {:ok, state}
   end
 
-  def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_uuid: stream_uuid, stream_id: stream_id} = state) do
-    {:ok, stream_id, persisted_events} = append_to_storage(expected_version, events, stream_uuid, stream_id)
+  def handle_cast({:open_stream}, %Stream{stream_uuid: stream_uuid} = state) do
+    {:ok, stream_id, stream_version} = Storage.stream_info(stream_uuid)
 
-    state = %Stream{state| stream_id: stream_id}
+IO.inspect %Stream{state | stream_id: stream_id, stream_version: stream_version}
+
+    {:noreply, %Stream{state | stream_id: stream_id, stream_version: stream_version}}
+  end
+
+  def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{} = state) do
+    {:ok, state, persisted_events} = append_to_storage(expected_version, events, state)
+
     reply = {:ok, persisted_events}
 
     {:reply, reply, state}
   end
 
-  defp append_to_storage(expected_version, events, stream_uuid, stream_id) when expected_version == 0 and is_nil(stream_id) do
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
          {:ok, persisted_events} <- Storage.append_to_stream(stream_id, expected_version, events),
     do: {:ok, stream_id, persisted_events}
   end
 
-  defp append_to_storage(expected_version, events, stream_uuid, stream_id) when expected_version > 0 and not is_nil(stream_id) do
+  defp append_to_storage(expected_version, events, %Stream{stream_id: stream_id, stream_version: stream_version} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
     {:ok, persisted_events} = Storage.append_to_stream(stream_id, expected_version, events)
-    {:ok, stream_id, persisted_events}
+    {:ok, state, persisted_events}
   end
 
   defp append_to_storage(_expected_version, _events, _stream_uuid, _stream_id) do

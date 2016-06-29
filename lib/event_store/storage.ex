@@ -64,6 +64,13 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Get the id and version of the stream with the given uuid
+  """
+  def stream_info(stream_uuid) do
+    execute_using_storage_pool(&Stream.stream_info(&1, stream_uuid))
+  end
+
+  @doc """
   Get the latest version of events persisted to the given stream
   """
   def latest_stream_version(stream_uuid) do

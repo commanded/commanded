@@ -22,7 +22,7 @@ CREATE TABLE streams
     stream_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
     stream_type text NOT NULL,
-    created_at timestamp without time zone default (NOW() at time zone 'utc') NOT NULL
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -51,7 +51,7 @@ CREATE TABLE events
     correlation_id text,
     headers bytea NULL,
     payload bytea NOT NULL,
-    created_at timestamp without time zone default (NOW() at time zone 'utc') NOT NULL
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -77,7 +77,7 @@ CREATE TABLE subscriptions
     subscription_name text NOT NULL,
     last_seen_event_id bigint NULL,
     last_seen_stream_version bigint NULL,
-    created_at timestamp without time zone default (NOW() at time zone 'utc') NOT NULL
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -155,6 +155,19 @@ WHERE stream_uuid = $1 AND subscription_name = $2;
 SELECT stream_id
 FROM streams
 WHERE stream_uuid = $1;
+"""
+  end
+
+  def query_stream_id_and_latest_version do
+"""
+SELECT s.stream_id,
+  (SELECT COALESCE(e.event_id, 0)
+   FROM events e
+   WHERE e.stream_id = s.stream_id
+   ORDER BY e.stream_version DESC
+   LIMIT 1) stream_version
+FROM streams s
+WHERE s.stream_uuid = $1;
 """
   end
 
