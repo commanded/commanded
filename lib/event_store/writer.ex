@@ -6,10 +6,10 @@ defmodule EventStore.Writer do
   use GenServer
   require Logger
 
-  alias EventStore.Writer
+  alias EventStore.{EventData,RecordedEvent,Writer}
   alias EventStore.Storage.{Appender,QueryLatestEventId}
 
-  defstruct conn: nil, next_event_id: 0
+  defstruct conn: nil, next_event_id: 1
 
   def start_link do
     GenServer.start_link(__MODULE__, %Writer{}, name: __MODULE__)
@@ -28,18 +28,49 @@ defmodule EventStore.Writer do
   @doc """
   Append the given list of events to the stream
   """
-  def append_to_stream(stream_id, events) do
-    GenServer.call(__MODULE__, {:append_to_stream, stream_id, events})
+  def append_to_stream(events, stream_id, stream_version) do
+    GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_version})
   end
 
-  def handle_call({:append_to_stream, stream_id, events}, _from, %Writer{} = state) do
+  def handle_call({:append_to_stream, events, stream_id, stream_version}, _from, %Writer{next_event_id: next_event_id} = state) do
+    prepared_events = prepare_events(events, stream_id, stream_version)
+
     reply = {:ok, []}
+    state = %Writer{state | next_event_id: next_event_id + length(prepared_events)}
+
     {:reply, reply, state}
   end
 
   def handle_cast({:latest_event_id}, %Writer{conn: conn} = state) do
-    {:ok, event_id} = QueryLatestEventId.execute(conn)
+    {:ok, last_event_id} = QueryLatestEventId.execute(conn)
 
-    {:noreply, %Writer{state | next_event_id: event_id + 1}}
+    {:noreply, %Writer{state | next_event_id: last_event_id + 1}}
+  end
+
+  defp prepare_events(events, stream_id, stream_version) do
+    initial_stream_version = stream_version + 1
+
+    events
+    |> Enum.map(&map_to_recorded_event(&1))
+    |> Enum.map(&assign_stream_id(&1, stream_id))
+    |> Enum.with_index(initial_stream_version)
+    |> Enum.map(&assign_stream_version/1)
+  end
+
+  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}) do
+    %RecordedEvent{
+      correlation_id: correlation_id,
+      event_type: event_type,
+      headers: headers,
+      payload: payload
+    }
+  end
+
+  defp assign_stream_id(%RecordedEvent{} = event, stream_id) do
+    %RecordedEvent{event | stream_id: stream_id}
+  end
+
+  defp assign_stream_version({%RecordedEvent{} = event, stream_version}) do
+    %RecordedEvent{event | stream_version: stream_version}
   end
 end
