@@ -23,7 +23,7 @@ defmodule Mix.Tasks.EventStore.Create do
   def run(args) do
     Application.ensure_all_started(:postgrex)
 
-    config = Application.get_env(:eventstore, Storage)
+    config = EventStore.Config.parse Application.get_env(:eventstore, Storage)
     {opts, _, _} = OptionParser.parse(args, switches: [quiet: :boolean])
 
     create_database(config, opts)

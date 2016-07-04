@@ -1,6 +1,8 @@
 defmodule EventStore.Storage.PoolSupervisor do
   use Supervisor
 
+  alias EventStore.Config
+
   @storage_pool_name :event_store_storage_pool
 
   def start_link do
@@ -15,7 +17,7 @@ defmodule EventStore.Storage.PoolSupervisor do
       {:max_overflow, 5}
     ]
 
-    storage_config = Application.get_env(:eventstore, EventStore.Storage)
+    storage_config = Config.parse Application.get_env(:eventstore, EventStore.Storage)
 
     children = [
       :poolboy.child_spec(@storage_pool_name, storage_pool_config, storage_config)
@@ -23,4 +25,5 @@ defmodule EventStore.Storage.PoolSupervisor do
 
     supervise(children, strategy: :one_for_one)
   end
+
 end
