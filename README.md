@@ -155,3 +155,11 @@ read events, single reader                   1000   1983.15 µs/op
 read events, 10 concurrent readers            100   12240.09 µs/op
 read events, 100 concurrent readers            10   149871.40 µs/op
 ```
+
+## Contributing
+
+Pull requests to contribute new or improved features, and extend documentation are most welcome.
+
+Please follow the existing coding conventions, or refer to the [Elixir style guide](https://github.com/niftyn8/elixir_style_guide).
+
+You should include unit tests to cover any changes.
