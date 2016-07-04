@@ -17,7 +17,7 @@ defmodule Mix.Tasks.EventStore.Drop do
 
   @doc false
   def run(_args) do
-    config = Application.get_env(:eventstore, Storage)
+    config = EventStore.Config.parse Application.get_env(:eventstore, Storage)
 
     if skip_safety_warnings?() or Mix.shell.yes?("Are you sure you want to drop the EventStore database?") do
       drop_database(config)
