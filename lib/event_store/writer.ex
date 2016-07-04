@@ -33,7 +33,7 @@ defmodule EventStore.Writer do
   end
 
   def handle_call({:append_to_stream, events, stream_id, stream_version}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
-    persisted_events =
+    {:ok, persisted_events} =
       events
       |> prepare_events(stream_id, stream_version, next_event_id)
       |> append_events(conn, stream_id)
