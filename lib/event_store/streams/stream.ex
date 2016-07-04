@@ -24,17 +24,17 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
   end
 
-  def init(%Stream{} = state) do
-    GenServer.cast(self, {:open_stream})
+  def init(%Stream{stream_uuid: stream_uuid} = state) do
+    GenServer.cast(self, {:open_stream, stream_uuid})
     {:ok, state}
   end
 
-  def handle_cast({:open_stream}, %Stream{stream_uuid: stream_uuid} = state) do
+  def handle_cast({:open_stream, stream_uuid}, %Stream{} = state) do
     {:ok, stream_id, stream_version} = Storage.stream_info(stream_uuid)
 
-IO.inspect %Stream{state | stream_id: stream_id, stream_version: stream_version}
+    state = %Stream{state | stream_id: stream_id, stream_version: stream_version}
 
-    {:noreply, %Stream{state | stream_id: stream_id, stream_version: stream_version}}
+    {:noreply, state}
   end
 
   def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_version: stream_version} = state) do

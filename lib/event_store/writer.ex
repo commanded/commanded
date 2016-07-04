@@ -22,7 +22,7 @@ defmodule EventStore.Writer do
 
     GenServer.cast(self, {:latest_event_id})
 
-    {:ok, %Writer{conn: conn}}
+    {:ok, %Writer{state | conn: conn}}
   end
 
   @doc """
@@ -32,11 +32,14 @@ defmodule EventStore.Writer do
     GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_version})
   end
 
-  def handle_call({:append_to_stream, events, stream_id, stream_version}, _from, %Writer{next_event_id: next_event_id} = state) do
-    prepared_events = prepare_events(events, stream_id, stream_version)
+  def handle_call({:append_to_stream, events, stream_id, stream_version}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
+    persisted_events =
+      events
+      |> prepare_events(stream_id, stream_version, next_event_id)
+      |> append_events(conn, stream_id)
 
-    reply = {:ok, []}
-    state = %Writer{state | next_event_id: next_event_id + length(prepared_events)}
+    reply = {:ok, persisted_events}
+    state = %Writer{state | next_event_id: next_event_id + length(persisted_events)}
 
     {:reply, reply, state}
   end
@@ -47,14 +50,19 @@ defmodule EventStore.Writer do
     {:noreply, %Writer{state | next_event_id: last_event_id + 1}}
   end
 
-  defp prepare_events(events, stream_id, stream_version) do
+  defp prepare_events(events, stream_id, stream_version, next_event_id) do
     initial_stream_version = stream_version + 1
 
     events
     |> Enum.map(&map_to_recorded_event(&1))
-    |> Enum.map(&assign_stream_id(&1, stream_id))
-    |> Enum.with_index(initial_stream_version)
-    |> Enum.map(&assign_stream_version/1)
+    |> Enum.with_index(0)
+    |> Enum.map(fn {recorded_event, index} ->
+      %RecordedEvent{recorded_event |
+        event_id: next_event_id + index,
+        stream_id: stream_id,
+        stream_version: initial_stream_version + index,
+      }
+    end)
   end
 
   defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}) do
@@ -66,11 +74,7 @@ defmodule EventStore.Writer do
     }
   end
 
-  defp assign_stream_id(%RecordedEvent{} = event, stream_id) do
-    %RecordedEvent{event | stream_id: stream_id}
-  end
-
-  defp assign_stream_version({%RecordedEvent{} = event, stream_version}) do
-    %RecordedEvent{event | stream_version: stream_version}
+  defp append_events(recorded_events, conn, stream_id) do
+    Appender.append(conn, stream_id, recorded_events)
   end
 end

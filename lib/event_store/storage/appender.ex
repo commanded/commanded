@@ -28,8 +28,9 @@ defmodule EventStore.Storage.Appender do
 
   defp build_insert_parameters(events) do
     events
-    |> Enum.reduce([], fn(event, parameters) ->
-      parameters ++ [
+    |> Enum.map(fn(event) ->
+      [
+        event.event_id,
         event.stream_id,
         event.stream_version,
         event.correlation_id,
@@ -38,6 +39,7 @@ defmodule EventStore.Storage.Appender do
         event.payload
       ]
     end)
+    |> List.flatten
   end
 
   defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_id, _events) do
@@ -50,8 +52,8 @@ defmodule EventStore.Storage.Appender do
 
     persisted_events =
       Enum.zip(events, rows)
-      |> Enum.map(fn {event, [event_id, created_at]} ->
-        %RecordedEvent{event | event_id: event_id, created_at: created_at}
+      |> Enum.map(fn {event, [created_at]} ->
+        %RecordedEvent{event | created_at: created_at}
       end)
 
     {:ok, persisted_events}
