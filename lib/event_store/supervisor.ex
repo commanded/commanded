@@ -10,7 +10,6 @@ defmodule EventStore.Supervisor do
       supervisor(EventStore.Storage.PoolSupervisor, []),
       worker(EventStore.Streams, []),
       worker(EventStore.Subscriptions, []),
-      worker(EventStore.Publisher, []),
       worker(EventStore.Writer, [])
     ]
 

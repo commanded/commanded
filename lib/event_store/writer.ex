@@ -6,7 +6,7 @@ defmodule EventStore.Writer do
   use GenServer
   require Logger
 
-  alias EventStore.{EventData,RecordedEvent,Writer}
+  alias EventStore.{EventData,Subscriptions,RecordedEvent,Writer}
   alias EventStore.Storage.{Appender,QueryLatestEventId}
 
   defstruct conn: nil, next_event_id: 1
@@ -28,15 +28,16 @@ defmodule EventStore.Writer do
   @doc """
   Append the given list of events to the stream
   """
-  def append_to_stream(events, stream_id, stream_version) do
-    GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_version})
+  def append_to_stream(events, stream_uuid, stream_id, stream_version) do
+    GenServer.call(__MODULE__, {:append_to_stream, events, stream_uuid, stream_id, stream_version})
   end
 
-  def handle_call({:append_to_stream, events, stream_id, stream_version}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
-    {:ok, persisted_events} =
+  def handle_call({:append_to_stream, events, stream_uuid, stream_id, stream_version}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
+    persisted_events =
       events
       |> prepare_events(stream_id, stream_version, next_event_id)
       |> append_events(conn, stream_id)
+      |> publish_events(stream_uuid)
 
     reply = {:ok, persisted_events}
     state = %Writer{state | next_event_id: next_event_id + length(persisted_events)}
@@ -75,6 +76,12 @@ defmodule EventStore.Writer do
   end
 
   defp append_events(recorded_events, conn, stream_id) do
-    Appender.append(conn, stream_id, recorded_events)
+    {:ok, persisted_events} = Appender.append(conn, stream_id, recorded_events)
+    persisted_events
+  end
+
+  defp publish_events(persisted_events, stream_uuid) do
+    :ok = Subscriptions.notify_events(stream_uuid, persisted_events)
+    persisted_events
   end
 end

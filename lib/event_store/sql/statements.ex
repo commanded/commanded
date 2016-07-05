@@ -45,7 +45,7 @@ RESTART IDENTITY;
 CREATE TABLE events
 (
     event_id bigint PRIMARY KEY NOT NULL,
-    stream_id bigint NOT NULL,
+    stream_id bigint NOT NULL REFERENCES streams (stream_id),
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
     correlation_id text,

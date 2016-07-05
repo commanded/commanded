@@ -23,6 +23,10 @@ defmodule EventStore do
     {:error, :cannot_append_to_all_stream}
   end
 
+  def append_to_stream(stream_uuid, expected_version, []) do
+    {:ok, []}
+  end
+
   @doc """
   Append one or more events to a stream atomically.
 
@@ -36,15 +40,10 @@ defmodule EventStore do
       EventStore does not have any built-in serialization.
       The payload and headers for each event should already be serialized to binary data before appending to the stream.
   """
-  def append_to_stream(stream_uuid, expected_version, events) do
+  def append_to_stream(stream_uuid, expected_version, events) when is_list(events) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    case Stream.append_to_stream(stream, expected_version, events) do
-      {:ok, persisted_events} = reply ->
-        Publisher.notify_events(stream_uuid, persisted_events)
-        reply
-      reply -> reply
-    end
+    Stream.append_to_stream(stream, expected_version, events)
   end
 
   @doc """

@@ -47,16 +47,16 @@ defmodule EventStore.Streams.Stream do
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
-         {:ok, persisted_events} <- Writer.append_to_stream(events, stream_id, stream_version),
+         {:ok, persisted_events} <- Writer.append_to_stream(events, stream_uuid, stream_id, stream_version),
     do: {:ok, %Stream{state | stream_id: stream_id}, persisted_events}
   end
 
-  defp append_to_storage(expected_version, events, %Stream{stream_id: stream_id, stream_version: stream_version} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
-    {:ok, persisted_events} = Writer.append_to_stream(events, stream_id, stream_version)
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
+    {:ok, persisted_events} = Writer.append_to_stream(events, stream_uuid, stream_id, stream_version)
     {:ok, state, persisted_events}
   end
 
-  defp append_to_storage(_expected_version, _events, _stream_uuid, _stream_id) do
+  defp append_to_storage(_expected_version, _events, _state) do
     {:error, :wrong_expected_version}
   end
 end

@@ -40,7 +40,6 @@ defmodule EventStore.Streams.StreamTest do
     assert stream != nil
   end
 
-  @tag :wip
   test "append events to stream" do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(3)

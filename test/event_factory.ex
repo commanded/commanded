@@ -19,17 +19,18 @@ defmodule EventStore.EventFactory do
     end)
   end
 
-  def create_recorded_events(number_of_events, stream_uuid, initial_event_id \\ 1) when number_of_events > 0 do
+  def create_recorded_events(number_of_events, stream_id, initial_event_id \\ 1, initial_stream_version \\ 1) when number_of_events > 0 do
     correlation_id = UUID.uuid4()
 
     1..number_of_events
     |> Enum.map(fn number ->
       event_id = initial_event_id + number - 1
-
+      stream_version = initial_stream_version + number - 1
+      
       %RecordedEvent{
         event_id: event_id,
-        stream_id: stream_uuid,
-        stream_version: number,
+        stream_id: stream_id,
+        stream_version: stream_version,
         correlation_id: correlation_id,
         event_type: "unit_test_event",
         headers: serialize(%{"user" => "user@example.com"}),

@@ -44,6 +44,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     # received events does not include events from other stream
     assert_receive {:events, received_events}
+    assert received_events == persisted_events
     assert Subscriber.received_events(subscriber) == persisted_events
   end
 
