@@ -16,8 +16,10 @@ defmodule EventStore.Storage.Stream do
     |> handle_create_response(stream_uuid)
   end
 
-  def read_stream_forward(conn, stream_id, start_version, count \\ nil) do
-    Reader.read_forward(conn, stream_id, start_version, count)
+  def read_stream_forward(conn, stream_uuid, start_version, count \\ nil) do
+    execute_with_stream_id(conn, stream_uuid, fn stream_id ->
+      Reader.read_forward(conn, stream_id, start_version, count)
+    end)
   end
 
   def read_all_streams_forward(conn, start_event_id, count \\ nil) do
