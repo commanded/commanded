@@ -2,11 +2,19 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   use EventStore.StorageCase
   doctest EventStore.Subscriptions.AllStreamsSubscription
 
-  alias EventStore.{EventFactory,Storage,Subscriber}
+  alias EventStore.{EventFactory,Subscriber}
+  alias EventStore.Storage.{Appender,Stream}
   alias EventStore.Subscriptions.AllStreamsSubscription
 
   @all_stream "$all"
   @subscription_name "test_subscription"
+
+  setup do
+    storage_config = Application.get_env(:eventstore, EventStore.Storage)
+
+    {:ok, conn} = Postgrex.start_link(storage_config)
+    {:ok, %{conn: conn}}
+  end
 
   test "create subscription to stream" do
     {:ok, subscriber} = Subscriber.start_link(self)
@@ -33,12 +41,11 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.data.last_seen_event_id == 0
   end
 
-  test "catch-up subscription, unseen persisted events" do
-    stream_uuid = UUID.uuid4()
-    events = EventFactory.create_events(3)
-
+  test "catch-up subscription, unseen persisted events", %{conn: conn} do
+    stream_uuid = UUID.uuid4
+    {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Storage.append_to_stream(stream_uuid, 0, events)
+    {:ok, saved_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
 
     subscription =
       AllStreamsSubscription.new
@@ -50,13 +57,12 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     assert_receive {:events, received_events}
 
-    assert correlation_id(received_events) == correlation_id(events)
-    assert payload(received_events) == payload(events)
+    assert correlation_id(received_events) == correlation_id(saved_events)
+    assert payload(received_events) == payload(saved_events)
   end
 
   test "notify events" do
-    stream_uuid = UUID.uuid4()
-    events = EventFactory.create_recorded_events(1, stream_uuid)
+    events = EventFactory.create_recorded_events(1, 1)
     {:ok, subscriber} = Subscriber.start_link(self)
 
     subscription =
@@ -73,11 +79,10 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert payload(received_events) == payload(events)
   end
 
-  test "ack notified events" do
-    stream_uuid = UUID.uuid4()
-    events = EventFactory.create_events(3)
-
-    {:ok, _} = Storage.append_to_stream(stream_uuid, 0, events)
+  test "ack notified events", %{conn: conn} do
+    stream_uuid = UUID.uuid4
+    {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
+    {:ok, _} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
 
     {:ok, subscriber} = Subscriber.start_link(self)
 
