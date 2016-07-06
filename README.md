@@ -68,7 +68,7 @@ expected_version = 0
 events = [
   %EventStore.EventData{
     event_type: "example_event",
-  	headers: serialize_to_json(%{user: "someuser@example.com"}),
+    headers: serialize_to_json(%{user: "someuser@example.com"}),
     payload: serialize_to_json(%ExampleEvent{key: "value"})
   }
 ]
@@ -147,13 +147,13 @@ Example output:
 
 ```
 ## AppendEventsBench
-append events, single writer                  100   10245.07 µs/op
-append events, 10 concurrent writers           50   43855.48 µs/op
-append events, 100 concurrent writers           5   444660.20 µs/op
+append events, single writer                  200   10104.64 µs/op
+append events, 10 concurrent writers           20   86802.25 µs/op
+append events, 100 concurrent writers           2   1008032.50 µs/op
 ## ReadEventsBench
-read events, single reader                   1000   1983.15 µs/op
-read events, 10 concurrent readers            100   12240.09 µs/op
-read events, 100 concurrent readers            10   149871.40 µs/op
+read events, single reader                   1000   2056.85 µs/op
+read events, 10 concurrent readers            200   8841.30 µs/op
+read events, 100 concurrent readers            10   102923.20 µs/op
 ```
 
 ## Contributing
