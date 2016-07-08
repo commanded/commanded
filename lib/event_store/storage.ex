@@ -9,7 +9,7 @@ defmodule EventStore.Storage do
   require Logger
 
   alias EventStore.Storage
-  alias EventStore.Storage.{Stream,Subscription}
+  alias EventStore.Storage.{Appender,Stream,Subscription}
 
   @storage_pool_name :event_store_storage_pool
 
@@ -29,16 +29,16 @@ defmodule EventStore.Storage do
   end
 
   @doc """
-  Append the given list of events to the stream, expected version is used for optimistic concurrency
+  Create a new event stream with the given unique identifier
   """
-  def append_to_stream(stream_uuid, expected_version, events) do
-    execute_using_storage_pool(&Stream.append_to_stream(&1, stream_uuid, expected_version, events))
+  def create_stream(stream_uuid) do
+    execute_using_storage_pool(&Stream.create_stream(&1, stream_uuid))
   end
 
   @doc """
   Read events for the given stream forward from the starting version, use zero for all events for the stream
   """
-  def read_stream_forward(stream_uuid, start_version, count \\ nil) do
+  def read_stream_forward(stream_uuid, start_version \\ 0, count \\ nil) do
     execute_using_storage_pool(&Stream.read_stream_forward(&1, stream_uuid, start_version, count))
   end
 
@@ -54,6 +54,13 @@ defmodule EventStore.Storage do
   """
   def latest_event_id do
     execute_using_storage_pool(&Stream.latest_event_id/1)
+  end
+
+  @doc """
+  Get the id and version of the stream with the given uuid
+  """
+  def stream_info(stream_uuid) do
+    execute_using_storage_pool(&Stream.stream_info(&1, stream_uuid))
   end
 
   @doc """

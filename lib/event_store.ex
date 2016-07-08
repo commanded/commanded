@@ -39,12 +39,7 @@ defmodule EventStore do
   def append_to_stream(stream_uuid, expected_version, events) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    case Stream.append_to_stream(stream, expected_version, events) do
-      {:ok, persisted_events} = reply ->
-        Publisher.notify_events(stream_uuid, persisted_events)
-        reply
-      reply -> reply
-    end
+    Stream.append_to_stream(stream, expected_version, events)
   end
 
   @doc """

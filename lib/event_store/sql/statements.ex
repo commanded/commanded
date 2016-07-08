@@ -19,10 +19,10 @@ defmodule EventStore.Sql.Statements do
 """
 CREATE TABLE streams
 (
-    stream_id BIGSERIAL PRIMARY KEY NOT NULL,
+    stream_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
     stream_type text NOT NULL,
-    created_at timestamp NOT NULL
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -44,14 +44,14 @@ RESTART IDENTITY;
 """
 CREATE TABLE events
 (
-    event_id BIGSERIAL PRIMARY KEY NOT NULL,
-    stream_id bigint NOT NULL,
+    event_id bigint PRIMARY KEY NOT NULL,
+    stream_id bigint NOT NULL REFERENCES streams (stream_id),
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
     correlation_id text,
     headers bytea NULL,
     payload bytea NOT NULL,
-    created_at timestamp NOT NULL
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -72,12 +72,12 @@ CREATE UNIQUE INDEX ix_events_stream_id_stream_version ON events (stream_id, str
 """
 CREATE TABLE subscriptions
 (
-    subscription_id BIGSERIAL PRIMARY KEY NOT NULL,
+    subscription_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
     subscription_name text NOT NULL,
     last_seen_event_id bigint NULL,
     last_seen_stream_version bigint NULL,
-    created_at timestamp NOT NULL
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
@@ -90,31 +90,32 @@ CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscripti
 
   def create_stream do
 """
-INSERT INTO streams (stream_uuid, stream_type, created_at)
-VALUES ($1, $2, NOW())
+INSERT INTO streams (stream_uuid, stream_type)
+VALUES ($1, $2)
 RETURNING stream_id;
 """
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = "INSERT INTO events (stream_id, stream_version, created_at, correlation_id, event_type, headers, payload) VALUES"
+    insert = "INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, headers, payload) VALUES"
 
-    params = 1..number_of_events
-    |> Enum.map(fn event_number ->
-      index = (event_number - 1) * 6
-      "($#{index + 1}, $#{index + 2}, NOW(), $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6})"
-    end)
-    |> Enum.join(",")
+    params =
+      1..number_of_events
+      |> Enum.map(fn event_number ->
+        index = (event_number - 1) * 7
+        "($#{index + 1}, $#{index + 2}, $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6}, $#{index + 7})"
+      end)
+      |> Enum.join(",")
 
-    returning = "RETURNING event_id, created_at"
+    returning = "RETURNING created_at"
 
     insert <> " " <> params <> " " <> returning <> ";"
   end
 
   def create_subscription do
 """
-INSERT INTO subscriptions (stream_uuid, subscription_name, created_at)
-VALUES ($1, $2, NOW())
+INSERT INTO subscriptions (stream_uuid, subscription_name)
+VALUES ($1, $2)
 RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at;
 """
   end
@@ -155,6 +156,19 @@ WHERE stream_uuid = $1 AND subscription_name = $2;
 SELECT stream_id
 FROM streams
 WHERE stream_uuid = $1;
+"""
+  end
+
+  def query_stream_id_and_latest_version do
+"""
+SELECT s.stream_id,
+  (SELECT COALESCE(e.event_id, 0)
+   FROM events e
+   WHERE e.stream_id = s.stream_id
+   ORDER BY e.stream_version DESC
+   LIMIT 1) stream_version
+FROM streams s
+WHERE s.stream_uuid = $1;
 """
   end
 

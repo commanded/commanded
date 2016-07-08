@@ -10,33 +10,21 @@ defmodule AppendEventsBench do
   end
 
   before_each_bench(store) do
-    events = EventFactory.create_events(100)
-    {:ok, events}
+    {:ok, EventFactory.create_events(100)}
   end
 
   bench "append events, single writer" do
-    events = bench_context
-
-    stream_uuid = UUID.uuid4()
-
-    {:ok, _} = EventStore.append_to_stream(stream_uuid, 0, events)
-
+    {:ok, _} = EventStore.append_to_stream(UUID.uuid4, 0, bench_context)
     :ok
   end
 
   bench "append events, 10 concurrent writers" do
-    events = bench_context
-
-    append_events(events, 10)
-
+    append_events(bench_context, 10)
     :ok
   end
 
   bench "append events, 100 concurrent writers" do
-    events = bench_context
-
-    append_events(events, 100)
-
+    append_events(bench_context, 100)
     :ok
   end
 
@@ -44,7 +32,7 @@ defmodule AppendEventsBench do
     await_timeout_ms = 100_000
 
     tasks = Enum.map 1..concurrency, fn (_) ->
-      stream_uuid = UUID.uuid4()
+      stream_uuid = UUID.uuid4
 
       Task.async fn ->
         {:ok, _} = EventStore.append_to_stream(stream_uuid, 0, events)
