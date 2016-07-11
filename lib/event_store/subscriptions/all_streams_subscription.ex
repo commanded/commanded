@@ -7,8 +7,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
               last_seen_event_id: 0
   end
 
-  alias EventStore.{RecordedEvent,Storage}
-  alias EventStore.Subscriptions.AllStreamsSubscription
+  alias EventStore.Storage
 
   use Fsm, initial_state: :initial, initial_data: %SubscriptionData{}
 
@@ -24,7 +23,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
             last_seen_event_id: (subscription.last_seen_event_id || 0)
           }
           next_state(:catching_up, data)
-        {:error, reason} ->
+        {:error, _reason} ->
           next_state(:failed, data)
       end
     end
@@ -41,7 +40,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
           # already seen latest published event
           next_state(:subscribed, data)
 
-        latest_event_id ->
+        _latest_event_id ->
           # must catch-up with all unseen events
           data = catch_up_to_event(data)
           next_state(:subscribed, data)
@@ -49,7 +48,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     end
 
     # ignore event notifications while catching up
-    defevent notify_events(events), data: %SubscriptionData{} = data do
+    defevent notify_events(_events), data: %SubscriptionData{} = data do
       next_state(:catching_up, data)
     end
   end
@@ -118,7 +117,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
         |> Enum.reduce(fn (last_event, _) -> last_event end)
     end
 
-    data = %SubscriptionData{data |
+    %SubscriptionData{data |
       last_seen_event_id: last_event.event_id
     }
   end
@@ -129,19 +128,15 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     Storage.read_all_streams_forward(start_event_id)
   end
 
-  defp notify_subscriber(%SubscriptionData{subscriber: subscriber} = data, events) do
+  defp notify_subscriber(%SubscriptionData{subscriber: subscriber}, events) do
     send(subscriber, {:events, events})
   end
 
-  defp ack_events(%SubscriptionData{subscription_name: subscription_name} = data, events, last_event_id) do
+  defp ack_events(%SubscriptionData{subscription_name: subscription_name}, _events, last_event_id) do
     Storage.ack_last_seen_event(@all_stream, subscription_name, last_event_id, nil)
   end
 
   defp first_event_id([first_event|_]) do
     first_event.event_id
-  end
-
-  defp first_stream_version([first_event|_]) do
-    first_event.stream_version
-  end
+  end  
 end

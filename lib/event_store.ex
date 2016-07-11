@@ -14,12 +14,12 @@ defmodule EventStore do
       {:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
   """
 
-  alias EventStore.{Publisher,Storage,Streams,Subscriptions}
+  alias EventStore.{Storage,Streams,Subscriptions}
   alias EventStore.Streams.Stream
 
   @all_stream "$all"
 
-  def append_to_stream(@all_stream, expected_version, events) do
+  def append_to_stream(@all_stream, _expected_version, _events) do
     {:error, :cannot_append_to_all_stream}
   end
 

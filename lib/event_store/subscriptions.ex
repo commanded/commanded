@@ -69,7 +69,7 @@ defmodule EventStore.Subscriptions do
     {:noreply, subscriptions}
   end
 
-  def handle_info({:DOWN, ref, :process, pid, reason}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
     Logger.warn "subscription down due to: #{reason}"
 
     all_stream = List.delete(all_stream, pid)
@@ -97,11 +97,11 @@ defmodule EventStore.Subscriptions do
     %Subscriptions{subscriptions | single_stream: single_stream}
   end
 
-  defp remove_subscription(%Subscriptions{all_stream: all_stream, single_stream: single_stream} = state, stream_uuid, subscription_name) do
+  defp remove_subscription(%Subscriptions{all_stream: _all_stream, single_stream: _single_stream} = state, _stream_uuid, _subscription_name) do
     state
   end
 
-  defp remove_all_stream_subscription(%Subscriptions{all_stream: all_stream} = state, subscription_name) do
+  defp remove_all_stream_subscription(%Subscriptions{all_stream: _all_stream} = state, _subscription_name) do
     state
   end
 end

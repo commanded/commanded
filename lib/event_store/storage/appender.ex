@@ -5,9 +5,8 @@ defmodule EventStore.Storage.Appender do
 
   require Logger
 
-  alias EventStore.{EventData,RecordedEvent}
+  alias EventStore.RecordedEvent
   alias EventStore.Sql.Statements
-  alias EventStore.Storage.{Appender,QueryLatestStreamVersion}
 
   def append(conn, stream_id, events) do
     execute_using_multirow_value_insert(conn, stream_id, events)
@@ -59,17 +58,17 @@ defmodule EventStore.Storage.Appender do
     {:ok, persisted_events}
   end
 
-  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, stream_id, events) do
+  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, stream_id, _events) do
     Logger.warn "failed to append events to stream id #{stream_id} due to: #{message}"
     {:error, :stream_not_found}
   end
 
-  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation, message: message}}}, stream_id, events) do
+  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation, message: message}}}, stream_id, _events) do
     Logger.warn "failed to append events to stream id #{stream_id} due to: #{message}"
     {:error, :wrong_expected_version}
   end
 
-  defp handle_response({:error, reason}, stream_id, events) do
+  defp handle_response({:error, reason}, stream_id, _events) do
     Logger.warn "failed to append events to stream id #{stream_id} due to: #{reason}"
     {:error, reason}
   end

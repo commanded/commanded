@@ -7,7 +7,6 @@ defmodule EventStore.Streams do
   require Logger
 
   alias EventStore.Streams
-  alias EventStore.Streams.{Stream,Supervisor}
 
   defstruct streams: %{}, supervisor: nil
 
@@ -37,7 +36,7 @@ defmodule EventStore.Streams do
     {:reply, {:ok, stream}, state}
   end
 
-  def handle_info({:DOWN, ref, :process, pid, reason}, %Streams{streams: streams} = state) do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %Streams{streams: streams} = state) do
     Logger.warn "stream down due to: #{reason}"
 
     state = %Streams{state | streams: remove_stream(streams, pid)}

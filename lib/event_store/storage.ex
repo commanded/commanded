@@ -9,7 +9,7 @@ defmodule EventStore.Storage do
   require Logger
 
   alias EventStore.Storage
-  alias EventStore.Storage.{Appender,Stream,Subscription}
+  alias EventStore.Storage.{Stream,Subscription}
 
   @storage_pool_name :event_store_storage_pool
 

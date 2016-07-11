@@ -96,7 +96,7 @@ defmodule EventStore.Storage.Subscription do
       |> handle_response(stream_uuid, subscription_name)
     end
 
-    defp handle_response({:ok, _result}, stream_uuid, subscription_name) do
+    defp handle_response({:ok, _result}, _stream_uuid, _subscription_name) do
       :ok
     end
 

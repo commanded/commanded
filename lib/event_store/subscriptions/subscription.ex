@@ -56,7 +56,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, %Subscription{state | subscription: subscription}}
   end
 
-  def handle_cast({:catch_up}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+  def handle_cast({:catch_up}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
     subscription =
       subscription
       |> subscription_provider(stream_uuid).catch_up

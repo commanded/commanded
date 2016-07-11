@@ -17,6 +17,8 @@
 
 -[x] Don't (de)serialize event payload & headers. Persist binary data, allow EventStore consumers to handle serialization.
 
+-[ ] Restart writer process, assigns next event id on append.
+
 -[ ] Subscription should ack received events to resume from last seen.
 
 -[ ] Unsubscribe from stream should remove subscription process and entry from storage.

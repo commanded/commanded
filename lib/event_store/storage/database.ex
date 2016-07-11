@@ -1,8 +1,6 @@
 defmodule EventStore.Storage.Database do
   require Logger
 
-  alias EventStore.Storage
-  
   def create(config) do
     database = Keyword.fetch!(config, :database)
     encoding = Keyword.get(config, :encoding, "UTF8")

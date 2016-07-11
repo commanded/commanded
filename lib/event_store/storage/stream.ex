@@ -6,7 +6,7 @@ defmodule EventStore.Storage.Stream do
   require Logger
 
   alias EventStore.Sql.Statements
-  alias EventStore.Storage.{Appender,QueryLatestEventId,QueryLatestStreamVersion,QueryStreamInfo,Reader,Stream}
+  alias EventStore.Storage.{QueryLatestEventId,QueryLatestStreamVersion,QueryStreamInfo,Reader}
 
   def create_stream(conn, stream_uuid) do
     Logger.debug "attempting to create stream \"#{stream_uuid}\""
