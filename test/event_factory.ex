@@ -26,7 +26,7 @@ defmodule EventStore.EventFactory do
     |> Enum.map(fn number ->
       event_id = initial_event_id + number - 1
       stream_version = initial_stream_version + number - 1
-      
+
       %RecordedEvent{
         event_id: event_id,
         stream_id: stream_id,
@@ -47,13 +47,11 @@ defmodule EventStore.EventFactory do
     end)
   end
 
-  # Serialize given Erlang term to binary using Erlang's External Term Format (http://erlang.org/doc/apps/erts/erl_ext_dist.html)
   defp serialize(term) do
-    :erlang.term_to_binary(term)
+    EventStore.TermSerializer.serialize(term)
   end
-
-  # Deserialize given binary data to an Erlang term using Erlang's External Term Format (http://erlang.org/doc/apps/erts/erl_ext_dist.html)
+  
   defp deserialize(binary) do
-    :erlang.binary_to_term(binary, [:safe])
+    EventStore.TermSerializer.deserialize(binary)
   end
 end

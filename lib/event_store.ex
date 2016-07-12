@@ -32,7 +32,7 @@ defmodule EventStore do
       Specify 0 for the creation of a new stream. An `{:error, wrong_expected_version}` response will be returned if the stream already exists.
       Any positive number will be used to ensure you can only append to the stream if it is at exactly that version.
 
-    - `events` is a list of `%EventStore.EventData{}` structs
+    - `events` is a list of `%EventStore.EventData{}` structs.
       EventStore does not have any built-in serialization.
       The payload and headers for each event should already be serialized to binary data before appending to the stream.
   """
@@ -63,7 +63,7 @@ defmodule EventStore do
     - `stream_uuid` is the stream to subscribe to.
       Use the `$all` identifier to subscribe to events from all streams.
 
-    - `subscription_name` is used to name the subscription group.
+    - `subscription_name` is used to uniquely identify the subscription.
 
     - `subscriber` is a process that will receive `{:event, event}` callback messages.
 
@@ -74,9 +74,9 @@ defmodule EventStore do
   end
 
   @doc """
-  Subscriber will be notified of each event persisted to any stream.
+  Subscriber will be notified of every event persisted to any stream.
 
-    - `subscription_name` is used to name the subscription group.
+    - `subscription_name` is used to uniquely identify the subscription.
 
     - `subscriber` is a process that will receive `{:event, event}` callback messages.
 
@@ -90,9 +90,8 @@ defmodule EventStore do
   Unsubscribe an existing subscriber from event notifications.
 
     - `stream_uuid` is the stream to subscribe to.
-      Use the `$all` identifier to subscribe to events from all streams.
 
-    - `subscription_name` is used to name the subscription group.
+    - `subscription_name` is used to uniquely identify the subscription.
 
     - `subscriber` is a process that will receive `{:event, event}` callback messages.
 
@@ -102,6 +101,13 @@ defmodule EventStore do
     Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
   end
 
+  @doc """
+  Unsubscribe an existing subscriber from all event notifications.
+
+    - `subscription_name` is used to uniquely identify the subscription.
+
+  Returns `:ok` on success.
+  """
   def unsubscribe_from_all_streams(subscription_name) do
     Subscriptions.unsubscribe_from_stream(@all_stream, subscription_name)
   end
