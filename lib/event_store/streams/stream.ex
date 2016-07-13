@@ -6,13 +6,13 @@ defmodule EventStore.Streams.Stream do
   use GenServer
   require Logger
 
-  alias EventStore.{Storage,Writer}
+  alias EventStore.{EventData,RecordedEvent,Storage,Writer}
   alias EventStore.Streams.Stream
 
-  defstruct stream_uuid: nil, stream_id: nil, stream_version: 0
+  defstruct stream_uuid: nil, stream_id: nil, stream_version: 0, serializer: nil
 
-  def start_link(stream_uuid) do
-    GenServer.start_link(__MODULE__, %Stream{stream_uuid: stream_uuid})
+  def start_link(serializer, stream_uuid) do
+    GenServer.start_link(__MODULE__, %Stream{serializer: serializer, stream_uuid: stream_uuid})
   end
 
   @doc """
@@ -45,18 +45,43 @@ defmodule EventStore.Streams.Stream do
     {:reply, {:ok, persisted_events}, state}
   end
 
-  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
-         {:ok, persisted_events} <- Writer.append_to_stream(events, stream_uuid, stream_id, stream_version),
+         {:ok, prepared_events} <- prepare_events(events, stream_id, stream_version, serializer),
+         {:ok, persisted_events} <- Writer.append_to_stream(prepared_events, stream_id, stream_uuid),
     do: {:ok, %Stream{state | stream_id: stream_id}, persisted_events}
   end
 
-  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
-    {:ok, persisted_events} = Writer.append_to_stream(events, stream_uuid, stream_id, stream_version)
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
+    {:ok, prepared_events} = prepare_events(events, stream_id, stream_version, serializer)
+    {:ok, persisted_events} = Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
     {:ok, state, persisted_events}
   end
 
   defp append_to_storage(_expected_version, _events, _state) do
     {:error, :wrong_expected_version}
+  end
+
+  defp prepare_events(events, stream_id, stream_version, serializer) do
+    initial_stream_version = stream_version + 1
+
+    events
+    |> Enum.map(fn event -> map_to_recorded_event(event, serializer) end)
+    |> Enum.with_index(0)
+    |> Enum.map(fn {recorded_event, index} ->
+      %RecordedEvent{recorded_event |
+        stream_id: stream_id,
+        stream_version: initial_stream_version + index,
+      }
+    end)
+  end
+
+  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}, serializer) do
+    %RecordedEvent{
+      correlation_id: correlation_id,
+      event_type: event_type,
+      headers: serializer.serialize(headers),
+      payload: serializer.serialize(payload)
+    }
   end
 end

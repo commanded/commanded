@@ -8,18 +8,18 @@ defmodule EventStore.Streams do
 
   alias EventStore.Streams
 
-  defstruct streams: %{}, supervisor: nil
+  defstruct streams: %{}, supervisor: nil, serializer: nil
 
-  def start_link do
-    GenServer.start_link(__MODULE__, %Streams{}, name: __MODULE__)
+  def start_link(serializer) do
+    GenServer.start_link(__MODULE__, %Streams{serializer: serializer}, name: __MODULE__)
   end
 
   def open_stream(stream_uuid) do
     GenServer.call(__MODULE__, {:open_stream, stream_uuid})
   end
 
-  def init(%Streams{} = state) do
-    {:ok, supervisor} = Streams.Supervisor.start_link
+  def init(%Streams{serializer: serializer} = state) do
+    {:ok, supervisor} = Streams.Supervisor.start_link(serializer)
 
     state = %Streams{state | supervisor: supervisor}
 

@@ -28,14 +28,14 @@ defmodule EventStore.Writer do
   @doc """
   Append the given list of events to the stream
   """
-  def append_to_stream(events, stream_uuid, stream_id, stream_version) do
-    GenServer.call(__MODULE__, {:append_to_stream, events, stream_uuid, stream_id, stream_version})
+  def append_to_stream(events, stream_id, stream_uuid) do
+    GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_uuid})
   end
 
-  def handle_call({:append_to_stream, events, stream_uuid, stream_id, stream_version}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
+  def handle_call({:append_to_stream, events, stream_id, stream_uuid}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
     persisted_events =
       events
-      |> prepare_events(stream_id, stream_version, next_event_id)
+      |> assign_event_id(next_event_id)
       |> append_events(conn, stream_id)
       |> publish_events(stream_uuid)
 
@@ -51,28 +51,14 @@ defmodule EventStore.Writer do
     {:noreply, %Writer{state | next_event_id: last_event_id + 1}}
   end
 
-  defp prepare_events(events, stream_id, stream_version, next_event_id) do
-    initial_stream_version = stream_version + 1
-
+  defp assign_event_id(events, next_event_id) do
     events
-    |> Enum.map(&map_to_recorded_event(&1))
     |> Enum.with_index(0)
     |> Enum.map(fn {recorded_event, index} ->
       %RecordedEvent{recorded_event |
-        event_id: next_event_id + index,
-        stream_id: stream_id,
-        stream_version: initial_stream_version + index,
+        event_id: next_event_id + index
       }
     end)
-  end
-
-  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}) do
-    %RecordedEvent{
-      correlation_id: correlation_id,
-      event_type: event_type,
-      headers: headers,
-      payload: payload
-    }
   end
 
   defp append_events(recorded_events, conn, stream_id) do

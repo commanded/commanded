@@ -33,8 +33,6 @@ defmodule EventStore do
       Any positive number will be used to ensure you can only append to the stream if it is at exactly that version.
 
     - `events` is a list of `%EventStore.EventData{}` structs.
-      EventStore does not have any built-in serialization.
-      The payload and headers for each event should already be serialized to binary data before appending to the stream.
   """
   def append_to_stream(stream_uuid, expected_version, events) do
     {:ok, stream} = Streams.open_stream(stream_uuid)

@@ -43,15 +43,18 @@ defmodule EventStore.EventFactory do
   def deserialize_events(events) do
     events
     |> Enum.map(fn event ->
-      %RecordedEvent{event | payload: deserialize(event.payload), headers: deserialize(event.headers)}
+      %RecordedEvent{event |
+        payload: deserialize(event.payload, %EventStore.EventFactory.Event{}),
+        headers: deserialize(event.headers, %{})
+      }
     end)
   end
 
   defp serialize(term) do
     EventStore.TermSerializer.serialize(term)
   end
-  
-  defp deserialize(binary) do
-    EventStore.TermSerializer.deserialize(binary)
+
+  defp deserialize(binary, type) do
+    EventStore.TermSerializer.deserialize(binary, type)
   end
 end
