@@ -41,14 +41,14 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
           next_state(:subscribed, data)
 
         _latest_stream_version ->
-          # must catch-up with all unseen events for stream
+          # must catch-up with all unseen events from stream
           data = catch_up_to_stream_version(data)
 
           next_state(:subscribed, data)
       end
     end
 
-    # ignore event notifications while catching up; but remember the latest event id
+    # ignore event notifications while catching up
     defevent notify_events(_events), data: %SubscriptionData{} = data do
       next_state(:catching_up, data)
     end

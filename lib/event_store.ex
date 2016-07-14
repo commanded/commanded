@@ -15,7 +15,7 @@ defmodule EventStore do
   """
 
   alias EventStore.{Storage,Streams,Subscriptions}
-  alias EventStore.Streams.Stream
+  alias EventStore.Streams.{AllStream,Stream}
 
   @all_stream "$all"
 
@@ -67,7 +67,7 @@ defmodule EventStore do
       If not set it will return all events from all streams.
   """
   def read_all_streams_forward(stream_uuid, start_event_id \\ 0, count \\ nil) do
-    Storage.read_all_streams_forward(start_event_id, count)
+    AllStream.read_stream_forward(start_event_id, count)
   end
 
   @doc """
@@ -83,7 +83,9 @@ defmodule EventStore do
   Returns `{:ok, subscription}` when subscription succeeds.
   """
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do
-    Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, subscriber)
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    Stream.subscribe_to_stream(subscription_name, subscriber)
   end
 
   @doc """
@@ -96,7 +98,7 @@ defmodule EventStore do
   Returns `{:ok, subscription}` when subscription succeeds.
   """
   def subscribe_to_all_streams(subscription_name, subscriber) do
-    Subscriptions.subscribe_to_stream(@all_stream, subscription_name, subscriber)
+    AllStream.subscribe_to_stream(subscription_name, subscriber)
   end
 
   @doc """
