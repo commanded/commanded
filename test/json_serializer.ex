@@ -15,7 +15,11 @@ defmodule EventStore.JsonSerializer do
   @doc """
   Deserialize given JSON binary data to the expected type.
   """
-  def deserialize(binary, type) do
+  def deserialize(binary, config) do
+    type = case Keyword.get(config, :type, nil) do
+      nil -> []
+      type -> type |> String.to_atom |> struct
+    end
     Poison.decode!(binary, as: type)
   end
 end

@@ -11,8 +11,6 @@ defmodule EventStore.Supervisor do
 
   def init(config) do
     serializer = config[:serializer] || @default_serializer
-IO.puts "serializer"
-IO.inspect serializer
 
     children = [
       supervisor(EventStore.Storage.PoolSupervisor, []),

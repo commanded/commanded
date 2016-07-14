@@ -46,7 +46,7 @@ defmodule EventStore.Storage.Reader do
 
   defmodule EventAdapter do
     @moduledoc """
-    Deserialization of event data from the database
+    Map event data from the database to `RecordedEvent` struct
     """
 
     def to_event_data(rows) do

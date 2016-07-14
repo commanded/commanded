@@ -3,6 +3,10 @@ defmodule EventStore.Serializer do
   Specification of a serializer to convert between an Elixir term and binary data.
   """
 
+  @type t :: module
+
+  @type config :: Keyword.t
+
   @doc """
   Serialize the given term to a binary representation
   """
@@ -11,5 +15,5 @@ defmodule EventStore.Serializer do
   @doc """
   Deserialize the given binary data to the corresponding term
   """
-  @callback deserialize(binary, map) :: any
+  @callback deserialize(binary, config) :: any
 end

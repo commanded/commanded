@@ -6,21 +6,21 @@ defmodule EventStore.EventFactory do
   end
 
   def create_events(number_of_events) when number_of_events > 0 do
-    correlation_id = UUID.uuid4()
+    correlation_id = UUID.uuid4
 
     1..number_of_events
     |> Enum.map(fn number ->
       %EventData{
         correlation_id: correlation_id,
-        event_type: "unit_test_event",
-        headers: serialize(%{"user" => "user@example.com"}),
-        payload: serialize(%EventStore.EventFactory.Event{event: number})
+        event_type: "Elixir.EventStore.EventFactory.Event",
+        headers: %{"user" => "user@example.com"},
+        payload: %EventStore.EventFactory.Event{event: number}
       }
     end)
   end
 
   def create_recorded_events(number_of_events, stream_id, initial_event_id \\ 1, initial_stream_version \\ 1) when number_of_events > 0 do
-    correlation_id = UUID.uuid4()
+    correlation_id = UUID.uuid4
 
     1..number_of_events
     |> Enum.map(fn number ->

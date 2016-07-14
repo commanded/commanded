@@ -2,6 +2,8 @@
 
 -[ ] Elixir behaviour for consumers to provide a serializer for event payload and header.
 
+-[ ] Create stream should accept `stream_type` argument and persist to streams table.
+
 -[ ] Assign event `created_at` timestamp by writer process, not database.
 
 -[ ] Restart writer process, assigns next event id on append.

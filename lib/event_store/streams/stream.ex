@@ -24,6 +24,10 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
   end
 
+  def read_stream_forward(stream, start_version \\ 0, count \\ nil) do
+    GenServer.call(stream, {:read_stream_forward, start_version, count})
+  end
+
   def init(%Stream{stream_uuid: stream_uuid} = state) do
     GenServer.cast(self, {:open_stream, stream_uuid})
     {:ok, state}
@@ -43,6 +47,12 @@ defmodule EventStore.Streams.Stream do
     state = %Stream{state | stream_version: stream_version + length(persisted_events)}
 
     {:reply, {:ok, persisted_events}, state}
+  end
+
+  def handle_call({:read_stream_forward, start_version, count}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do
+    reply = read_storage_forward(stream_id, start_version, count, serializer)
+
+    {:reply, reply, state}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
@@ -65,15 +75,18 @@ defmodule EventStore.Streams.Stream do
   defp prepare_events(events, stream_id, stream_version, serializer) do
     initial_stream_version = stream_version + 1
 
-    events
-    |> Enum.map(fn event -> map_to_recorded_event(event, serializer) end)
-    |> Enum.with_index(0)
-    |> Enum.map(fn {recorded_event, index} ->
-      %RecordedEvent{recorded_event |
-        stream_id: stream_id,
-        stream_version: initial_stream_version + index,
-      }
-    end)
+    prepared_events =
+      events
+      |> Enum.map(fn event -> map_to_recorded_event(event, serializer) end)
+      |> Enum.with_index(0)
+      |> Enum.map(fn {recorded_event, index} ->
+        %RecordedEvent{recorded_event |
+          stream_id: stream_id,
+          stream_version: initial_stream_version + index,
+        }
+      end)
+
+    {:ok, prepared_events}
   end
 
   defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}, serializer) do
@@ -82,6 +95,25 @@ defmodule EventStore.Streams.Stream do
       event_type: event_type,
       headers: serializer.serialize(headers),
       payload: serializer.serialize(payload)
+    }
+  end
+
+  defp read_storage_forward(stream_id, start_version, count, serializer) when not is_nil(stream_id) do
+    {:ok, recorded_events} = Storage.read_stream_forward(stream_id, start_version, count)
+
+    events = Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)
+
+    {:ok, events}
+  end
+
+  defp read_storage_forward(_stream_id, _start_version, _count, _serializer) do
+    {:error, :stream_not_found}
+  end
+
+  defp deserialize_recorded_event(%RecordedEvent{headers: headers, payload: payload, event_type: event_type} = recorded_event, serializer) do
+    %RecordedEvent{recorded_event |
+      headers: serializer.deserialize(headers, []),
+      payload: serializer.deserialize(payload, type: event_type),
     }
   end
 end

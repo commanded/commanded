@@ -52,7 +52,22 @@ defmodule EventStore do
       If not set it will return all events from the stream.
   """
   def read_stream_forward(stream_uuid, start_version \\ 0, count \\ nil) do
-    Storage.read_stream_forward(stream_uuid, start_version, count)
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    Stream.read_stream_forward(stream, start_version, count)
+  end
+
+  @doc """
+  Reads the requested number of events from all streams, in the order in which they were originally written.
+
+    - `start_event_id` optionally, the id of the first event to read.
+      Defaults to the beginning of the stream if not set.
+
+    - `count` optionally, the maximum number of events to read.
+      If not set it will return all events from all streams.
+  """
+  def read_all_streams_forward(stream_uuid, start_event_id \\ 0, count \\ nil) do
+    Storage.read_all_streams_forward(start_event_id, count)
   end
 
   @doc """

@@ -6,7 +6,6 @@ defmodule EventStoreTest do
 
   @subscription_name "test_subscription"
 
-  @tag :wip
   test "append single event to event store" do
     stream_uuid = UUID.uuid4
     events = EventFactory.create_events(1)
