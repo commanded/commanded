@@ -3,21 +3,24 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
 
   defmodule SubscriptionData do
     defstruct stream_uuid: nil,
+              stream: nil,
               subscription_name: nil,
               subscriber: nil,
               last_seen_stream_version: 0
   end
 
   alias EventStore.Storage
+  alias EventStore.Streams.Stream
 
   use Fsm, initial_state: :initial, initial_data: %SubscriptionData{}
 
   defstate initial do
-    defevent subscribe(stream_uuid, subscription_name, subscriber), data: %SubscriptionData{} = data do
+    defevent subscribe(stream_uuid, stream, subscription_name, subscriber), data: %SubscriptionData{} = data do
       case subscribe_to_stream(stream_uuid, subscription_name) do
         {:ok, subscription} ->
           data = %SubscriptionData{data |
             stream_uuid: stream_uuid,
+            stream: stream,
             subscription_name: subscription_name,
             subscriber: subscriber,
             last_seen_stream_version: (subscription.last_seen_stream_version || 0)
@@ -30,17 +33,17 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
   end
 
   defstate catching_up do
-    defevent catch_up, data: %SubscriptionData{stream_uuid: stream_uuid, last_seen_stream_version: last_seen_stream_version} = data do
-      case query_latest_stream_version(stream_uuid) do
-        0 ->
+    defevent catch_up, data: %SubscriptionData{stream: stream, last_seen_stream_version: last_seen_stream_version} = data do
+      case Stream.stream_version(stream) do
+        {:ok, 0} ->
           # no events
           next_state(:subscribed, data)
 
-        ^last_seen_stream_version ->
+        {:ok, ^last_seen_stream_version} ->
           # already seen latest stream version
           next_state(:subscribed, data)
 
-        _latest_stream_version ->
+        {:ok, _latest_stream_version} ->
           # must catch-up with all unseen events from stream
           data = catch_up_to_stream_version(data)
 
@@ -96,13 +99,8 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
     Storage.subscribe_to_stream(stream_uuid, subscription_name)
   end
 
-  defp query_latest_stream_version(stream_uuid) do
-    {:ok, latest_stream_version} = Storage.latest_stream_version(stream_uuid)
-    latest_stream_version
-  end
-
-  defp catch_up_to_stream_version(%SubscriptionData{stream_uuid: stream_uuid, last_seen_stream_version: last_seen_stream_version} = data) do
-    last_event = case unseen_events(stream_uuid, last_seen_stream_version) do
+  defp catch_up_to_stream_version(%SubscriptionData{stream: stream, last_seen_stream_version: last_seen_stream_version} = data) do
+    last_event = case unseen_events(stream, last_seen_stream_version) do
       {:ok, events} ->
         # chunk events by correlation id
         events
@@ -121,10 +119,10 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
     %SubscriptionData{data | last_seen_stream_version: last_event.stream_version}
   end
 
-  defp unseen_events(stream_uuid, last_seen_stream_version) do
+  defp unseen_events(stream, last_seen_stream_version) do
     start_version = last_seen_stream_version + 1
 
-    Storage.read_stream_forward(stream_uuid, start_version)
+    Stream.read_stream_forward(stream, start_version)
   end
 
   defp notify_subscriber(%SubscriptionData{subscriber: subscriber}, events) do

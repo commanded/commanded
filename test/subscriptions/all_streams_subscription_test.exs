@@ -21,7 +21,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
 
     assert subscription.state == :catching_up
     assert subscription.data.subscription_name == @subscription_name
@@ -34,7 +34,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -49,7 +49,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -67,7 +67,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
       |> AllStreamsSubscription.notify_events(events)
 
@@ -88,7 +88,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -98,7 +98,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     # should not receive already seen events

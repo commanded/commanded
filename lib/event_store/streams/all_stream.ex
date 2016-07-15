@@ -10,8 +10,6 @@ defmodule EventStore.Streams.AllStream do
   alias EventStore.Streams.AllStream
   alias EventStore.Subscriptions
 
-  @all_stream "$all"
-
   defstruct serializer: nil
 
   def start_link(serializer) do
@@ -37,7 +35,7 @@ defmodule EventStore.Streams.AllStream do
   end
 
   def handle_call({:subscribe_to_stream, subscription_name, subscriber}, _from, %AllStream{} = state) do
-    reply = Subscriptions.subscribe_to_stream(@all_stream, self, subscription_name, subscriber)
+    reply = Subscriptions.subscribe_to_all_streams(self, subscription_name, subscriber)
 
     {:reply, reply, state}
   end

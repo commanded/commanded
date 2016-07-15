@@ -30,7 +30,6 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def init(%Subscription{stream: stream, subscriber: subscriber} = state) do
-    Process.link(stream)
     Process.link(subscriber)
 
     GenServer.cast(self, {:subscribe_to_stream})
@@ -38,10 +37,10 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
-  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).subscribe(stream_uuid, subscription_name, subscriber)
+      |> subscription_provider(stream_uuid).subscribe(stream_uuid, stream, subscription_name, subscriber)
 
     handle_subscription_state(subscription.state)
 

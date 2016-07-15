@@ -6,6 +6,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   alias EventStore.EventFactory
   alias EventStore.ProcessHelper
   alias EventStore.Storage.{Appender,Stream}
+  alias EventStore.Streams
   alias EventStore.Subscriptions
   alias EventStore.Subscriber
 
@@ -19,19 +20,23 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, %{conn: conn}}
   end
 
+  @tag :wip
   test "subscribe to stream", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
 
+    {:ok, stream} = Streams.open_stream(stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, @subscription_name, subscriber)
+    {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, subscriber)
 
     Subscriptions.notify_events(stream_uuid, persisted_events)
 
     assert_receive {:events, received_events}
 
-    assert received_events == persisted_events
-    assert Subscriber.received_events(subscriber) == persisted_events
+    expected_received_events = EventFactory.deserialize_events(persisted_events)
+
+    assert received_events == expected_received_events
+    assert Subscriber.received_events(subscriber) == expected_received_events
   end
 
   test "subscribe to stream, ignore events from another stream", %{conn: conn} do
@@ -41,15 +46,18 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, interested_persisted_events} = Appender.append(conn, interested_stream_id, EventFactory.create_recorded_events(1, interested_stream_id))
     {:ok, other_persisted_events} = Appender.append(conn, other_stream_id, EventFactory.create_recorded_events(1, other_stream_id, 2))
 
+    {:ok, interested_stream} = Streams.open_stream(interested_stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Subscriptions.subscribe_to_stream(interested_stream_uuid, @subscription_name, subscriber)
+    {:ok, _} = Subscriptions.subscribe_to_stream(interested_stream_uuid, interested_stream, @subscription_name, subscriber)
 
     Subscriptions.notify_events(other_stream_uuid, other_persisted_events)
 
-    # received events does not include events from other stream
+    expected_received_events = EventFactory.deserialize_events(interested_persisted_events)
+
+    # received events should not include events from other stream
     assert_receive {:events, received_events}
-    assert received_events == interested_persisted_events
-    assert Subscriber.received_events(subscriber) == interested_persisted_events
+    assert received_events == expected_received_events
+    assert Subscriber.received_events(subscriber) == expected_received_events
   end
 
   test "subscribe to $all stream, receive events from all streams", %{conn: conn} do
@@ -60,7 +68,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     stream2_events = EventFactory.create_recorded_events(1, stream2_id, 2)
 
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Subscriptions.subscribe_to_stream(@all_stream, @subscription_name, subscriber)
+    all_stream = Process.whereis(EventStore.Streams.AllStream)
+    {:ok, _} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name, subscriber)
 
     {:ok, stream1_persisted_events} = Appender.append(conn, stream1_id, stream1_events)
     {:ok, stream2_persisted_events} = Appender.append(conn, stream2_id, stream2_events)
@@ -77,6 +86,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber) == stream1_persisted_events ++ stream2_persisted_events
   end
 
+  @tag :wip
   test "should monitor each subscription, terminate subscription and subscriber on error", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     events = EventFactory.create_recorded_events(1, stream_id)
@@ -84,8 +94,10 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, subscriber1} = Subscriber.start_link(self)
     {:ok, subscriber2} = Subscriber.start_link(self)
 
-    {:ok, subscription1} = Subscriptions.subscribe_to_stream(@all_stream, @subscription_name <> "1", subscriber1)
-    {:ok, _} = Subscriptions.subscribe_to_stream(@all_stream, @subscription_name <> "2", subscriber2)
+    all_stream = Process.whereis(EventStore.Streams.AllStream)
+
+    {:ok, subscription1} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name <> "1", subscriber1)
+    {:ok, _} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name <> "2", subscriber2)
 
     # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
     Process.unlink(subscriber1)

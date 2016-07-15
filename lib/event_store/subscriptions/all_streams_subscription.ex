@@ -14,7 +14,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   @all_stream "$all"
 
   defstate initial do
-    defevent subscribe(@all_stream, subscription_name, subscriber), data: %SubscriptionData{} = data do
+    defevent subscribe(@all_stream, stream, subscription_name, subscriber), data: %SubscriptionData{} = data do
       case subscribe_to_stream(subscription_name) do
         {:ok, subscription} ->
           data = %SubscriptionData{data |
@@ -138,5 +138,5 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
 
   defp first_event_id([first_event|_]) do
     first_event.event_id
-  end  
+  end
 end

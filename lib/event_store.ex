@@ -85,7 +85,7 @@ defmodule EventStore do
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    Stream.subscribe_to_stream(subscription_name, subscriber)
+    Stream.subscribe_to_stream(stream, subscription_name, subscriber)
   end
 
   @doc """

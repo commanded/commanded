@@ -32,6 +32,10 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber})
   end
 
+  def stream_version(stream) do
+    GenServer.call(stream, {:stream_version})
+  end
+
   def init(%Stream{stream_uuid: stream_uuid} = state) do
     GenServer.cast(self, {:open_stream, stream_uuid})
     {:ok, state}
@@ -63,6 +67,10 @@ defmodule EventStore.Streams.Stream do
     reply = Subscriptions.subscribe_to_stream(stream_uuid, self, subscription_name, subscriber)
 
     {:reply, reply, state}
+  end
+
+  def handle_call({:stream_version}, _from, %Stream{stream_version: stream_version} = state) do
+    {:reply, {:ok, stream_version}, state}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do

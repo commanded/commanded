@@ -17,10 +17,10 @@ defmodule EventStore.Storage.ReadEventsTest do
   # test "read stream forwards, when empty"
 
   test "read stream with single event forward", %{conn: conn} do
-    {:ok, stream_uuid, stream_id} = create_stream(conn)
+    {:ok, _stream_uuid, stream_id} = create_stream(conn)
     {:ok, saved_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
 
-    {:ok, read_events} = Storage.read_stream_forward(stream_uuid)
+    {:ok, read_events} = Storage.read_stream_forward(stream_id)
 
     saved_event = hd(saved_events)
     read_event = hd(read_events)

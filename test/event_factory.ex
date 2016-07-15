@@ -32,7 +32,7 @@ defmodule EventStore.EventFactory do
         stream_id: stream_id,
         stream_version: stream_version,
         correlation_id: correlation_id,
-        event_type: "unit_test_event",
+        event_type: "Elixir.EventStore.EventFactory.Event",
         headers: serialize(%{"user" => "user@example.com"}),
         payload: serialize(%EventStore.EventFactory.Event{event: event_id}),
         created_at: :calendar.universal_time
@@ -44,17 +44,17 @@ defmodule EventStore.EventFactory do
     events
     |> Enum.map(fn event ->
       %RecordedEvent{event |
-        payload: deserialize(event.payload, %EventStore.EventFactory.Event{}),
-        headers: deserialize(event.headers, %{})
+        payload: deserialize(event.payload, type: "Elixir.EventStore.EventFactory.Event"),
+        headers: deserialize(event.headers, [])
       }
     end)
   end
 
   defp serialize(term) do
-    EventStore.TermSerializer.serialize(term)
+    EventStore.JsonSerializer.serialize(term)
   end
 
   defp deserialize(binary, type) do
-    EventStore.TermSerializer.deserialize(binary, type)
+    EventStore.JsonSerializer.deserialize(binary, type)
   end
 end

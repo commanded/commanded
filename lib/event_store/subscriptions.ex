@@ -21,6 +21,10 @@ defmodule EventStore.Subscriptions do
     GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber})
   end
 
+  def subscribe_to_all_streams(all_stream, subscription_name, subscriber) do
+    GenServer.call(__MODULE__, {:subscribe_to_stream, @all_stream, all_stream, subscription_name, subscriber})
+  end
+
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
     GenServer.call(__MODULE__, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
