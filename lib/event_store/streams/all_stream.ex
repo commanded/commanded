@@ -7,7 +7,7 @@ defmodule EventStore.Streams.AllStream do
   require Logger
 
   alias EventStore.{EventData,RecordedEvent,Storage,Writer}
-  alias EventStore.Streams.Stream
+  alias EventStore.Streams.AllStream
   alias EventStore.Subscriptions
 
   @all_stream "$all"
@@ -36,8 +36,10 @@ defmodule EventStore.Streams.AllStream do
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe_to_stream, subscription_name, subscriber}, _from, %AllStream{}) do
-    Subscriptions.subscribe_to_stream(@all_stream, self, subscription_name, subscriber)
+  def handle_call({:subscribe_to_stream, subscription_name, subscriber}, _from, %AllStream{} = state) do
+    reply = Subscriptions.subscribe_to_stream(@all_stream, self, subscription_name, subscriber)
+
+    {:reply, reply, state}
   end
 
   defp read_storage_forward(start_event_id, count, serializer) do

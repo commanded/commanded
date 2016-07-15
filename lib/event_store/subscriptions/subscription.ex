@@ -13,7 +13,7 @@ defmodule EventStore.Subscriptions.Subscription do
 
   @all_stream "$all"
 
-  defstruct stream_uuid: nil, subscription_name: nil, subscriber: nil, subscription: nil
+  defstruct stream_uuid: nil, stream: nil, subscription_name: nil, subscriber: nil, subscription: nil
 
   def start_link(stream_uuid, stream, subscription_name, subscriber) do
     GenServer.start_link(__MODULE__, %Subscription{
@@ -29,7 +29,7 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
-  def init(%Subscription{subscriber: subscriber, stream: stream} = state) do
+  def init(%Subscription{stream: stream, subscriber: subscriber} = state) do
     Process.link(stream)
     Process.link(subscriber)
 
@@ -41,7 +41,7 @@ defmodule EventStore.Subscriptions.Subscription do
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).subscribe(stream_uuid, stream, subscription_name, subscriber)
+      |> subscription_provider(stream_uuid).subscribe(stream_uuid, subscription_name, subscriber)
 
     handle_subscription_state(subscription.state)
 

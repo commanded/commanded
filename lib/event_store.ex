@@ -66,7 +66,7 @@ defmodule EventStore do
     - `count` optionally, the maximum number of events to read.
       If not set it will return all events from all streams.
   """
-  def read_all_streams_forward(stream_uuid, start_event_id \\ 0, count \\ nil) do
+  def read_all_streams_forward(start_event_id \\ 0, count \\ nil) do
     AllStream.read_stream_forward(start_event_id, count)
   end
 

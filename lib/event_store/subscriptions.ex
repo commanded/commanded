@@ -18,9 +18,9 @@ defmodule EventStore.Subscriptions do
   end
 
   def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber) do
-    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber})
+    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber})
   end
-  
+
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
     GenServer.call(__MODULE__, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
@@ -37,10 +37,10 @@ defmodule EventStore.Subscriptions do
     {:ok, subscriptions}
   end
 
-  def handle_call({:subscribe_to_stream, stream_uuid, subscription_name, subscriber}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
+  def handle_call({:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
     # TODO: Ensure subscription is not already present in single/all stream subscriptions
 
-    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, subscription_name, subscriber)
+    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber)
 
     Process.monitor(subscription)
 

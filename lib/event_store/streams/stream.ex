@@ -6,7 +6,7 @@ defmodule EventStore.Streams.Stream do
   use GenServer
   require Logger
 
-  alias EventStore.{EventData,RecordedEvent,Storage,Writer}
+  alias EventStore.{EventData,RecordedEvent,Storage,Subscriptions,Writer}
   alias EventStore.Streams.Stream
 
   defstruct stream_uuid: nil, stream_id: nil, stream_version: 0, serializer: nil
@@ -28,8 +28,8 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:read_stream_forward, start_version, count})
   end
 
-  def subscribe_to_stream(stream, subscriber_name, subscriber) do
-    GenServer.call(stream, {:subscribe_to_stream, subscriber_name, subscriber})
+  def subscribe_to_stream(stream, subscription_name, subscriber) do
+    GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber})
   end
 
   def init(%Stream{stream_uuid: stream_uuid} = state) do
@@ -59,8 +59,10 @@ defmodule EventStore.Streams.Stream do
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe_to_stream, subscriber_name, subscriber}, _from, %Stream{stream_uuid: stream_uuid}) do
-    Subscriptions.subscribe_to_stream(stream_uuid, self, subscription_name, subscriber)
+  def handle_call({:subscribe_to_stream, subscription_name, subscriber}, _from, %Stream{stream_uuid: stream_uuid} = state) do
+    reply = Subscriptions.subscribe_to_stream(stream_uuid, self, subscription_name, subscriber)
+
+    {:reply, reply, state}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
