@@ -58,30 +58,29 @@ Application.ensure_all_started(:eventstore)
 
 ```elixir
 # create a unique identity for the stream (using the `uuid` package)
-stream_uuid = UUID.uuid4()
+stream_uuid = UUID.uuid4
 
 # a new stream will be created when the expected version is zero
 expected_version = 0
 
 # list of events to persist
-# - headers and payload must already be serialized to binary data (e.g. using a JSON encoder)
 events = [
   %EventStore.EventData{
-    event_type: "example_event",
-    headers: serialize_to_json(%{user: "someuser@example.com"}),
-    payload: serialize_to_json(%ExampleEvent{key: "value"})
+    event_type: "ExampleEvent",
+    data: %ExampleEvent{key: "value"},
+    metadata: %{user: "someuser@example.com"},
   }
 ]
 
 # append events to stream
-{:ok, events} = EventStore.append_to_stream(stream_uuid, expected_version, events)
+:ok = EventStore.append_to_stream(stream_uuid, expected_version, events)
 ```
 
 ### Reading from a stream
 
 ```elixir
-# read all events from the stream, starting at the beginning
-{:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
+# read all events from the stream, starting at the stream's first event
+{:ok, events} = EventStore.read_stream_forward(stream_uuid)
 ```
 
 ### Subscribe to all streams

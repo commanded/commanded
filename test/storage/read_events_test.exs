@@ -27,8 +27,8 @@ defmodule EventStore.Storage.ReadEventsTest do
 
     assert read_event.event_id == 1
     assert read_event.stream_id == 1
-    assert read_event.headers == saved_event.headers
-    assert read_event.payload == saved_event.payload
+    assert read_event.data == saved_event.data
+    assert read_event.metadata == saved_event.metadata
   end
 
   test "read all streams with multiple events forward", %{conn: conn} do

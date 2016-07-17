@@ -33,16 +33,14 @@ defmodule EventStore.Writer do
   end
 
   def handle_call({:append_to_stream, events, stream_id, stream_uuid}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
-    persisted_events =
-      events
-      |> assign_event_id(next_event_id)
-      |> append_events(conn, stream_id)
-      |> publish_events(stream_uuid)
+    events
+    |> assign_event_id(next_event_id)
+    |> append_events(conn, stream_id)
+    |> publish_events(stream_uuid)
 
-    reply = {:ok, persisted_events}
-    state = %Writer{state | next_event_id: next_event_id + length(persisted_events)}
+    state = %Writer{state | next_event_id: next_event_id + length(events)}
 
-    {:reply, reply, state}
+    {:reply, :ok, state}
   end
 
   def handle_cast({:latest_event_id}, %Writer{conn: conn} = state) do
@@ -62,12 +60,11 @@ defmodule EventStore.Writer do
   end
 
   defp append_events(recorded_events, conn, stream_id) do
-    {:ok, persisted_events} = Appender.append(conn, stream_id, recorded_events)
-    persisted_events
+    {:ok, _} = Appender.append(conn, stream_id, recorded_events)
+    recorded_events
   end
 
   defp publish_events(persisted_events, stream_uuid) do
-    :ok = Subscriptions.notify_events(stream_uuid, persisted_events)
-    persisted_events
+    Subscriptions.notify_events(stream_uuid, persisted_events)
   end
 end

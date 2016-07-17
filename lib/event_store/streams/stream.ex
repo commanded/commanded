@@ -16,9 +16,11 @@ defmodule EventStore.Streams.Stream do
   end
 
   @doc """
-  Append the given list of events to the stream, expected version is used for optimistic concurrency
+  Append the given list of events to the stream, expected version is used for optimistic concurrency.
 
   Each logical stream is a separate process; writes to a single stream will always be serialized.
+
+  Returns `:ok` on success
   """
   def append_to_stream(stream, expected_version, events) do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
@@ -50,11 +52,11 @@ defmodule EventStore.Streams.Stream do
   end
 
   def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_version: stream_version} = state) do
-    {:ok, state, persisted_events} = append_to_storage(expected_version, events, state)
+    {:ok, state} = append_to_storage(expected_version, events, state)
 
-    state = %Stream{state | stream_version: stream_version + length(persisted_events)}
+    state = %Stream{state | stream_version: stream_version + length(events)}
 
-    {:reply, {:ok, persisted_events}, state}
+    {:reply, :ok, state}
   end
 
   def handle_call({:read_stream_forward, start_version, count}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do
@@ -76,14 +78,14 @@ defmodule EventStore.Streams.Stream do
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
          {:ok, prepared_events} <- prepare_events(events, stream_id, stream_version, serializer),
-         {:ok, persisted_events} <- Writer.append_to_stream(prepared_events, stream_id, stream_uuid),
-    do: {:ok, %Stream{state | stream_id: stream_id}, persisted_events}
+         :ok <- Writer.append_to_stream(prepared_events, stream_id, stream_uuid),
+    do: {:ok, %Stream{state | stream_id: stream_id}}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
     {:ok, prepared_events} = prepare_events(events, stream_id, stream_version, serializer)
-    {:ok, persisted_events} = Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
-    {:ok, state, persisted_events}
+    :ok = Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
+    {:ok, state}
   end
 
   defp append_to_storage(_expected_version, _events, _state) do
@@ -107,12 +109,12 @@ defmodule EventStore.Streams.Stream do
     {:ok, prepared_events}
   end
 
-  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}, serializer) do
+  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, data: data, metadata: metadata}, serializer) do
     %RecordedEvent{
       correlation_id: correlation_id,
       event_type: event_type,
-      headers: serializer.serialize(headers),
-      payload: serializer.serialize(payload)
+      data: serializer.serialize(data),
+      metadata: serializer.serialize(metadata)
     }
   end
 
@@ -128,10 +130,10 @@ defmodule EventStore.Streams.Stream do
     {:error, :stream_not_found}
   end
 
-  defp deserialize_recorded_event(%RecordedEvent{headers: headers, payload: payload, event_type: event_type} = recorded_event, serializer) do
+  defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do
     %RecordedEvent{recorded_event |
-      headers: serializer.deserialize(headers, []),
-      payload: serializer.deserialize(payload, type: event_type),
+      data: serializer.deserialize(data, type: event_type),
+      metadata: serializer.deserialize(metadata, [])
     }
   end
 end

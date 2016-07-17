@@ -58,7 +58,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert_receive {:events, received_events}
 
     assert correlation_id(received_events) == correlation_id(saved_events)
-    assert payload(received_events) == payload(saved_events)
+    assert data(received_events) == data(saved_events)
   end
 
   test "notify events" do
@@ -76,7 +76,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert_receive {:events, received_events}
 
     assert correlation_id(received_events) == correlation_id(events)
-    assert payload(received_events) == payload(events)
+    assert data(received_events) == data(events)
   end
 
   test "ack notified events", %{conn: conn} do
@@ -108,5 +108,5 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   end
 
   defp correlation_id(events), do: Enum.map(events, &(&1.correlation_id))
-  defp payload(events), do: Enum.map(events, &(&1.payload))
+  defp data(events), do: Enum.map(events, &(&1.data))
 end

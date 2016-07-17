@@ -24,7 +24,7 @@ defmodule EventStore do
   end
 
   @doc """
-  Append one or more events to a stream atomically.
+  Append one or more events to a stream atomically. Returns `:ok` on success.
 
     - `stream_uuid` is used to uniquely identify a stream.
 

@@ -1,6 +1,6 @@
 defmodule EventStore.RecordedEvent do
   @moduledoc """
-  RecordedEvent contains the persisted data for a single event
+  RecordedEvent contains the persisted data and metadata for a single event.
 
   Events are immutable once recorded.
   """
@@ -9,7 +9,7 @@ defmodule EventStore.RecordedEvent do
             stream_version: nil,
             correlation_id: nil,
             event_type: nil ,
-            headers: nil,
-            payload: nil,
+            data: nil,
+            metadata: nil,
             created_at: nil
 end

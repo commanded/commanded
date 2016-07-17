@@ -54,15 +54,15 @@ defmodule EventStore.Storage.Reader do
       |> Enum.map(&to_event_data_from_row/1)
     end
 
-    def to_event_data_from_row([event_id, stream_id, stream_version, event_type, correlation_id, headers, payload, created_at]) do
+    def to_event_data_from_row([event_id, stream_id, stream_version, event_type, correlation_id, data, metadata, created_at]) do
       %RecordedEvent{
         event_id: event_id,
         stream_id: stream_id,
         stream_version: stream_version,
         event_type: event_type,
         correlation_id: correlation_id,
-        headers: headers,
-        payload: payload,
+        data: data,
+        metadata: metadata,
         created_at: created_at
       }
     end

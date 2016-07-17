@@ -20,7 +20,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, %{conn: conn}}
   end
 
-  @tag :wip
   test "subscribe to stream", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
@@ -86,7 +85,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber) == stream1_persisted_events ++ stream2_persisted_events
   end
 
-  @tag :wip
   test "should monitor each subscription, terminate subscription and subscriber on error", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     events = EventFactory.create_recorded_events(1, stream_id)

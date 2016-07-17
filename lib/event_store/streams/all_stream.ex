@@ -48,10 +48,10 @@ defmodule EventStore.Streams.AllStream do
     {:ok, events}
   end
 
-  defp deserialize_recorded_event(%RecordedEvent{headers: headers, payload: payload, event_type: event_type} = recorded_event, serializer) do
+  defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do
     %RecordedEvent{recorded_event |
-      headers: serializer.deserialize(headers, []),
-      payload: serializer.deserialize(payload, type: event_type),
+      data: serializer.deserialize(data, type: event_type),
+      metadata: serializer.deserialize(metadata, [])
     }
   end
 end

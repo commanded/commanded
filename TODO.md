@@ -1,6 +1,6 @@
 # TODO
 
--[ ] Elixir behaviour for consumers to provide a serializer for event payload and header.
+-[ ] Elixir behaviour for consumers to provide a serializer for event data and metadata.
 
 -[ ] Create stream should accept `stream_type` argument and persist to streams table.
 
