@@ -3,12 +3,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   doctest EventStore.Subscriptions.Supervisor
   doctest EventStore.Subscriptions.Subscription
 
-  alias EventStore.EventFactory
-  alias EventStore.ProcessHelper
-  alias EventStore.Storage.{Appender,Stream}
-  alias EventStore.Streams
-  alias EventStore.Subscriptions
-  alias EventStore.Subscriber
+  alias EventStore.{EventFactory,ProcessHelper}
+  alias EventStore.Storage.{Appender,Reader,Stream}
+  alias EventStore.{Streams,Subscriptions,Subscriber}
 
   @all_stream "$all"
   @subscription_name "test_subscription"
@@ -22,11 +19,13 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
   test "subscribe to stream", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
-    {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
+    {:ok, 1} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
     {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, subscriber)
+
+    {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
 
     Subscriptions.notify_events(stream_uuid, persisted_events)
 
@@ -42,12 +41,15 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, interested_stream_uuid, interested_stream_id} = create_stream(conn)
     {:ok, other_stream_uuid, other_stream_id} = create_stream(conn)
 
-    {:ok, interested_persisted_events} = Appender.append(conn, interested_stream_id, EventFactory.create_recorded_events(1, interested_stream_id))
-    {:ok, other_persisted_events} = Appender.append(conn, other_stream_id, EventFactory.create_recorded_events(1, other_stream_id, 2))
+    {:ok, 1} = Appender.append(conn, interested_stream_id, EventFactory.create_recorded_events(1, interested_stream_id))
+    {:ok, 1} = Appender.append(conn, other_stream_id, EventFactory.create_recorded_events(1, other_stream_id, 2))
 
     {:ok, interested_stream} = Streams.open_stream(interested_stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
     {:ok, _} = Subscriptions.subscribe_to_stream(interested_stream_uuid, interested_stream, @subscription_name, subscriber)
+
+    {:ok, interested_persisted_events} = Reader.read_forward(conn, interested_stream_id, 0)
+    {:ok, other_persisted_events} = Reader.read_forward(conn, other_stream_id, 0)
 
     Subscriptions.notify_events(other_stream_uuid, other_persisted_events)
 
@@ -70,8 +72,11 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     all_stream = Process.whereis(EventStore.Streams.AllStream)
     {:ok, _} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name, subscriber)
 
-    {:ok, stream1_persisted_events} = Appender.append(conn, stream1_id, stream1_events)
-    {:ok, stream2_persisted_events} = Appender.append(conn, stream2_id, stream2_events)
+    {:ok, 1} = Appender.append(conn, stream1_id, stream1_events)
+    {:ok, 1} = Appender.append(conn, stream2_id, stream2_events)
+
+    {:ok, stream1_persisted_events} = Reader.read_forward(conn, stream1_id, 0)
+    {:ok, stream2_persisted_events} = Reader.read_forward(conn, stream2_id, 0)
 
     Subscriptions.notify_events(stream1_uuid, stream1_persisted_events)
     Subscriptions.notify_events(stream2_uuid, stream2_persisted_events)
@@ -103,7 +108,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     ProcessHelper.shutdown(subscription1)
 
     # should still notify subscription 2
-    {:ok, persisted_events} = Appender.append(conn, stream_id, events)
+    {:ok, 1} = Appender.append(conn, stream_id, events)
+    {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
 
     Subscriptions.notify_events(stream_uuid, persisted_events)
 

@@ -53,7 +53,7 @@ defmodule EventStore.Subscriptions do
       stream_uuid -> append_single_stream_subscription(subscriptions, subscription, stream_uuid)
     end
 
-    {:reply, :ok, subscriptions}
+    {:reply, {:ok, subscription}, subscriptions}
   end
 
   def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{} = state) do

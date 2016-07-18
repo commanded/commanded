@@ -39,7 +39,7 @@ defmodule EventStoreTest do
     stream_uuid = UUID.uuid4
     events = EventFactory.create_events(1)
 
-    :ok = EventStore.subscribe_to_all_streams(@subscription_name, self)
+    {:ok, _subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self)
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
 
     assert_receive {:events, received_events}

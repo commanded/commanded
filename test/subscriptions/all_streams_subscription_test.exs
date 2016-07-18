@@ -45,7 +45,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, saved_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+    recorded_events = EventFactory.create_recorded_events(3, stream_id)
+    {:ok, 3} = Appender.append(conn, stream_id, recorded_events)
 
     subscription =
       AllStreamsSubscription.new
@@ -57,8 +58,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     assert_receive {:events, received_events}
 
-    assert correlation_id(received_events) == correlation_id(saved_events)
-    assert data(received_events) == data(saved_events)
+    assert correlation_id(received_events) == correlation_id(recorded_events)
+    assert data(received_events) == data(recorded_events)
   end
 
   test "notify events" do
@@ -82,7 +83,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   test "ack notified events", %{conn: conn} do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
-    {:ok, _} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+    {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
 
     {:ok, subscriber} = Subscriber.start_link(self)
 
