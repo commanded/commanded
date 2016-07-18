@@ -14,18 +14,15 @@ defmodule AppendEventsBench do
   end
 
   bench "append events, single writer" do
-    {:ok, _} = EventStore.append_to_stream(UUID.uuid4, 0, bench_context)
-    :ok
+    EventStore.append_to_stream(UUID.uuid4, 0, bench_context)
   end
 
   bench "append events, 10 concurrent writers" do
     append_events(bench_context, 10)
-    :ok
   end
 
   bench "append events, 100 concurrent writers" do
     append_events(bench_context, 100)
-    :ok
   end
 
   defp append_events(events, concurrency) do
@@ -35,7 +32,7 @@ defmodule AppendEventsBench do
       stream_uuid = UUID.uuid4
 
       Task.async fn ->
-        {:ok, _} = EventStore.append_to_stream(stream_uuid, 0, events)
+        EventStore.append_to_stream(stream_uuid, 0, events)
       end
     end
 

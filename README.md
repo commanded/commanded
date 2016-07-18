@@ -146,13 +146,13 @@ Example output:
 
 ```
 ## AppendEventsBench
-append events, single writer                  200   10104.64 µs/op
-append events, 10 concurrent writers           20   86802.25 µs/op
-append events, 100 concurrent writers           2   1008032.50 µs/op
+append events, single writer                  100   10170.26 µs/op
+append events, 10 concurrent writers           20   85438.80 µs/op
+append events, 100 concurrent writers           2   1102006.00 µs/op
 ## ReadEventsBench
-read events, single reader                   1000   2056.85 µs/op
-read events, 10 concurrent readers            200   8841.30 µs/op
-read events, 100 concurrent readers            10   102923.20 µs/op
+read events, single reader                   1000   1578.10 µs/op
+read events, 10 concurrent readers            100   16799.80 µs/op
+read events, 100 concurrent readers            10   167397.30 µs/op
 ```
 
 ## Contributing
