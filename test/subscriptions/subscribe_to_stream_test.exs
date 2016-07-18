@@ -84,10 +84,10 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert_receive {:events, stream1_received_events}
     assert_receive {:events, stream2_received_events}
 
-    assert stream1_received_events == stream1_persisted_events
-    assert stream2_received_events == stream2_persisted_events
+    assert stream1_received_events == EventFactory.deserialize_events(stream1_persisted_events)
+    assert stream2_received_events == EventFactory.deserialize_events(stream2_persisted_events)
 
-    assert Subscriber.received_events(subscriber) == stream1_persisted_events ++ stream2_persisted_events
+    assert Subscriber.received_events(subscriber) == EventFactory.deserialize_events(stream1_persisted_events ++ stream2_persisted_events)
   end
 
   test "should monitor each subscription, terminate subscription and subscriber on error", %{conn: conn} do
@@ -119,9 +119,10 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     # subscription 2 should still receive events
     assert_receive {:events, received_events}
+    expected_events = EventFactory.deserialize_events(persisted_events)
 
-    assert received_events == persisted_events
-    assert Subscriber.received_events(subscriber2) == persisted_events
+    assert received_events == expected_events
+    assert Subscriber.received_events(subscriber2) == expected_events
   end
 
   defp create_stream(conn) do

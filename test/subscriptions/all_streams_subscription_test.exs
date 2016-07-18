@@ -57,9 +57,10 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.data.last_seen_event_id == 3
 
     assert_receive {:events, received_events}
+    expected_events = EventFactory.deserialize_events(recorded_events)
 
-    assert correlation_id(received_events) == correlation_id(recorded_events)
-    assert data(received_events) == data(recorded_events)
+    assert correlation_id(received_events) == correlation_id(expected_events)
+    assert data(received_events) == data(expected_events)
   end
 
   test "notify events" do

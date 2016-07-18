@@ -16,8 +16,8 @@ defmodule EventStore.Streams.AllStream do
     GenServer.start_link(__MODULE__, %AllStream{serializer: serializer}, name: __MODULE__)
   end
 
-  def read_stream_forward(start_version \\ 0, count \\ nil) do
-    GenServer.call(__MODULE__, {:read_stream_forward, start_version, count})
+  def read_stream_forward(start_event_id \\ 0, count \\ nil) do
+    GenServer.call(__MODULE__, {:read_stream_forward, start_event_id, count})
   end
 
   def subscribe_to_stream(subscription_name, subscriber) do
