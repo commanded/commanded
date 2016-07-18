@@ -1,9 +1,9 @@
 defmodule EventStore.Subscriptions.Subscription do
   @moduledoc """
-  Subscription to a single, or all event streams.
+  Subscription to a single, or all, event streams.
 
   A subscription is persistent so that resuming the subscription will continue from the last acknowledged event.
-  This guarantees at least once delivery of every event from the store.
+  This guarantees at least once delivery of every event appended to storage.
   """
 
   use GenServer
@@ -13,11 +13,12 @@ defmodule EventStore.Subscriptions.Subscription do
 
   @all_stream "$all"
 
-  defstruct stream_uuid: nil, subscription_name: nil, subscriber: nil, subscription: nil
+  defstruct stream_uuid: nil, stream: nil, subscription_name: nil, subscriber: nil, subscription: nil
 
-  def start_link(stream_uuid, subscription_name, subscriber) do
+  def start_link(stream_uuid, stream, subscription_name, subscriber) do
     GenServer.start_link(__MODULE__, %Subscription{
       stream_uuid: stream_uuid,
+      stream: stream,
       subscription_name: subscription_name,
       subscriber: subscriber,
       subscription: subscription_provider(stream_uuid).new
@@ -28,7 +29,7 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
-  def init(%Subscription{subscriber: subscriber} = state) do
+  def init(%Subscription{stream: stream, subscriber: subscriber} = state) do
     Process.link(subscriber)
 
     GenServer.cast(self, {:subscribe_to_stream})
@@ -36,10 +37,10 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
-  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).subscribe(stream_uuid, subscription_name, subscriber)
+      |> subscription_provider(stream_uuid).subscribe(stream_uuid, stream, subscription_name, subscriber)
 
     handle_subscription_state(subscription.state)
 

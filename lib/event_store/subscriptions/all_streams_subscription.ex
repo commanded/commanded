@@ -8,13 +8,14 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   end
 
   alias EventStore.Storage
+  alias EventStore.Streams.AllStream
 
   use Fsm, initial_state: :initial, initial_data: %SubscriptionData{}
 
   @all_stream "$all"
 
   defstate initial do
-    defevent subscribe(@all_stream, subscription_name, subscriber), data: %SubscriptionData{} = data do
+    defevent subscribe(@all_stream, _stream, subscription_name, subscriber), data: %SubscriptionData{} = data do
       case subscribe_to_stream(subscription_name) do
         {:ok, subscription} ->
           data = %SubscriptionData{data |
@@ -125,7 +126,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   defp unseen_events(last_seen_event_id) do
     start_event_id = last_seen_event_id + 1
 
-    Storage.read_all_streams_forward(start_event_id)
+    AllStream.read_stream_forward(start_event_id)
   end
 
   defp notify_subscriber(%SubscriptionData{subscriber: subscriber}, events) do
@@ -138,5 +139,5 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
 
   defp first_event_id([first_event|_]) do
     first_event.event_id
-  end  
+  end
 end

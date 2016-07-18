@@ -6,7 +6,7 @@ defmodule EventStore.Writer do
   use GenServer
   require Logger
 
-  alias EventStore.{EventData,Subscriptions,RecordedEvent,Writer}
+  alias EventStore.{Subscriptions,RecordedEvent,Writer}
   alias EventStore.Storage.{Appender,QueryLatestEventId}
 
   defstruct conn: nil, next_event_id: 1
@@ -28,21 +28,20 @@ defmodule EventStore.Writer do
   @doc """
   Append the given list of events to the stream
   """
-  def append_to_stream(events, stream_uuid, stream_id, stream_version) do
-    GenServer.call(__MODULE__, {:append_to_stream, events, stream_uuid, stream_id, stream_version})
+  def append_to_stream(events, stream_id, stream_uuid) do
+    GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_uuid})
   end
 
-  def handle_call({:append_to_stream, events, stream_uuid, stream_id, stream_version}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
-    persisted_events =
-      events
-      |> prepare_events(stream_id, stream_version, next_event_id)
-      |> append_events(conn, stream_id)
-      |> publish_events(stream_uuid)
+  def handle_call({:append_to_stream, events, stream_id, stream_uuid}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
+    recorded_events = assign_event_id(events, next_event_id)
 
-    reply = {:ok, persisted_events}
-    state = %Writer{state | next_event_id: next_event_id + length(persisted_events)}
+    {:ok, count} = append_events(conn, stream_id, recorded_events)
 
-    {:reply, reply, state}
+    publish_events(stream_uuid, recorded_events)
+
+    state = %Writer{state | next_event_id: next_event_id + count}
+
+    {:reply, :ok, state}
   end
 
   def handle_cast({:latest_event_id}, %Writer{conn: conn} = state) do
@@ -51,37 +50,21 @@ defmodule EventStore.Writer do
     {:noreply, %Writer{state | next_event_id: last_event_id + 1}}
   end
 
-  defp prepare_events(events, stream_id, stream_version, next_event_id) do
-    initial_stream_version = stream_version + 1
-
+  defp assign_event_id(events, next_event_id) do
     events
-    |> Enum.map(&map_to_recorded_event(&1))
     |> Enum.with_index(0)
     |> Enum.map(fn {recorded_event, index} ->
       %RecordedEvent{recorded_event |
-        event_id: next_event_id + index,
-        stream_id: stream_id,
-        stream_version: initial_stream_version + index,
+        event_id: next_event_id + index
       }
     end)
   end
 
-  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, headers: headers, payload: payload}) do
-    %RecordedEvent{
-      correlation_id: correlation_id,
-      event_type: event_type,
-      headers: headers,
-      payload: payload
-    }
+  defp append_events(conn, stream_id, recorded_events) do
+    Appender.append(conn, stream_id, recorded_events)
   end
 
-  defp append_events(recorded_events, conn, stream_id) do
-    {:ok, persisted_events} = Appender.append(conn, stream_id, recorded_events)
-    persisted_events
-  end
-
-  defp publish_events(persisted_events, stream_uuid) do
-    :ok = Subscriptions.notify_events(stream_uuid, persisted_events)
-    persisted_events
+  defp publish_events(stream_uuid, recorded_events) do
+    Subscriptions.notify_events(stream_uuid, recorded_events)
   end
 end

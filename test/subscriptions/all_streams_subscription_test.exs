@@ -21,7 +21,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
 
     assert subscription.state == :catching_up
     assert subscription.data.subscription_name == @subscription_name
@@ -34,7 +34,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -45,20 +45,22 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
     {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, saved_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+    recorded_events = EventFactory.create_recorded_events(3, stream_id)
+    {:ok, 3} = Appender.append(conn, stream_id, recorded_events)
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     assert subscription.state == :subscribed
     assert subscription.data.last_seen_event_id == 3
 
     assert_receive {:events, received_events}
+    expected_events = EventFactory.deserialize_events(recorded_events)
 
-    assert correlation_id(received_events) == correlation_id(saved_events)
-    assert payload(received_events) == payload(saved_events)
+    assert correlation_id(received_events) == correlation_id(expected_events)
+    assert data(received_events) == data(expected_events)
   end
 
   test "notify events" do
@@ -67,7 +69,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
       |> AllStreamsSubscription.notify_events(events)
 
@@ -76,19 +78,19 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert_receive {:events, received_events}
 
     assert correlation_id(received_events) == correlation_id(events)
-    assert payload(received_events) == payload(events)
+    assert data(received_events) == data(events)
   end
 
   test "ack notified events", %{conn: conn} do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
-    {:ok, _} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+    {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
 
     {:ok, subscriber} = Subscriber.start_link(self)
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     assert subscription.state == :subscribed
@@ -98,7 +100,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       AllStreamsSubscription.new
-      |> AllStreamsSubscription.subscribe(@all_stream, @subscription_name, subscriber)
+      |> AllStreamsSubscription.subscribe(@all_stream, nil, @subscription_name, subscriber)
       |> AllStreamsSubscription.catch_up
 
     # should not receive already seen events
@@ -108,5 +110,5 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   end
 
   defp correlation_id(events), do: Enum.map(events, &(&1.correlation_id))
-  defp payload(events), do: Enum.map(events, &(&1.payload))
+  defp data(events), do: Enum.map(events, &(&1.data))
 end

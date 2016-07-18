@@ -9,7 +9,7 @@ defmodule EventStore.Storage do
   require Logger
 
   alias EventStore.Storage
-  alias EventStore.Storage.{Stream,Subscription}
+  alias EventStore.Storage.{Reader,Stream,Subscription}
 
   @storage_pool_name :event_store_storage_pool
 
@@ -38,8 +38,8 @@ defmodule EventStore.Storage do
   @doc """
   Read events for the given stream forward from the starting version, use zero for all events for the stream
   """
-  def read_stream_forward(stream_uuid, start_version \\ 0, count \\ nil) do
-    execute_using_storage_pool(&Stream.read_stream_forward(&1, stream_uuid, start_version, count))
+  def read_stream_forward(stream_id, start_version \\ 0, count \\ nil) do
+    execute_using_storage_pool(&Reader.read_forward(&1, stream_id, start_version, count))
   end
 
   @doc """

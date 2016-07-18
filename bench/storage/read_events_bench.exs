@@ -13,7 +13,7 @@ defmodule ReadEventsBench do
     events = EventFactory.create_events(100)
     stream_uuid = UUID.uuid4
 
-    {:ok, _} = EventStore.append_to_stream(stream_uuid, 0, events)
+    :ok = EventStore.append_to_stream(stream_uuid, 0, events)
 
     {:ok, stream_uuid}
   end

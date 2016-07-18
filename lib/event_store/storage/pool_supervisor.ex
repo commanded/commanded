@@ -38,5 +38,4 @@ defmodule EventStore.Storage.PoolSupervisor do
   defp postgrex_opts(config) do
     Keyword.take(config, [:username, :password, :database, :hostname, :port])
   end
-
 end

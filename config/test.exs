@@ -6,6 +6,7 @@ config :logger, :console, level: :warn, format: "[$level] $message\n"
 config :ex_unit, capture_log: true
 
 config :eventstore, EventStore.Storage,
+  serializer: EventStore.JsonSerializer,
   username: "postgres",
   password: "postgres",
   database: "eventstore_test",

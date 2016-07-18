@@ -16,66 +16,53 @@ defmodule EventStore.Storage.AppendEventsTest do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
     recorded_events = EventFactory.create_recorded_events(1, stream_id)
 
-    {:ok, persisted_events} = Appender.append(conn, stream_id, recorded_events)
-
-    assert length(persisted_events) == 1
-    assert hd(persisted_events).event_id == 1
+    {:ok, 1} = Appender.append(conn, stream_id, recorded_events)
   end
 
   test "append multiple events to new stream", %{conn: conn} do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
     recorded_events = EventFactory.create_recorded_events(3, stream_id)
 
-    {:ok, persisted_events} = Appender.append(conn, stream_id, recorded_events)
-    assert length(persisted_events) == 3
+    {:ok, 3} = Appender.append(conn, stream_id, recorded_events)
   end
 
   test "append single event to existing stream, in separate writes", %{conn: conn} do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
 
-    {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
-    assert length(persisted_events) == 1
-
-    {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id, 2, 2))
-    assert length(persisted_events) == 1
+    {:ok, 1} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
+    {:ok, 1} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id, 2, 2))
   end
 
   test "append multiple events to existing stream, in separate writes", %{conn: conn} do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
 
-    {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
-    assert length(persisted_events) == 3
-
-    {:ok, persisted_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id, 4, 4))
-    assert length(persisted_events) == 3
+    {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+    {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id, 4, 4))
   end
 
   test "append events to different, new streams", %{conn: conn} do
     {:ok, stream_id1} = Stream.create_stream(conn, UUID.uuid4)
     {:ok, stream_id2} = Stream.create_stream(conn, UUID.uuid4)
 
-    {:ok, persisted_events} = Appender.append(conn, stream_id1, EventFactory.create_recorded_events(2, stream_id1))
-    assert length(persisted_events) == 2
-
-    {:ok, persisted_events} = Appender.append(conn, stream_id2, EventFactory.create_recorded_events(2, stream_id2, 3))
-    assert length(persisted_events) == 2
+    {:ok, 2} = Appender.append(conn, stream_id1, EventFactory.create_recorded_events(2, stream_id1))
+    {:ok, 2} = Appender.append(conn, stream_id2, EventFactory.create_recorded_events(2, stream_id2, 3))
   end
 
   test "append events to different, existing streams", %{conn: conn} do
     {:ok, stream_id1} = Stream.create_stream(conn, UUID.uuid4)
     {:ok, stream_id2} = Stream.create_stream(conn, UUID.uuid4)
 
-    {:ok, _} = Appender.append(conn, stream_id1, EventFactory.create_recorded_events(2, stream_id1))
-    {:ok, _} = Appender.append(conn, stream_id2, EventFactory.create_recorded_events(2, stream_id2, 3))
-    {:ok, _} = Appender.append(conn, stream_id1, EventFactory.create_recorded_events(2, stream_id1, 5, 3))
-    {:ok, _} = Appender.append(conn, stream_id2, EventFactory.create_recorded_events(2, stream_id2, 7, 3))
+    {:ok, 2} = Appender.append(conn, stream_id1, EventFactory.create_recorded_events(2, stream_id1))
+    {:ok, 2} = Appender.append(conn, stream_id2, EventFactory.create_recorded_events(2, stream_id2, 3))
+    {:ok, 2} = Appender.append(conn, stream_id1, EventFactory.create_recorded_events(2, stream_id1, 5, 3))
+    {:ok, 2} = Appender.append(conn, stream_id2, EventFactory.create_recorded_events(2, stream_id2, 7, 3))
   end
 
   test "append to new stream, but stream already exists", %{conn: conn} do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
     events = EventFactory.create_recorded_events(1, stream_id)
 
-    {:ok, _} = Appender.append(conn, stream_id, events)
+    {:ok, 1} = Appender.append(conn, stream_id, events)
     {:error, :wrong_expected_version} = Appender.append(conn, stream_id, events)
   end
 
@@ -90,7 +77,7 @@ defmodule EventStore.Storage.AppendEventsTest do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
     events = EventFactory.create_recorded_events(2, stream_id)
 
-    {:ok, _} = Appender.append(conn, stream_id, events)
+    {:ok, 2} = Appender.append(conn, stream_id, events)
     {:error, :wrong_expected_version} = Appender.append(conn, stream_id, events)
   end
 end

@@ -8,6 +8,10 @@ defmodule EventStore.Storage.Appender do
   alias EventStore.RecordedEvent
   alias EventStore.Sql.Statements
 
+  @doc """
+  Append the given list of events to the given stream.
+  Returns `{:ok, count}` on success, where count indicates the number of appended events.
+  """
   def append(conn, stream_id, events) do
     execute_using_multirow_value_insert(conn, stream_id, events)
   end
@@ -34,8 +38,8 @@ defmodule EventStore.Storage.Appender do
         event.stream_version,
         event.correlation_id,
         event.event_type,
-        event.headers,
-        event.payload
+        event.data,
+        event.metadata
       ]
     end)
     |> List.flatten
@@ -43,19 +47,12 @@ defmodule EventStore.Storage.Appender do
 
   defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_id, _events) do
     Logger.info "failed to append any events to stream id #{stream_id}"
-    {:ok, []}
+    {:ok, 0}
   end
 
-  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows, rows: rows}}, stream_id, events) do
+  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows}}, stream_id, events) do
     Logger.info "appended #{num_rows} events to stream id #{stream_id}"
-
-    persisted_events =
-      Enum.zip(events, rows)
-      |> Enum.map(fn {event, [created_at]} ->
-        %RecordedEvent{event | created_at: created_at}
-      end)
-
-    {:ok, persisted_events}
+    {:ok, num_rows}
   end
 
   defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, stream_id, _events) do

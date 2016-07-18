@@ -49,8 +49,8 @@ CREATE TABLE events
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
     correlation_id text,
-    headers bytea NULL,
-    payload bytea NOT NULL,
+    data bytea NULL,
+    metadata bytea NOT NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
@@ -97,7 +97,7 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = "INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, headers, payload) VALUES"
+    insert = "INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, data, metadata) VALUES"
 
     params =
       1..number_of_events
@@ -107,9 +107,7 @@ RETURNING stream_id;
       end)
       |> Enum.join(",")
 
-    returning = "RETURNING created_at"
-
-    insert <> " " <> params <> " " <> returning <> ";"
+    insert <> " " <> params <> ";"
   end
 
   def create_subscription do
@@ -197,8 +195,8 @@ SELECT
   stream_version,
   event_type,
   correlation_id,
-  headers,
-  payload,
+  data,
+  metadata,
   created_at
 FROM events
 WHERE stream_id = $1 and stream_version >= $2
@@ -214,8 +212,8 @@ SELECT
   stream_version,
   event_type,
   correlation_id,
-  headers,
-  payload,
+  data,
+  metadata,
   created_at
 FROM events
 WHERE event_id >= $1
