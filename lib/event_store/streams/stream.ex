@@ -78,13 +78,13 @@ defmodule EventStore.Streams.Stream do
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
          {:ok, prepared_events} <- prepare_events(events, stream_id, stream_version, serializer),
-         :ok <- Writer.append_to_stream(prepared_events, stream_id, stream_uuid),
+         :ok <- write_to_stream(prepared_events, stream_id, stream_uuid),
     do: {:ok, %Stream{state | stream_id: stream_id}}
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
     {:ok, prepared_events} = prepare_events(events, stream_id, stream_version, serializer)
-    :ok = Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
+    :ok = write_to_stream(prepared_events, stream_id, stream_uuid)
     {:ok, state}
   end
 
@@ -116,6 +116,10 @@ defmodule EventStore.Streams.Stream do
       data: serializer.serialize(data),
       metadata: serializer.serialize(metadata)
     }
+  end
+
+  defp write_to_stream(prepared_events, stream_id, stream_uuid) do
+    Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
   end
 
   defp read_storage_forward(stream_id, start_version, count, serializer) when not is_nil(stream_id) do

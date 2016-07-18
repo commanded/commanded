@@ -1,9 +1,9 @@
 defmodule EventStore.Subscriptions.Subscription do
   @moduledoc """
-  Subscription to a single, or all event streams.
+  Subscription to a single, or all, event streams.
 
   A subscription is persistent so that resuming the subscription will continue from the last acknowledged event.
-  This guarantees at least once delivery of every event from the store.
+  This guarantees at least once delivery of every event appended to storage.
   """
 
   use GenServer

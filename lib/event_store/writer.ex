@@ -64,7 +64,7 @@ defmodule EventStore.Writer do
     recorded_events
   end
 
-  defp publish_events(persisted_events, stream_uuid) do
-    Subscriptions.notify_events(stream_uuid, persisted_events)
+  defp publish_events(recorded_events, stream_uuid) do
+    Subscriptions.notify_events(stream_uuid, recorded_events)
   end
 end

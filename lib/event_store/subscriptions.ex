@@ -6,15 +6,15 @@ defmodule EventStore.Subscriptions do
   use GenServer
   require Logger
 
-  alias EventStore.Subscriptions
+  alias EventStore.{RecordedEvent,Subscriptions}
   alias EventStore.Subscriptions.Subscription
 
-  defstruct all_stream: [], single_stream: %{}, supervisor: nil
+  defstruct all_stream: [], single_stream: %{}, supervisor: nil, serializer: nil
 
   @all_stream "$all"
 
-  def start_link do
-    GenServer.start_link(__MODULE__, %Subscriptions{}, name: __MODULE__)
+  def start_link(serializer) do
+    GenServer.start_link(__MODULE__, %Subscriptions{serializer: serializer}, name: __MODULE__)
   end
 
   def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber) do
@@ -53,7 +53,7 @@ defmodule EventStore.Subscriptions do
       stream_uuid -> append_single_stream_subscription(subscriptions, subscription, stream_uuid)
     end
 
-    {:reply, {:ok, subscription}, subscriptions}
+    {:reply, :ok, subscriptions}
   end
 
   def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{} = state) do
@@ -64,11 +64,10 @@ defmodule EventStore.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_cast({:notify_events, stream_uuid, events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
+  def handle_cast({:notify_events, stream_uuid, recorded_events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream, serializer: serializer} = subscriptions) do
     interested_subscriptions = all_stream ++ Map.get(single_stream, stream_uuid, [])
 
-    interested_subscriptions
-    |> Enum.each(&Subscription.notify_events(&1, events))
+    notify_subscribers(interested_subscriptions, recorded_events, serializer)
 
     {:noreply, subscriptions}
   end
@@ -82,6 +81,21 @@ defmodule EventStore.Subscriptions do
       |> Map.new
 
     {:noreply, %Subscriptions{subscriptions | all_stream: all_stream, single_stream: single_stream}}
+  end
+
+  defp notify_subscribers([], _recorded_events, _serializer), do: nil
+  defp notify_subscribers(subscriptions, recorded_events, serializer) do
+    events = Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)
+
+    subscriptions
+    |> Enum.each(&Subscription.notify_events(&1, events))
+  end
+
+  defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do
+    %RecordedEvent{recorded_event |
+      data: serializer.deserialize(data, type: event_type),
+      metadata: serializer.deserialize(metadata, [])
+    }
   end
 
   defp append_all_stream_subscription(%Subscriptions{all_stream: all_stream} = subscriptions, subscription) do
