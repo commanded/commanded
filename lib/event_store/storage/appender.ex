@@ -8,6 +8,10 @@ defmodule EventStore.Storage.Appender do
   alias EventStore.RecordedEvent
   alias EventStore.Sql.Statements
 
+  @doc """
+  Append the given list of events to the given stream.
+  Returns `{:ok, count}` on success, where count indicates the number of appended events.
+  """
   def append(conn, stream_id, events) do
     execute_using_multirow_value_insert(conn, stream_id, events)
   end

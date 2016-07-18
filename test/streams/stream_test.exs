@@ -45,9 +45,7 @@ defmodule EventStore.Streams.StreamTest do
     events = EventFactory.create_events(3)
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
-    {:ok, persisted_events} = Stream.append_to_stream(stream, 0, events)
-
-    assert length(persisted_events) == 3
+    :ok = Stream.append_to_stream(stream, 0, events)
   end
 
   test "read unknown stream forward" do
@@ -62,7 +60,7 @@ defmodule EventStore.Streams.StreamTest do
     events = EventFactory.create_events(3)
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
-    {:ok, _} = Stream.append_to_stream(stream, 0, events)
+    :ok = Stream.append_to_stream(stream, 0, events)
 
     {:ok, read_events} = Stream.read_stream_forward(stream)
     assert length(read_events) == 3
