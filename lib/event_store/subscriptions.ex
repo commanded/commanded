@@ -7,9 +7,9 @@ defmodule EventStore.Subscriptions do
   require Logger
 
   alias EventStore.{RecordedEvent,Subscriptions}
-  alias EventStore.Subscriptions.Subscription
+  alias EventStore.Subscriptions.{Subscription,SubscriptionData}
 
-  defstruct all_stream: [], single_stream: %{}, supervisor: nil, serializer: nil
+  defstruct all_stream: %{}, single_stream: %{}, supervisor: nil, serializer: nil
 
   @all_stream "$all"
 
@@ -42,30 +42,29 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_call({:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
-    # TODO: Ensure subscription is not already present in single/all stream subscriptions
-
-    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber)
-
-    Process.monitor(subscription)
-
-    subscriptions = case stream_uuid do
-      @all_stream -> append_all_stream_subscription(subscriptions, subscription)
-      stream_uuid -> append_single_stream_subscription(subscriptions, subscription, stream_uuid)
+    reply = case get_subscription(stream_uuid, subscription_name, subscriptions) do
+      nil -> create_subscription(supervisor, stream_uuid, subscription_name, stream, subscriber)
+      subscription -> {:error, :subscription_already_exists}
     end
 
-    {:reply, {:ok, subscription}, subscriptions}
+    subscriptions = case reply do
+      {:ok, subscription} -> append_subscription(stream_uuid, subscription_name, subscription, subscriptions)
+      _ -> subscriptions
+    end
+
+    {:reply, reply, subscriptions}
   end
 
-  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{} = state) do
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{} = subscriptions) do
     # TODO: Shutdown subscription process and delete subscription from storage
 
-    state = remove_subscription(state, stream_uuid, subscription_name)
+    state = remove_subscription(stream_uuid, subscription_name, subscriptions)
 
     {:reply, :ok, state}
   end
 
   def handle_cast({:notify_events, stream_uuid, recorded_events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream, serializer: serializer} = subscriptions) do
-    interested_subscriptions = all_stream ++ Map.get(single_stream, stream_uuid, [])
+    interested_subscriptions = Map.values(all_stream) ++ Map.values(Map.get(single_stream, stream_uuid, %{}))
 
     notify_subscribers(interested_subscriptions, recorded_events, serializer)
 
@@ -75,12 +74,51 @@ defmodule EventStore.Subscriptions do
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
     Logger.warn "subscription down due to: #{reason}"
 
-    all_stream = List.delete(all_stream, pid)
-    single_stream = single_stream
+    all_stream =
+      all_stream
+      |> Enum.map(fn {key, value} -> {key, List.delete(value, pid)} end)
+      |> Map.new
+
+    single_stream =
+      single_stream
       |> Enum.map(fn {key, value} -> {key, List.delete(value, pid)} end)
       |> Map.new
 
     {:noreply, %Subscriptions{subscriptions | all_stream: all_stream, single_stream: single_stream}}
+  end
+
+  defp get_subscription(@all_stream, subscription_name, %Subscriptions{all_stream: all_stream}) do
+    Map.get(all_stream, subscription_name)
+  end
+
+  defp get_subscription(stream_uuid, subscription_name, %Subscriptions{single_stream: single_stream}) do
+    case Map.get(single_stream, stream_uuid) do
+      nil -> nil
+      subscriptions -> Map.get(subscriptions, subscription_name)
+    end
+  end
+
+  defp create_subscription(supervisor, stream_uuid, stream, subscription_name, subscriber) do
+    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber)
+
+    Process.monitor(subscription)
+
+    {:ok, subscription}
+  end
+
+  defp append_subscription(@all_stream, subscription_name, subscription, %Subscriptions{all_stream: all_stream} = subscriptions) do
+    all_stream = Map.put(all_stream, subscription_name, subscription)
+
+    %Subscriptions{subscriptions | all_stream: all_stream}
+  end
+
+  defp append_subscription(stream_uuid, subscription_name, subscription, %Subscriptions{single_stream: single_stream} = subscriptions) do
+    {_, single_stream} = Map.get_and_update(single_stream, stream_uuid, fn stream_subscriptions ->
+      updated = Map.put(stream_subscriptions || %{}, subscription_name, subscription)
+      {stream_subscriptions, updated}
+    end)
+
+    %Subscriptions{subscriptions | single_stream: single_stream}
   end
 
   defp notify_subscribers([], _recorded_events, _serializer), do: nil
@@ -98,28 +136,11 @@ defmodule EventStore.Subscriptions do
     }
   end
 
-  defp append_all_stream_subscription(%Subscriptions{all_stream: all_stream} = subscriptions, subscription) do
-    %Subscriptions{subscriptions | all_stream: [subscription | all_stream]}
+  defp remove_subscription(@all_stream, _subscription_name, %Subscriptions{all_stream: _all_stream} = subscriptions) do
+    subscriptions
   end
 
-  defp append_single_stream_subscription(%Subscriptions{single_stream: single_stream} = subscriptions, subscription, stream_uuid) do
-    {_, single_stream} = Map.get_and_update(single_stream, stream_uuid, fn current_value ->
-      new_value = case current_value do
-        nil -> [subscription]
-        current_value -> [subscription | current_value]
-      end
-
-      {current_value, new_value}
-    end)
-
-    %Subscriptions{subscriptions | single_stream: single_stream}
-  end
-
-  defp remove_subscription(%Subscriptions{all_stream: _all_stream, single_stream: _single_stream} = state, _stream_uuid, _subscription_name) do
-    state
-  end
-
-  defp remove_all_stream_subscription(%Subscriptions{all_stream: _all_stream} = state, _subscription_name) do
-    state
+  defp remove_all_stream_subscription(_stream_uuid, _subscription_name, %Subscriptions{single_stream: _single_stream} = subscriptions) do
+    subscriptions
   end
 end

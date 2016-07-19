@@ -37,6 +37,15 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber) == expected_received_events
   end
 
+  @tag :wip
+  test "subscribe to stream more than once using same subscription name", %{conn: conn} do
+    {:ok, stream_uuid, stream_id} = create_stream(conn)
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
+    {:error, :subscription_already_exists} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
+  end
+
   test "subscribe to stream, ignore events from another stream", %{conn: conn} do
     {:ok, interested_stream_uuid, interested_stream_id} = create_stream(conn)
     {:ok, other_stream_uuid, other_stream_id} = create_stream(conn)
@@ -124,6 +133,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert received_events == expected_events
     assert Subscriber.received_events(subscriber2) == expected_events
   end
+
+  # test "resume subscription to stream should skip already seen events", %{conn: conn}
 
   defp create_stream(conn) do
     stream_uuid = UUID.uuid4
