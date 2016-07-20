@@ -43,7 +43,7 @@ defmodule EventStore.Subscriptions do
 
   def handle_call({:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
     reply = case get_subscription(stream_uuid, subscription_name, subscriptions) do
-      nil -> create_subscription(supervisor, stream_uuid, subscription_name, stream, subscriber)
+      nil -> create_subscription(supervisor, stream_uuid, stream, subscription_name, subscriber)
       subscription -> {:error, :subscription_already_exists}
     end
 

@@ -17,13 +17,12 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, %{conn: conn}}
   end
 
-  test "subscribe to stream", %{conn: conn} do
+  test "subscribe to single stream", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     {:ok, 1} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
-    {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, subscriber)
+    {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
 
     {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
 
@@ -34,12 +33,10 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     expected_received_events = EventFactory.deserialize_events(persisted_events)
 
     assert received_events == expected_received_events
-    assert Subscriber.received_events(subscriber) == expected_received_events
   end
 
-  @tag :wip
-  test "subscribe to stream more than once using same subscription name", %{conn: conn} do
-    {:ok, stream_uuid, stream_id} = create_stream(conn)
+  test "subscribe to stream more than once using same subscription name should error", %{conn: conn} do
+    {:ok, stream_uuid, _stream_id} = create_stream(conn)
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
     {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
@@ -54,8 +51,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:ok, 1} = Appender.append(conn, other_stream_id, EventFactory.create_recorded_events(1, other_stream_id, 2))
 
     {:ok, interested_stream} = Streams.open_stream(interested_stream_uuid)
-    {:ok, subscriber} = Subscriber.start_link(self)
-    {:ok, _} = Subscriptions.subscribe_to_stream(interested_stream_uuid, interested_stream, @subscription_name, subscriber)
+    {:ok, _} = Subscriptions.subscribe_to_stream(interested_stream_uuid, interested_stream, @subscription_name, self)
 
     {:ok, interested_persisted_events} = Reader.read_forward(conn, interested_stream_id, 0)
     {:ok, other_persisted_events} = Reader.read_forward(conn, other_stream_id, 0)
@@ -67,7 +63,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     # received events should not include events from other stream
     assert_receive {:events, received_events}
     assert received_events == expected_received_events
-    assert Subscriber.received_events(subscriber) == expected_received_events
   end
 
   test "subscribe to $all stream, receive events from all streams", %{conn: conn} do
@@ -77,9 +72,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     stream1_events = EventFactory.create_recorded_events(1, stream1_id)
     stream2_events = EventFactory.create_recorded_events(1, stream2_id, 2)
 
-    {:ok, subscriber} = Subscriber.start_link(self)
     all_stream = Process.whereis(EventStore.Streams.AllStream)
-    {:ok, _} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name, subscriber)
+    {:ok, _} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name, self)
 
     {:ok, 1} = Appender.append(conn, stream1_id, stream1_events)
     {:ok, 1} = Appender.append(conn, stream2_id, stream2_events)
@@ -95,10 +89,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     assert stream1_received_events == EventFactory.deserialize_events(stream1_persisted_events)
     assert stream2_received_events == EventFactory.deserialize_events(stream2_persisted_events)
-
-    assert Subscriber.received_events(subscriber) == EventFactory.deserialize_events(stream1_persisted_events ++ stream2_persisted_events)
   end
 
+  @tag :wip
   test "should monitor each subscription, terminate subscription and subscriber on error", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     events = EventFactory.create_recorded_events(1, stream_id)
