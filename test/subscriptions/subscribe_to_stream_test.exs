@@ -19,20 +19,13 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
   test "subscribe to single stream", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
-    {:ok, 1} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(1, stream_id))
-
     {:ok, stream} = Streams.open_stream(stream_uuid)
     {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
 
-    {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
-
-    Subscriptions.notify_events(stream_uuid, persisted_events)
+    {:ok, persisted_events} = notify_events(conn, stream_id, stream_uuid)
 
     assert_receive {:events, received_events}
-
-    expected_received_events = EventFactory.deserialize_events(persisted_events)
-
-    assert received_events == expected_received_events
+    assert received_events == EventFactory.deserialize_events(persisted_events)
   end
 
   test "subscribe to stream more than once using same subscription name should error", %{conn: conn} do
@@ -43,7 +36,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     {:error, :subscription_already_exists} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
   end
 
-  test "subscribe to stream, ignore events from another stream", %{conn: conn} do
+  test "subscribe to single stream should ignore events from another stream", %{conn: conn} do
     {:ok, interested_stream_uuid, interested_stream_id} = create_stream(conn)
     {:ok, other_stream_uuid, other_stream_id} = create_stream(conn)
 
@@ -65,7 +58,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert received_events == expected_received_events
   end
 
-  test "subscribe to $all stream, receive events from all streams", %{conn: conn} do
+  test "subscribe to all streams should receive events from all streams", %{conn: conn} do
     {:ok, stream1_uuid, stream1_id} = create_stream(conn)
     {:ok, stream2_uuid, stream2_id} = create_stream(conn)
 
@@ -130,10 +123,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber2) == expected_events
   end
 
-  @tag :wip
   test "should monitor single stream subscription, terminate subscription and subscriber on error", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
-    events = EventFactory.create_recorded_events(1, stream_id)
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
     {:ok, subscriber1} = Subscriber.start_link(self)
@@ -148,10 +139,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     ProcessHelper.shutdown(subscription1)
 
     # should still notify subscription 2
-    {:ok, 1} = Appender.append(conn, stream_id, events)
-    {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
-
-    Subscriptions.notify_events(stream_uuid, persisted_events)
+    {:ok, persisted_events} = notify_events(conn, stream_id, stream_uuid)
 
     # should kill subscription and subscriber
     assert Process.alive?(subscription1) == false
@@ -169,11 +157,49 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber2) == expected_events
   end
 
+  @tag :wip
+  test "should unsubscribe from a single stream subscription", %{conn: conn} do
+    {:ok, stream_uuid, stream_id} = create_stream(conn)
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
+
+    :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, @subscription_name)
+
+    {:ok, _persisted_events} = notify_events(conn, stream_id, stream_uuid)
+
+    refute_receive {:events, _received_events}
+    assert Process.alive?(subscription) == false
+  end
+
+  test "should unsubscribe from a single stream subscription when not started", %{conn: conn} do
+    {:ok, stream_uuid, stream_id} = create_stream(conn)
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name, self)
+
+    ProcessHelper.shutdown(subscription)
+
+    :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, @subscription_name)
+
+    {:ok, _persisted_events} = notify_events(conn, stream_id, stream_uuid)
+
+    refute_receive {:events, _received_events}
+    assert Process.alive?(subscription) == false
+  end
+
   # test "resume subscription to stream should skip already seen events", %{conn: conn}
 
   defp create_stream(conn) do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
     {:ok, stream_uuid, stream_id}
+  end
+
+  defp notify_events(conn, stream_id, stream_uuid, number_of_events \\ 1) do
+    {:ok, ^number_of_events} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(number_of_events, stream_id))
+    {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
+
+    Subscriptions.notify_events(stream_uuid, persisted_events)
+
+    {:ok, persisted_events}
   end
 end

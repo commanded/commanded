@@ -29,6 +29,10 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
+  def unsubscribe(subscription) do
+    GenServer.call(subscription, {:unsubscribe})
+  end
+
   def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
@@ -65,6 +69,18 @@ defmodule EventStore.Subscriptions.Subscription do
     handle_subscription_state(subscription.state)
 
     {:noreply, %Subscription{state | subscription: subscription}}
+  end
+
+  def handle_call({:unsubscribe}, _from, %Subscription{stream_uuid: stream_uuid, subscriber: subscriber, subscription_name: subscription_name, subscription: subscription} = state) do
+    Process.unlink(subscriber)
+
+    subscription =
+      subscription
+      |> subscription_provider(stream_uuid).unsubscribe
+
+    handle_subscription_state(subscription.state)
+
+    {:reply, :ok, %Subscription{state | subscription: subscription}}
   end
 
   defp handle_subscription_state(:catching_up) do

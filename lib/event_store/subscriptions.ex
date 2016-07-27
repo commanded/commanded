@@ -29,6 +29,10 @@ defmodule EventStore.Subscriptions do
     GenServer.call(__MODULE__, {:unsubscribe_from_stream, stream_uuid, subscription_name})
   end
 
+  def unsubscribe_from_all_streams(subscription_name) do
+    GenServer.call(__MODULE__, {:unsubscribe_from_stream, @all_stream, subscription_name})
+  end
+
   def notify_events(stream_uuid, events) do
     GenServer.cast(__MODULE__, {:notify_events, stream_uuid, events})
   end
@@ -55,12 +59,13 @@ defmodule EventStore.Subscriptions do
     {:reply, reply, subscriptions}
   end
 
-  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{} = subscriptions) do
-    # TODO: Shutdown subscription process and delete subscription from storage
+  def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
+    case get_subscription(stream_uuid, subscription_name, subscriptions) do
+      nil -> nil
+      subscription -> delete_subscription(supervisor, subscription)
+    end
 
-    state = remove_subscription(stream_uuid, subscription_name, subscriptions)
-
-    {:reply, :ok, state}
+    {:reply, :ok, subscriptions}
   end
 
   def handle_cast({:notify_events, stream_uuid, recorded_events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream, serializer: serializer} = subscriptions) do
@@ -72,11 +77,14 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscriptions{subscription_pids: subscription_pids} = subscriptions) do
-    Logger.warn "subscription down due to: #{reason}"
+    Logger.info "subscription down due to: #{reason}"
 
     {stream_uuid, subscription_name} = Map.get(subscription_pids, pid)
 
-    subscriptions = remove_subscription(stream_uuid, subscription_name, subscriptions)
+    subscriptions =
+      subscriptions
+      |> remove_subscription(stream_uuid, subscription_name)
+      |> remove_subscription_pid(pid)
 
     {:noreply, subscriptions}
   end
@@ -98,6 +106,12 @@ defmodule EventStore.Subscriptions do
     Process.monitor(subscription)
 
     {:ok, subscription}
+  end
+
+  defp delete_subscription(supervisor, subscription) do
+    :ok = Subscription.unsubscribe(subscription)
+    
+    Subscriptions.Supervisor.unsubscribe_from_stream(supervisor, subscription)
   end
 
   defp append_subscription(@all_stream, subscription_name, subscription, %Subscriptions{all_stream: all_stream, subscription_pids: subscription_pids} = subscriptions) do
@@ -132,15 +146,19 @@ defmodule EventStore.Subscriptions do
     }
   end
 
-  defp remove_subscription(@all_stream, subscription_name, %Subscriptions{all_stream: all_stream} = subscriptions) do
+  defp remove_subscription(%Subscriptions{all_stream: all_stream} = subscriptions, @all_stream, subscription_name) do
     all_stream = Map.delete(all_stream, subscription_name)
 
     %Subscriptions{subscriptions | all_stream: all_stream}
   end
 
-  defp remove_subscription(stream_uuid, subscription_name, %Subscriptions{single_stream: single_stream} = subscriptions) do
+  defp remove_subscription(%Subscriptions{single_stream: single_stream} = subscriptions, stream_uuid, subscription_name) do
     single_stream = Map.update(single_stream, stream_uuid, %{}, &Map.delete(&1, subscription_name))
 
     %Subscriptions{subscriptions | single_stream: single_stream}
+  end
+
+  defp remove_subscription_pid(%Subscriptions{subscription_pids: subscription_pids} = subscriptions, pid) do
+    %Subscriptions{subscriptions | subscription_pids: Map.delete(subscription_pids, pid)}
   end
 end
