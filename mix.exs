@@ -28,8 +28,8 @@ defmodule EventStore.Mixfile do
   defp deps do
     [
       {:benchfella, "~> 0.3.2", only: :bench},
-      {:credo, "~> 0.4.5", only: [:dev, :test]},
-      {:ex_doc, "~> 0.12.0", only: :dev},
+      {:credo, "~> 0.4.7", only: [:dev, :test]},
+      {:ex_doc, "~> 0.13.0", only: :dev},
       {:fsm, "~> 0.2.0"},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2.6", only: :dev},

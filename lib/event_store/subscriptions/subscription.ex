@@ -29,7 +29,7 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
-  def init(%Subscription{stream: stream, subscriber: subscriber} = state) do
+  def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
     GenServer.cast(self, {:subscribe_to_stream})

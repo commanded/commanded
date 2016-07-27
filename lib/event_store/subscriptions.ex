@@ -7,7 +7,7 @@ defmodule EventStore.Subscriptions do
   require Logger
 
   alias EventStore.{RecordedEvent,Subscriptions}
-  alias EventStore.Subscriptions.{Subscription,SubscriptionData}
+  alias EventStore.Subscriptions.{Subscription}
 
   defstruct all_stream: %{}, single_stream: %{}, subscription_pids: %{}, supervisor: nil, serializer: nil
 
