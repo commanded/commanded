@@ -91,8 +91,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert stream2_received_events == EventFactory.deserialize_events(stream2_persisted_events)
   end
 
-  @tag :wip
-  test "should monitor each subscription, terminate subscription and subscriber on error", %{conn: conn} do
+  test "should monitor all stream subscription, terminate subscription and subscriber on error", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     events = EventFactory.create_recorded_events(1, stream_id)
 
@@ -102,7 +101,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     all_stream = Process.whereis(EventStore.Streams.AllStream)
 
     {:ok, subscription1} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name <> "1", subscriber1)
-    {:ok, _} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name <> "2", subscriber2)
+    {:ok, subscription2} = Subscriptions.subscribe_to_all_streams(all_stream, @subscription_name <> "2", subscriber2)
 
     # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
     Process.unlink(subscriber1)
@@ -118,6 +117,49 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     # should kill subscription and subscriber
     assert Process.alive?(subscription1) == false
     assert Process.alive?(subscriber1) == false
+
+    # other subscription should be unaffected
+    assert Process.alive?(subscription2) == true
+    assert Process.alive?(subscriber2) == true
+
+    # subscription 2 should still receive events
+    assert_receive {:events, received_events}
+    expected_events = EventFactory.deserialize_events(persisted_events)
+
+    assert received_events == expected_events
+    assert Subscriber.received_events(subscriber2) == expected_events
+  end
+
+  @tag :wip
+  test "should monitor single stream subscription, terminate subscription and subscriber on error", %{conn: conn} do
+    {:ok, stream_uuid, stream_id} = create_stream(conn)
+    events = EventFactory.create_recorded_events(1, stream_id)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, subscriber1} = Subscriber.start_link(self)
+    {:ok, subscriber2} = Subscriber.start_link(self)
+
+    {:ok, subscription1} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name <> "1", subscriber1)
+    {:ok, subscription2} = Subscriptions.subscribe_to_stream(stream_uuid, stream, @subscription_name <> "2", subscriber2)
+
+    # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
+    Process.unlink(subscriber1)
+
+    ProcessHelper.shutdown(subscription1)
+
+    # should still notify subscription 2
+    {:ok, 1} = Appender.append(conn, stream_id, events)
+    {:ok, persisted_events} = Reader.read_forward(conn, stream_id, 0)
+
+    Subscriptions.notify_events(stream_uuid, persisted_events)
+
+    # should kill subscription and subscriber
+    assert Process.alive?(subscription1) == false
+    assert Process.alive?(subscriber1) == false
+
+    # other subscription should be unaffected
+    assert Process.alive?(subscription2) == true
+    assert Process.alive?(subscriber2) == true
 
     # subscription 2 should still receive events
     assert_receive {:events, received_events}
