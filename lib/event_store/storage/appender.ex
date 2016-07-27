@@ -5,7 +5,6 @@ defmodule EventStore.Storage.Appender do
 
   require Logger
 
-  alias EventStore.RecordedEvent
   alias EventStore.Sql.Statements
 
   @doc """
@@ -22,7 +21,7 @@ defmodule EventStore.Storage.Appender do
 
     conn
     |> Postgrex.query(statement, parameters)
-    |> handle_response(stream_id, events)
+    |> handle_response(stream_id)
   end
 
   defp build_insert_statement(events) do
@@ -45,27 +44,27 @@ defmodule EventStore.Storage.Appender do
     |> List.flatten
   end
 
-  defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_id, _events) do
+  defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_id) do
     Logger.info "failed to append any events to stream id #{stream_id}"
     {:ok, 0}
   end
 
-  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows}}, stream_id, events) do
+  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows}}, stream_id) do
     Logger.info "appended #{num_rows} events to stream id #{stream_id}"
     {:ok, num_rows}
   end
 
-  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, stream_id, _events) do
+  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, stream_id) do
     Logger.warn "failed to append events to stream id #{stream_id} due to: #{message}"
     {:error, :stream_not_found}
   end
 
-  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation, message: message}}}, stream_id, _events) do
+  defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation, message: message}}}, stream_id) do
     Logger.warn "failed to append events to stream id #{stream_id} due to: #{message}"
     {:error, :wrong_expected_version}
   end
 
-  defp handle_response({:error, reason}, stream_id, _events) do
+  defp handle_response({:error, reason}, stream_id) do
     Logger.warn "failed to append events to stream id #{stream_id} due to: #{reason}"
     {:error, reason}
   end

@@ -52,6 +52,11 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     defevent notify_events(_events), data: %SubscriptionData{} = data do
       next_state(:catching_up, data)
     end
+
+    defevent unsubscribe, data: %SubscriptionData{subscription_name: subscription_name} = data do
+      unsubscribe_from_stream(subscription_name)
+      next_state(:unsubscribed, data)
+    end
   end
 
   defstate subscribed do
@@ -81,7 +86,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
       next_state(:catching_up, data)
     end
 
-    defevent unsubscribe, data: %SubscriptionData{} = data do
+    defevent unsubscribe, data: %SubscriptionData{subscription_name: subscription_name} = data do
+      unsubscribe_from_stream(subscription_name)
       next_state(:unsubscribed, data)
     end
   end
@@ -94,6 +100,10 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
 
   defp subscribe_to_stream(subscription_name) do
     Storage.subscribe_to_stream(@all_stream, subscription_name)
+  end
+
+  defp unsubscribe_from_stream(subscription_name) do
+    Storage.unsubscribe_from_stream(@all_stream, subscription_name)
   end
 
   defp query_latest_event_id do

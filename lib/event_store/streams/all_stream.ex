@@ -6,7 +6,7 @@ defmodule EventStore.Streams.AllStream do
   use GenServer
   require Logger
 
-  alias EventStore.{EventData,RecordedEvent,Storage,Writer}
+  alias EventStore.{RecordedEvent,Storage}
   alias EventStore.Streams.AllStream
   alias EventStore.Subscriptions
 
