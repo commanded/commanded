@@ -75,17 +75,19 @@ defmodule EventStore.Streams.Stream do
     {:reply, {:ok, stream_version}, state}
   end
 
-  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
-    with {:ok, stream_id} <- Storage.create_stream(stream_uuid),
-         {:ok, prepared_events} <- prepare_events(events, stream_id, stream_version, serializer),
-         :ok <- write_to_stream(prepared_events, stream_id, stream_uuid),
-    do: {:ok, %Stream{state | stream_id: stream_id}}
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
+    {:ok, stream_id} = Storage.create_stream(stream_uuid)
+
+    append_to_storage(expected_version, events, %Stream{state | stream_id: stream_id})
   end
 
-  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when expected_version > 0 and not is_nil(stream_id) and stream_version == expected_version do
-    {:ok, prepared_events} = prepare_events(events, stream_id, stream_version, serializer)
-    :ok = write_to_stream(prepared_events, stream_id, stream_uuid)
-    {:ok, state}
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version, serializer: serializer} = state) when not is_nil(stream_id) and stream_version == expected_version do
+    reply =
+      events
+      |> prepare_events(stream_id, stream_version, serializer)
+      |> write_to_stream(stream_id, stream_uuid)
+
+    {reply, state}
   end
 
   defp append_to_storage(_expected_version, _events, _state) do
@@ -95,18 +97,15 @@ defmodule EventStore.Streams.Stream do
   defp prepare_events(events, stream_id, stream_version, serializer) do
     initial_stream_version = stream_version + 1
 
-    prepared_events =
-      events
-      |> Enum.map(fn event -> map_to_recorded_event(event, serializer) end)
-      |> Enum.with_index(0)
-      |> Enum.map(fn {recorded_event, index} ->
-        %RecordedEvent{recorded_event |
-          stream_id: stream_id,
-          stream_version: initial_stream_version + index,
-        }
-      end)
-
-    {:ok, prepared_events}
+    events
+    |> Enum.map(fn event -> map_to_recorded_event(event, serializer) end)
+    |> Enum.with_index(0)
+    |> Enum.map(fn {recorded_event, index} ->
+      %RecordedEvent{recorded_event |
+        stream_id: stream_id,
+        stream_version: initial_stream_version + index
+      }
+    end)
   end
 
   defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, data: data, metadata: metadata}, serializer) do
