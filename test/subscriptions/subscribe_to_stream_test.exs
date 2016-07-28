@@ -157,7 +157,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Subscriber.received_events(subscriber2) == expected_events
   end
 
-  @tag :wip
   test "should unsubscribe from a single stream subscription", %{conn: conn} do
     {:ok, stream_uuid, stream_id} = create_stream(conn)
     {:ok, stream} = Streams.open_stream(stream_uuid)

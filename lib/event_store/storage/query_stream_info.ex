@@ -11,6 +11,10 @@ defmodule EventStore.Storage.QueryStreamInfo do
     {:ok, nil, 0}
   end
 
+  defp handle_response({:ok, %Postgrex.Result{rows: [[stream_id, nil]]}}) do
+    {:ok, stream_id, 0}
+  end
+
   defp handle_response({:ok, %Postgrex.Result{rows: [[stream_id, stream_version]]}}) do
     {:ok, stream_id, stream_version}
   end

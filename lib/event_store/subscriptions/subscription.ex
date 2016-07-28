@@ -71,7 +71,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, %Subscription{state | subscription: subscription}}
   end
 
-  def handle_call({:unsubscribe}, _from, %Subscription{stream_uuid: stream_uuid, subscriber: subscriber, subscription_name: subscription_name, subscription: subscription} = state) do
+  def handle_call({:unsubscribe}, _from, %Subscription{stream_uuid: stream_uuid, subscriber: subscriber, subscription: subscription} = state) do
     Process.unlink(subscriber)
 
     subscription =

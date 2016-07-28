@@ -21,7 +21,6 @@ CREATE TABLE streams
 (
     stream_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
-    stream_type text NOT NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
@@ -90,8 +89,8 @@ CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscripti
 
   def create_stream do
 """
-INSERT INTO streams (stream_uuid, stream_type)
-VALUES ($1, $2)
+INSERT INTO streams (stream_uuid)
+VALUES ($1)
 RETURNING stream_id;
 """
   end

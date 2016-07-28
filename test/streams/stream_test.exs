@@ -48,7 +48,7 @@ defmodule EventStore.Streams.StreamTest do
     :ok = Stream.append_to_stream(stream, 0, events)
   end
 
-  test "read unknown stream forward" do
+  test "attempt to read an unknown stream forward should error" do
     stream_uuid = UUID.uuid4
     {:ok, stream} = Streams.open_stream(stream_uuid)
 

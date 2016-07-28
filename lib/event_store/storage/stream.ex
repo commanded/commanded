@@ -12,7 +12,7 @@ defmodule EventStore.Storage.Stream do
     Logger.debug "attempting to create stream \"#{stream_uuid}\""
 
     conn
-    |> Postgrex.query(Statements.create_stream, [stream_uuid, "default"])
+    |> Postgrex.query(Statements.create_stream, [stream_uuid])
     |> handle_create_response(stream_uuid)
   end
 

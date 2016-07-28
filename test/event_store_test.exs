@@ -4,6 +4,7 @@ defmodule EventStoreTest do
 
   alias EventStore.EventFactory
 
+  @all_stream "$all"
   @subscription_name "test_subscription"
 
   test "append single event to event store" do
@@ -13,10 +14,17 @@ defmodule EventStoreTest do
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
   end
 
+  test "append multiple event to event store" do
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_events(3)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 0, events)
+  end
+
   test "attempt to append to $all stream should fail" do
     events = EventFactory.create_events(1)
 
-    {:error, :cannot_append_to_all_stream} = EventStore.append_to_stream("$all", 0, events)
+    {:error, :cannot_append_to_all_stream} = EventStore.append_to_stream(@all_stream, 0, events)
   end
 
   test "read stream forward from event store" do
