@@ -28,10 +28,10 @@ defmodule Commanded.Mixfile do
     [
       {:eventstore, github: "slashdotdash/eventstore"},
       {:eventsourced, github: "slashdotdash/eventsourced"},
-      {:ex_doc, "~> 0.11.4", only: :dev},
+      {:ex_doc, "~> 0.13.0", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 2.1"}
+      {:poison, "~> 2.2.0"}
     ]
   end
 
