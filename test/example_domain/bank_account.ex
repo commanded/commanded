@@ -5,15 +5,15 @@ defmodule Commanded.ExampleDomain.BankAccount do
 
   defmodule Commands do
     defmodule OpenAccount do
-      defstruct aggregate: BankAccount, aggregate_uuid: UUID.uuid4, account_number: nil, initial_balance: nil
+      defstruct account_number: nil, initial_balance: nil
     end
 
     defmodule DepositMoney do
-      defstruct aggregate: BankAccount, aggregate_uuid: nil, transfer_uuid: nil, amount: nil
+      defstruct account_number: nil, transfer_uuid: nil, amount: nil
     end
 
     defmodule WithdrawMoney do
-      defstruct aggregate: BankAccount, aggregate_uuid: nil, transfer_uuid: nil, amount: nil
+      defstruct account_number: nil, transfer_uuid: nil, amount: nil
     end
   end
 
