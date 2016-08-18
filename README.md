@@ -38,15 +38,11 @@ Start the top level Supervisor process.
 
 ### Command handlers
 
-Create a module per command, defining the fields with `defstruct`. Fields must include `aggregate` to specify the target aggregate module and `aggregate_uuid` to identify the aggregate instance.
+Create a module per command, defining the fields with `defstruct`. A command must contain a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
 ```elixir
 defmodule OpenAccount do
-  defstruct [:aggregate, :aggregate_uuid, :account_number, :initial_balance]
-
-  def new do
-    %OpenAccount{aggregate: BankAccount, aggregate_uuid: UUID.uuid4}
-  end
+  defstruct [:account_number, :initial_balance]
 end
 ```
 
@@ -63,16 +59,23 @@ defmodule OpenAccountHandler do
 end
 ```
 
-Register the command handler.
+### Command dispatch and routing
+
+Create a router to handle registration of each command to its associated handler. Configure each command, mapping it to its handler and aggregate root.
 
 ```elixir
-:ok = Commanded.register(OpenAccount, OpenAccountHandler)
+defmodule BankingRouter do
+  use Commanded.Commands.Router
+
+  dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+  dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
+end
 ```
 
-You can dispatch the command once the handler has been registered.
+You can then dispatch a command using the router.
 
 ```elixir
-:ok = Commanded.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+:ok = BankingRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```
 
 ### Event handlers
@@ -136,7 +139,7 @@ defmodule TransferMoneyProcessManager do
   def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
     transfer =
       transfer
-      |> dispatch(%WithdrawMoney{aggregate_uuid: source_account, transfer_uuid: transfer_uuid, amount: amount})
+      |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})
 
     %TransferMoneyProcessManager{transfer |
       source_account: source_account,
@@ -149,7 +152,7 @@ defmodule TransferMoneyProcessManager do
   def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
     transfer =
       transfer
-      |> dispatch(%DepositMoney{aggregate_uuid: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
+      |> dispatch(%DepositMoney{account_number: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
 
     %TransferMoneyProcessManager{transfer |
       status: :deposit_money_in_target_account
