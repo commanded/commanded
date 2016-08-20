@@ -12,12 +12,14 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     :ok
   end
 
+  @account_number "ACC123"
+
   test "execute command against an aggregate" do
     aggregate_uuid = UUID.uuid4
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, aggregate_uuid)
 
-    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: "ACC123", initial_balance: 1_000}, OpenAccountHandler)
+    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: @account_number, initial_balance: 1_000}, OpenAccountHandler)
 
     Helpers.Process.shutdown(aggregate)
 
@@ -26,7 +28,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     bank_account = Aggregate.state(aggregate)
 
-    assert bank_account.state.account_number == "ACC123"
+    assert bank_account.state.account_number == @account_number
     assert bank_account.state.balance == 1_000
     assert length(bank_account.pending_events) == 0
     assert bank_account.uuid == aggregate_uuid
@@ -47,11 +49,11 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
       }
     ])
 
-    Aggregate.execute(aggregate, %DepositMoney{aggregate_uuid: aggregate_uuid, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler)
+    Aggregate.execute(aggregate, %DepositMoney{account_number: @account_number, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler)
 
     bank_account = Aggregate.state(aggregate)
 
-    assert bank_account.state.account_number == "ACC123"
+    assert bank_account.state.account_number == @account_number
     assert bank_account.state.balance == 1_050
   end
 end
