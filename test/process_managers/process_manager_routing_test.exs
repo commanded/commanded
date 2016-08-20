@@ -5,38 +5,40 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   alias Commanded.ProcessManagers.Router
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,TransferMoneyHandler,WithdrawMoneyHandler}
+  alias Commanded.ExampleDomain.{BankAccount,MoneyTransfer}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney,WithdrawMoney}
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
-  alias Commanded.Commands.{Dispatcher,Registry}
 
   setup do
     EventStore.Storage.reset!
     Commanded.Supervisor.start_link
-    :ok = Registry.register(OpenAccount, OpenAccountHandler)
-    :ok = Registry.register(DepositMoney, DepositMoneyHandler)
-    :ok = Registry.register(WithdrawMoney, WithdrawMoneyHandler)
-    :ok = Registry.register(TransferMoney, TransferMoneyHandler)
     :ok
   end
 
-  test "start a process manager in response to an event" do
-    account1_uuid = UUID.uuid4
-    account2_uuid = UUID.uuid4
+  defmodule BankRouter do
+    use Commanded.Commands.Router
 
-    {:ok, _} = Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
+    dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+    dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
+    dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount, identity: :account_number
+    dispatch TransferMoney, to: TransferMoneyHandler, aggregate: MoneyTransfer, identity: :transfer_uuid
+  end
+
+  test "should start a process manager in response to an event" do
+    {:ok, _} = Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager, BankRouter)
 
     # create two bank accounts
-    :ok = Dispatcher.dispatch(%OpenAccount{aggregate_uuid: account1_uuid, account_number: "ACC123", initial_balance: 1_000})
-    :ok = Dispatcher.dispatch(%OpenAccount{aggregate_uuid: account2_uuid, account_number: "ACC456", initial_balance:  500})
+    :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC456", initial_balance:  500})
 
     # transfer funds between account 1 and account 2
-    :ok = Dispatcher.dispatch(%TransferMoney{source_account: account1_uuid, target_account: account2_uuid, amount: 100})
+    :ok = BankRouter.dispatch(%TransferMoney{source_account: "ACC123", target_account: "ACC456", amount: 100})
 
     EventStore.subscribe_to_all_streams("unit_test", self)
 
-    assert_receive({:events, events})
-    assert_receive({:events, events})
-    assert_receive({:events, events})
+    assert_receive({:events, _events})
+    assert_receive({:events, _events})
+    assert_receive({:events, _events})
 
     receive do
       {:events, [recorded_event]} ->

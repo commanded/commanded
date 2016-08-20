@@ -2,10 +2,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   use ExUnit.Case
   doctest Commanded.Commands.Router
 
-  import Commanded.Helpers.CompileTimeAssertions
-
-  alias Commanded.Commands
-  alias Commanded.Commands.Router
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
@@ -27,7 +23,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     :ok
   end
 
-  test "dispatch command to registered handler" do
+  test "should dispatch command to registered handler" do
     :ok = ExampleRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
   end
 
@@ -35,7 +31,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     {:error, :unregistered_command} = ExampleRouter.dispatch(%UnregisteredCommand{})
   end
 
-  test "don't allow duplicate registrations for a command" do
+  test "should prevent duplicate registrations for a command" do
     # compile time safety net to prevent duplicate command registrations
     assert_raise RuntimeError, "duplicate command registration for: Elixir.Commanded.ExampleDomain.BankAccount.Commands.OpenAccount", fn ->
       Code.eval_string """

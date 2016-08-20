@@ -14,7 +14,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
   @account_number "ACC123"
 
-  test "execute command against an aggregate" do
+  test "should execute command against an aggregate" do
     aggregate_uuid = UUID.uuid4
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, aggregate_uuid)
@@ -35,7 +35,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     assert bank_account.version == 1
   end
 
-  test "execute command against an aggregate with concurrency error should reload events and retry command" do
+  test "should execute command against an aggregate with concurrency error should reload events and retry command" do
     aggregate_uuid = UUID.uuid4
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, aggregate_uuid)
