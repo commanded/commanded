@@ -7,7 +7,6 @@ defmodule Commanded.Supervisor do
 
   def init(_) do
     children = [
-      worker(Commanded.Commands.Registry, []),
       worker(Commanded.Aggregates.Registry, [])
     ]
 

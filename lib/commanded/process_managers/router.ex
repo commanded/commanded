@@ -8,19 +8,20 @@ defmodule Commanded.ProcessManagers.Router do
 
   alias Commanded.ProcessManagers.Supervisor
   alias Commanded.ProcessManagers.{ProcessManager,Router}
-  alias Commanded.Event.Serializer
+  alias Commanded.Event.Mapper
 
-  defstruct process_manager_name: nil, process_manager_module: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
+  defstruct process_manager_name: nil, process_manager_module: nil, command_dispatcher: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
 
-  def start_link(process_manager_name, process_manager_module) do
+  def start_link(process_manager_name, process_manager_module, command_dispatcher) do
     GenServer.start_link(__MODULE__, %Router{
       process_manager_name: process_manager_name,
-      process_manager_module: process_manager_module
+      process_manager_module: process_manager_module,
+      command_dispatcher: command_dispatcher
     })
   end
 
-  def init(%Router{} = state) do
-    {:ok, supervisor} = Supervisor.start_link
+  def init(%Router{command_dispatcher: command_dispatcher} = state) do
+    {:ok, supervisor} = Supervisor.start_link(command_dispatcher)
 
     state = %Router{state | supervisor: supervisor}
 
@@ -40,7 +41,7 @@ defmodule Commanded.ProcessManagers.Router do
     state =
       events
       |> Enum.filter(fn event -> !already_seen_event?(event, state) end)
-      |> Enum.map(&Serializer.map_from_recorded_event/1)
+      |> Enum.map(&Mapper.map_from_recorded_event/1)
       |> Enum.reduce(state, fn (event, state) -> handle_event(event, state) end)
 
     state = %Router{state | last_seen_event_id: List.last(events).event_id}

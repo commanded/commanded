@@ -10,18 +10,17 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   @event_retries 3
 
-  defstruct process_manager_module: nil, process_state: nil
+  defstruct command_dispatcher: nil, process_manager_module: nil, process_state: nil
 
-  def start_link(process_manager_module, process_uuid) do
-    GenServer.start_link(__MODULE__, {process_manager_module, process_uuid})
-  end
-
-  def init({process_manager_module, process_uuid}) do
-    state = %ProcessManager{
+  def start_link(command_dispatcher, process_manager_module, process_uuid) do
+    GenServer.start_link(__MODULE__, %ProcessManager{
+      command_dispatcher: command_dispatcher,
       process_manager_module: process_manager_module,
       process_state: process_manager_module.new(process_uuid)
-    }
+    })
+  end
 
+  def init(%ProcessManager{} = state) do
     {:ok, state}
   end
 
@@ -35,11 +34,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Handle the given event, using the process manager module, against the current process state
   """
-  def handle_call({:process_event, event}, _from, %ProcessManager{process_manager_module: process_manager_module, process_state: process_state} = state) do
+  def handle_call({:process_event, event}, _from, %ProcessManager{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
     process_state =
       process_state
       |> process_event(event, process_manager_module, @event_retries)
-      |> dispatch_commands
+      |> dispatch_commands(command_dispatcher)
 
     state = %ProcessManager{state | process_state: process_state}
 
@@ -50,8 +49,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     process_manager_module.handle(process_state, event)
   end
 
-  defp dispatch_commands(%{commands: commands} = process_state) when is_list(commands) do
-    Enum.each(commands, fn command -> Dispatcher.dispatch(command) end)
+  defp dispatch_commands(%{commands: commands} = process_state, command_dispatcher) when is_list(commands) do
+    Enum.each(commands, fn command -> command_dispatcher.dispatch(command) end)
 
     %{process_state | commands: []}
   end

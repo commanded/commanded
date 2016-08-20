@@ -4,10 +4,14 @@ defmodule Commanded.Commands.Dispatcher do
   alias Commanded.Commands
   alias Commanded.Aggregates
 
-  @spec dispatch(struct) :: :ok
-  def dispatch(command) do
-    with {:ok, handler} <- Commands.Registry.handler(command),
-         {:ok, aggregate} <- Aggregates.Registry.open_aggregate(command.aggregate, command.aggregate_uuid),
-      do: Aggregates.Aggregate.execute(aggregate, command, handler)
+  # @spec dispatch(struct) :: :ok
+  def dispatch(command, handler_module, aggregate_module, identity) do
+    Logger.debug("attempting to dispatch command: #{inspect command}, to: #{handler_module}, aggregate: #{aggregate_module}")
+
+    aggregate_uuid = Map.get(command, identity)
+    
+    {:ok, aggregate} = Aggregates.Registry.open_aggregate(aggregate_module, aggregate_uuid)
+
+    Aggregates.Aggregate.execute(aggregate, command, handler_module)
   end
 end

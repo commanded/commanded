@@ -5,7 +5,7 @@ defmodule Commanded.ExampleDomain.MoneyTransfer do
 
   defmodule Commands do
     defmodule TransferMoney do
-      defstruct aggregate: MoneyTransfer, aggregate_uuid: UUID.uuid4, source_account: nil, target_account: nil, amount: nil
+      defstruct transfer_uuid: UUID.uuid4, source_account: nil, target_account: nil, amount: nil
     end
   end
 
