@@ -42,7 +42,6 @@ defmodule Commanded.Event.Handler do
 
   defp handle_event(%EventStore.RecordedEvent{} = event, %Handler{handler_module: handler_module}) do
     event
-    |> Serializer.map_from_recorded_event
     |> handler_module.handle
   end
 end

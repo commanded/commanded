@@ -42,7 +42,7 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
 
     receive do
       {:events, [recorded_event]} ->
-        event = Commanded.Event.Serializer.map_from_recorded_event(recorded_event)
+        event = Commanded.Event.Mapper.map_from_recorded_event(recorded_event)
 
         assert event.amount == 100
         assert event.balance == 900

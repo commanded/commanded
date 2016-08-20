@@ -1,4 +1,8 @@
-defmodule Commanded.Event.Serializer do
+defmodule Commanded.Event.Mapper do
+  @moduledoc """
+  Map raw events to event data structs ready to be persisted to the event store.
+  """
+
   def map_to_event_data(events, correlation_id) when is_list(events) do
     Enum.map(events, &map_to_event_data(&1, correlation_id))
   end
@@ -7,8 +11,8 @@ defmodule Commanded.Event.Serializer do
     %EventStore.EventData{
       correlation_id: correlation_id,
       event_type: Atom.to_string(event.__struct__),
-      headers: nil,
-      payload: serialize(event)
+      data: event,
+      metadata: %{}
     }
   end
 
@@ -16,20 +20,7 @@ defmodule Commanded.Event.Serializer do
     Enum.map(recorded_events, &map_from_recorded_event/1)
   end
 
-  def map_from_recorded_event(%EventStore.RecordedEvent{event_type: event_type, payload: payload}) do
-    type =
-      event_type
-      |> String.to_atom
-      |> struct
-
-    deserialize(payload, type)
-  end
-
-  defp serialize(data) do
-    Poison.encode!(data)
-  end
-
-  defp deserialize(data, type) do
-    Poison.decode!(data, as: type)
+  def map_from_recorded_event(%EventStore.RecordedEvent{data: data}) do
+    data
   end
 end

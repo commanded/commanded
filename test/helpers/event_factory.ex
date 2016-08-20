@@ -1,7 +1,7 @@
 defmodule Commanded.Helpers.EventFactory do
   def map_to_recorded_events(events) do
     events
-    |> Commanded.Event.Serializer.map_to_event_data(UUID.uuid4)
+    |> Commanded.Event.Mapper.map_to_event_data(UUID.uuid4)
     |> Enum.with_index(1)
     |> Enum.map(fn {event, index} ->
       %EventStore.RecordedEvent{
@@ -10,8 +10,8 @@ defmodule Commanded.Helpers.EventFactory do
         stream_version: index,
         correlation_id: event.correlation_id,
         event_type: event.event_type,
-        headers: event.headers,
-        payload: event.payload,
+        data: event.data,
+        metadata: event.metadata,
         created_at: :calendar.universal_time
       }
     end)

@@ -8,7 +8,7 @@ defmodule Commanded.ProcessManagers.Router do
 
   alias Commanded.ProcessManagers.Supervisor
   alias Commanded.ProcessManagers.{ProcessManager,Router}
-  alias Commanded.Event.Serializer
+  alias Commanded.Event.Mapper
 
   defstruct process_manager_name: nil, process_manager_module: nil, command_dispatcher: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
 
@@ -41,7 +41,7 @@ defmodule Commanded.ProcessManagers.Router do
     state =
       events
       |> Enum.filter(fn event -> !already_seen_event?(event, state) end)
-      |> Enum.map(&Serializer.map_from_recorded_event/1)
+      |> Enum.map(&Mapper.map_from_recorded_event/1)
       |> Enum.reduce(state, fn (event, state) -> handle_event(event, state) end)
 
     state = %Router{state | last_seen_event_id: List.last(events).event_id}
