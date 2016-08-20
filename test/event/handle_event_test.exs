@@ -8,11 +8,11 @@ defmodule Commanded.Event.HandleEventTest do
 	alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
   alias Commanded.Helpers.Wait
 
-	setup do
-		EventStore.Storage.reset!
-		{:ok, _} = Commanded.Supervisor.start_link
-		:ok
-	end
+  setup do
+    EventStore.Storage.reset!
+    Commanded.Supervisor.start_link
+    :ok
+  end
 
 	test "should be notified of events" do
     {:ok, _} = AccountBalanceHandler.start_link

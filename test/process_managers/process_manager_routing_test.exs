@@ -25,20 +25,23 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   end
 
   test "should start a process manager in response to an event" do
+    account_number1 = UUID.uuid4
+    account_number2 = UUID.uuid4
+
     {:ok, _} = Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager, BankRouter)
 
     # create two bank accounts
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC456", initial_balance:  500})
+    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number1, initial_balance: 1_000})
+    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number2, initial_balance:  500})
 
     # transfer funds between account 1 and account 2
-    :ok = BankRouter.dispatch(%TransferMoney{source_account: "ACC123", target_account: "ACC456", amount: 100})
+    :ok = BankRouter.dispatch(%TransferMoney{source_account: account_number1, target_account: account_number2, amount: 100})
 
     EventStore.subscribe_to_all_streams("unit_test", self)
 
-    assert_receive({:events, _events})
-    assert_receive({:events, _events})
-    assert_receive({:events, _events})
+    assert_receive({:events, _events}, 1_000)
+    assert_receive({:events, _events}, 1_000)
+    assert_receive({:events, _events}, 1_000)
 
     receive do
       {:events, [recorded_event]} ->

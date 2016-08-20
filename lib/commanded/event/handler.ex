@@ -40,8 +40,8 @@ defmodule Commanded.Event.Handler do
     Logger.debug("event handler has already seen event: #{inspect event}")
   end
 
-  defp handle_event(%EventStore.RecordedEvent{} = event, %Handler{handler_module: handler_module}) do
-    event
+  defp handle_event(%EventStore.RecordedEvent{data: data} = event, %Handler{handler_module: handler_module}) do
+    data
     |> handler_module.handle
   end
 end
