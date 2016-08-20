@@ -11,8 +11,19 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
   setup do
     EventStore.Storage.reset!
     Commanded.Supervisor.start_link
-    :ok = Commanded.Commands.Registry.register(WithdrawMoney, Commanded.ProcessManager.ProcessManagerTest)
     :ok
+  end
+
+  defmodule OpenAccountHandler do
+    def handle(%BankAccount{} = aggregate, %WithdrawMoney{}) do
+      aggregate
+    end
+  end
+
+  defmodule Router do
+    use Commanded.Commands.Router
+
+    dispatch WithdrawMoney, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
   end
 
   test "process manager handles an event" do
@@ -20,7 +31,7 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
     account1_uuid = UUID.uuid4
     account2_uuid = UUID.uuid4
 
-    {:ok, process_manager} = ProcessManager.start_link(TransferMoneyProcessManager, process_uuid)
+    {:ok, process_manager} = ProcessManager.start_link(Router, TransferMoneyProcessManager, process_uuid)
 
     event = %MoneyTransferRequested{
       transfer_uuid: process_uuid,
@@ -30,9 +41,5 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
     }
 
     :ok = ProcessManager.process_event(process_manager, event)
-  end
-
-  def handle(%BankAccount{} = aggregate, %WithdrawMoney{}) do
-    aggregate
   end
 end

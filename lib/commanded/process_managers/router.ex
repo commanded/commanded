@@ -10,17 +10,18 @@ defmodule Commanded.ProcessManagers.Router do
   alias Commanded.ProcessManagers.{ProcessManager,Router}
   alias Commanded.Event.Serializer
 
-  defstruct process_manager_name: nil, process_manager_module: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
+  defstruct process_manager_name: nil, process_manager_module: nil, command_dispatcher: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
 
-  def start_link(process_manager_name, process_manager_module) do
+  def start_link(process_manager_name, process_manager_module, command_dispatcher) do
     GenServer.start_link(__MODULE__, %Router{
       process_manager_name: process_manager_name,
-      process_manager_module: process_manager_module
+      process_manager_module: process_manager_module,
+      command_dispatcher: command_dispatcher
     })
   end
 
-  def init(%Router{} = state) do
-    {:ok, supervisor} = Supervisor.start_link
+  def init(%Router{command_dispatcher: command_dispatcher} = state) do
+    {:ok, supervisor} = Supervisor.start_link(command_dispatcher)
 
     state = %Router{state | supervisor: supervisor}
 

@@ -6,8 +6,8 @@ defmodule Commanded.ProcessManagers.Supervisor do
   use Supervisor
   require Logger
 
-  def start_link do
-    Supervisor.start_link(__MODULE__, nil)
+  def start_link(command_dispatcher) do
+    Supervisor.start_link(__MODULE__, command_dispatcher)
   end
 
   def start_process_manager(supervisor, process_manager_module, process_uuid) do
@@ -16,9 +16,9 @@ defmodule Commanded.ProcessManagers.Supervisor do
     Supervisor.start_child(supervisor, [process_manager_module, process_uuid])
   end
 
-  def init(_) do
+  def init(command_dispatcher) do
     children = [
-      worker(Commanded.ProcessManagers.ProcessManager, [], restart: :transient),
+      worker(Commanded.ProcessManagers.ProcessManager, [command_dispatcher], restart: :transient),
     ]
 
     supervise(children, strategy: :simple_one_for_one)
