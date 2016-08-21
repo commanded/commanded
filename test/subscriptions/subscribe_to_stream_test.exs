@@ -9,6 +9,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
   @all_stream "$all"
   @subscription_name "test_subscription"
+  @receive_timeout 1_000
 
   setup do
     storage_config = Application.get_env(:eventstore, EventStore.Storage)
@@ -24,7 +25,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     {:ok, persisted_events} = notify_events(conn, stream_id, stream_uuid)
 
-    assert_receive {:events, received_events}
+    assert_receive {:events, received_events}, @receive_timeout
     assert received_events == EventFactory.deserialize_events(persisted_events)
   end
 
@@ -54,7 +55,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     expected_received_events = EventFactory.deserialize_events(interested_persisted_events)
 
     # received events should not include events from other stream
-    assert_receive {:events, received_events}
+    assert_receive {:events, received_events}, @receive_timeout
     assert received_events == expected_received_events
   end
 
@@ -77,8 +78,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     Subscriptions.notify_events(stream1_uuid, stream1_persisted_events)
     Subscriptions.notify_events(stream2_uuid, stream2_persisted_events)
 
-    assert_receive {:events, stream1_received_events}
-    assert_receive {:events, stream2_received_events}
+    assert_receive {:events, stream1_received_events}, @receive_timeout
+    assert_receive {:events, stream2_received_events}, @receive_timeout
 
     assert stream1_received_events == EventFactory.deserialize_events(stream1_persisted_events)
     assert stream2_received_events == EventFactory.deserialize_events(stream2_persisted_events)
@@ -116,7 +117,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Process.alive?(subscriber2) == true
 
     # subscription 2 should still receive events
-    assert_receive {:events, received_events}
+    assert_receive {:events, received_events}, @receive_timeout
     expected_events = EventFactory.deserialize_events(persisted_events)
 
     assert received_events == expected_events
@@ -150,7 +151,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     assert Process.alive?(subscriber2) == true
 
     # subscription 2 should still receive events
-    assert_receive {:events, received_events}
+    assert_receive {:events, received_events}, @receive_timeout
     expected_events = EventFactory.deserialize_events(persisted_events)
 
     assert received_events == expected_events
