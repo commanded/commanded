@@ -52,11 +52,12 @@ defmodule EventStore.Streams.Stream do
   end
 
   def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_version: stream_version} = state) do
-    {:ok, state} = append_to_storage(expected_version, events, state)
+    {reply, state} = case append_to_storage(expected_version, events, state) do
+      {:ok, state} -> {:ok, %Stream{state | stream_version: stream_version + length(events)}}
+      {:error, :wrong_expected_version} = reply -> {reply, state}
+    end
 
-    state = %Stream{state | stream_version: stream_version + length(events)}
-
-    {:reply, :ok, state}
+    {:reply, reply, state}
   end
 
   def handle_call({:read_stream_forward, start_version, count}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do

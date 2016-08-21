@@ -48,6 +48,16 @@ defmodule EventStore.Streams.StreamTest do
     :ok = Stream.append_to_stream(stream, 0, events)
   end
 
+  test "attempt to append events for wrong expected version should error" do
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_events(3)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    :ok = Stream.append_to_stream(stream, 0, events)
+
+    {:error, :wrong_expected_version} = Stream.append_to_stream(stream, 0, events)
+  end
+
   test "attempt to read an unknown stream forward should error" do
     stream_uuid = UUID.uuid4
     {:ok, stream} = Streams.open_stream(stream_uuid)
