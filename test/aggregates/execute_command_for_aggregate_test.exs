@@ -35,7 +35,6 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     assert bank_account.version == 1
   end
 
-  @tag :skip
   test "should execute command against an aggregate with concurrency error should reload events and retry command" do
     account_number = UUID.uuid4
 
