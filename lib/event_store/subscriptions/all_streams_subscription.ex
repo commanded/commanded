@@ -93,9 +93,15 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   end
 
   defstate unsubscribed do
+    defevent notify_events(_events), data: %SubscriptionData{} = data do
+      next_state(:unsubscribed, data)
+    end
   end
 
   defstate failed do
+    defevent notify_events(_events), data: %SubscriptionData{} = data do
+      next_state(:failed, data)
+    end
   end
 
   defp subscribe_to_stream(subscription_name) do
