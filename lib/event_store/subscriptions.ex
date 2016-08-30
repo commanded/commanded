@@ -77,7 +77,7 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscriptions{subscription_pids: subscription_pids} = subscriptions) do
-    Logger.info "subscription down due to: #{reason}"
+    Logger.info "subscription down due to: #{inspect reason}"
 
     {stream_uuid, subscription_name} = Map.get(subscription_pids, pid)
 
@@ -110,7 +110,7 @@ defmodule EventStore.Subscriptions do
 
   defp delete_subscription(supervisor, subscription) do
     :ok = Subscription.unsubscribe(subscription)
-    
+
     Subscriptions.Supervisor.unsubscribe_from_stream(supervisor, subscription)
   end
 
