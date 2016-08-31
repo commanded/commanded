@@ -4,17 +4,21 @@ defmodule EventStore.WriterTest do
 
   alias EventStore
   alias EventStore.{EventFactory,ProcessHelper}
+  alias EventStore.TestHelpers.Wait
 
   test "restart writer, should assign next event id on append to stream" do
     stream_uuid = UUID.uuid4
-    events = EventFactory.create_events(2)
 
-    :ok = EventStore.append_to_stream(stream_uuid, 0, [Enum.at(events, 0)])
+    :ok = EventStore.append_to_stream(stream_uuid, 0, EventFactory.create_events(1))
 
     writer = Process.whereis(EventStore.Writer)
     ProcessHelper.shutdown(writer)
 
-    :ok = EventStore.append_to_stream(stream_uuid, 1, [Enum.at(events, 1)])
+    Wait.until fn ->
+      assert Process.whereis(EventStore.Writer) != nil
+    end
+
+    :ok = EventStore.append_to_stream(stream_uuid, 1, EventFactory.create_events(1))
 
     {:ok, events} = EventStore.read_stream_forward(stream_uuid)
 
