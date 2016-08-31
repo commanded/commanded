@@ -37,7 +37,7 @@ defmodule EventStore.Streams do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Streams{streams: streams} = state) do
-    Logger.warn "stream down due to: #{reason}"
+    Logger.warn "stream down due to: #{inspect reason}"
 
     state = %Streams{state | streams: remove_stream(streams, pid)}
     {:noreply, state}

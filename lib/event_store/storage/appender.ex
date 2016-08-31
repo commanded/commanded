@@ -55,17 +55,17 @@ defmodule EventStore.Storage.Appender do
   end
 
   defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, stream_id) do
-    Logger.warn "failed to append events to stream id #{stream_id} due to: #{message}"
+    Logger.warn "failed to append events to stream id #{stream_id} due to: #{inspect message}"
     {:error, :stream_not_found}
   end
 
   defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation, message: message}}}, stream_id) do
-    Logger.warn "failed to append events to stream id #{stream_id} due to: #{message}"
+    Logger.warn "failed to append events to stream id #{stream_id} due to: #{inspect message}"
     {:error, :wrong_expected_version}
   end
 
   defp handle_response({:error, reason}, stream_id) do
-    Logger.warn "failed to append events to stream id #{stream_id} due to: #{reason}"
+    Logger.warn "failed to append events to stream id #{stream_id} due to: #{inspect reason}"
     {:error, reason}
   end
 end
