@@ -9,7 +9,7 @@ defmodule EventStore.Storage do
   require Logger
 
   alias EventStore.Storage
-  alias EventStore.Storage.{Reader,Stream,Subscription}
+  alias EventStore.Storage.{Reader,Snapshot,Stream,Subscription}
 
   @storage_pool_name :event_store_storage_pool
 
@@ -96,6 +96,20 @@ defmodule EventStore.Storage do
   """
   def subscriptions do
     execute_using_storage_pool(&Subscription.subscriptions/1)
+  end
+
+  @doc """
+  Read a snapshot, if available, for a given source
+  """
+  def read_snapshot(source_uuid) do
+    execute_using_storage_pool(&Snapshot.read_snapshot(&1, source_uuid))
+  end
+
+  @doc """
+  Record a snapshot of the data and metadata for a given source
+  """
+  def record_snapshot(source_uuid, source_version, data, metadata) do
+    execute_using_storage_pool(&Snapshot.record_snapshot(&1, source_uuid, source_version, data, metadata))
   end
 
   # Execute the given `transaction` function using a database worker from the pool

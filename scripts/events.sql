@@ -8,4 +8,6 @@ select
 	convert_from(metadata, current_setting('server_encoding')) as metadata,
 	created_at
 from events
-order by created_at desc;
+order by event_id;
+
+-- truncate events, streams, subscriptions;
