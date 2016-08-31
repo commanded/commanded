@@ -5,9 +5,15 @@ defmodule EventStore.StorageCase do
 
   setup do
     Application.stop(:eventstore)
-    :ok = Application.start(:eventstore)
+    reset_storage
+    Application.start(:eventstore)
+  end
 
-    Storage.reset!
-    :ok
+  defp reset_storage do
+    storage_config = Application.get_env(:eventstore, EventStore.Storage)
+
+    {:ok, conn} = Postgrex.start_link(storage_config)
+
+    Storage.Initializer.reset!(conn)
   end
 end
