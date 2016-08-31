@@ -12,10 +12,19 @@ defmodule EventStore.Sql.Statements do
       create_event_stream_id_and_version_index,
       create_subscriptions_table,
       create_subscription_index,
+      create_snapshots_table,
+      create_snapshots_index
     ]
   end
 
-  def create_streams_table do
+  def truncate_tables do
+"""
+TRUNCATE TABLE snapshots, subscriptions, streams, events
+RESTART IDENTITY;
+"""
+  end
+
+  defp create_streams_table do
 """
 CREATE TABLE streams
 (
@@ -26,20 +35,13 @@ CREATE TABLE streams
 """
   end
 
-  def create_stream_uuid_index do
+  defp create_stream_uuid_index do
 """
 CREATE UNIQUE INDEX ix_streams_stream_uuid ON streams (stream_uuid);
 """
   end
 
-  def truncate_tables do
-"""
-TRUNCATE TABLE subscriptions, streams, events
-RESTART IDENTITY;
-"""
-  end
-
-  def create_events_table do
+  defp create_events_table do
 """
 CREATE TABLE events
 (
@@ -48,26 +50,26 @@ CREATE TABLE events
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
     correlation_id text,
-    data bytea NULL,
-    metadata bytea NOT NULL,
+    data bytea NOT NULL,
+    metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
   end
 
-  def create_event_stream_id_index do
+  defp create_event_stream_id_index do
 """
 CREATE INDEX ix_events_stream_id ON events (stream_id);
 """
   end
 
-  def create_event_stream_id_and_version_index do
+  defp create_event_stream_id_and_version_index do
 """
 CREATE UNIQUE INDEX ix_events_stream_id_stream_version ON events (stream_id, stream_version DESC);
 """
   end
 
-  def create_subscriptions_table do
+  defp create_subscriptions_table do
 """
 CREATE TABLE subscriptions
 (
@@ -84,6 +86,26 @@ CREATE TABLE subscriptions
   def create_subscription_index do
 """
 CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscriptions (stream_uuid, subscription_name);
+"""
+  end
+
+  def create_snapshots_table do
+"""
+CREATE TABLE snapshots
+(
+    snapshot_id bigserial PRIMARY KEY NOT NULL,
+    source_uuid text NOT NULL,
+    source_version bigint NOT NULL,
+    data bytea NOT NULL,
+    metadata bytea NULL,
+    created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
+);
+"""
+  end
+
+  defp create_snapshots_index do
+"""
+CREATE UNIQUE INDEX ix_snapshots_source_uuid ON snapshots (source_uuid);
 """
   end
 
@@ -129,6 +151,15 @@ WHERE stream_uuid = $1 AND subscription_name = $2;
 UPDATE subscriptions
 SET last_seen_event_id = $3, last_seen_stream_version = $4
 WHERE stream_uuid = $1 AND subscription_name = $2;
+"""
+  end
+
+  def record_snapshot do
+"""
+INSERT INTO snapshots (source_uuid, source_version, data, metadata)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (source_uuid)
+DO UPDATE SET source_version = $2, data = $3, metadata = $4;
 """
   end
 
@@ -183,6 +214,14 @@ LIMIT 1;
 """
 SELECT COALESCE(MAX(event_id), 0)
 FROM events;
+"""
+  end
+
+  def query_get_snapshot do
+"""
+SELECT source_uuid, source_version, data, metadata, created_at
+FROM snapshots
+WHERE source_uuid = $1;
 """
   end
 

@@ -1,6 +1,6 @@
 # EventStore
 
-CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) as the underlying storage engine.
+CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) (v9.5 or later) as the underlying storage engine.
 
 MIT License
 
@@ -8,13 +8,13 @@ MIT License
 
 ## Getting started
 
-EventStore is [available in Hex](https://hex.pm/packages/eventstore), the package can be installed as follows:
+EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be installed as follows:
 
   1. Add eventstore to your list of dependencies in `mix.exs`:
 
     ```elixir    
     def deps do
-      [{:eventstore, "~> 0.0.1"}]
+      [{:eventstore, "~> 0.4.0"}]
     end
     ```
 
@@ -44,7 +44,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore), the packag
 
 ## Sample usage
 
-Including the `eventstore` in the applications section of `mix.exs` will ensure it is started.
+Including `eventstore` in the applications section of `mix.exs` will ensure it is started.
 
 ```elixir
 # manually start the EventStore supervisor
@@ -111,7 +111,7 @@ defmodule Subscriber do
     {:ok, %{events: events}}
   end
 
-  def handle_info({:events, stream_uuid, stream_version, events}, state) do
+  def handle_info({:events, events}, state) do
     {:noreply, %{state | events: events ++ state.events}}
   end
 
