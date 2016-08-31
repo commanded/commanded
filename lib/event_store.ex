@@ -126,4 +126,20 @@ defmodule EventStore do
   def unsubscribe_from_all_streams(subscription_name) do
     Subscriptions.unsubscribe_from_stream(@all_stream, subscription_name)
   end
+
+  @doc """
+  Read a snapshot, if available, for a given source
+  """
+  def read_snapshot(source_uuid) do
+    Storage.read_snapshot(source_uuid)
+  end
+
+  @doc """
+  Record a snapshot of the data and metadata for a given source
+
+  Returns `:ok` on success
+  """
+  def record_snapshot(source_uuid, source_version, data, metadata) do
+    Storage.record_snapshot(source_uuid, source_version, data, metadata)
+  end
 end
