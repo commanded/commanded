@@ -15,13 +15,16 @@ defmodule Commanded.ExampleDomain.MoneyTransfer do
     end
   end
 
+  alias Commands.{TransferMoney}
   alias Events.{MoneyTransferRequested}
 
-  def transfer_money(%MoneyTransfer{} = money_transfer, source_account, target_account, amount) when amount > 0 do
+  def transfer_money(%MoneyTransfer{} = money_transfer, %TransferMoney{transfer_uuid: transfer_uuid, source_account: source_account, target_account: target_account, amount: amount}) when amount > 0 do
     money_transfer
-    |> update(%MoneyTransferRequested{transfer_uuid: UUID.uuid4, source_account: source_account, target_account: target_account, amount: amount})
+    |> update(%MoneyTransferRequested{transfer_uuid: transfer_uuid, source_account: source_account, target_account: target_account, amount: amount})
   end
 
+  # state mutatators
+  
   def apply(%MoneyTransfer.State{} = state, %MoneyTransferRequested{} = transfer_requested) do
     %MoneyTransfer.State{state |
       transfer_uuid: transfer_requested.transfer_uuid,

@@ -4,8 +4,8 @@ defmodule Commanded.ExampleDomain.OpenAccountHandler do
 
   @behaviour Commanded.Commands.Handler
 
-  def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
+  def handle(%BankAccount{} = aggregate, %OpenAccount{} = open_account) do
     aggregate
-    |> BankAccount.open_account(account_number, initial_balance)
+    |> BankAccount.open_account(open_account)
   end
 end

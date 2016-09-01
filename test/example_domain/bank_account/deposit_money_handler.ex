@@ -4,8 +4,8 @@ defmodule Commanded.ExampleDomain.DepositMoneyHandler do
 
   @behaviour Commanded.Commands.Handler
 
-  def handle(%BankAccount{} = aggregate, %DepositMoney{transfer_uuid: transfer_uuid, amount: amount}) do
+  def handle(%BankAccount{} = aggregate, %DepositMoney{} = deposit_money) do
     aggregate
-    |> BankAccount.deposit(transfer_uuid, amount)
+    |> BankAccount.deposit(deposit_money)
   end
 end

@@ -1,4 +1,4 @@
-defmodule Commanded.Helpers.Process do
+defmodule Commanded.Extensions.Process do
   use ExUnit.Case
 
   @doc """
