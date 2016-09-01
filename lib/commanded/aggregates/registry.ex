@@ -37,7 +37,7 @@ defmodule Commanded.Aggregates.Registry do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Registry{aggregates: aggregates} = state) do
-    Logger.warn(fn -> "aggregate process down due to: #{reason}" end)
+    Logger.warn(fn -> "aggregate process down due to: #{inspect reason}" end)
 
     {:noreply, %Registry{state | aggregates: remove_aggregate(aggregates, pid)}}
   end

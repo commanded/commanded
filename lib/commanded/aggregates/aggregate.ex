@@ -85,7 +85,7 @@ defmodule Commanded.Aggregates.Aggregate do
     case persist_events(aggregate_state, expected_version) do
       :ok -> %Aggregate{state | aggregate_state: %{aggregate_state | pending_events: []}}
       {:error, :wrong_expected_version} ->
-        Logger.error("failed to persist events for aggregate #{aggregate_uuid} due to wrong expected version")
+        Logger.error(fn -> "failed to persist events for aggregate #{aggregate_uuid} due to wrong expected version" end)
 
         # reload aggregate's events
         state = load_events(state)

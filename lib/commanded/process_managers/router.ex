@@ -36,7 +36,7 @@ defmodule Commanded.ProcessManagers.Router do
   end
 
   def handle_info({:events, events}, %Router{process_manager_name: process_manager_name} = state) do
-    Logger.debug("process manager router \"#{process_manager_name}\" received events: #{inspect events}")
+    Logger.debug(fn -> "process manager router \"#{process_manager_name}\" received events: #{inspect events}" end)
 
     state =
       events
@@ -50,14 +50,14 @@ defmodule Commanded.ProcessManagers.Router do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Router{process_managers: process_managers} = state) do
-    Logger.warn(fn -> "process manager process down due to: #{reason}" end)
+    Logger.warn(fn -> "process manager process down due to: #{inspect reason}" end)
 
     {:noreply, %Router{state | process_managers: remove_process_manager(process_managers, pid)}}
   end
 
   # ignore already seen event
   defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id} = event, %Router{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
-    Logger.debug("process manager has already seen event: #{inspect event}")
+    Logger.debug(fn -> "process manager has already seen event: #{inspect event}" end)
     true
   end
   defp already_seen_event?(_event, _state), do: false
