@@ -182,3 +182,50 @@ Register the process manager router, with a uniquely identified name. This is us
 ```elixir
 {:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
 ```
+
+### Supervision
+
+Use a supervisor to host your process managers and event handlers.
+
+```elixir
+defmodule Bank.Supervisor do
+  use Supervisor
+
+  def start_link do
+    Supervisor.start_link(__MODULE__, :ok)
+  end
+
+  def init(:ok) do
+    children = [
+      supervisor(Commanded.Supervisor, []),
+
+      # process manager
+      worker(Commanded.ProcessManagers.Router, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankingRouter], id: :transfer_money_process_manager),      
+
+      # event handler
+      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler])
+    ]
+
+    supervise(children, strategy: :one_for_one)
+  end
+end
+```
+
+Your application should include the supervisor as a worker.
+
+```elixir
+defmodule Bank do
+  use Application
+
+  def start(_type, _args) do
+    import Supervisor.Spec, warn: false
+
+    children = [
+      worker(BankApp.Supervisor, [])
+    ]
+
+    opts = [strategy: :one_for_one, name: __MODULE__]
+    Supervisor.start_link(children, opts)
+  end
+end
+```
