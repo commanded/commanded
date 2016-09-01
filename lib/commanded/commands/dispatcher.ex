@@ -1,7 +1,6 @@
 defmodule Commanded.Commands.Dispatcher do
   require Logger
 
-  alias Commanded.Commands
   alias Commanded.Aggregates
 
   # @spec dispatch(struct) :: :ok
