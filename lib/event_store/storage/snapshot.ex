@@ -5,17 +5,16 @@ defmodule EventStore.Storage.Snapshot do
 
   require Logger
 
+  alias EventStore.Snapshots.SnapshotData
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Snapshot
-
-  defstruct source_uuid: nil, source_version: nil, data: nil, metadata: nil, created_at: nil
 
   def read_snapshot(conn, source_uuid) do
     Snapshot.QueryGetSnapshot.execute(conn, source_uuid)
   end
 
-  def record_snapshot(conn, source_uuid, source_version, data, metadata) do
-    Snapshot.RecordSnapshot.execute(conn, source_uuid, source_version, data, metadata)
+  def record_snapshot(conn, %SnapshotData{} = snapshot) do
+    Snapshot.RecordSnapshot.execute(conn, snapshot)
   end
 
   defmodule QueryGetSnapshot do
@@ -33,10 +32,11 @@ defmodule EventStore.Storage.Snapshot do
       {:ok, to_snapshot_from_row(row)}
     end
 
-    defp to_snapshot_from_row([source_uuid, source_version, data, metadata, created_at]) do
-      %Snapshot{
+    defp to_snapshot_from_row([source_uuid, source_version, source_type, data, metadata, created_at]) do
+      %SnapshotData{
         source_uuid: source_uuid,
         source_version: source_version,
+        source_type: source_type,
         data: data,
         metadata: metadata,
         created_at: created_at
@@ -45,9 +45,9 @@ defmodule EventStore.Storage.Snapshot do
   end
 
   defmodule RecordSnapshot do
-    def execute(conn, source_uuid, source_version, data, metadata) do
+    def execute(conn, %SnapshotData{source_uuid: source_uuid, source_version: source_version, source_type: source_type, data: data, metadata: metadata}) do
       conn
-      |> Postgrex.query(Statements.record_snapshot, [source_uuid, source_version, data, metadata])
+      |> Postgrex.query(Statements.record_snapshot, [source_uuid, source_version, source_type, data, metadata])
       |> handle_response(source_uuid, source_version)
     end
 

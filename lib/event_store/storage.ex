@@ -8,6 +8,7 @@ defmodule EventStore.Storage do
 
   require Logger
 
+  alias EventStore.Snapshots.SnapshotData
   alias EventStore.Storage
   alias EventStore.Storage.{Reader,Snapshot,Stream,Subscription}
 
@@ -108,8 +109,8 @@ defmodule EventStore.Storage do
   @doc """
   Record a snapshot of the data and metadata for a given source
   """
-  def record_snapshot(source_uuid, source_version, data, metadata) do
-    execute_using_storage_pool(&Snapshot.record_snapshot(&1, source_uuid, source_version, data, metadata))
+  def record_snapshot(%SnapshotData{} = snapshot) do
+    execute_using_storage_pool(&Snapshot.record_snapshot(&1, snapshot))
   end
 
   # Execute the given `transaction` function using a database worker from the pool

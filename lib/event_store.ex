@@ -14,6 +14,7 @@ defmodule EventStore do
       {:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
   """
 
+  alias EventStore.Snapshots.{SnapshotData,Snapshotter}
   alias EventStore.{Storage,Streams,Subscriptions}
   alias EventStore.Streams.{AllStream,Stream}
 
@@ -128,10 +129,12 @@ defmodule EventStore do
   end
 
   @doc """
-  Read a snapshot, if available, for a given source
+  Read a snapshot, if available, for a given source.
+
+  Returns `{:ok, %EventStore.Snapshots.SnapshotData{}}` on success, or `{:error, :snapshot_not_found}` when unavailable.
   """
   def read_snapshot(source_uuid) do
-    Storage.read_snapshot(source_uuid)
+    Snapshotter.read_snapshot(source_uuid)
   end
 
   @doc """
@@ -139,7 +142,7 @@ defmodule EventStore do
 
   Returns `:ok` on success
   """
-  def record_snapshot(source_uuid, source_version, data, metadata) do
-    Storage.record_snapshot(source_uuid, source_version, data, metadata)
+  def record_snapshot(%SnapshotData{} = snapshot) do
+    Snapshotter.record_snapshot(snapshot)
   end
 end

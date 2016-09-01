@@ -3,6 +3,7 @@ defmodule EventStoreTest do
   doctest EventStore.Storage
 
   alias EventStore.EventFactory
+  alias EventStore.Snapshots.SnapshotData
 
   @all_stream "$all"
   @subscription_name "test_subscription"
@@ -54,5 +55,36 @@ defmodule EventStoreTest do
 
     assert length(received_events) == 1
     assert hd(received_events).data == hd(events).data
+  end
+
+  defmodule ExampleData do
+    defstruct [:data]
+  end
+
+  test "record snapshot" do
+    snapshot = %SnapshotData{
+      source_uuid: UUID.uuid4,
+      source_version: 1,
+      source_type: Atom.to_string(ExampleData),
+      data: %ExampleData{data: "some data"}
+    }
+    :ok = EventStore.record_snapshot(snapshot)
+  end
+
+  test "read a snapshot" do
+    snapshot = %SnapshotData{
+      source_uuid: UUID.uuid4,
+      source_version: 1,
+      source_type: Atom.to_string(ExampleData),
+      data: %ExampleData{data: "some data"}
+    }
+    :ok = EventStore.record_snapshot(snapshot)
+
+    {:ok, read_snapshot} = EventStore.read_snapshot(snapshot.source_uuid)
+
+    assert snapshot.source_uuid == read_snapshot.source_uuid
+    assert snapshot.source_version == read_snapshot.source_version
+    assert snapshot.source_type == read_snapshot.source_type
+    assert snapshot.data == read_snapshot.data
   end
 end

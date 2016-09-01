@@ -96,6 +96,7 @@ CREATE TABLE snapshots
     snapshot_id bigserial PRIMARY KEY NOT NULL,
     source_uuid text NOT NULL,
     source_version bigint NOT NULL,
+    source_type text NOT NULL,
     data bytea NOT NULL,
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
@@ -156,10 +157,10 @@ WHERE stream_uuid = $1 AND subscription_name = $2;
 
   def record_snapshot do
 """
-INSERT INTO snapshots (source_uuid, source_version, data, metadata)
-VALUES ($1, $2, $3, $4)
+INSERT INTO snapshots (source_uuid, source_version, source_type, data, metadata)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (source_uuid)
-DO UPDATE SET source_version = $2, data = $3, metadata = $4;
+DO UPDATE SET source_version = $2, source_type = $3, data = $4, metadata = $5;
 """
   end
 
@@ -219,7 +220,7 @@ FROM events;
 
   def query_get_snapshot do
 """
-SELECT source_uuid, source_version, data, metadata, created_at
+SELECT source_uuid, source_version, source_type, data, metadata, created_at
 FROM snapshots
 WHERE source_uuid = $1;
 """

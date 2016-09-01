@@ -16,6 +16,7 @@ defmodule EventStore.Supervisor do
       supervisor(EventStore.Storage.PoolSupervisor, []),
       worker(EventStore.Streams, [serializer]),
       worker(EventStore.Streams.AllStream, [serializer]),
+      worker(EventStore.Snapshots.Snapshotter, [serializer]),
       worker(EventStore.Subscriptions, [serializer]),
       worker(EventStore.Writer, [])
     ]
