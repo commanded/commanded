@@ -138,7 +138,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     :ok = ExampleRouter.dispatch(%ResumeProcess{process_uuid: process_uuid, status: "resume"})
 
-    Wait.until fn ->
+    Wait.until 1_000, fn ->
       case ProcessRouter.process_state(process_router, process_uuid) do
         {:error, :process_manager_not_found} -> flunk("process state not available")
         state -> assert state.status_history == ["resume", "start"]
