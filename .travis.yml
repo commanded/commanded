@@ -1,7 +1,7 @@
 language: elixir
 
 elixir:
-  - 1.2.4
+  - 1.3.2
 
 otp_release:
   - 18.2.1
@@ -11,3 +11,9 @@ services:
 
 before_script:
   - mix event_store.create
+
+sudo: required
+dist: trusty
+
+addons:
+  postgresql: "9.5"

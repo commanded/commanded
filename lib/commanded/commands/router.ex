@@ -32,7 +32,7 @@ defmodule Commanded.Commands.Router do
     quote do
       # return error if an unregistered command is dispatched
       def dispatch(command) do
-        Logger.error("attempted to dispatch an unregistered command: #{inspect command}")
+        Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)
         {:error, :unregistered_command}
       end
     end

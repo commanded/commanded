@@ -47,6 +47,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
-  # test "should fail to dispatch command without an `aggregate_uuid` field"
-  # test "should fail to dispatch command with nil `aggregate_uuid`"
+  # test "should fail to dispatch command without an identity"
+  # test "should fail to dispatch command with nil identity
 end

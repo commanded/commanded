@@ -25,7 +25,7 @@ defmodule Commanded.Event.Handler do
   end
 
   def handle_info({:events, events}, state) do
-    Logger.debug("event handler received events: #{inspect events}")
+    Logger.debug(fn -> "event handler received events: #{inspect events}" end)
 
     events
     |> Enum.each(fn event -> handle_event(event, state) end)
@@ -37,7 +37,7 @@ defmodule Commanded.Event.Handler do
 
   # ignore already seen events
   defp handle_event(%EventStore.RecordedEvent{event_id: event_id} = event, %Handler{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
-    Logger.debug("event handler has already seen event: #{inspect event}")
+    Logger.debug(fn -> "event handler has already seen event: #{inspect event}" end)
   end
 
   defp handle_event(%EventStore.RecordedEvent{data: data} = event, %Handler{handler_module: handler_module}) do

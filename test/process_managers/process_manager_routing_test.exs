@@ -1,13 +1,18 @@
 defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   use ExUnit.Case
-  doctest Commanded.ProcessManagers.Router
+  doctest Commanded.ProcessManagers.ProcessRouter
 
-  alias Commanded.ProcessManagers.Router
+  alias Commanded.Extensions
+  alias Commanded.ProcessManagers.ProcessRouter
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,TransferMoneyHandler,WithdrawMoneyHandler}
   alias Commanded.ExampleDomain.{BankAccount,MoneyTransfer}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney,WithdrawMoney}
-  alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
+  alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
+  alias Commanded.ExampleDomain.MoneyTransfer.Commands.{TransferMoney}
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
+
+  import Extensions.EventAssertions
 
   setup do
     EventStore.Storage.reset!
@@ -28,7 +33,7 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
     account_number1 = UUID.uuid4
     account_number2 = UUID.uuid4
 
-    {:ok, _} = Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager, BankRouter)
+    {:ok, _} = ProcessRouter.start_link("transfer_money_process_manager", TransferMoneyProcessManager, BankRouter)
 
     # create two bank accounts
     :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number1, initial_balance: 1_000})
@@ -37,21 +42,22 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
     # transfer funds between account 1 and account 2
     :ok = BankRouter.dispatch(%TransferMoney{source_account: account_number1, target_account: account_number2, amount: 100})
 
-    EventStore.subscribe_to_all_streams("unit_test", self)
+    assert_receive_event MoneyTransferRequested, fn event ->
+      assert event.source_account == account_number1
+      assert event.target_account == account_number2
+      assert event.amount == 100
+    end
 
-    assert_receive({:events, _events}, 1_000)
-    assert_receive({:events, _events}, 1_000)
-    assert_receive({:events, _events}, 1_000)
+    assert_receive_event MoneyWithdrawn, fn event ->
+      assert event.account_number == account_number1
+      assert event.amount == 100
+      assert event.balance == 900
+    end
 
-    receive do
-      {:events, [recorded_event]} ->
-        event = Commanded.Event.Mapper.map_from_recorded_event(recorded_event)
-
-        assert event.amount == 100
-        assert event.balance == 900
-    after
-      1_000 ->
-        flunk("failed to receive expected event")
+    assert_receive_event MoneyDeposited, fn event ->
+      assert event.account_number == account_number2
+      assert event.amount == 100
+      assert event.balance == 600
     end
   end
 end

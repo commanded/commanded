@@ -3,7 +3,7 @@
   "decimal": {:hex, :decimal, "1.1.2", "79a769d4657b2d537b51ef3c02d29ab7141d2b486b516c109642d453ee08e00c", [:mix], []},
   "earmark": {:hex, :earmark, "1.0.1", "2c2cd903bfdc3de3f189bd9a8d4569a075b88a8981ded9a0d95672f6e2b63141", [:mix], []},
   "eventsourced": {:git, "https://github.com/slashdotdash/eventsourced.git", "eef17f4a7e84874a2c021174d9da630b2175914f", []},
-  "eventstore": {:git, "https://github.com/slashdotdash/eventstore.git", "17fca680045a07b7b6e6a1968d9d68b5d82e2cf4", []},
+  "eventstore": {:git, "https://github.com/slashdotdash/eventstore.git", "e3f130edca176deed4668cebf62d7b11955f94b9", []},
   "ex_doc": {:hex, :ex_doc, "0.13.0", "aa2f8fe4c6136a2f7cfc0a7e06805f82530e91df00e2bff4b4362002b43ada65", [:mix], [{:earmark, "~> 1.0", [hex: :earmark, optional: false]}]},
   "fs": {:hex, :fs, "0.9.2", "ed17036c26c3f70ac49781ed9220a50c36775c6ca2cf8182d123b6566e49ec59", [:rebar], []},
   "fsm": {:hex, :fsm, "0.2.0", "53bcc0fd4a470c92cbbc3bae2d7f7dd8462898eedd62c37a6be556b94fba0e05", [:mix], []},
