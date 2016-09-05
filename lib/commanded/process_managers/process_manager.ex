@@ -22,14 +22,38 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   end
 
   def init(%ProcessManager{} = state) do
+    GenServer.cast(self, {:fetch_state})
     {:ok, state}
   end
 
   @doc """
   Handle the given event by calling the process manager module
   """
-  def process_event(server, event) do
-    GenServer.call(server, {:process_event, event})
+  def process_event(process_manager, event) do
+    GenServer.call(process_manager, {:process_event, event})
+  end
+
+  @doc """
+  Fetch the process state of this instance
+  """
+  def process_state(process_manager) do
+    GenServer.call(process_manager, {:process_state})
+  end
+
+  def handle_call({:process_state}, _from, %ProcessManager{process_state: process_state} = state) do
+    {:reply, process_state, state}
+  end
+
+  @doc """
+  Attempt to fetch intial process state from snapshot storage
+  """
+  def handle_cast({:fetch_state}, %ProcessManager{process_uuid: process_uuid} = state) do
+    state = case EventStore.read_snapshot(process_uuid) do
+      {:ok, snapshot} -> %ProcessManager{state | process_state: snapshot.data}
+      {:error, :snapshot_not_found} -> state
+    end
+
+    {:noreply, state}
   end
 
   @doc """
@@ -39,8 +63,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     process_state =
       process_state
       |> process_event(event, process_manager_module, @event_retries)
-      |> persist_state(process_manager_module, process_uuid, event)
       |> dispatch_commands(command_dispatcher)
+      |> persist_state(process_manager_module, process_uuid, event)
 
     state = %ProcessManager{state | process_state: process_state}
 
