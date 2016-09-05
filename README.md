@@ -2,6 +2,8 @@
 
 Command handling middleware for CQRS applications in Elixir.
 
+Provides support for command registration and dispatch; delegation to aggregate roots; event handling; and long running process managers.
+
 Use with [eventstore](https://github.com/slashdotdash/eventstore) and [eventsourced](https://github.com/slashdotdash/eventsourced) as components that comprise a [CQRS](http://cqrs.nu/Faq) framework for Elixir.
 
 MIT License
@@ -16,7 +18,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.0.1"}]
+      [{:commanded, "~> 0.1.0"}]
     end
     ```
 
@@ -28,9 +30,29 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
     end
     ```
 
+  3. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev/exs`), specifying usage of the JSON serializer:
+
+    ```elixir
+    config :eventstore, EventStore.Storage,
+      serializer: Commanded.Event.JsonSerializer,
+      username: "postgres",
+      password: "postgres",
+      database: "eventstore_dev",
+      hostname: "localhost",
+      pool_size: 10
+    ```
+
+    4. Create the `eventstore` database and tables using the `mix` task
+
+      ```
+      mix event_store.create
+      ```
+
 ## Sample usage
 
-Start the top level Supervisor process.
+Including `commanded` in the applications section of `mix.exs` will ensure it is started.
+
+You may manually start the top level Supervisor process.
 
 ```elixir
 {:ok, _} = Commanded.Supervisor.start_link
@@ -38,7 +60,7 @@ Start the top level Supervisor process.
 
 ### Command handlers
 
-Create a module per command, defining the fields with `defstruct`. A command must contain a field to uniquely identify the aggregate instance (e.g. `account_number`).
+Create a module per command, defining the fields with `defstruct`. A command **must contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
 ```elixir
 defmodule OpenAccount do
@@ -46,7 +68,7 @@ defmodule OpenAccount do
 end
 ```
 
-Implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate root and the  command to be handled. It must return the aggregate root.
+Implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate root and the command to be handled. It must return the aggregate root.
 
 ```elixir
 defmodule OpenAccountHandler do
@@ -119,7 +141,7 @@ Register the event handler with a given name. The name is used when subscribing 
 
 A process manager is responsible for communicating between one or more aggregate roots.
 
-It handles events and dispatches commands in response. Process managers have state that can be used to track which aggregate roots are being coordinated.
+It handles events and may dispatch one or more commands in response. Process managers have state that can be used to track which aggregate roots are being coordinated.
 
 A process manager must implement `interested?/1` to indicate which events are used, and to route the event to an existing instance or start a new process. A `handle/2` function must exist for each interested event. It receives the process manager's state and the event to be handled. It must return the state, including any commands that should be dispatched.
 
