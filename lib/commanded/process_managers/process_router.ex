@@ -7,7 +7,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   require Logger
 
   alias Commanded.ProcessManagers.Supervisor
-  alias Commanded.ProcessManagers.{ProcessManager,ProcessRouter}
+  alias Commanded.ProcessManagers.{ProcessManager}
   alias Commanded.Event.Mapper
 
   defmodule State do

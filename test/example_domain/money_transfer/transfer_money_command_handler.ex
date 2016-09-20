@@ -1,6 +1,6 @@
 defmodule Commanded.ExampleDomain.TransferMoneyHandler do
   alias Commanded.ExampleDomain.MoneyTransfer
-  alias MoneyTransfer.Commands.{TransferMoney,ReverseMoneyTransfer}
+  alias MoneyTransfer.Commands.{TransferMoney}
 
   @behaviour Commanded.Commands.Handler
 
