@@ -1,9 +1,11 @@
-defmodule Commanded.Event.JsonSerializer do
+defmodule Commanded.Serialization.JsonSerializer do
   @moduledoc """
-  An event serializer that uses the JSON format.
+  A serializer that uses the JSON format.
   """
 
   @behaviour EventStore.Serializer
+
+  alias Commanded.Serialization.JsonDecoder
 
   @doc """
   Serialize given term to JSON binary data.
@@ -20,6 +22,9 @@ defmodule Commanded.Event.JsonSerializer do
       nil -> []
       type -> type |> String.to_atom |> struct
     end
-    Poison.decode!(binary, as: type)
+
+    binary
+    |> Poison.decode!(as: type)
+    |> JsonDecoder.decode
   end
 end

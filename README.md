@@ -34,7 +34,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     config :eventstore, EventStore.Storage,
-      serializer: Commanded.Event.JsonSerializer,
+      serializer: Commanded.Serialization.JsonSerializer,
       username: "postgres",
       password: "postgres",
       database: "eventstore_dev",
@@ -205,6 +205,8 @@ Register the process manager router, with a uniquely identified name. This is us
 {:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
 ```
 
+Process manager instance state is persisted to storage after each handled event. This allows the a process manager to resume should the host process terminate.
+
 ### Supervision
 
 Use a supervisor to host your process managers and event handlers.
@@ -251,3 +253,34 @@ defmodule Bank do
   end
 end
 ```
+
+### Serialization
+
+JSON serialization is used by default for event and snapshot data. The included `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
+
+The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `NaiveDateTime` struct.
+
+```elixir
+defmodule ExampleEvent do
+  defstruct [:name, :date]
+end
+
+defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
+  @doc """
+  Parse the date included in the event
+  """
+  def decode(%ExampleEvent{date: date} = event) do
+    %ExampleEvent{event |
+      date: NaiveDateTime.from_iso8601!(date)
+    }
+  end
+end
+```
+
+## Contributing
+
+Pull requests to contribute new or improved features, and extend documentation are most welcome.
+
+Please follow the existing coding conventions, or refer to the [Elixir style guide](https://github.com/niftyn8/elixir_style_guide).
+
+You should include unit tests to cover any changes. Run `mix test` to execute the test suite.
