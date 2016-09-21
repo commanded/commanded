@@ -49,6 +49,7 @@ defmodule EventStore.Storage.SnapshotTest do
     :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: 2, source_type: updated_recorded_event.event_type, data: updated_recorded_event.data, metadata: updated_recorded_event.metadata})
 
     {:ok, snapshot} = Snapshot.read_snapshot(conn, source_uuid)
+    
     assert snapshot.source_uuid == source_uuid
     assert snapshot.source_version == 2
     assert snapshot.source_type == updated_recorded_event.event_type

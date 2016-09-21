@@ -1,0 +1,1 @@
+truncate events, streams, subscriptions;

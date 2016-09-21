@@ -10,6 +10,7 @@ defmodule EventStore.Mixfile do
       package: package,
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
+      consolidate_protocols: Mix.env == :prod,
       aliases: aliases,
       deps: deps
     ]
