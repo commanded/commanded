@@ -15,8 +15,11 @@ defmodule Commanded.Aggregates.Registry do
     GenServer.start_link(__MODULE__, %Registry{}, name: __MODULE__)
   end
 
-  def open_aggregate(aggregate_module, aggregate_uuid) do
-    GenServer.call(__MODULE__, {:open_aggregate, aggregate_module, aggregate_uuid})
+  def open_aggregate(aggregate_module, aggregate_uuid)
+  when is_integer(aggregate_uuid) or
+       is_atom(aggregate_uuid) or
+       is_bitstring(aggregate_uuid) do
+    GenServer.call(__MODULE__, {:open_aggregate, aggregate_module, to_string(aggregate_uuid)})
   end
 
   def init(%Registry{} = state) do
