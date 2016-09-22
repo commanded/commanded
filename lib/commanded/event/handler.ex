@@ -3,7 +3,6 @@ defmodule Commanded.Event.Handler do
   require Logger
 
   alias Commanded.Event.Handler
-  alias Commanded.Event.Serializer
 
   defstruct handler_name: nil, handler_module: nil, last_seen_event_id: nil
 
@@ -40,7 +39,7 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> "event handler has already seen event: #{inspect event}" end)
   end
 
-  defp handle_event(%EventStore.RecordedEvent{data: data} = event, %Handler{handler_module: handler_module}) do
+  defp handle_event(%EventStore.RecordedEvent{data: data}, %Handler{handler_module: handler_module}) do
     data
     |> handler_module.handle
   end
