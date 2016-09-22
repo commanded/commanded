@@ -4,7 +4,7 @@ defmodule Commanded.Mixfile do
   def project do
     [
       app: :commanded,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.3",
       elixirc_paths: elixirc_paths(Mix.env),
       description: description,
