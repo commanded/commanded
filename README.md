@@ -224,7 +224,7 @@ defmodule Bank.Supervisor do
       supervisor(Commanded.Supervisor, []),
 
       # process manager
-      worker(Commanded.ProcessManagers.Router, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankingRouter], id: :transfer_money_process_manager),      
+      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankingRouter], id: :transfer_money_process_manager),
 
       # event handler
       worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler])
