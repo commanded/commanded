@@ -9,7 +9,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
   @all_stream "$all"
   @subscription_name "test_subscription"
-  @receive_timeout 1_000
+  @receive_timeout 2_000
 
   setup do
     storage_config = Application.get_env(:eventstore, EventStore.Storage)
