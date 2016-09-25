@@ -4,7 +4,7 @@ defmodule EventStore.Mixfile do
   def project do
     [
       app: :eventstore,
-      version: "0.4.1",
+      version: "0.4.2",
       elixir: "~> 1.3",
       description: description,
       package: package,

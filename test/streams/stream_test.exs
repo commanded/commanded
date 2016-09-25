@@ -29,7 +29,7 @@ defmodule EventStore.Streams.StreamTest do
     assert stream1 == stream2
   end
 
-  test "stream crash should allow starting new stream process" do
+  test "stream crash should allow restarting stream process" do
     stream_uuid = UUID.uuid4
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
@@ -58,7 +58,7 @@ defmodule EventStore.Streams.StreamTest do
     {:error, :wrong_expected_version} = Stream.append_to_stream(stream, 0, events)
   end
 
-  test "attempt to read an unknown stream forward should error" do
+  test "attempt to read an unknown stream forward should error stream not found" do
     stream_uuid = UUID.uuid4
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
