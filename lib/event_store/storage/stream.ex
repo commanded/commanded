@@ -9,7 +9,7 @@ defmodule EventStore.Storage.Stream do
   alias EventStore.Storage.{QueryLatestEventId,QueryLatestStreamVersion,QueryStreamInfo,Reader}
 
   def create_stream(conn, stream_uuid) do
-    Logger.debug "attempting to create stream \"#{stream_uuid}\""
+    Logger.debug(fn -> "attempting to create stream \"#{stream_uuid}\"" end)
 
     conn
     |> Postgrex.query(Statements.create_stream, [stream_uuid])
@@ -48,17 +48,17 @@ defmodule EventStore.Storage.Stream do
   end
 
   defp handle_create_response({:ok, %Postgrex.Result{rows: [[stream_id]]}}, stream_uuid) do
-    Logger.debug "created stream \"#{stream_uuid}\" (id: #{stream_id})"
+    Logger.debug(fn -> "created stream \"#{stream_uuid}\" (id: #{stream_id})" end)
     {:ok, stream_id}
   end
 
   defp handle_create_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation}}}, stream_uuid) do
-    Logger.warn "failed to create stream \"#{stream_uuid}\", already exists"
+    Logger.warn(fn -> "failed to create stream \"#{stream_uuid}\", already exists" end)
     {:error, :stream_exists}
   end
 
   defp handle_create_response({:error, error}, stream_uuid) do
-    Logger.warn "failed to create stream \"#{stream_uuid}\""
+    Logger.warn(fn -> "failed to create stream \"#{stream_uuid}\"" end)
     {:error, error}
   end
 
@@ -69,7 +69,7 @@ defmodule EventStore.Storage.Stream do
   end
 
   defp handle_lookup_response({:ok, %Postgrex.Result{num_rows: 0}}, stream_uuid) do
-    Logger.warn("attempted to access unknown stream \"#{stream_uuid}\"")
+    Logger.warn(fn -> "attempted to access unknown stream \"#{stream_uuid}\"" end)
     {:error, :stream_not_found}
   end
 

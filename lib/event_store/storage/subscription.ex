@@ -66,7 +66,7 @@ defmodule EventStore.Storage.Subscription do
 
   defmodule Subscribe do
     def execute(conn, stream_uuid, subscription_name) do
-      Logger.debug "attempting to create subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\""
+      Logger.debug(fn -> "attempting to create subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
 
       conn
       |> Postgrex.query(Statements.create_subscription, [stream_uuid, subscription_name])
@@ -74,17 +74,17 @@ defmodule EventStore.Storage.Subscription do
     end
 
     defp handle_response({:ok, %Postgrex.Result{rows: rows}}, stream_uuid, subscription_name) do
-      Logger.debug "created subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\""
+      Logger.debug(fn -> "created subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
       {:ok, Subscription.Adapter.to_subscription(rows)}
     end
 
     defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation}}}, stream_uuid, subscription_name) do
-      Logger.warn "failed to create subscription on stream #{stream_uuid} named #{subscription_name}, already exists"
+      Logger.warn(fn -> "failed to create subscription on stream #{stream_uuid} named #{subscription_name}, already exists" end)
       {:error, :subscription_already_exists}
     end
 
     defp handle_response({:error, error}, stream_uuid, subscription_name) do
-      Logger.warn "failed to create stream create subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\" due to: #{error}"
+      Logger.warn(fn -> "failed to create stream create subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\" due to: #{error}" end)
       {:error, error}
     end
   end
@@ -101,14 +101,14 @@ defmodule EventStore.Storage.Subscription do
     end
 
     defp handle_response({:error, error}, stream_uuid, subscription_name) do
-      Logger.warn "failed to ack last seen event on stream \"#{stream_uuid}\" named \"#{subscription_name}\" due to: #{error}"
+      Logger.warn(fn -> "failed to ack last seen event on stream \"#{stream_uuid}\" named \"#{subscription_name}\" due to: #{error}" end)
       {:error, error}
     end
   end
 
   defmodule Unsubscribe do
     def execute(conn, stream_uuid, subscription_name) do
-      Logger.debug "attempting to unsubscribe from stream \"#{stream_uuid}\" named \"#{subscription_name}\""
+      Logger.debug(fn -> "attempting to unsubscribe from stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
 
       conn
       |> Postgrex.query(Statements.delete_subscription, [stream_uuid, subscription_name])
@@ -116,12 +116,12 @@ defmodule EventStore.Storage.Subscription do
     end
 
     defp handle_response({:ok, _result}, stream_uuid, subscription_name) do
-      Logger.debug "unsubscribed from stream \"#{stream_uuid}\" named \"#{subscription_name}\""
+      Logger.debug(fn -> "unsubscribed from stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
       :ok
     end
 
     defp handle_response({:error, error}, stream_uuid, subscription_name) do
-      Logger.warn "failed to unsubscribe from stream \"#{stream_uuid}\" named \"#{subscription_name}\" due to: #{error}"
+      Logger.warn(fn -> "failed to unsubscribe from stream \"#{stream_uuid}\" named \"#{subscription_name}\" due to: #{error}" end)
       {:error, error}
     end
   end

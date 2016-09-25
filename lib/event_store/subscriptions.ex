@@ -77,7 +77,7 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscriptions{subscription_pids: subscription_pids} = subscriptions) do
-    Logger.info "subscription down due to: #{inspect reason}"
+    Logger.info(fn -> "subscription down due to: #{inspect reason}" end)
 
     {stream_uuid, subscription_name} = Map.get(subscription_pids, pid)
 
@@ -101,6 +101,8 @@ defmodule EventStore.Subscriptions do
   end
 
   defp create_subscription(supervisor, stream_uuid, stream, subscription_name, subscriber) do
+    Logger.debug(fn -> "creating subscription process on stream #{inspect stream_uuid} named: #{inspect subscription_name}" end)
+
     {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber)
 
     Process.monitor(subscription)

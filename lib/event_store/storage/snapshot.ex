@@ -56,7 +56,7 @@ defmodule EventStore.Storage.Snapshot do
     end
 
     defp handle_response({:error, error}, source_uuid, source_version) do
-      Logger.warn "failed to record snapshot for source \"#{source_uuid}\" at version \"#{source_version}\" due to: #{inspect error}"
+      Logger.warn(fn -> "failed to record snapshot for source \"#{source_uuid}\" at version \"#{source_version}\" due to: #{inspect error}" end)
       {:error, error}
     end
   end
