@@ -191,7 +191,7 @@ WHERE stream_uuid = $1;
   def query_stream_id_and_latest_version do
 """
 SELECT s.stream_id,
-  (SELECT COALESCE(e.event_id, 0)
+  (SELECT COALESCE(e.stream_version, 0)
    FROM events e
    WHERE e.stream_id = s.stream_id
    ORDER BY e.stream_version DESC

@@ -75,4 +75,25 @@ defmodule EventStore.Streams.StreamTest do
     {:ok, read_events} = Stream.read_stream_forward(stream)
     assert length(read_events) == 3
   end
+
+  test "stream should correctly restore stream_version after reopening" do
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_events(3)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    :ok = Stream.append_to_stream(stream, 0, events)
+
+    # Stream above needed for preventing accidental event_id/stream_version match
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_events(3)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    :ok = Stream.append_to_stream(stream, 0, events)
+    {:ok, 3} = Stream.stream_version(stream)
+
+    ProcessHelper.shutdown(stream)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, 3} = Stream.stream_version(stream)
+  end
 end
