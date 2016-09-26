@@ -287,4 +287,5 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 
 ### Contributors
 
+- [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)

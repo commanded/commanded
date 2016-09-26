@@ -1,5 +1,5 @@
 defmodule Commanded.ExampleDomain.BankAccount do
-  use EventSourced.AggregateRoot, fields: [account_number: nil, balance: 0]
+  use EventSourced.AggregateRoot, fields: [account_number: nil, balance: 0, is_active?: false]
 
   alias Commanded.ExampleDomain.BankAccount
 
@@ -34,7 +34,11 @@ defmodule Commanded.ExampleDomain.BankAccount do
   alias Commands.{OpenAccount,DepositMoney,WithdrawMoney}
   alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn}
 
-  def open_account(%BankAccount{} = account, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) when is_number(initial_balance) and initial_balance > 0 do
+  def open_account(%BankAccount{state: %{is_active?: true}} = account, %OpenAccount{}) do
+    {:error, :account_already_open}
+  end
+
+  def open_account(%BankAccount{state: %{is_active?: false}} = account, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) when is_number(initial_balance) and initial_balance > 0 do
     account
     |> update(%BankAccountOpened{account_number: account_number, initial_balance: initial_balance})
   end
@@ -58,7 +62,8 @@ defmodule Commanded.ExampleDomain.BankAccount do
   def apply(%BankAccount.State{} = state, %BankAccountOpened{} = account_opened) do
     %BankAccount.State{state |
       account_number: account_opened.account_number,
-      balance: account_opened.initial_balance
+      balance: account_opened.initial_balance,
+      is_active?: true,
     }
   end
 

@@ -57,4 +57,24 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     assert bank_account.state.account_number == account_number
     assert bank_account.state.balance == 1_050
   end
+
+  test "aggregate returning an error tuple should not persist pending events or state" do
+    account_number = UUID.uuid4
+
+    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+
+    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler)
+
+    state_before = Aggregate.aggregate_state(aggregate)
+
+    # attempt to open same account should fail with a descriptive error
+    {:error, :account_already_open} = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler)
+
+    state_after = Aggregate.aggregate_state(aggregate)
+
+    assert state_before == state_after
+  end
+
+  @tag :skip
+  test "should persist pending events in order applied"
 end
