@@ -149,7 +149,5 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
     Storage.ack_last_seen_event(stream_uuid, subscription_name, nil, last_stream_version)
   end
 
-  defp first_stream_version([first_event|_]) do
-    first_event.stream_version
-  end
+  defp first_stream_version([first_event|_]), do: first_event.stream_version
 end
