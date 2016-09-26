@@ -14,7 +14,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
     ```elixir    
     def deps do
-      [{:eventstore, "~> 0.4.1"}]
+      [{:eventstore, "~> 0.4"}]
     end
     ```
 
@@ -33,7 +33,8 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
       username: "postgres",
       password: "postgres",
       database: "eventstore_dev",
-      hostname: "localhost"
+      hostname: "localhost",
+      pool_size: 10      
     ```
 
   4. Create the EventStore database and tables using the `mix` task
@@ -42,28 +43,25 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
     mix event_store.create
     ```
 
-## Sample usage
-
-Including `eventstore` in the applications section of `mix.exs` will ensure it is started.
-
-```elixir
-# manually start the EventStore supervisor
-EventStore.Supervisor.start_link
-
-# ... or ensure EventStore application is started
-Application.ensure_all_started(:eventstore)
-```
+## Using the EventStore
 
 ### Writing to a stream
 
+Create a unique identity for each stream. It **must** be a string. This example uses the `uuid` package.
+
 ```elixir
-# create a unique identity for the stream (using the `uuid` package)
 stream_uuid = UUID.uuid4
+```
 
-# a new stream will be created when the expected version is zero
+Set the expected version of the stream. This is used for optimistic concurrency. A new stream will be created when the expected version is zero.
+
+```elixir
 expected_version = 0
+```
 
-# list of events to persist
+Build a list of events to persist. The data and metadata fields will be serialized to binary data. This uses your own serializer, as defined in config, that implements the `EventStore.Serializer` behaviour.
+
+```elixir
 events = [
   %EventStore.EventData{
     event_type: "ExampleEvent",
@@ -71,15 +69,19 @@ events = [
     metadata: %{user: "someuser@example.com"},
   }
 ]
+```
 
-# append events to stream
+Append the events to the stream.
+
+```elixir
 :ok = EventStore.append_to_stream(stream_uuid, expected_version, events)
 ```
 
 ### Reading from a stream
 
+Read all events from the stream, starting at the stream's first event.
+
 ```elixir
-# read all events from the stream, starting at the stream's first event
 {:ok, events} = EventStore.read_stream_forward(stream_uuid)
 ```
 
@@ -93,9 +95,8 @@ Receipt of each event, or batch, by the subscriber is acknowledged. This allows 
 
 Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
 
-
 ```elixir
-# using an example subscriber
+# An example subscriber
 defmodule Subscriber do
   use GenServer
 
@@ -121,17 +122,64 @@ defmodule Subscriber do
 end
 ```
 
-```elixir
-# create your subscriber
-{:ok, subscriber} = Subscriber.start_link
+Create your subscriber.
 
-# subscribe to events appended to all streams
+```elixir
+{:ok, subscriber} = Subscriber.start_link
+```
+
+Subscribe to events appended to all streams.
+
+```elixir
 {:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", subscriber)
 ```
 
+Unsubscribe from a stream.
+
 ```elixir
-# unsubscribe from a stream
 :ok = EventStore.unsubscribe_from_all_streams("example_subscription")
+```
+
+## Event serialization
+
+The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for deployment.
+
+You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data to JSON using the [Poison](https://github.com/devinus/poison) library.
+
+```elixir
+defmodule JsonSerializer do
+  @moduledoc """
+  A serializer that uses the JSON format.
+  """
+
+  @behaviour EventStore.Serializer
+
+  @doc """
+  Serialize given term to JSON binary data.
+  """
+  def serialize(term) do
+    Poison.encode!(term)
+  end
+
+  @doc """
+  Deserialize given JSON binary data to the expected type.
+  """
+  def deserialize(binary, config) do
+    type = case Keyword.get(config, :type, nil) do
+      nil -> []
+      type -> type |> String.to_atom |> struct
+    end
+    Poison.decode!(binary, as: type)
+  end
+end
+```
+
+Configure your serializer by setting the `serializer` option in the mix environment configuration file (e.g. `config/dev.exs`).
+
+```elixir
+config :eventstore, EventStore.Storage,
+  serializer: JsonSerializer,
+  # ...
 ```
 
 ## Benchmarking performance
