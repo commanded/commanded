@@ -12,8 +12,6 @@ defmodule Commanded.Aggregates.Aggregate do
 
   defstruct aggregate_module: nil, aggregate_uuid: nil, aggregate_state: nil
 
-  @command_retries 3
-
   def start_link(aggregate_module, aggregate_uuid) do
     GenServer.start_link(__MODULE__, %Aggregate{
       aggregate_module: aggregate_module,
@@ -55,7 +53,7 @@ defmodule Commanded.Aggregates.Aggregate do
   Execute the given command, using the provided handler, against the current aggregate state
   """
   def handle_call({:execute_command, command, handler}, _from, state) do
-    {reply, state} = execute_command(command, handler, state, @command_retries)
+    {reply, state} = execute_command(command, handler, state)
 
     {:reply, reply, state}
   end
@@ -77,38 +75,22 @@ defmodule Commanded.Aggregates.Aggregate do
     %Aggregate{state | aggregate_state: aggregate_state}
   end
 
-  defp execute_command(command, handler, %Aggregate{aggregate_state: %{version: version} = aggregate_state} = state, retries) when retries > 0 do
+  defp execute_command(command, handler, %Aggregate{aggregate_state: %{version: version} = aggregate_state} = state) do
     expected_version = version
 
     with {:ok, aggregate_state} <- handle_command(handler, aggregate_state, command),
          {:ok, aggregate_state} <- persist_events(aggregate_state, expected_version)
       do {:ok, %Aggregate{state | aggregate_state: aggregate_state}}
     else
-      {:error, :wrong_expected_version} -> retry_command(command, handler, state, retries - 1)
-      {:error, _reason} = reply -> {reply, state}
+      {:error, reason} = reply ->
+        Logger.warn(fn -> "failed to handle command due to: #{inspect reason}" end)
+        {reply, state}
     end
-  end
-
-  defp execute_command(command, _handler, _aggregate, retries) when retries == 0 do
-    Logger.warn(fn -> "failed to execute command #{inspect command} after #{@command_retries}, returning an error" end)
-
-    {:error, :command_failed_after_retrying}
-  end
-
-  # retry a command when an expected version mismatch error is encountered after reloading the aggregate's events
-  defp retry_command(command, handler, %Aggregate{} = state, retries) do
-    # reload aggregate's events
-    state = load_events(state)
-
-    # retry command
-    execute_command(command, handler, state, retries)
   end
 
   defp handle_command(handler, aggregate_state, command) do
     case handler.handle(aggregate_state, command) do
-      {:error, reason} = reply ->
-        Logger.debug(fn -> "failed to handle command due to: #{inspect reason}" end)
-        reply
+      {:error, _reason} = reply -> reply
       aggregate_state -> {:ok, aggregate_state}
     end
   end
@@ -120,14 +102,10 @@ defmodule Commanded.Aggregates.Aggregate do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
-    case EventStore.append_to_stream(aggregate_uuid, expected_version, event_data) do
-      :ok ->
-        # clear pending events after successful store
-        {:ok, %{aggregate_state | pending_events: []}}
-      {:error, :wrong_expected_version} = reply ->
-         Logger.error(fn -> "failed to persist events for aggregate #{inspect aggregate_uuid} due to wrong expected version" end)
-         reply
-    end
+    :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
+
+    # clear pending events after appending to stream
+    {:ok, %{aggregate_state | pending_events: []}}
   end
 
   defp map_from_recorded_events(recorded_events) when is_list(recorded_events) do

@@ -1,6 +1,10 @@
 defmodule Commanded.Commands.Handler do
   @doc """
-  Apply the given command to the event sourced entity state, returning state struct containing the entity's id, all applied events and current version
+  Apply the given command to the event-sourced aggregate root.
+
+  You must return the updated aggregate root on success. This is the struct containing the aggregate's id, pending events and current version.
+
+  You should return `{:error, reason}` on failure.
   """
-  @callback handle(state :: EventSourced.Entity, command :: %{}) :: EventSourced.Entity
+  @callback handle(EventSourced.AggregateRoot, command :: %{}) :: EventSourced.AggregateRoot | {:error, reason :: term}
 end
