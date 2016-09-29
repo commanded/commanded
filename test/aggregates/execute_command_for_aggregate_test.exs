@@ -77,7 +77,4 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     assert_receive({:EXIT, _from, _reason})
     assert Process.alive?(aggregate) == false
   end
-
-  @tag :skip
-  test "should persist pending events in order applied"
 end
