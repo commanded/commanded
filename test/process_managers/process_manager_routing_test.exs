@@ -2,7 +2,6 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   use ExUnit.Case
   doctest Commanded.ProcessManagers.ProcessRouter
 
-  alias Commanded.Extensions
   alias Commanded.ProcessManagers.ProcessRouter
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,TransferMoneyHandler,WithdrawMoneyHandler}
@@ -12,7 +11,7 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.{TransferMoney}
   alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
 
-  import Extensions.EventAssertions
+  import Commanded.Assertions.EventAssertions
 
   setup do
     EventStore.Storage.reset!

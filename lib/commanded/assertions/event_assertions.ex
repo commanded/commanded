@@ -1,5 +1,5 @@
-defmodule Commanded.Extensions.EventAssertions do
-  use ExUnit.Case
+defmodule Commanded.Assertions.EventAssertions do
+  import ExUnit.Assertions
 
   def assert_receive_event(event_type, assertion) do
     assert_receive_event(event_type, assertion, skip: 0)
