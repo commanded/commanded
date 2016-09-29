@@ -30,12 +30,12 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:eventstore, "~> 0.4.1"},
-      {:eventsourced, "~> 0.1.0"},
-      {:ex_doc, "~> 0.13.0", only: :dev},
+      {:eventstore, "~> 0.4"},
+      {:eventsourced, "~> 0.1"},
+      {:ex_doc, "~> 0.13", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 2.2.0"},
+      {:poison, "~> 2.2"},
       {:uuid, "~> 1.1"}
     ]
   end

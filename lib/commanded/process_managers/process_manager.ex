@@ -7,8 +7,6 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   alias Commanded.ProcessManagers.ProcessManager
 
-  @event_retries 3
-
   defstruct command_dispatcher: nil, process_manager_module: nil, process_uuid: nil, process_state: nil
 
   def start_link(command_dispatcher, process_manager_module, process_uuid) do
@@ -61,7 +59,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   def handle_call({:process_event, event}, _from, %ProcessManager{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_uuid: process_uuid, process_state: process_state} = state) do
     process_state =
       process_state
-      |> process_event(event, process_manager_module, @event_retries)
+      |> process_event(event, process_manager_module)
       |> dispatch_commands(command_dispatcher)
       |> persist_state(process_manager_module, process_uuid)
 
@@ -70,18 +68,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     {:reply, :ok, state}
   end
 
-  defp process_event(process_state, event, process_manager_module, retries) when retries > 0 do
-    process_manager_module.handle(process_state, event)
-  end
-
-  defp persist_state(process_state, process_manager_module, process_uuid) do
-    EventStore.record_snapshot(%EventStore.Snapshots.SnapshotData{
-      source_uuid: process_uuid,
-      source_version: 1,
-      source_type: Atom.to_string(process_manager_module),
-      data: process_state
-    })
-
+  defp process_event(process_state, event, process_manager_module) do
+    {:ok, process_state} = process_manager_module.handle(process_state, event)
     process_state
   end
 
@@ -89,5 +77,16 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     Enum.each(commands, fn command -> command_dispatcher.dispatch(command) end)
 
     %{process_state | commands: []}
+  end
+
+  defp persist_state(process_state, process_manager_module, process_uuid) do
+    :ok = EventStore.record_snapshot(%EventStore.Snapshots.SnapshotData{
+      source_uuid: process_uuid,
+      source_version: 1,
+      source_type: Atom.to_string(process_manager_module),
+      data: process_state
+    })
+
+    process_state
   end
 end

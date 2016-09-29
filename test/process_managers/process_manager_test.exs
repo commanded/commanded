@@ -15,8 +15,10 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
   end
 
   defmodule OpenAccountHandler do
+    @behaviour Commanded.Commands.Handler
+
     def handle(%BankAccount{} = aggregate, %WithdrawMoney{}) do
-      aggregate
+      {:ok, aggregate}
     end
   end
 

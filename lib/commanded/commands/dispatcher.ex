@@ -5,7 +5,7 @@ defmodule Commanded.Commands.Dispatcher do
 
   # @spec dispatch(struct) :: :ok
   def dispatch(command, handler_module, aggregate_module, identity) do
-    Logger.debug(fn -> "attempting to dispatch command: #{inspect command}, to: #{handler_module}, aggregate: #{aggregate_module}" end)
+    Logger.debug(fn -> "attempting to dispatch command: #{inspect command}, to: #{inspect handler_module}, aggregate: #{inspect aggregate_module}, identity: #{inspect identity}" end)
 
     aggregate_uuid = Map.get(command, identity)
 

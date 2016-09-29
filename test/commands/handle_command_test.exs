@@ -6,7 +6,7 @@ defmodule Commanded.Commands.HandleCommandTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
   test "command handler implements behaviour" do
-    bank_account =
+    {:ok, bank_account} =
       BankAccount.new("1")
       |> OpenAccountHandler.handle(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 
