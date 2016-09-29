@@ -20,12 +20,14 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
       transfer
       |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})
 
-    %TransferMoneyProcessManager{transfer |
+    transfer = %TransferMoneyProcessManager{transfer |
       source_account: source_account,
       target_account: target_account,
       amount: amount,
       status: :withdraw_money_from_source_account
     }
+
+    {:ok, transfer}
   end
 
   def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
@@ -33,19 +35,24 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
       transfer
       |> dispatch(%DepositMoney{account_number: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
 
-    %TransferMoneyProcessManager{transfer |
+    transfer = %TransferMoneyProcessManager{transfer |
       status: :deposit_money_in_target_account
     }
+
+    {:ok, transfer}
   end
 
   def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = _money_deposited) do
-    %TransferMoneyProcessManager{transfer |
+    transfer = %TransferMoneyProcessManager{transfer |
       status: :transfer_complete
     }
+
+    {:ok, transfer}
   end
 
-  def handle(_transfer, _event) do
-      # ignore any other events
+  def handle(transfer, _event) do
+    # ignore any other events
+    {:ok, transfer}
   end
 
   defp dispatch(%TransferMoneyProcessManager{commands: commands} = transfer, command) do

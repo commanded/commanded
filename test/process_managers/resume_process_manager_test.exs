@@ -40,13 +40,19 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
     alias Events.{ProcessStarted,ProcessResumed}
 
     def start_process(%ExampleAggregate{} = aggregate, %StartProcess{process_uuid: process_uuid, status: status}) do
-      aggregate
-      |> update(%ProcessStarted{process_uuid: process_uuid, status: status})
+      aggregate =
+        aggregate
+        |> update(%ProcessStarted{process_uuid: process_uuid, status: status})
+
+      {:ok, aggregate}
     end
 
     def resume_process(%ExampleAggregate{} = aggregate, %ResumeProcess{process_uuid: process_uuid, status: status}) do
-      aggregate
-      |> update(%ProcessResumed{process_uuid: process_uuid, status: status})
+      aggregate =
+        aggregate
+        |> update(%ProcessResumed{process_uuid: process_uuid, status: status})
+
+      {:ok, aggregate}
     end
 
     # state mutatators
@@ -102,20 +108,25 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
     end
 
     def handle(%ExampleProcessManager{status_history: status_history} = process, %ProcessStarted{process_uuid: process_uuid, status: status}) do
-      %ExampleProcessManager{process |
+      process = %ExampleProcessManager{process |
         process_uuid: process_uuid,
         status_history: [status | status_history]
       }
+
+      {:ok, process}
     end
 
     def handle(%ExampleProcessManager{status_history: status_history} = process, %ProcessResumed{status: status}) do
-      %ExampleProcessManager{process |
+      process = %ExampleProcessManager{process |
         status_history: [status | status_history]
       }
+
+      {:ok, process}
     end
 
-    def handle(_transfer, _event) do
-        # ignore any other events
+    def handle(process, _event) do
+      # ignore any other events
+      {:ok, process}
     end
   end
 

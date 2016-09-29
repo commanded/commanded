@@ -52,7 +52,7 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Execute the given command, using the provided handler, against the current aggregate state
   """
-  def handle_call({:execute_command, command, handler}, _from, state) do
+  def handle_call({:execute_command, command, handler}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(command, handler, state)
 
     {:reply, reply, state}
@@ -83,15 +83,16 @@ defmodule Commanded.Aggregates.Aggregate do
       do {:ok, %Aggregate{state | aggregate_state: aggregate_state}}
     else
       {:error, reason} = reply ->
-        Logger.warn(fn -> "failed to handle command due to: #{inspect reason}" end)
+        Logger.warn(fn -> "failed to execute command due to: #{inspect reason}" end)
         {reply, state}
     end
   end
 
   defp handle_command(handler, aggregate_state, command) do
+    # command handler must return `{:ok, aggregate}` or `{:error, reason}`
     case handler.handle(aggregate_state, command) do
+      {:ok, _aggregate} = reply -> reply
       {:error, _reason} = reply -> reply
-      aggregate_state -> {:ok, aggregate_state}
     end
   end
 
