@@ -18,7 +18,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.2.1"}]
+      [{:commanded, "~> 0.3"}]
     end
     ```
 
@@ -58,9 +58,40 @@ You may manually start the top level Supervisor process.
 {:ok, _} = Commanded.Supervisor.start_link
 ```
 
-### Command handlers
+### Aggregate roots
 
-Create a module per command, defining the fields with `defstruct`. A command **must contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
+Use the [eventsourced](https://github.com/slashdotdash/eventsourced) library to build your aggregate roots. This is the expected approach to writing event-sourced domain models.
+
+Follow the convention of returning an `{:ok, aggregate}` tuple on success. For business rule violations and errors you should return an `{:error, reason}` tuple.
+
+```elixir
+defmodule BankAccount do
+  use EventSourced.AggregateRoot, fields: [account_number: nil, balance: nil]
+
+  # public command API
+
+  def open_account(%BankAccount{} = account, account_number, initial_balance) when initial_balance <= 0 do
+    {:error, :initial_balance_must_be_above_zero}
+  end
+
+  def open_account(%BankAccount{} = account, account_number, initial_balance) when initial_balance > 0 do
+    {:ok, update(account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance})}
+  end
+
+  # state mutators
+
+  def apply(%BankAccount.State{} = state, %BankAccountOpened{} = account_opened) do
+    %BankAccount.State{state|
+      account_number: account_opened.account_number,
+      balance: account_opened.initial_balance
+    }
+  end
+end
+```
+
+### Commands
+
+Create a module per command and define the fields with `defstruct`. A command **must contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
 ```elixir
 defmodule OpenAccount do
@@ -68,7 +99,11 @@ defmodule OpenAccount do
 end
 ```
 
-Implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate root and the command to be handled. It must return the aggregate root.
+### Command handlers
+
+Implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function.
+
+It receives the aggregate root and the command to be handled. It must return an `{:ok, aggregate_root}` tuple on success, otherwise an `{:error, reason}` tuple on failure.
 
 ```elixir
 defmodule OpenAccountHandler do
@@ -163,12 +198,14 @@ defmodule TransferMoneyProcessManager do
       transfer
       |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})
 
-    %TransferMoneyProcessManager{transfer |
+    transfer = %TransferMoneyProcessManager{transfer |
       source_account: source_account,
       target_account: target_account,
       amount: amount,
       status: :withdraw_money_from_source_account
     }
+
+    {:ok, transfer}
   end
 
   def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
@@ -176,19 +213,24 @@ defmodule TransferMoneyProcessManager do
       transfer
       |> dispatch(%DepositMoney{account_number: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
 
-    %TransferMoneyProcessManager{transfer |
+    transfer = %TransferMoneyProcessManager{transfer |
       status: :deposit_money_in_target_account
     }
+
+    {:ok, transfer}
   end
 
   def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = _money_deposited) do
-    %TransferMoneyProcessManager{transfer |
+    transfer = %TransferMoneyProcessManager{transfer |
       status: :transfer_complete
     }
+
+    {:ok, transfer}
   end
 
-  def handle(_transfer, _event) do
-      # ignore any other events
+  def handle(transfer, _event) do
+    # ignore any other events
+    {:ok, transfer}
   end
 
   defp dispatch(%TransferMoneyProcessManager{commands: commands} = transfer, command) do
