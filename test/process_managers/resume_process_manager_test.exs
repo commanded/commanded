@@ -5,7 +5,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
 
-  import Extensions.EventAssertions
+  import Commanded.Assertions.EventAssertions
 
   setup do
     EventStore.Storage.reset!
