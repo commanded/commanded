@@ -1,5 +1,5 @@
 defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
   doctest Commanded.ProcessManagers.ProcessRouter
 
   alias Commanded.ProcessManagers.ProcessRouter
@@ -12,12 +12,6 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
 
   import Commanded.Assertions.EventAssertions
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
-  end
 
   defmodule BankRouter do
     use Commanded.Commands.Router

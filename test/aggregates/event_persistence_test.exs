@@ -1,13 +1,7 @@
 defmodule Commanded.Entities.EventPersistenceTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
 
   alias Commanded.Aggregates.{Registry,Aggregate}
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
-  end
 
   defmodule ExampleAggregate do
     use EventSourced.AggregateRoot, fields: [items: []]

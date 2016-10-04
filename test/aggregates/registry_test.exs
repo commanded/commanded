@@ -1,13 +1,7 @@
 defmodule RegistryTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
 
   alias Commanded.Aggregates.Registry
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
-  end
 
   test "should let use integer, atom or string as aggregate_uuid" do
     Enum.each([1, :atom, "string"], fn aggregate_uuid ->

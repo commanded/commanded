@@ -1,5 +1,5 @@
 defmodule Commanded.ProcessManager.ProcessManagerTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
   doctest Commanded.ProcessManagers.ProcessManager
 
   alias Commanded.ProcessManagers.ProcessManager
@@ -7,12 +7,6 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
   alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
-  end
 
   defmodule OpenAccountHandler do
     @behaviour Commanded.Commands.Handler

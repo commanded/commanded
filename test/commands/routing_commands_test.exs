@@ -1,5 +1,5 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
   doctest Commanded.Commands.Router
 
   alias Commanded.ExampleDomain.BankAccount
@@ -15,12 +15,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
 
     dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
     dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
-  end
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
   end
 
   test "should dispatch command to registered handler" do

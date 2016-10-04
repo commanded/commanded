@@ -1,5 +1,5 @@
-defmodule Commanded.Extensions.Process do
-  use ExUnit.Case
+defmodule Commanded.Helpers.Process do
+  import ExUnit.Assertions
 
   @doc """
   Stop the given process with a non-normal exit reason
@@ -9,6 +9,6 @@ defmodule Commanded.Extensions.Process do
     Process.exit(pid, :shutdown)
 
     ref = Process.monitor(pid)
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, _, _, _}, 5_000
   end
 end

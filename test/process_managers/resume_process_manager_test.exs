@@ -1,17 +1,11 @@
 defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
 
-  alias Commanded.Extensions
+  alias Commanded.Helpers
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
 
   import Commanded.Assertions.EventAssertions
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
-  end
 
   defmodule ExampleAggregate do
     use EventSourced.AggregateRoot, fields: [status: nil]
@@ -143,7 +137,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       assert event.status == "start"
     end
 
-    Extensions.Process.shutdown(process_router)
+    Helpers.Process.shutdown(process_router)
 
     {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, ExampleRouter)
 

@@ -1,18 +1,12 @@
 defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
-  use ExUnit.Case
+  use Commanded.StorageCase
   doctest Commanded.Aggregates.Aggregate
 
   alias Commanded.Aggregates.{Registry,Aggregate}
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler,DepositMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-  alias Commanded.Extensions
-
-  setup do
-    EventStore.Storage.reset!
-    Commanded.Supervisor.start_link
-    :ok
-  end
+  alias Commanded.Helpers
 
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
@@ -21,7 +15,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler)
 
-    Extensions.Process.shutdown(aggregate)
+    Helpers.Process.shutdown(aggregate)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
