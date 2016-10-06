@@ -1,8 +1,8 @@
-defmodule Commanded.ProcessManager.ProcessManagerTest do
+defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
   use Commanded.StorageCase
-  doctest Commanded.ProcessManagers.ProcessManager
+  doctest Commanded.ProcessManagers.ProcessManagerInstance
 
-  alias Commanded.ProcessManagers.ProcessManager
+  alias Commanded.ProcessManagers.ProcessManagerInstance
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
@@ -27,7 +27,7 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
     account1_uuid = UUID.uuid4
     account2_uuid = UUID.uuid4
 
-    {:ok, process_manager} = ProcessManager.start_link(Router, TransferMoneyProcessManager, process_uuid)
+    {:ok, process_manager} = ProcessManagerInstance.start_link(Router, TransferMoneyProcessManager, process_uuid)
 
     event = %MoneyTransferRequested{
       transfer_uuid: process_uuid,
@@ -36,6 +36,6 @@ defmodule Commanded.ProcessManager.ProcessManagerTest do
       amount: 100
     }
 
-    :ok = ProcessManager.process_event(process_manager, event)
+    :ok = ProcessManagerInstance.process_event(process_manager, event)
   end
 end
