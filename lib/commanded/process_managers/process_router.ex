@@ -1,13 +1,12 @@
 defmodule Commanded.ProcessManagers.ProcessRouter do
   @moduledoc """
-  Process router is responsible for starting, continuing and completing process mansgers in response to events.
+  Process router is responsible for starting, continuing and completing process managers in response to raised domain events.
   """
 
   use GenServer
   require Logger
 
-  alias Commanded.ProcessManagers.Supervisor
-  alias Commanded.ProcessManagers.{ProcessManager}
+  alias Commanded.ProcessManagers.{ProcessManagerInstance,Supervisor}
   alias Commanded.Event.Mapper
 
   defmodule State do
@@ -33,7 +32,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc """
-  Fetch the state of an individual process manager instance identified by the fiven `process_uuid`
+  Fetch the state of an individual process manager instance identified by the given `process_uuid`
   """
   def process_state(process_router, process_uuid) do
     GenServer.call(process_router, {:process_state, process_uuid})
@@ -42,7 +41,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_call({:process_state, process_uuid}, _from, %State{process_managers: process_managers} = state) do
     reply = case Map.get(process_managers, process_uuid) do
       nil -> {:error, :process_manager_not_found}
-      process_manager -> ProcessManager.process_state(process_manager)
+      process_manager -> ProcessManagerInstance.process_state(process_manager)
     end
 
     {:reply, reply, state}
@@ -120,6 +119,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp process_event(nil, _event), do: nil
 
   defp process_event(process_manager, event) do
-    ProcessManager.process_event(process_manager, event)
+    ProcessManagerInstance.process_event(process_manager, event)
   end
 end

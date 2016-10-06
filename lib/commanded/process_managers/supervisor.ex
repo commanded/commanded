@@ -18,7 +18,7 @@ defmodule Commanded.ProcessManagers.Supervisor do
 
   def init(command_dispatcher) do
     children = [
-      worker(Commanded.ProcessManagers.ProcessManager, [command_dispatcher], restart: :transient),
+      worker(Commanded.ProcessManagers.ProcessManagerInstance, [command_dispatcher], restart: :transient),
     ]
 
     supervise(children, strategy: :simple_one_for_one)

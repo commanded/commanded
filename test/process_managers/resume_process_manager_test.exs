@@ -89,38 +89,41 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   end
 
   defmodule ExampleProcessManager do
-    defstruct commands: [], process_uuid: nil, status_history: []
+    use Commanded.ProcessManagers.ProcessManager, fields: [
+      status_history: []
+    ]
 
-    alias ExampleAggregate.Events.{ProcessStarted}
+    alias ExampleAggregate.Events.ProcessStarted
 
     def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}
     def interested?(%ProcessResumed{process_uuid: process_uuid}), do: {:continue, process_uuid}
     def interested?(_event), do: false
 
-    def new(process_uuid) do
-      %ExampleProcessManager{process_uuid: process_uuid}
+    def handle(%ExampleProcessManager{} = process, %ProcessStarted{} = process_started) do
+      {:ok, update(process, process_started)}
     end
 
-    def handle(%ExampleProcessManager{status_history: status_history} = process, %ProcessStarted{process_uuid: process_uuid, status: status}) do
-      process = %ExampleProcessManager{process |
-        process_uuid: process_uuid,
-        status_history: [status | status_history]
-      }
-
-      {:ok, process}
-    end
-
-    def handle(%ExampleProcessManager{status_history: status_history} = process, %ProcessResumed{status: status}) do
-      process = %ExampleProcessManager{process |
-        status_history: [status | status_history]
-      }
-
-      {:ok, process}
+    def handle(%ExampleProcessManager{} = process, %ProcessResumed{} = process_resumed) do
+      {:ok, update(process, process_resumed)}
     end
 
     def handle(process, _event) do
       # ignore any other events
       {:ok, process}
+    end
+
+    ## state mutators
+
+    def apply(%ExampleProcessManager.State{status_history: status_history} = process, %ProcessStarted{status: status}) do
+      %ExampleProcessManager.State{process |
+        status_history: status_history ++ [status]
+      }
+    end
+
+    def apply(%ExampleProcessManager.State{status_history: status_history} = process, %ProcessResumed{status: status}) do
+      %ExampleProcessManager.State{process |
+        status_history: status_history ++ [status]
+      }
     end
   end
 
@@ -146,7 +149,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
     Wait.until 1_000, fn ->
       case ProcessRouter.process_state(process_router, process_uuid) do
         {:error, :process_manager_not_found} -> flunk("process state not available")
-        state -> assert state.status_history == ["resume", "start"]
+        state -> assert state.status_history == ["start", "resume"]
       end
     end
   end

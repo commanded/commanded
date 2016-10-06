@@ -42,11 +42,11 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
       pool_size: 10
     ```
 
-    4. Create the `eventstore` database and tables using the `mix` task
+  4. Create the `eventstore` database and tables using the `mix` task
 
-      ```
-      mix event_store.create
-      ```
+    ```
+    mix event_store.create
+    ```
 
 ## Sample usage
 
@@ -174,56 +174,56 @@ Register the event handler with a given name. The name is used when subscribing 
 
 ### Process managers
 
-A process manager is responsible for communicating between one or more aggregate roots.
+A process manager is responsible for coordinating one or more aggregate roots.
 
 It handles events and may dispatch one or more commands in response. Process managers have state that can be used to track which aggregate roots are being coordinated.
 
-A process manager must implement `interested?/1` to indicate which events are used, and to route the event to an existing instance or start a new process. A `handle/2` function must exist for each interested event. It receives the process manager's state and the event to be handled. It must return the state, including any commands that should be dispatched.
+A process manager must implement the `interested?/1` function to indicate which events are used. The response is used to route the event to an existing instance or start a new process.
+
+- Return `{:start, process_uuid}` to create a new instance of the process manager.
+- Return `{:continue, process_uuid}` to continue execution of an existing process manager.
+- Return `false` to ignore the event
+
+A `handle/2` function must exist for each interested event. It receives the process manager's state and the event to be handled. It must return the state, including any commands that should be dispatched.
+
+Use the `Commanded.ProcessManagers.ProcessManager` macro to define the required state for your process manager. The `dispatch/2` function is used to dispatch a command. This can be called multiple times to dispatch more than one command in response to a received domain event. The process manager's state is updated by calling the `update/2` function. This delegates to an `apply/2` function that mutates the state.
+
+Each process manager `handle/2` function should return an `{:ok, process_manager}` success tuple.
 
 ```elixir
 defmodule TransferMoneyProcessManager do
-  defstruct commands: [], transfer_uuid: nil, source_account: nil, target_account: nil, amount: nil, status: nil
+  use Commanded.ProcessManagers.ProcessManager, fields: [
+    source_account: nil,
+    target_account: nil,
+    amount: nil,
+    status: nil
+  ]
 
   def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}), do: {:start, transfer_uuid}
   def interested?(%MoneyWithdrawn{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(_event), do: false
 
-  def new(process_uuid) do
-    %TransferMoneyProcessManager{transfer_uuid: process_uuid}
-  end
-
-  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
+  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount} = money_transfer_requested) do
     transfer =
       transfer
       |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})
-
-    transfer = %TransferMoneyProcessManager{transfer |
-      source_account: source_account,
-      target_account: target_account,
-      amount: amount,
-      status: :withdraw_money_from_source_account
-    }
+      |> update(money_transfer_requested)
 
     {:ok, transfer}
   end
 
-  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid} = transfer, %MoneyWithdrawn{} = _money_withdrawn) do
+  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid, state: state} = transfer, %MoneyWithdrawn{} = money_withdrawn) do
     transfer =
       transfer
-      |> dispatch(%DepositMoney{account_number: transfer.target_account, transfer_uuid: transfer_uuid, amount: transfer.amount})
-
-    transfer = %TransferMoneyProcessManager{transfer |
-      status: :deposit_money_in_target_account
-    }
+      |> dispatch(%DepositMoney{account_number: state.target_account, transfer_uuid: transfer_uuid, amount: state.amount})
+      |> update(money_withdrawn)
 
     {:ok, transfer}
   end
 
-  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = _money_deposited) do
-    transfer = %TransferMoneyProcessManager{transfer |
-      status: :transfer_complete
-    }
+  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = money_deposited) do
+    transfer = update(transfer, money_deposited)
 
     {:ok, transfer}
   end
@@ -233,12 +233,30 @@ defmodule TransferMoneyProcessManager do
     {:ok, transfer}
   end
 
-  defp dispatch(%TransferMoneyProcessManager{commands: commands} = transfer, command) do
-    %TransferMoneyProcessManager{transfer |
-      commands: [command | commands]
+  ## state mutators
+
+  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
+    %TransferMoneyProcessManager.State{transfer |
+      source_account: source_account,
+      target_account: target_account,
+      amount: amount,
+      status: :withdraw_money_from_source_account
+    }
+  end
+
+  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyWithdrawn{}) do
+    %TransferMoneyProcessManager.State{transfer |
+      status: :deposit_money_in_target_account
+    }
+  end
+
+  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyDeposited{}) do
+    %TransferMoneyProcessManager.State{transfer |
+      status: :transfer_complete
     }
   end
 end
+
 ```
 
 Register the process manager router, with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
