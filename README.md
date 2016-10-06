@@ -18,7 +18,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.3"}]
+      [{:commanded, "~> 0.4"}]
     end
     ```
 
@@ -121,7 +121,7 @@ end
 Create a router to handle registration of each command to its associated handler. Configure each command, mapping it to its handler and aggregate root.
 
 ```elixir
-defmodule BankingRouter do
+defmodule BankRouter do
   use Commanded.Commands.Router
 
   dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
@@ -132,7 +132,7 @@ end
 You can then dispatch a command using the router.
 
 ```elixir
-:ok = BankingRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+:ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```
 
 ### Event handlers
@@ -284,10 +284,10 @@ defmodule Bank.Supervisor do
       supervisor(Commanded.Supervisor, []),
 
       # process manager
-      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankingRouter], id: :transfer_money_process_manager),
+      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter], id: :transfer_money_process_manager),
 
       # event handler
-      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler])
+      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler], id: :account_balance_handler)
     ]
 
     supervise(children, strategy: :one_for_one)
@@ -305,7 +305,7 @@ defmodule Bank do
     import Supervisor.Spec, warn: false
 
     children = [
-      worker(BankApp.Supervisor, [])
+      worker(Bank.Supervisor, [])
     ]
 
     opts = [strategy: :one_for_one, name: __MODULE__]
