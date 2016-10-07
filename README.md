@@ -228,11 +228,6 @@ defmodule TransferMoneyProcessManager do
     {:ok, transfer}
   end
 
-  def handle(transfer, _event) do
-    # ignore any other events
-    {:ok, transfer}
-  end
-
   ## state mutators
 
   def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do

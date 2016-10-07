@@ -107,11 +107,6 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       {:ok, update(process, process_resumed)}
     end
 
-    def handle(process, _event) do
-      # ignore any other events
-      {:ok, process}
-    end
-
     ## state mutators
 
     def apply(%ExampleProcessManager.State{status_history: status_history} = process, %ProcessStarted{status: status}) do
