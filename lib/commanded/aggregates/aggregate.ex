@@ -103,10 +103,10 @@ defmodule Commanded.Aggregates.Aggregate do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
-    :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
-
-    # clear pending events after appending to stream
-    {:ok, %{aggregate_state | pending_events: []}}
+    case EventStore.append_to_stream(aggregate_uuid, expected_version, event_data) do
+      :ok -> {:ok, %{aggregate_state | pending_events: []}}
+      error -> error
+    end
   end
 
   defp map_from_recorded_events(recorded_events) when is_list(recorded_events) do
