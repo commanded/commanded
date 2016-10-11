@@ -15,14 +15,10 @@ defmodule EventStore do
   """
 
   alias EventStore.Snapshots.{SnapshotData,Snapshotter}
-  alias EventStore.{Storage,Streams,Subscriptions}
+  alias EventStore.{Streams,Subscriptions}
   alias EventStore.Streams.{AllStream,Stream}
 
   @all_stream "$all"
-
-  def append_to_stream(@all_stream, _expected_version, _events) do
-    {:error, :cannot_append_to_all_stream}
-  end
 
   @doc """
   Append one or more events to a stream atomically. Returns `:ok` on success.
@@ -35,6 +31,12 @@ defmodule EventStore do
 
     - `events` is a list of `%EventStore.EventData{}` structs.
   """
+  def append_to_stream(stream_uuid, expected_version, events)
+
+  def append_to_stream(@all_stream, _expected_version, _events) do
+    {:error, :cannot_append_to_all_stream}
+  end
+
   def append_to_stream(stream_uuid, expected_version, events) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
