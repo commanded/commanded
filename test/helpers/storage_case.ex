@@ -4,11 +4,10 @@ defmodule Commanded.StorageCase do
   setup do
     Application.stop(:commanded)
     Application.stop(:eventstore)
-    
+
     reset_storage
 
     Application.ensure_all_started(:commanded)
-
     :ok
   end
 

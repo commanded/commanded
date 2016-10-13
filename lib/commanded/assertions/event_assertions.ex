@@ -1,17 +1,45 @@
 defmodule Commanded.Assertions.EventAssertions do
   import ExUnit.Assertions
 
-  def assert_receive_event(event_type, assertion) do
-    assert_receive_event(event_type, assertion, skip: 0)
+  @doc """
+  Wait for an event of the given event type to be published
+  """
+  def wait_for_event(event_type) do
+    wait_for_event(event_type, fn _event -> true end)
   end
 
-  def assert_receive_event(event_type, assertion, skip: skip) do
+  @doc """
+  Wait for an event of the given event type, matching the predicate, to be published.
+  """
+  def wait_for_event(event_type, predicate_fn) do
+    with_subscription(fn ->
+      do_wait_for_event(event_type, predicate_fn)
+    end)
+  end
+
+  @doc """
+  Assert that an event of the given event type is published. Verify that event using the assertion function.
+  """
+  def assert_receive_event(event_type, assertion_fn) do
+    assert_receive_event(event_type, fn _event -> true end, assertion_fn)
+  end
+
+  @doc """
+  Assert that an event of the given event type, matching the predicate, is published. Verify that event using the assertion function.
+  """
+  def assert_receive_event(event_type, predicate_fn, assertion_fn) do
+    with_subscription(fn ->
+      do_assert_receive(event_type, predicate_fn, assertion_fn)
+    end)
+  end
+
+  defp with_subscription(callback_fn) do
     subscription_name = UUID.uuid4
 
     create_subscription(subscription_name)
 
     try do
-      do_assert_receive(event_type, assertion, skip: skip)
+      apply(callback_fn, [])
     after
       remove_subscription(subscription_name)
     end
@@ -25,25 +53,41 @@ defmodule Commanded.Assertions.EventAssertions do
     EventStore.unsubscribe_from_all_streams(subscription_name)
   end
 
-  defp do_assert_receive(event_type, assertion, skip: 0) do
+  defp do_assert_receive(event_type, predicate_fn, assertion_fn) do
     assert_receive {:events, received_events}, 1_000
 
     expected_type = Atom.to_string(event_type)
     expected_event = Enum.find(received_events, fn received_event ->
       case received_event.event_type do
-        ^expected_type -> true
+        ^expected_type ->
+          case apply(predicate_fn, [received_event.data]) do
+            true -> received_event
+            _ -> false
+          end
         _ -> false
       end
     end)
 
     case expected_event do
-      nil -> do_assert_receive(event_type, assertion, skip: 0)
-      received_event -> assertion.(received_event.data)
+      nil -> do_assert_receive(event_type, predicate_fn, assertion_fn)
+      received_event -> apply(assertion_fn, [received_event.data])
     end
   end
 
-  defp do_assert_receive(event_type, assertion, skip: skip) do
-    assert_receive {:events, _skip_event}, 1_000
-    do_assert_receive(event_type, assertion, skip: skip - 1)
+  defp do_wait_for_event(event_type, predicate_fn) do
+    assert_receive {:events, received_events}, 1_000
+
+    expected_type = Atom.to_string(event_type)
+    expected_event = Enum.find(received_events, fn received_event ->
+      case received_event.event_type do
+        ^expected_type -> apply(predicate_fn, [received_event.data])
+        _ -> false
+      end
+    end)
+
+    case expected_event do
+      nil -> do_wait_for_event(event_type, predicate_fn)
+      received_event -> received_event
+    end
   end
 end

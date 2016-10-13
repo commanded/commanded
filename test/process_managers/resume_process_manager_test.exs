@@ -2,7 +2,6 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   use Commanded.StorageCase
 
   alias Commanded.Helpers
-  alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
 
   import Commanded.Assertions.EventAssertions
@@ -141,11 +140,11 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     :ok = ExampleRouter.dispatch(%ResumeProcess{process_uuid: process_uuid, status: "resume"})
 
-    Wait.until 1_000, fn ->
-      case ProcessRouter.process_state(process_router, process_uuid) do
-        {:error, :process_manager_not_found} -> flunk("process state not available")
-        state -> assert state.status_history == ["start", "resume"]
-      end
+    wait_for_event(ProcessResumed, fn event -> event.process_uuid == process_uuid end)
+
+    case ProcessRouter.process_state(process_router, process_uuid) do
+      {:error, :process_manager_not_found} -> flunk("process state not available")
+      state -> assert state.status_history == ["start", "resume"]
     end
   end
 end
