@@ -68,6 +68,11 @@ defmodule Commanded.Event.HandleEventTest do
 
     Wait.until fn ->
       assert AppendingEventHandler.received_events == events
+      assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
     end
 	end
+
+  defp pluck(enumerable, field) do
+    Enum.map(enumerable, &Map.get(&1, field))
+  end
 end

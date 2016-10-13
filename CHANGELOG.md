@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.0
+
+### Enhancements
+
+- Include event metadata as second argument to event handlers. An event handler must now implement the `Commanded.Event.Handler` behaviour consisting of a single `handle_event/2` function.
+
 ## v0.4.0
 
 ### Enhancements

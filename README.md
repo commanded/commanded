@@ -137,26 +137,31 @@ You can then dispatch a command using the router.
 
 ### Event handlers
 
-Create an event handler module which implements `handle/1` for each event you are interested in.
+Create an event handler module which implements the `Commanded.Event.Handler` behaviour.
 
-Add a catch-all `handle/1` function for all other events to ignore.
+This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique id. It should return `:ok` on success or `{:error, :reason}` on failure.
+
+Use pattern matching to match on each type of event you are interested in. Add a catch-all `handle/2` function for all other events to be ignored.
 
 ```elixir
 defmodule AccountBalanceHandler do
+  @behaviour Commanded.Event.Handler
+
   def start_link do
     Agent.start_link(fn -> 0 end, name: __MODULE__)
   end
 
-  def handle(%BankAccountOpened{initial_balance: initial_balance}) do
+  def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
     Agent.update(__MODULE__, fn _ -> initial_balance end)
   end
 
-  def handle(%MoneyDeposited{balance: balance}) do
+  def handle(%MoneyDeposited{balance: balance}, _metadata) do
     Agent.update(__MODULE__, fn _ -> balance end)
   end
 
-  def handle(_) do
+  def handle(_event, _metadata) do
     # ignore all other events
+    :ok
   end
 
   def current_balance do

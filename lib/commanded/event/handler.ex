@@ -4,6 +4,14 @@ defmodule Commanded.Event.Handler do
 
   alias Commanded.Event.Handler
 
+  @type domain_event :: struct
+  @type metadata :: struct
+
+  @doc """
+  Event handler behaviour to handle a domain event and its metadata
+  """
+  @callback handle(domain_event, metadata) :: :ok | {:error, reason :: atom}
+
   defstruct handler_name: nil, handler_module: nil, last_seen_event_id: nil
 
   def start_link(handler_name, handler_module) do
@@ -26,10 +34,9 @@ defmodule Commanded.Event.Handler do
   def handle_info({:events, events}, state) do
     Logger.debug(fn -> "event handler received events: #{inspect events}" end)
 
-    events
-    |> Enum.each(fn event -> handle_event(event, state) end)
+    {:ok, last_seen_event_id} = Enum.reduce(events, nil, fn (event, _acc) -> handle_event(event, state) end)
 
-    state = %Handler{state | last_seen_event_id: List.last(events).event_id}
+    state = %Handler{state | last_seen_event_id: last_seen_event_id}
 
     {:noreply, state}
   end
@@ -37,10 +44,14 @@ defmodule Commanded.Event.Handler do
   # ignore already seen events
   defp handle_event(%EventStore.RecordedEvent{event_id: event_id} = event, %Handler{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
     Logger.debug(fn -> "event handler has already seen event: #{inspect event}" end)
+
+    {:ok, event_id}
   end
 
-  defp handle_event(%EventStore.RecordedEvent{data: data}, %Handler{handler_module: handler_module}) do
-    data
-    |> handler_module.handle
+  # delegate event to handler module
+  defp handle_event(%EventStore.RecordedEvent{event_id: event_id, data: data, metadata: metadata}, %Handler{handler_module: handler_module}) do
+    handler_module.handle(data, Map.merge(%{event_id: event_id}, metadata))
+
+    {:ok, event_id}
   end
 end
