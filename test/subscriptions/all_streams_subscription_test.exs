@@ -2,7 +2,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   use EventStore.StorageCase
   doctest EventStore.Subscriptions.AllStreamsSubscription
 
-  alias EventStore.{EventFactory,Subscriber}
+  alias EventStore.EventFactory
   alias EventStore.Storage.{Appender,Stream}
   alias EventStore.Subscriptions.AllStreamsSubscription
 
@@ -134,7 +134,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.state == :subscribed
   end
 
-  test "should not notify events until ack received", %{conn: conn} do
+  test "should not notify events until ack received" do
     events = EventFactory.create_recorded_events(6, 1)
     initial_events = Enum.take(events, 3)
     remaining_events = Enum.drop(events, 3)
@@ -156,9 +156,11 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
     assert pluck(received_events, :data) == pluck(initial_events, :data)
 
-     subscription =
-       subscription
-       |> AllStreamsSubscription.ack(3)
+    subscription =
+      subscription
+      |> AllStreamsSubscription.ack(3)
+
+    assert subscription.state == :subscribed
 
      # now receive all remaining events
      assert_receive {:events, received_events, nil}
