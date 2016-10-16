@@ -25,7 +25,7 @@ defmodule EventStore.Subscriptions.Subscription do
     })
   end
 
-  def notify_events(subscription, events) do
+  def notify_events(subscription, events) when is_list(events) do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
@@ -44,7 +44,7 @@ defmodule EventStore.Subscriptions.Subscription do
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).subscribe(stream_uuid, stream, subscription_name, subscriber)
+      |> subscription_provider(stream_uuid).subscribe(stream_uuid, stream, subscription_name, self, subscriber)
 
     handle_subscription_state(subscription.state)
 
@@ -65,6 +65,19 @@ defmodule EventStore.Subscriptions.Subscription do
     subscription =
       subscription
       |> subscription_provider(stream_uuid).catch_up
+
+    handle_subscription_state(subscription.state)
+
+    {:noreply, %Subscription{state | subscription: subscription}}
+  end
+
+  @doc """
+  Confirm receipt of an event by id
+  """
+  def handle_info({:ack, last_seen_event_id}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
+    subscription =
+      subscription
+      |> subscription_provider(stream_uuid).ack(last_seen_event_id)
 
     handle_subscription_state(subscription.state)
 

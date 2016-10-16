@@ -5,8 +5,12 @@ defmodule EventStore.StorageCase do
 
   setup do
     Application.stop(:eventstore)
+
     reset_storage
-    Application.start(:eventstore)
+
+    Application.ensure_all_started(:eventstore)
+
+    :ok
   end
 
   defp reset_storage do

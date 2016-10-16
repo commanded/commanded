@@ -3,8 +3,11 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
 
   defmodule SubscriptionData do
     defstruct subscription_name: nil,
+              source: nil,
               subscriber: nil,
-              last_seen_event_id: 0
+              last_seen_event_id: 0,
+              last_ack_event_id: 0,
+              pending_events: []
   end
 
   alias EventStore.Storage
@@ -15,13 +18,15 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   @all_stream "$all"
 
   defstate initial do
-    defevent subscribe(@all_stream, _stream, subscription_name, subscriber), data: %SubscriptionData{} = data do
+    defevent subscribe(@all_stream, _stream, subscription_name, source, subscriber), data: %SubscriptionData{} = data do
       case subscribe_to_stream(subscription_name) do
         {:ok, subscription} ->
           data = %SubscriptionData{data |
             subscription_name: subscription_name,
+            source: source,
             subscriber: subscriber,
-            last_seen_event_id: (subscription.last_seen_event_id || 0)
+            last_seen_event_id: (subscription.last_seen_event_id || 0),
+            last_ack_event_id: (subscription.last_seen_event_id || 0),
           }
           next_state(:catching_up, data)
         {:error, _reason} ->
@@ -48,6 +53,14 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
       end
     end
 
+    defevent ack(event_id), data: %SubscriptionData{} = data do
+      ack_events(data, event_id)
+
+      data = %SubscriptionData{data| last_ack_event_id: event_id}
+
+      next_state(:catching_up, data)
+    end
+
     # ignore event notifications while catching up
     defevent notify_events(_events), data: %SubscriptionData{} = data do
       next_state(:catching_up, data)
@@ -61,25 +74,47 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
 
   defstate subscribed do
     # notify events for all streams subscription
-    defevent notify_events(events), data: %SubscriptionData{last_seen_event_id: last_seen_event_id} = data do
+    defevent notify_events(events), data: %SubscriptionData{last_seen_event_id: last_seen_event_id, last_ack_event_id: last_ack_event_id, pending_events: pending_events} = data do
       expected_event_id = last_seen_event_id + 1
+      next_ack_event_id = last_ack_event_id + 1
 
       case first_event_id(events) do
-        ^expected_event_id ->
-          last_event = List.last(events)
-
+        ^next_ack_event_id ->
+          # subscriber is up-to-date, so send events
           notify_subscriber(data, events)
-          ack_events(data, events, last_event.event_id)
 
           data = %SubscriptionData{data |
-            last_seen_event_id: last_event.event_id
+            last_seen_event_id: List.last(events).event_id
           }
 
           next_state(:subscribed, data)
+
+        ^expected_event_id ->
+          # subscriber has not yet ack'd last seen event so enqueue them until they are ready
+          data = %SubscriptionData{data |
+            last_seen_event_id: List.last(events).event_id,
+            pending_events: pending_events ++ events
+          }
+
+          next_state(:subscribed, data)
+
         _ ->
           # must catch-up with all unseen events
           next_state(:catching_up, data)
       end
+    end
+
+    defevent ack(event_id), data: %SubscriptionData{pending_events: pending_events} = data do
+      ack_events(data, event_id)
+
+      notify_subscriber(data, pending_events)
+
+      data = %SubscriptionData{data|
+        pending_events: [],
+        last_ack_event_id: event_id
+      }
+
+      next_state(:subscribed, data)
     end
 
     defevent catch_up, data: %SubscriptionData{} = data do
@@ -127,7 +162,6 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
           last_event = List.last(events_by_stream)
 
           notify_subscriber(data, events_by_stream)
-          ack_events(data, events_by_stream, last_event.event_id)
 
           last_event
         end)
@@ -145,11 +179,15 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     AllStream.read_stream_forward(start_event_id)
   end
 
-  defp notify_subscriber(%SubscriptionData{subscriber: subscriber}, events) do
-    send(subscriber, {:events, events})
+  defp notify_subscriber(%SubscriptionData{subscriber: subscriber, source: source}, []) do
+    # no-op
   end
 
-  defp ack_events(%SubscriptionData{subscription_name: subscription_name}, _events, last_event_id) do
+  defp notify_subscriber(%SubscriptionData{subscriber: subscriber, source: source}, events) do
+    send(subscriber, {:events, events, source})
+  end
+
+  defp ack_events(%SubscriptionData{subscription_name: subscription_name}, last_event_id) do
     Storage.ack_last_seen_event(@all_stream, subscription_name, last_event_id, nil)
   end
 
