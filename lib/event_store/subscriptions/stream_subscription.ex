@@ -219,25 +219,33 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     |> Enum.reduce(fn (last_event, _) -> last_event end)
   end
 
+  # send pending events to subscriber if ready to receive them
   defp notify_pending_events(%SubscriptionData{pending_events: []} = data), do: data
-  defp notify_pending_events(%SubscriptionData{pending_events: pending_events} = data) do
-    notify_subscriber_events(data, pending_events)
+  defp notify_pending_events(%SubscriptionData{pending_events: [first_pending_event|_] = pending_events, stream_uuid: stream_uuid, last_ack: last_ack} = data) do
+    next_ack = last_ack + 1
 
-    %SubscriptionData{data|
-      pending_events: []
-    }
+    case subscription_provider(stream_uuid).event_id(first_pending_event) do
+      ^next_ack ->
+        # subscriber has ack'd last received event, so send pending
+        notify_subscriber_events(data, pending_events)
+
+        %SubscriptionData{data|
+          pending_events: []
+        }
+
+      _ ->
+        # subscriber has not yet ack'd last received event, don't send any more
+        data
+    end
   end
 
-  defp notify_subscriber(%SubscriptionData{}, []) do
-    # no-op
-  end
-
+  defp notify_subscriber(%SubscriptionData{}, []), do: nil
   defp notify_subscriber(%SubscriptionData{subscriber: subscriber, source: source}, events) do
     send(subscriber, {:events, events, source})
   end
 
   defp ack_events(%SubscriptionData{stream_uuid: stream_uuid, subscription_name: subscription_name} = data, ack) do
-    subscription_provider(stream_uuid).ack_last_seen_event(stream_uuid, subscription_name, ack)
+    :ok = subscription_provider(stream_uuid).ack_last_seen_event(stream_uuid, subscription_name, ack)
 
     %SubscriptionData{data| last_ack: ack}
   end

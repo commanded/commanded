@@ -156,6 +156,10 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
       assert pluck(received_events, :data) == pluck(initial_events, :data)
 
+      # don't receive remaining events until ack received for all initial events
+      subscription = ack_refute_receive(subscription, 1)
+      subscription = ack_refute_receive(subscription, 2)
+
       subscription =
         subscription
         |> StreamSubscription.ack(3)
@@ -208,6 +212,21 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   defp create_subscription(opts \\ []) do
     StreamSubscription.new
     |> StreamSubscription.subscribe(@all_stream, nil, @subscription_name, nil, self, opts)
+  end
+
+  defp ack_refute_receive(subscription, ack) do
+    subscription =
+      subscription
+      |> StreamSubscription.ack(ack)
+
+    assert subscription.state == :subscribed
+    assert subscription.data.last_seen == 6
+    assert subscription.data.last_ack == ack
+
+    # don't receive remaining events until ack received for all initial events
+    refute_receive {:events, _received_events, nil}
+
+    subscription
   end
 
   defp pluck(enumerable, field) do
