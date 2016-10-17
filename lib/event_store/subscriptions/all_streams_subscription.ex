@@ -155,13 +155,13 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   defp catch_up_to_event(%SubscriptionData{last_seen_event_id: last_seen_event_id} = data) do
     last_event = case unseen_events(last_seen_event_id) do
       {:ok, events} ->
-        # chunk events by stream
+        # chunk events by correlation id
         events
-        |> Enum.chunk_by(fn event -> event.stream_id end)
-        |> Enum.map(fn events_by_stream ->
-          last_event = List.last(events_by_stream)
+        |> Enum.chunk_by(fn event -> event.correlation_id end)
+        |> Enum.map(fn events_by_correlation_id ->
+          last_event = List.last(events_by_correlation_id)
 
-          notify_subscriber(data, events_by_stream)
+          notify_subscriber(data, events_by_correlation_id)
 
           last_event
         end)
