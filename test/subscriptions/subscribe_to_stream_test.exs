@@ -7,11 +7,13 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   alias EventStore.{Streams,Subscriptions,Subscriber}
   alias EventStore.Streams.Stream
 
-  @all_stream "$all"
   @receive_timeout 1_000
 
   setup do
-    {:ok, %{subscription_name: UUID.uuid4}}
+    subscription_name = UUID.uuid4
+    all_stream = Process.whereis(EventStore.Streams.AllStream)
+
+    {:ok, %{subscription_name: subscription_name, all_stream: all_stream}}
   end
 
   test "subscribe to single stream", %{subscription_name: subscription_name} do
@@ -57,14 +59,13 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   end
 
   describe "all stream subscription" do
-    test "subscribe to all streams should receive events from all streams", %{subscription_name: subscription_name} do
+    test "subscribe to all streams should receive events from all streams", %{subscription_name: subscription_name, all_stream: all_stream} do
       stream1_uuid = UUID.uuid4
       stream2_uuid = UUID.uuid4
 
       stream1_events = EventFactory.create_events(1)
       stream2_events = EventFactory.create_events(1)
 
-      all_stream = Process.whereis(EventStore.Streams.AllStream)
       {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self)
 
       {:ok, stream1} = Streams.open_stream(stream1_uuid)
@@ -83,7 +84,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert stream1_received_events != stream2_received_events
     end
 
-    test "should monitor all stream subscription, terminate subscription and subscriber on error", %{subscription_name: subscription_name} do
+    test "should monitor all stream subscription, terminate subscription and subscriber on error", %{subscription_name: subscription_name, all_stream: all_stream} do
       stream_uuid = UUID.uuid4
       events = EventFactory.create_events(1)
 
@@ -91,8 +92,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       {:ok, subscriber1} = Subscriber.start_link(self)
       {:ok, subscriber2} = Subscriber.start_link(self)
-
-      all_stream = Process.whereis(EventStore.Streams.AllStream)
 
       {:ok, subscription1} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name <> "1", subscriber1)
       {:ok, subscription2} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name <> "2", subscriber2)
@@ -119,13 +118,12 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
     end
 
-    test "should ack received events", %{subscription_name: subscription_name} do
+    test "should ack received events", %{subscription_name: subscription_name, all_stream: all_stream} do
       stream_uuid = UUID.uuid4
       stream_events = EventFactory.create_events(6)
       initial_events = Enum.take(stream_events, 3)
       remaining_events = Enum.drop(stream_events, 3)
 
-      all_stream = Process.whereis(EventStore.Streams.AllStream)
       {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self)
 
       {:ok, stream} = Streams.open_stream(stream_uuid)

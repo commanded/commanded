@@ -6,6 +6,7 @@ defmodule EventStore.Mixfile do
       app: :eventstore,
       version: "0.5.0",
       elixir: "~> 1.3",
+      elixirc_paths: elixirc_paths(Mix.env),
       description: description,
       package: package,
       build_embedded: Mix.env == :prod,
@@ -25,6 +26,9 @@ defmodule EventStore.Mixfile do
       mod: {EventStore.Application, []}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [

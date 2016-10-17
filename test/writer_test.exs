@@ -3,8 +3,7 @@ defmodule EventStore.WriterTest do
   doctest EventStore.Writer
 
   alias EventStore
-  alias EventStore.{EventFactory,ProcessHelper}
-  alias EventStore.TestHelpers.Wait
+  alias EventStore.{EventFactory,ProcessHelper,Wait}
 
   test "restart writer, should assign next event id on append to stream" do
     stream_uuid = UUID.uuid4

@@ -10,14 +10,14 @@ defmodule EventStore.ConfigTest do
       database: "eventstore_test",
       hostname: "localhost"
     ]
-    
+
     config = Config.parse original
     assert config == original
   end
 
   test "parse url" do
     original = [ url: "postgres://username:password@localhost/database" ]
-    
+
     config = Config.parse original
     assert config == [
       username: "username",
@@ -25,7 +25,5 @@ defmodule EventStore.ConfigTest do
       database: "database",
       hostname: "localhost"
     ]
-    
   end
-  
 end
