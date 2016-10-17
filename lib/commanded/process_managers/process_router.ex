@@ -52,7 +52,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, state}
   end
 
-  def handle_info({:events, events}, %State{process_manager_name: process_manager_name} = state) do
+  def handle_info({:events, events, subscription}, %State{process_manager_name: process_manager_name} = state) do
     Logger.debug(fn -> "process manager router \"#{process_manager_name}\" received events: #{inspect events}" end)
 
     state =
@@ -61,7 +61,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       |> Enum.map(&Mapper.map_from_recorded_event/1)
       |> Enum.reduce(state, fn (event, state) -> handle_event(event, state) end)
 
-    state = %State{state | last_seen_event_id: List.last(events).event_id}
+    state = confirm_receipt(state, subscription, events)
 
     {:noreply, state}
   end
@@ -94,6 +94,17 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     process_event(process_manager, event)
 
     state
+  end
+
+  # confirm receipt of events
+  defp confirm_receipt(%State{} = state, subscription, events) do
+    last_seen_event_id = List.last(events).event_id
+
+    Logger.debug(fn -> "process router confirming receipt of event: #{last_seen_event_id}" end)
+
+    send(subscription, {:ack, last_seen_event_id})
+
+    %State{state | last_seen_event_id: last_seen_event_id}
   end
 
   defp start_process_manager(supervisor, process_manager_module, process_uuid) do

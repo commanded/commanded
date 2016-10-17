@@ -134,6 +134,9 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       assert event.status == "start"
     end
 
+    # wait for ack of event
+    :timer.sleep 1_000
+
     Helpers.Process.shutdown(process_router)
 
     {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, ExampleRouter)

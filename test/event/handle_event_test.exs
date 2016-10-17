@@ -6,7 +6,6 @@ defmodule Commanded.Event.HandleEventTest do
   alias Commanded.Helpers.EventFactory
   alias Commanded.ExampleDomain.AccountBalanceHandler
 	alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
-  alias Commanded.Helpers.Wait
 
 	test "should be notified of events" do
     {:ok, _} = AccountBalanceHandler.start_link
@@ -18,11 +17,13 @@ defmodule Commanded.Event.HandleEventTest do
     ]
     recorded_events = EventFactory.map_to_recorded_events(events)
 
-    send(handler, {:events, recorded_events})
+    send(handler, {:events, recorded_events, self})
 
-    Wait.until fn ->
-      assert AccountBalanceHandler.current_balance == 1_050
-    end
+    assert_receive({:ack, 1})
+    assert_receive({:ack, 2})
+    refute_receive({:ack, _event_id})
+
+    assert AccountBalanceHandler.current_balance == 1_050
 	end
 
   defmodule UninterestingEvent do
@@ -43,11 +44,17 @@ defmodule Commanded.Event.HandleEventTest do
     ]
     recorded_events = EventFactory.map_to_recorded_events(events)
 
-    send(handler, {:events, recorded_events})
+    send(handler, {:events, recorded_events, self})
 
-    Wait.until fn ->
-      assert AccountBalanceHandler.current_balance == 1_050
-    end
+    # handler ack's each received event
+    assert_receive({:ack, 1})
+    assert_receive({:ack, 2})
+    assert_receive({:ack, 3})
+    assert_receive({:ack, 4})
+    assert_receive({:ack, 5})
+    refute_receive({:ack, _event_id})
+
+    assert AccountBalanceHandler.current_balance == 1_050
   end
 
 	test "should ignore already seen events" do
@@ -62,14 +69,17 @@ defmodule Commanded.Event.HandleEventTest do
 
     # send each event twice to simulate duplicate receives
     Enum.each(recorded_events, fn recorded_event ->
-      send(handler, {:events, [recorded_event]})
-      send(handler, {:events, [recorded_event]})
+      send(handler, {:events, [recorded_event], self})
+      send(handler, {:events, [recorded_event], self})
     end)
 
-    Wait.until fn ->
-      assert AppendingEventHandler.received_events == events
-      assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
-    end
+    # handler ack's both events
+    assert_receive({:ack, 1})
+    assert_receive({:ack, 2})
+    refute_receive({:ack, _event_id})
+
+    assert AppendingEventHandler.received_events == events
+    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
 	end
 
   defp pluck(enumerable, field) do
