@@ -134,6 +134,7 @@ defmodule EventStore.Subscriptions do
   end
 
   defp notify_subscribers([], _recorded_events, _serializer), do: nil
+  defp notify_subscribers(_subscriptions, [], _serializer), do: nil
   defp notify_subscribers(subscriptions, recorded_events, serializer) do
     events = Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)
 
