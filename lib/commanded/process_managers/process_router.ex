@@ -7,7 +7,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   require Logger
 
   alias Commanded.ProcessManagers.{ProcessManagerInstance,Supervisor}
-  alias Commanded.Event.Mapper
 
   defmodule State do
     defstruct process_manager_name: nil, process_manager_module: nil, command_dispatcher: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
@@ -47,6 +46,9 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:reply, reply, state}
   end
 
+  @doc """
+  Subscribe the process router to all events
+  """
   def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name} = state) do
     {:ok, _} = EventStore.subscribe_to_all_streams(process_manager_name, self)
     {:noreply, state}
@@ -58,7 +60,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     state =
       events
       |> Enum.filter(fn event -> !already_seen_event?(event, state) end)
-      |> Enum.map(&Mapper.map_from_recorded_event/1)
       |> Enum.reduce(state, fn (event, state) -> handle_event(event, state) end)
 
     state = confirm_receipt(state, subscription, events)
@@ -79,10 +80,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
   defp already_seen_event?(_event, _state), do: false
 
-  defp handle_event(event, %State{process_manager_module: process_manager_module, process_managers: process_managers, supervisor: supervisor} = state) do
-    {process_uuid, process_manager} = case process_manager_module.interested?(event) do
-      {:start, process_uuid} -> {process_uuid, start_process_manager(supervisor, process_manager_module, process_uuid)}
-      {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_managers, supervisor, process_manager_module, process_uuid)}
+  defp handle_event(%EventStore.RecordedEvent{data: data}, %State{process_manager_module: process_manager_module, process_managers: process_managers} = state) do
+    {process_uuid, process_manager} = case process_manager_module.interested?(data) do
+      {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
+      {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
       false -> {nil, nil}
     end
 
@@ -91,7 +92,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       _ -> %State{state | process_managers: Map.put(process_managers, process_uuid, process_manager)}
     end
 
-    process_event(process_manager, event)
+    :ok = process_event(process_manager, data)
 
     state
   end
@@ -107,15 +108,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     %State{state | last_seen_event_id: last_seen_event_id}
   end
 
-  defp start_process_manager(supervisor, process_manager_module, process_uuid) do
-    {:ok, process_manager} = Supervisor.start_process_manager(supervisor, process_manager_module, process_uuid)
+  defp start_process_manager(process_uuid, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, supervisor: supervisor}) do
+    {:ok, process_manager} = Supervisor.start_process_manager(supervisor, process_manager_name, process_manager_module, process_uuid)
     Process.monitor(process_manager)
     process_manager
   end
 
-  defp continue_process_manager(process_managers, supervisor, process_manager_module, process_uuid) do
+  defp continue_process_manager(process_uuid, %State{process_managers: process_managers} = state) do
     case Map.get(process_managers, process_uuid) do
-      nil -> start_process_manager(supervisor, process_manager_module, process_uuid)
+      nil -> start_process_manager(process_uuid, state)
       process_manager -> process_manager
     end
   end
@@ -127,8 +128,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     end)
   end
 
-  defp process_event(nil, _event), do: nil
-
+  defp process_event(nil, _event), do: :ok
   defp process_event(process_manager, event) do
     ProcessManagerInstance.process_event(process_manager, event)
   end

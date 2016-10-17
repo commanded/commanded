@@ -10,10 +10,10 @@ defmodule Commanded.ProcessManagers.Supervisor do
     Supervisor.start_link(__MODULE__, command_dispatcher)
   end
 
-  def start_process_manager(supervisor, process_manager_module, process_uuid) do
+  def start_process_manager(supervisor, process_manager_name, process_manager_module, process_uuid) do
     Logger.debug(fn -> "starting process manager process for `#{process_manager_module}` with uuid #{process_uuid}" end)
 
-    Supervisor.start_child(supervisor, [process_manager_module, process_uuid])
+    Supervisor.start_child(supervisor, [process_manager_name, process_manager_module, process_uuid])
   end
 
   def init(command_dispatcher) do

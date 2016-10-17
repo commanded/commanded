@@ -7,11 +7,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   alias Commanded.ProcessManagers.ProcessManagerInstance
 
-  defstruct command_dispatcher: nil, process_manager_module: nil, process_uuid: nil, process_state: nil
+  defstruct command_dispatcher: nil, process_manager_name: nil, process_manager_module: nil, process_uuid: nil, process_state: nil
 
-  def start_link(command_dispatcher, process_manager_module, process_uuid) do
+  def start_link(command_dispatcher, process_manager_name, process_manager_module, process_uuid) do
     GenServer.start_link(__MODULE__, %ProcessManagerInstance{
       command_dispatcher: command_dispatcher,
+      process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
       process_uuid: process_uuid,
       process_state: process_manager_module.new(process_uuid)
@@ -34,7 +35,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   Attempt to fetch intial process state from snapshot storage
   """
   def handle_cast({:fetch_state}, %ProcessManagerInstance{process_uuid: process_uuid, process_manager_module: process_manager_module} = state) do
-    state = case EventStore.read_snapshot(process_uuid) do
+    state = case EventStore.read_snapshot(process_state_uuid(state)) do
       {:ok, snapshot} -> %ProcessManagerInstance{state | process_state: process_manager_module.new(process_uuid, snapshot.data)}
       {:error, :snapshot_not_found} -> state
     end
@@ -56,14 +57,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Handle the given event, using the process manager module, against the current process state
   """
-  def handle_call({:process_event, event}, _from, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_uuid: process_uuid, process_state: process_state} = state) do
+  def handle_call({:process_event, event}, _from, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
     process_state =
       process_state
       |> process_event(event, process_manager_module)
       |> dispatch_commands(command_dispatcher)
-      |> persist_state(process_manager_module, process_uuid)
 
     state = %ProcessManagerInstance{state | process_state: process_state}
+
+    persist_state(state)
 
     {:reply, :ok, state}
   end
@@ -73,20 +75,21 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     process_state
   end
 
+  defp dispatch_commands(%{commands: []} = process_state, _command_dispatcher), do: process_state
   defp dispatch_commands(%{commands: commands} = process_state, command_dispatcher) when is_list(commands) do
     Enum.each(commands, fn command -> command_dispatcher.dispatch(command) end)
 
     %{process_state | commands: []}
   end
 
-  defp persist_state(process_state, process_manager_module, process_uuid) do
+  defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state) do
     :ok = EventStore.record_snapshot(%EventStore.Snapshots.SnapshotData{
-      source_uuid: process_uuid,
+      source_uuid: process_state_uuid(state),
       source_version: 1,
       source_type: Atom.to_string(Module.concat(process_manager_module, State)),
       data: process_state.state
     })
-
-    process_state
   end
+
+  defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"
 end

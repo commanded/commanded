@@ -124,7 +124,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   test "should resume a process manager with same state when process restarts" do
     process_uuid = UUID.uuid4
 
-    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, ExampleRouter)
+    {:ok, process_router} = ProcessRouter.start_link("ExampleProcessManager", ExampleProcessManager, ExampleRouter)
 
     # transfer funds between account 1 and account 2
     :ok = ExampleRouter.dispatch(%StartProcess{process_uuid: process_uuid, status: "start"})
@@ -139,7 +139,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     Helpers.Process.shutdown(process_router)
 
-    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, ExampleRouter)
+    {:ok, process_router} = ProcessRouter.start_link("ExampleProcessManager", ExampleProcessManager, ExampleRouter)
 
     :ok = ExampleRouter.dispatch(%ResumeProcess{process_uuid: process_uuid, status: "resume"})
 
