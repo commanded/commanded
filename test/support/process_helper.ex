@@ -1,6 +1,6 @@
 defmodule EventStore.ProcessHelper do
-  use ExUnit.Case
-  
+  import ExUnit.Assertions
+
   @doc """
   Stop the given process with a non-normal exit reason
   """
@@ -9,6 +9,6 @@ defmodule EventStore.ProcessHelper do
     Process.exit(pid, :shutdown)
 
     ref = Process.monitor(pid)
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, _, _, _}, 1_000
   end
 end

@@ -1,4 +1,4 @@
-defmodule EventStore.TestHelpers.Wait do
+defmodule EventStore.Wait do
   def until(fun), do: until(500, fun)
 
   def until(0, fun), do: fun.()

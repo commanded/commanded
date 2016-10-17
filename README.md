@@ -85,15 +85,23 @@ Read all events from the stream, starting at the stream's first event.
 {:ok, events} = EventStore.read_stream_forward(stream_uuid)
 ```
 
-### Subscribe to all streams
+### Subscribe to streams
 
-Subscriptions to a stream will guarantee at least once delivery of every persisted event. Each subscription may be independently paused, then later resumed from where it stopped.
+Subscriptions to a stream will guarantee at least once delivery of every persisted event. Each subscription may be independently paused, then later resumed from where it stopped. A subscription can be created to receive events published from a single logical stream or from all streams.
 
-Events are received in batches after being persisted to storage. Each batch will contain events from a single stream only.
-
-Receipt of each event, or batch, by the subscriber is acknowledged. This allows the subscription to resume on failure without missing an event.
+Events are received in batches after being persisted to storage. Each batch contains events from a single stream only with the same correlation id.
 
 Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
+
+#### Ack received events
+
+Receipt of each event by the subscriber must be acknowledged. This allows the subscription to resume on failure without missing an event.
+
+The subscriber receives an `{:events, events, subscription}` tuple containing the published events and the subscription to send the `ack` to. This is achieved by sending an `{:ack, last_seen_event_id}` tuple to the `subscription` process. A subscriber can confirm receipt of each event in a batch by sending multiple acks, one per event. Or just confirm receipt of the last event in the batch.
+
+A subscriber will not receive further published events until it has confirmed receipt of all received events. This provides back pressure to the subscription to prevent the subscriber from being overwhelmed with messages if it cannot keep up.
+
+#### Example subscriber
 
 ```elixir
 # An example subscriber
@@ -112,8 +120,11 @@ defmodule Subscriber do
     {:ok, %{events: events}}
   end
 
-  def handle_info({:events, events}, state) do
-    {:noreply, %{state | events: events ++ state.events}}
+  def handle_info({:events, events, subscription}, state) do
+    # confirm receipt of received events
+    send(subscription, {:ack, List.last(events).event_id})
+
+    {:noreply, %{state | events: state.events ++ events}}
   end
 
   def handle_call(:received_events, _from, %{events: events} = state) do
