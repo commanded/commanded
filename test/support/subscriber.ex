@@ -17,9 +17,6 @@ defmodule EventStore.Subscriber do
     # send events to receiving process
     send(receiver, {:events, events})
 
-    # confirm receipt of received events
-    send(subscription, {:ack, List.last(events).event_id})
-
     {:noreply, %{state | events: state.events ++ events}}
   end
 
