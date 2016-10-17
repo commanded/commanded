@@ -114,6 +114,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       # subscription 2 should still receive events
       assert_receive {:events, received_events}, @receive_timeout
+      refute_receive {:events, _events}, @receive_timeout
+
       assert pluck(received_events, :data) == pluck(events, :data)
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
     end
