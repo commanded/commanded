@@ -99,7 +99,7 @@ Receipt of each event by the subscriber must be acknowledged. This allows the su
 
 The subscriber receives an `{:events, events, subscription}` tuple containing the published events and the subscription to send the `ack` to. This is achieved by sending an `{:ack, last_seen_event_id}` tuple to the `subscription` process. A subscriber can confirm receipt of each event in a batch by sending multiple acks, one per event. Or just confirm receipt of the last event in the batch.
 
-A subscriber will not receive further published events until it has confirmed receipt of all received events. This provides back pressure to the subscription to prevent the subscriber from being overwhelmed with messages if it cannot keep up.
+A subscriber will not receive further published events until it has confirmed receipt of all received events. This provides back pressure to the subscription to prevent the subscriber from being overwhelmed with messages if it cannot keep up. The subscription will buffer events until the subscriber is ready to receive, or an overflow occurs. At which point it will move into a catch-up mode and query events and replay them from storage until caught up.
 
 #### Example subscriber
 
