@@ -9,7 +9,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
               subscriber: nil,
               last_seen: 0,
               last_ack: 0,
-              pending_events: []
+              pending_events: [],
+              max_size: nil
   end
 
   alias EventStore.Storage
@@ -18,9 +19,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   use Fsm, initial_state: :initial, initial_data: %SubscriptionData{}
 
   @all_stream "$all"
+  @max_buffer_size 1_000
 
   defstate initial do
-    defevent subscribe(stream_uuid, stream, subscription_name, source, subscriber), data: %SubscriptionData{} = data do
+    defevent subscribe(stream_uuid, stream, subscription_name, source, subscriber, opts), data: %SubscriptionData{} = data do
       case subscribe_to_stream(stream_uuid, subscription_name) do
         {:ok, subscription} ->
           last_ack = subscription_provider(stream_uuid).last_ack(subscription) || 0
@@ -32,8 +34,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
             source: source,
             subscriber: subscriber,
             last_seen: last_ack,
-            last_ack: last_ack
+            last_ack: last_ack,
+            max_size: opts[:max_size] || @max_buffer_size
           }
+
           next_state(:catching_up, data)
 
         {:error, _reason} ->
@@ -50,10 +54,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
           next_state(:subscribed, data)
 
         {:ok, ^last_seen} ->
-          # already seen latest stream version
+          # already seen latest event
           next_state(:subscribed, data)
 
-        {:ok, _last_seen} ->
+        {:ok, _latest_event} ->
           # must catch-up with all unseen events from stream
           data = catch_up_from_stream(data)
 
@@ -62,9 +66,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
 
     defevent ack(ack), data: %SubscriptionData{} = data do
-      ack_events(data, ack)
-
-      data = %SubscriptionData{data| last_ack: ack}
+      data = ack_events(data, ack)
 
       next_state(:catching_up, data)
     end
@@ -82,7 +84,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   defstate subscribed do
     # notify events for single stream subscription
-    defevent notify_events(events), data: %SubscriptionData{stream_uuid: stream_uuid, last_seen: last_seen, last_ack: last_ack, pending_events: pending_events} = data do
+    defevent notify_events(events), data: %SubscriptionData{stream_uuid: stream_uuid, last_seen: last_seen, last_ack: last_ack, pending_events: pending_events, max_size: max_size} = data do
       expected_event = last_seen + 1
       next_ack = last_ack + 1
 
@@ -98,13 +100,18 @@ defmodule EventStore.Subscriptions.StreamSubscription do
           next_state(:subscribed, data)
 
         ^expected_event ->
-          # subscriber has not yet ack'd last seen stream version so enqueue them until they are ready
+          # subscriber has not yet ack'd last seen event so enqueue them until they are ready
           data = %SubscriptionData{data |
             last_seen: subscription_provider(stream_uuid).event_id(List.last(events)),
             pending_events: pending_events ++ events
           }
 
-          next_state(:subscribed, data)
+          if length(pending_events) + length(events) >= max_size do
+            # subscriber is too far behind, must wait for it to catch up
+            next_state(:max_capacity, data)
+          else
+            next_state(:subscribed, data)
+          end
 
         _ ->
           # must catch-up with all unseen events
@@ -112,15 +119,11 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       end
     end
 
-    defevent ack(ack), data: %SubscriptionData{pending_events: pending_events} = data do
-      ack_events(data, ack)
-
-      notify_subscriber(data, pending_events)
-
-      data = %SubscriptionData{data|
-        pending_events: [],
-        last_ack: ack
-      }
+    defevent ack(ack), data: %SubscriptionData{} = data do
+      data =
+        data
+        |> ack_events(ack)
+        |> notify_pending_events
 
       next_state(:subscribed, data)
     end
@@ -135,8 +138,45 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
   end
 
+  defstate max_capacity do
+    # ignore event notifications while catching up
+    defevent notify_events(_events), data: %SubscriptionData{} = data do
+      next_state(:max_capacity, data)
+    end
+
+    defevent ack(ack), data: %SubscriptionData{} = data do
+      data =
+        data
+        |> ack_events(ack)
+        |> notify_pending_events
+
+      next_state(:catching_up, data)
+    end
+
+    defevent catch_up, data: %SubscriptionData{} = data do
+      next_state(:max_capacity, data)
+    end
+
+    defevent unsubscribe, data: %SubscriptionData{stream_uuid: stream_uuid, subscription_name: subscription_name} = data do
+      unsubscribe_from_stream(stream_uuid, subscription_name)
+      next_state(:unsubscribed, data)
+    end
+  end
+
   defstate unsubscribed do
     defevent notify_events(_events), data: %SubscriptionData{} = data do
+      next_state(:unsubscribed, data)
+    end
+
+    defevent ack(_ack), data: %SubscriptionData{} = data do
+      next_state(:unsubscribed, data)
+    end
+
+    defevent catch_up, data: %SubscriptionData{} = data do
+      next_state(:unsubscribed, data)
+    end
+
+    defevent unsubscribe, data: %SubscriptionData{} = data do
       next_state(:unsubscribed, data)
     end
   end
@@ -160,32 +200,53 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   defp catch_up_from_stream(%SubscriptionData{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen} = data) do
     last_event = case subscription_provider(stream_uuid).unseen_events(stream, last_seen) do
-      {:ok, events} ->
-        # chunk events by correlation id
-        events
-        |> Enum.chunk_by(fn event -> event.correlation_id end)
-        |> Enum.map(fn events_by_correlation_id ->
-          last_event = List.last(events_by_correlation_id)
-
-          notify_subscriber(data, events_by_correlation_id)
-
-          last_event
-        end)
-        |> Enum.reduce(fn (last_event, _) -> last_event end)
+      {:ok, events} -> notify_subscriber_events(data, events)
     end
 
     %SubscriptionData{data | last_seen: subscription_provider(stream_uuid).event_id(last_event)}
   end
 
-  defp notify_subscriber(%SubscriptionData{}, []) do
-    # no-op
+  # chunk events by correlation id and send to subscriber
+  # returns the last notified event
+  defp notify_subscriber_events(%SubscriptionData{} = data, events) do
+    events
+    |> Enum.chunk_by(fn event -> event.correlation_id end)
+    |> Enum.map(fn events_by_correlation_id ->
+      notify_subscriber(data, events_by_correlation_id)
+
+      List.last(events_by_correlation_id)
+    end)
+    |> Enum.reduce(fn (last_event, _) -> last_event end)
   end
 
+  # send pending events to subscriber if ready to receive them
+  defp notify_pending_events(%SubscriptionData{pending_events: []} = data), do: data
+  defp notify_pending_events(%SubscriptionData{pending_events: [first_pending_event|_] = pending_events, stream_uuid: stream_uuid, last_ack: last_ack} = data) do
+    next_ack = last_ack + 1
+
+    case subscription_provider(stream_uuid).event_id(first_pending_event) do
+      ^next_ack ->
+        # subscriber has ack'd last received event, so send pending
+        notify_subscriber_events(data, pending_events)
+
+        %SubscriptionData{data|
+          pending_events: []
+        }
+
+      _ ->
+        # subscriber has not yet ack'd last received event, don't send any more
+        data
+    end
+  end
+
+  defp notify_subscriber(%SubscriptionData{}, []), do: nil
   defp notify_subscriber(%SubscriptionData{subscriber: subscriber, source: source}, events) do
     send(subscriber, {:events, events, source})
   end
 
-  defp ack_events(%SubscriptionData{stream_uuid: stream_uuid, subscription_name: subscription_name}, ack) do
-    subscription_provider(stream_uuid).ack_last_seen_event(stream_uuid, subscription_name, ack)
+  defp ack_events(%SubscriptionData{stream_uuid: stream_uuid, subscription_name: subscription_name} = data, ack) do
+    :ok = subscription_provider(stream_uuid).ack_last_seen_event(stream_uuid, subscription_name, ack)
+
+    %SubscriptionData{data| last_ack: ack}
   end
 end

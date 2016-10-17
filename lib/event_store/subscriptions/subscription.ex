@@ -42,7 +42,7 @@ defmodule EventStore.Subscriptions.Subscription do
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self, subscriber)
+      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self, subscriber, [])
 
     handle_subscription_state(subscription.state)
 

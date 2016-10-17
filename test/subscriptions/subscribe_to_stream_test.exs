@@ -114,6 +114,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       # subscription 2 should still receive events
       assert_receive {:events, received_events}, @receive_timeout
+      refute_receive {:events, _events}, @receive_timeout
+
       assert pluck(received_events, :data) == pluck(events, :data)
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
     end
@@ -131,10 +133,13 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       :ok = Stream.append_to_stream(stream, 0, initial_events)
 
       assert_receive {:events, initial_received_events, ^subscription}, @receive_timeout
+      assert length(initial_received_events) == 3
       assert pluck(initial_received_events, :data) == pluck(initial_events, :data)
 
       # acknowledge receipt of first event only
       send(subscription, {:ack, 1})
+
+      refute_receive {:events, _events, ^subscription}, @receive_timeout
 
       # should not send further events until ack'd all previous
       :ok = Stream.append_to_stream(stream, 3, remaining_events)
@@ -145,6 +150,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       send(subscription, {:ack, 3})
 
       assert_receive {:events, remaining_received_events, ^subscription}, @receive_timeout
+      assert length(remaining_received_events) == 3
       assert pluck(remaining_received_events, :data) == pluck(remaining_events, :data)
     end
 
