@@ -179,7 +179,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     AllStream.read_stream_forward(start_event_id)
   end
 
-  defp notify_subscriber(%SubscriptionData{subscriber: subscriber, source: source}, []) do
+  defp notify_subscriber(%SubscriptionData{}, []) do
     # no-op
   end
 

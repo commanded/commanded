@@ -7,7 +7,9 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
               subscription_name: nil,
               source: nil,
               subscriber: nil,
-              last_seen_stream_version: 0
+              last_seen_stream_version: 0,
+              last_ack_stream_version: 0,
+              pending_events: []
   end
 
   alias EventStore.Storage
@@ -25,7 +27,8 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
             subscription_name: subscription_name,
             source: source,
             subscriber: subscriber,
-            last_seen_stream_version: (subscription.last_seen_stream_version || 0)
+            last_seen_stream_version: (subscription.last_seen_stream_version || 0),
+            last_ack_stream_version: (subscription.last_seen_stream_version || 0)
           }
           next_state(:catching_up, data)
         {:error, _reason} ->
@@ -55,6 +58,9 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
 
     defevent ack(stream_version), data: %SubscriptionData{} = data do
       ack_events(data, stream_version)
+
+      data = %SubscriptionData{data| last_ack_stream_version: stream_version}
+
       next_state(:catching_up, data)
     end
 
@@ -71,28 +77,46 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
 
   defstate subscribed do
     # notify events for single stream subscription
-    defevent notify_events(events), data: %SubscriptionData{last_seen_stream_version: last_seen_stream_version} = data do
+    defevent notify_events(events), data: %SubscriptionData{last_seen_stream_version: last_seen_stream_version, last_ack_stream_version: last_ack_stream_version, pending_events: pending_events} = data do
       expected_stream_version = last_seen_stream_version + 1
+      next_ack_stream_version = last_ack_stream_version + 1
 
       case first_stream_version(events) do
-        ^expected_stream_version ->
-          last_event = List.last(events)
-
+        ^next_ack_stream_version ->
+          # subscriber is up-to-date, so send events
           notify_subscriber(data, events)
 
           data = %SubscriptionData{data |
-            last_seen_stream_version: last_event.stream_version
+            last_seen_stream_version: List.last(events).stream_version
           }
 
           next_state(:subscribed, data)
+
+        ^expected_stream_version ->
+          # subscriber has not yet ack'd last seen stream version so enqueue them until they are ready
+          data = %SubscriptionData{data |
+            last_seen_stream_version: List.last(events).stream_version,
+            pending_events: pending_events ++ events
+          }
+
+          next_state(:subscribed, data)
+
         _ ->
           # must catch-up with all unseen events
           next_state(:catching_up, data)
       end
     end
 
-    defevent ack(stream_version), data: %SubscriptionData{} = data do
+    defevent ack(stream_version), data: %SubscriptionData{pending_events: pending_events} = data do
       ack_events(data, stream_version)
+
+      notify_subscriber(data, pending_events)
+
+      data = %SubscriptionData{data|
+        pending_events: [],
+        last_ack_stream_version: stream_version
+      }
+
       next_state(:subscribed, data)
     end
 
@@ -151,6 +175,10 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
     Stream.read_stream_forward(stream, start_version)
   end
 
+  defp notify_subscriber(%SubscriptionData{}, []) do
+    # no-op
+  end
+  
   defp notify_subscriber(%SubscriptionData{subscriber: subscriber, source: source}, events) do
     send(subscriber, {:events, events, source})
   end

@@ -1,0 +1,194 @@
+defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
+  use EventStore.StorageCase
+  doctest EventStore.Subscriptions.SingleStreamSubscription
+
+  alias EventStore.EventFactory
+  alias EventStore.Streams
+  alias EventStore.Storage.{Appender,Stream}
+  alias EventStore.Subscriptions.SingleStreamSubscription
+
+  @subscription_name "test_subscription"
+
+  setup do
+    storage_config = Application.get_env(:eventstore, EventStore.Storage)
+
+    {:ok, conn} = Postgrex.start_link(storage_config)
+    {:ok, %{conn: conn}}
+  end
+
+  test "create subscription to a single stream" do
+    stream_uuid = UUID.uuid4
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+
+    assert subscription.state == :catching_up
+    assert subscription.data.subscription_name == @subscription_name
+    assert subscription.data.subscriber == self
+    assert subscription.data.last_seen_stream_version == 0
+  end
+
+  test "catch-up subscription, no persisted events" do
+    stream_uuid = UUID.uuid4
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+
+    assert subscription.state == :subscribed
+    assert subscription.data.last_seen_stream_version == 0
+  end
+
+  test "catch-up subscription, unseen persisted events", %{conn: conn} do
+    stream_uuid = UUID.uuid4
+    {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
+    recorded_events = EventFactory.create_recorded_events(3, stream_id)
+    {:ok, 3} = Appender.append(conn, stream_id, recorded_events)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+
+    assert subscription.state == :subscribed
+    assert subscription.data.last_seen_stream_version == 3
+
+    assert_receive {:events, received_events, nil}
+    expected_events = EventFactory.deserialize_events(recorded_events)
+
+    assert pluck(received_events, :correlation_id) == pluck(expected_events, :correlation_id)
+    assert pluck(received_events, :data) == pluck(expected_events, :data)
+  end
+
+  test "notify events" do
+    stream_uuid = UUID.uuid4
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    events = EventFactory.create_recorded_events(1, 1)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+      |> SingleStreamSubscription.notify_events(events)
+
+    assert subscription.state == :subscribed
+
+    assert_receive {:events, received_events, nil}
+
+    assert pluck(received_events, :correlation_id) == pluck(events, :correlation_id)
+    assert pluck(received_events, :data) == pluck(events, :data)
+  end
+
+  test "ack notified events", %{conn: conn} do
+    stream_uuid = UUID.uuid4
+    {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
+    {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+
+    assert subscription.state == :subscribed
+
+    assert_receive {:events, received_events, nil}
+    assert length(received_events) == 3
+
+    subscription =
+      subscription
+      |> SingleStreamSubscription.ack(3)
+
+    assert subscription.state == :subscribed
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+
+    # should not receive already seen events
+    refute_receive {:events, _received_events, nil}
+
+    assert subscription.state == :subscribed
+  end
+
+  test "should replay events when not acknowledged", %{conn: conn} do
+    stream_uuid = UUID.uuid4
+    {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
+    {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+
+    assert subscription.state == :subscribed
+
+    assert_receive {:events, received_events, nil}
+    assert length(received_events) == 3
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+
+    # should receive already seen events
+    assert_receive {:events, received_events, nil}
+    assert length(received_events) == 3
+
+    assert subscription.state == :subscribed
+  end
+
+  test "should not notify events until ack received" do
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_recorded_events(6, 1)
+    initial_events = Enum.take(events, 3)
+    remaining_events = Enum.drop(events, 3)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription =
+      SingleStreamSubscription.new
+      |> SingleStreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self)
+      |> SingleStreamSubscription.catch_up
+      |> SingleStreamSubscription.notify_events(initial_events)
+      |> SingleStreamSubscription.notify_events(remaining_events)
+
+    assert subscription.state == :subscribed
+
+    # only receive initial events
+    assert_receive {:events, received_events, nil}
+    refute_receive {:events, _received_events, nil}
+
+    assert length(received_events) == 3
+    assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
+    assert pluck(received_events, :data) == pluck(initial_events, :data)
+
+    subscription =
+      subscription
+      |> SingleStreamSubscription.ack(3)
+
+    assert subscription.state == :subscribed
+
+     # now receive all remaining events
+     assert_receive {:events, received_events, nil}
+
+     assert length(received_events) == 3
+     assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
+     assert pluck(received_events, :data) == pluck(remaining_events, :data)
+  end
+
+  defp pluck(enumerable, field) do
+    Enum.map(enumerable, &Map.get(&1, field))
+  end
+end

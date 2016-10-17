@@ -57,7 +57,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   end
 
   describe "all stream subscription" do
-    @tag :wip
     test "subscribe to all streams should receive events from all streams", %{subscription_name: subscription_name} do
       stream1_uuid = UUID.uuid4
       stream2_uuid = UUID.uuid4
@@ -165,6 +164,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       {:ok, subscription1} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-1", subscriber1)
       {:ok, subscription2} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-2", subscriber2)
+
+      send(subscription1, {:ack, 1})
+      send(subscription2, {:ack, 1})
 
       # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
       Process.unlink(subscriber1)
