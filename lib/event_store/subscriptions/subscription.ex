@@ -9,9 +9,7 @@ defmodule EventStore.Subscriptions.Subscription do
   use GenServer
   require Logger
 
-  alias EventStore.Subscriptions.{AllStreamsSubscription,SingleStreamSubscription,Subscription}
-
-  @all_stream "$all"
+  alias EventStore.Subscriptions.{StreamSubscription,Subscription}
 
   defstruct stream_uuid: nil, stream: nil, subscription_name: nil, subscriber: nil, subscription: nil
 
@@ -21,7 +19,7 @@ defmodule EventStore.Subscriptions.Subscription do
       stream: stream,
       subscription_name: subscription_name,
       subscriber: subscriber,
-      subscription: subscription_provider(stream_uuid).new
+      subscription: StreamSubscription.new
     })
   end
 
@@ -44,27 +42,27 @@ defmodule EventStore.Subscriptions.Subscription do
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).subscribe(stream_uuid, stream, subscription_name, self, subscriber)
+      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self, subscriber)
 
     handle_subscription_state(subscription.state)
 
     {:noreply, %Subscription{state | subscription: subscription}}
   end
 
-  def handle_cast({:notify_events, events}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
+  def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).notify_events(events)
+      |> StreamSubscription.notify_events(events)
 
     handle_subscription_state(subscription.state)
 
     {:noreply, %Subscription{state | subscription: subscription}}
   end
 
-  def handle_cast({:catch_up}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
+  def handle_cast({:catch_up}, %Subscription{subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).catch_up
+      |> StreamSubscription.catch_up
 
     handle_subscription_state(subscription.state)
 
@@ -74,22 +72,22 @@ defmodule EventStore.Subscriptions.Subscription do
   @doc """
   Confirm receipt of an event by id
   """
-  def handle_info({:ack, last_seen_event_id}, %Subscription{stream_uuid: stream_uuid, subscription: subscription} = state) do
+  def handle_info({:ack, last_seen_event_id}, %Subscription{subscription: subscription} = state) do
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).ack(last_seen_event_id)
+      |> StreamSubscription.ack(last_seen_event_id)
 
     handle_subscription_state(subscription.state)
 
     {:noreply, %Subscription{state | subscription: subscription}}
   end
 
-  def handle_call({:unsubscribe}, _from, %Subscription{stream_uuid: stream_uuid, subscriber: subscriber, subscription: subscription} = state) do
+  def handle_call({:unsubscribe}, _from, %Subscription{subscriber: subscriber, subscription: subscription} = state) do
     Process.unlink(subscriber)
 
     subscription =
       subscription
-      |> subscription_provider(stream_uuid).unsubscribe
+      |> StreamSubscription.unsubscribe
 
     handle_subscription_state(subscription.state)
 
@@ -102,13 +100,5 @@ defmodule EventStore.Subscriptions.Subscription do
 
   defp handle_subscription_state(_) do
     # no-op
-  end
-
-  defp subscription_provider(@all_stream) do
-    AllStreamsSubscription
-  end
-
-  defp subscription_provider(_stream_uuid) do
-    SingleStreamSubscription
   end
 end
