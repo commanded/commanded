@@ -4,40 +4,23 @@ defmodule Commanded.ExampleDomain.BankAccount do
   alias Commanded.ExampleDomain.BankAccount
 
   defmodule Commands do
-    defmodule OpenAccount do
-      defstruct account_number: nil, initial_balance: nil
-    end
-
-    defmodule DepositMoney do
-      defstruct account_number: nil, transfer_uuid: nil, amount: nil
-    end
-
-    defmodule WithdrawMoney do
-      defstruct account_number: nil, transfer_uuid: nil, amount: nil
-    end
+    defmodule OpenAccount,        do: defstruct [:account_number, :initial_balance]
+    defmodule DepositMoney,       do: defstruct [:account_number, :transfer_uuid, :amount]
+    defmodule WithdrawMoney,      do: defstruct [:account_number, :transfer_uuid, :amount]
+    defmodule CloseAccount,       do: defstruct [:account_number]
   end
 
   defmodule Events do
-    defmodule BankAccountOpened do
-      defstruct account_number: nil, initial_balance: nil
-    end
-
-    defmodule MoneyDeposited do
-      defstruct account_number: nil, transfer_uuid: nil, amount: nil, balance: nil
-    end
-
-    defmodule MoneyWithdrawn do
-      defstruct account_number: nil, transfer_uuid: nil, amount: nil, balance: nil
-    end
+    defmodule BankAccountOpened,  do: defstruct [:account_number, :initial_balance]
+    defmodule MoneyDeposited,     do: defstruct [:account_number, :transfer_uuid, :amount, :balance]
+    defmodule MoneyWithdrawn,     do: defstruct [:account_number, :transfer_uuid, :amount, :balance]
+    defmodule BankAccountClosed,  do: defstruct [:account_number]
   end
 
-  alias Commands.{OpenAccount,DepositMoney,WithdrawMoney}
-  alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn}
+  alias Commands.{OpenAccount,DepositMoney,WithdrawMoney,CloseAccount}
+  alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn,BankAccountClosed}
 
-  def open_account(%BankAccount{state: %{is_active?: true}}, %OpenAccount{}) do
-    {:error, :account_already_open}
-  end
-
+  def open_account(%BankAccount{state: %{is_active?: true}}, %OpenAccount{}), do: {:error, :account_already_open}
   def open_account(%BankAccount{state: %{is_active?: false}} = account, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) when is_number(initial_balance) and initial_balance > 0 do
     account =
       account
@@ -66,6 +49,15 @@ defmodule Commanded.ExampleDomain.BankAccount do
     {:ok, account}
   end
 
+  def close_account(%BankAccount{state: %{is_active?: false}}, %OpenAccount{}), do: {:error, :account_already_closed}
+  def close_account(%BankAccount{state: %{is_active?: true}} = account, %CloseAccount{account_number: account_number}) do
+    account =
+      account
+      |> update(%BankAccountClosed{account_number: account_number})
+
+    {:ok, account}
+  end
+
   # state mutatators
 
   def apply(%BankAccount.State{} = state, %BankAccountOpened{} = account_opened) do
@@ -85,6 +77,12 @@ defmodule Commanded.ExampleDomain.BankAccount do
   def apply(%BankAccount.State{} = state, %MoneyWithdrawn{} = money_withdrawn) do
     %BankAccount.State{state |
       balance: money_withdrawn.balance
+    }
+  end
+
+  def apply(%BankAccount.State{} = state, %BankAccountClosed{}) do
+    %BankAccount.State{state |
+      is_active?: false,
     }
   end
 end

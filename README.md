@@ -135,6 +135,16 @@ You can then dispatch a command using the router.
 :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```
 
+Command routers support multi command registration so you can group related command handlers into the same module.
+
+```elixir
+defmodule BankRouter do
+  use Commanded.Commands.Router
+
+  dispatch [OpenAccount,CloseAccount], to: BankAccountHandler, aggregate: BankAccount, identity: :account_number
+end
+```
+
 ### Event handlers
 
 Create an event handler module which implements the `Commanded.Event.Handler` behaviour.

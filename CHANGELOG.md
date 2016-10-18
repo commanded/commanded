@@ -7,6 +7,7 @@
 - Confirm receipt of events in event handler and process manager router.
 - Convert keys to atoms when decoding JSON using Poison decoder.
 - Prefix process manager instance snapshot uuid with process manager name.
+- Multi command dispatch registration in router ([#16](https://github.com/slashdotdash/commanded/issues/16)).
 
 ## v0.5.0
 

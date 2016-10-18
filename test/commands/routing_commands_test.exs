@@ -29,7 +29,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     # compile time safety net to prevent duplicate command registrations
     assert_raise RuntimeError, "duplicate command registration for: Elixir.Commanded.ExampleDomain.BankAccount.Commands.OpenAccount", fn ->
       Code.eval_string """
-        alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
+        alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
         defmodule DuplicateRouter do
           use Commanded.Commands.Router
@@ -41,6 +41,20 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
-  # test "should fail to dispatch command without an identity"
-  # test "should fail to dispatch command with nil identity
+  test "should allow multiple module registrations for multiple commands in a single dispatch" do
+    alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount}
+
+    defmodule MultiRouter do
+      use Commanded.Commands.Router
+
+      dispatch [OpenAccount,CloseAccount], to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+    end
+
+    :ok = MultiRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    :ok = MultiRouter.dispatch(%CloseAccount{account_number: "ACC123"})
+  end
+
+  test "should fail to dispatch command with nil identity" do
+    {:error, :invalid_aggregate_identity} = ExampleRouter.dispatch(%OpenAccount{account_number: nil, initial_balance: 1_000})
+  end
 end
