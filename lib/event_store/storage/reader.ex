@@ -12,8 +12,8 @@ defmodule EventStore.Storage.Reader do
   @doc """
   Read events appended to a single stream forward from the given starting version
   """
-  def read_forward(conn, stream_id, start_version, _count) do
-    case Reader.Query.read_events_forward(conn, stream_id, start_version) do
+  def read_forward(conn, stream_id, start_version, count) do
+    case Reader.Query.read_events_forward(conn, stream_id, start_version, count) do
       {:ok, rows} -> map_rows_to_event_data(rows)
       {:error, reason} -> failed_to_read(stream_id, reason)
     end
@@ -22,8 +22,8 @@ defmodule EventStore.Storage.Reader do
   @doc """
   Read events appended to all streams forward from the given start event id inclusive
   """
-  def read_all_forward(conn, start_event_id, _count) do
-    case Reader.Query.read_all_events_forward(conn, start_event_id) do
+  def read_all_forward(conn, start_event_id, count) do
+    case Reader.Query.read_all_events_forward(conn, start_event_id, count) do
       {:ok, rows} -> map_rows_to_event_data(rows)
       {:error, reason} -> failed_to_read_all_stream(reason)
     end
@@ -69,15 +69,15 @@ defmodule EventStore.Storage.Reader do
   end
 
   defmodule Query do
-    def read_events_forward(conn, stream_id, start_version) do
+    def read_events_forward(conn, stream_id, start_version, count) do
       conn
-      |> Postgrex.query(Statements.read_events_forward, [stream_id, start_version])
+      |> Postgrex.query(Statements.read_events_forward, [stream_id, start_version, count])
       |> handle_response
     end
 
-    def read_all_events_forward(conn, start_event_id) do
+    def read_all_events_forward(conn, start_event_id, count) do
       conn
-      |> Postgrex.query(Statements.read_all_events_forward, [start_event_id])
+      |> Postgrex.query(Statements.read_all_events_forward, [start_event_id, count])
       |> handle_response
     end
 
@@ -89,7 +89,7 @@ defmodule EventStore.Storage.Reader do
       {:ok, rows}
     end
 
-    defp handle_response({:error, %Postgrex.Error{message: reason}}) do
+    defp handle_response({:error, %Postgrex.Error{postgres: %{message: reason}}}) do
       Logger.warn(fn -> "failed to read events from stream due to: #{inspect reason}" end)
       {:error, reason}
     end

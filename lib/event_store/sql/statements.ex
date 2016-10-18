@@ -239,7 +239,8 @@ SELECT
   created_at
 FROM events
 WHERE stream_id = $1 and stream_version >= $2
-ORDER BY stream_version ASC;
+ORDER BY stream_version ASC
+LIMIT $3;
 """
   end
 
@@ -256,7 +257,8 @@ SELECT
   created_at
 FROM events
 WHERE event_id >= $1
-ORDER BY event_id ASC;
+ORDER BY event_id ASC
+LIMIT $2;
 """
   end
 end
