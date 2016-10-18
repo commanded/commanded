@@ -4,7 +4,7 @@ defmodule EventStore.Mixfile do
   def project do
     [
       app: :eventstore,
-      version: "0.5.0",
+      version: "0.5.1",
       elixir: "~> 1.3",
       elixirc_paths: elixirc_paths(Mix.env),
       description: description,
@@ -13,7 +13,8 @@ defmodule EventStore.Mixfile do
       start_permanent: Mix.env == :prod,
       consolidate_protocols: Mix.env == :prod,
       aliases: aliases,
-      deps: deps
+      deps: deps,
+      dialyzer: [plt_add_deps: :project, flags: ["-Werror_handling", "-Wrace_conditions", "-Wunderspecs"]]
     ]
   end
 
@@ -34,11 +35,12 @@ defmodule EventStore.Mixfile do
     [
       {:benchfella, "~> 0.3", only: :bench},
       {:credo, "~> 0.4", only: [:dev, :test]},
+      {:dialyxir, "~> 0.3.5", only: [:dev]},
       {:ex_doc, "~> 0.13", only: :dev},
       {:fsm, "~> 0.2"},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 2.2", only: :test},
+      {:poison, "~> 3.0", only: :test},
       {:poolboy, "~> 1.5"},
       {:postgrex, "~> 0.12"},
       {:uuid, "~> 1.1", only: [:bench, :test]}

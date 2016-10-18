@@ -39,14 +39,14 @@ defmodule EventStore.Storage do
   @doc """
   Read events for the given stream forward from the starting version, use zero for all events for the stream
   """
-  def read_stream_forward(stream_id, start_version \\ 0, count \\ nil) do
+  def read_stream_forward(stream_id, start_version, count) do
     execute_using_storage_pool(&Reader.read_forward(&1, stream_id, start_version, count))
   end
 
   @doc """
   Read events for all streams forward from the starting event id, use zero for all events for all streams
   """
-  def read_all_streams_forward(start_event_id \\ 0, count \\ nil) do
+  def read_all_streams_forward(start_event_id, count) do
     execute_using_storage_pool(&Stream.read_all_streams_forward(&1, start_event_id, count))
   end
 

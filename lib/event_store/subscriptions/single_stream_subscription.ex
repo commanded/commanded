@@ -17,7 +17,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
   def unseen_events(stream, last_seen_stream_version) do
     start_version = last_seen_stream_version + 1
 
-    Stream.read_stream_forward(stream, start_version)
+    Stream.read_stream_forward(stream, start_version, 1_000)
   end
 
   def ack_last_seen_event(stream_uuid, subscription_name, last_stream_version) do

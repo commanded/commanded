@@ -32,7 +32,6 @@ defmodule Mix.Tasks.EventStore.Drop do
     case Database.drop(config) do
       :ok -> Mix.shell.info "The EventStore database has been dropped."
       {:error, :already_down} -> Mix.shell.info "The EventStore database has already been dropped."
-      {:error, term} when is_binary(term) -> Mix.raise "The EventStore database couldn't be dropped, reason given: #{term}."
       {:error, term} -> Mix.raise "The EventStore database couldn't be dropped, reason given: #{inspect term}."
     end
   end

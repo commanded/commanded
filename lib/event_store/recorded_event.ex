@@ -12,4 +12,15 @@ defmodule EventStore.RecordedEvent do
             data: nil,
             metadata: nil,
             created_at: nil
+
+  @type t :: %EventStore.RecordedEvent{
+    event_id: non_neg_integer,
+    stream_id: non_neg_integer,
+    stream_version: non_neg_integer,
+    correlation_id: String.t,
+    event_type: String.t,
+    data: binary,
+    metadata: binary,
+    created_at: NaiveDateTime.t
+  }
 end

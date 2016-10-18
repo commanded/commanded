@@ -26,7 +26,7 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:append_to_stream, expected_version, events})
   end
 
-  def read_stream_forward(stream, start_version \\ 0, count \\ nil) do
+  def read_stream_forward(stream, start_version, count) do
     GenServer.call(stream, {:read_stream_forward, start_version, count})
   end
 
@@ -123,15 +123,18 @@ defmodule EventStore.Streams.Stream do
   end
 
   defp read_storage_forward(stream_id, start_version, count, serializer) when not is_nil(stream_id) do
-    {:ok, recorded_events} = Storage.read_stream_forward(stream_id, start_version, count)
-
-    events = Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)
-
-    {:ok, events}
+    case Storage.read_stream_forward(stream_id, start_version, count) do
+      {:ok, recorded_events} -> {:ok, deserialize_recorded_events(recorded_events, serializer)}
+      {:error, _reason} = reply -> reply
+    end
   end
 
   defp read_storage_forward(_stream_id, _start_version, _count, _serializer) do
     {:error, :stream_not_found}
+  end
+
+  defp deserialize_recorded_events(recorded_events, serializer) do
+    Enum.map(recorded_events, &deserialize_recorded_event(&1, serializer))
   end
 
   defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do

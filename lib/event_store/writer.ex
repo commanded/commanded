@@ -28,6 +28,8 @@ defmodule EventStore.Writer do
   @doc """
   Append the given list of events to the stream
   """
+  def append_to_stream(events, stream_id, stream_uuid)
+  def append_to_stream([], _stream_id, _stream_uuid), do: :ok
   def append_to_stream(events, stream_id, stream_uuid) do
     GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_uuid})
   end
@@ -35,13 +37,14 @@ defmodule EventStore.Writer do
   def handle_call({:append_to_stream, events, stream_id, stream_uuid}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
     recorded_events = assign_event_id(events, next_event_id)
 
-    {:ok, count} = append_events(conn, stream_id, recorded_events)
+    {reply, state} = case append_events(conn, stream_id, recorded_events) do
+      {:ok, count} ->
+        publish_events(stream_uuid, recorded_events)
+        {:ok, %Writer{state | next_event_id: next_event_id + count}}
+      {:error, _reason} = reply -> {reply, state}
+    end
 
-    publish_events(stream_uuid, recorded_events)
-
-    state = %Writer{state | next_event_id: next_event_id + count}
-
-    {:reply, :ok, state}
+    {:reply, reply, state}
   end
 
   def handle_cast({:latest_event_id}, %Writer{conn: conn} = state) do

@@ -8,14 +8,14 @@ defmodule EventStore do
       Application.ensure_all_started(:eventstore)
 
       # append events to a stream
-      {:ok, persisted_events} = EventStore.append_to_stream(stream_uuid, expected_version, events)
+      :ok = EventStore.append_to_stream(stream_uuid, expected_version, events)
 
       # read all events from a stream, starting at the beginning
       {:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
   """
 
   alias EventStore.Snapshots.{SnapshotData,Snapshotter}
-  alias EventStore.{Streams,Subscriptions}
+  alias EventStore.{EventData,RecordedEvent,Streams,Subscriptions}
   alias EventStore.Streams.{AllStream,Stream}
 
   @all_stream "$all"
@@ -31,12 +31,9 @@ defmodule EventStore do
 
     - `events` is a list of `%EventStore.EventData{}` structs.
   """
+  @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events)
-
-  def append_to_stream(@all_stream, _expected_version, _events) do
-    {:error, :cannot_append_to_all_stream}
-  end
-
+  def append_to_stream(@all_stream, _expected_version, _events), do: {:error, :cannot_append_to_all_stream}
   def append_to_stream(stream_uuid, expected_version, events) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
@@ -52,9 +49,12 @@ defmodule EventStore do
       Defaults to the beginning of the stream if not set.
 
     - `count` optionally, the maximum number of events to read.
-      If not set it will return all events from the stream.
+      If not set it will be limited to returning 1,000 events from the stream.
   """
-  def read_stream_forward(stream_uuid, start_version \\ 0, count \\ nil) do
+  @spec read_stream_forward(String.t) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_stream_forward(String.t, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_stream_forward(String.t, non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  def read_stream_forward(stream_uuid, start_version \\ 0, count \\ 1_000) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
     Stream.read_stream_forward(stream, start_version, count)
@@ -67,24 +67,30 @@ defmodule EventStore do
       Defaults to the beginning of the stream if not set.
 
     - `count` optionally, the maximum number of events to read.
-      If not set it will return all events from all streams.
+    If not set it will be limited to returning 1,000 events from all streams.
   """
-  def read_all_streams_forward(start_event_id \\ 0, count \\ nil) do
+  @spec read_all_streams_forward() :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_all_streams_forward(non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_all_streams_forward(non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  def read_all_streams_forward(start_event_id \\ 0, count \\ 1_000) do
     AllStream.read_stream_forward(start_event_id, count)
   end
 
   @doc """
-  Subscriber will be notified of each event persisted to a single stream.
+  Subscriber will be notified of each batch of events persisted to a single stream.
 
     - `stream_uuid` is the stream to subscribe to.
       Use the `$all` identifier to subscribe to events from all streams.
 
     - `subscription_name` is used to uniquely identify the subscription.
 
-    - `subscriber` is a process that will receive `{:event, event}` callback messages.
+    - `subscriber` is a process that will be sent `{:events, events, subscription}` notification messages.
 
   Returns `{:ok, subscription}` when subscription succeeds.
   """
+  @spec subscribe_to_stream(String.t, String.t, pid) :: {:ok, subscription :: pid}
+    | {:error, :subscription_already_exists}
+    | {:error, reason :: term}
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
@@ -96,10 +102,13 @@ defmodule EventStore do
 
     - `subscription_name` is used to uniquely identify the subscription.
 
-    - `subscriber` is a process that will receive `{:event, event}` callback messages.
+    - `subscriber` is a process that will be sent `{:events, events, subscription}` notification messages.
 
   Returns `{:ok, subscription}` when subscription succeeds.
   """
+  @spec subscribe_to_all_streams(String.t, pid) :: {:ok, subscription :: pid}
+    | {:error, :subscription_already_exists}
+    | {:error, reason :: term}
   def subscribe_to_all_streams(subscription_name, subscriber) do
     AllStream.subscribe_to_stream(subscription_name, subscriber)
   end
@@ -107,14 +116,13 @@ defmodule EventStore do
   @doc """
   Unsubscribe an existing subscriber from event notifications.
 
-    - `stream_uuid` is the stream to subscribe to.
+    - `stream_uuid` is the stream to unsubscribe from.
 
-    - `subscription_name` is used to uniquely identify the subscription.
-
-    - `subscriber` is a process that will receive `{:event, event}` callback messages.
+    - `subscription_name` is used to identify the existing subscription to remove.
 
   Returns `:ok` on success.
   """
+  @spec unsubscribe_from_stream(String.t, String.t) :: :ok
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
     Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
   end
@@ -122,10 +130,11 @@ defmodule EventStore do
   @doc """
   Unsubscribe an existing subscriber from all event notifications.
 
-    - `subscription_name` is used to uniquely identify the subscription.
+    - `subscription_name` is used to identify the existing subscription to remove.
 
   Returns `:ok` on success.
   """
+  @spec unsubscribe_from_all_streams(String.t) :: :ok
   def unsubscribe_from_all_streams(subscription_name) do
     Subscriptions.unsubscribe_from_stream(@all_stream, subscription_name)
   end
@@ -135,6 +144,7 @@ defmodule EventStore do
 
   Returns `{:ok, %EventStore.Snapshots.SnapshotData{}}` on success, or `{:error, :snapshot_not_found}` when unavailable.
   """
+  @spec read_snapshot(String.t) :: {:ok, SnapshotData.t} | {:error, :snapshot_not_found}
   def read_snapshot(source_uuid) do
     Snapshotter.read_snapshot(source_uuid)
   end
@@ -144,6 +154,7 @@ defmodule EventStore do
 
   Returns `:ok` on success
   """
+  @spec record_snapshot(SnapshotData.t) :: :ok | {:error, reason :: term}
   def record_snapshot(%SnapshotData{} = snapshot) do
     Snapshotter.record_snapshot(snapshot)
   end

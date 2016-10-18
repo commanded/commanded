@@ -6,4 +6,11 @@ defmodule EventStore.EventData do
             event_type: nil ,
             data: nil,
             metadata: nil
+
+  @type t :: %EventStore.EventData{
+    correlation_id: String.t,
+    event_type: String.t,
+    data: binary,
+    metadata: binary
+  }
 end

@@ -12,7 +12,7 @@ defmodule EventStore.Storage.Reader do
   @doc """
   Read events appended to a single stream forward from the given starting version
   """
-  def read_forward(conn, stream_id, start_version, _count \\ nil) do
+  def read_forward(conn, stream_id, start_version, _count) do
     case Reader.Query.read_events_forward(conn, stream_id, start_version) do
       {:ok, rows} -> map_rows_to_event_data(rows)
       {:error, reason} -> failed_to_read(stream_id, reason)
@@ -22,7 +22,7 @@ defmodule EventStore.Storage.Reader do
   @doc """
   Read events appended to all streams forward from the given start event id inclusive
   """
-  def read_all_forward(conn, start_event_id, _count \\ nil) do
+  def read_all_forward(conn, start_event_id, _count) do
     case Reader.Query.read_all_events_forward(conn, start_event_id) do
       {:ok, rows} -> map_rows_to_event_data(rows)
       {:error, reason} -> failed_to_read_all_stream(reason)
@@ -87,6 +87,11 @@ defmodule EventStore.Storage.Reader do
 
     defp handle_response({:ok, %Postgrex.Result{rows: rows}}) do
       {:ok, rows}
+    end
+
+    defp handle_response({:error, %Postgrex.Error{message: reason}}) do
+      Logger.warn(fn -> "failed to read events from stream due to: #{inspect reason}" end)
+      {:error, reason}
     end
   end
 end

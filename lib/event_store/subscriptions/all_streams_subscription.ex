@@ -19,7 +19,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
   def unseen_events(_stream, last_seen_event_id) do
     start_event_id = last_seen_event_id + 1
 
-    AllStream.read_stream_forward(start_event_id)
+    AllStream.read_stream_forward(start_event_id, 1_000)
   end
 
   def ack_last_seen_event(@all_stream, subscription_name, last_event_id) do

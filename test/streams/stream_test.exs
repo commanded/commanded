@@ -62,7 +62,7 @@ defmodule EventStore.Streams.StreamTest do
     stream_uuid = UUID.uuid4
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    {:error, :stream_not_found} = Stream.read_stream_forward(stream)
+    {:error, :stream_not_found} = Stream.read_stream_forward(stream, 0, 1)
   end
 
   test "read stream forward" do
@@ -72,7 +72,7 @@ defmodule EventStore.Streams.StreamTest do
     {:ok, stream} = Streams.open_stream(stream_uuid)
     :ok = Stream.append_to_stream(stream, 0, events)
 
-    {:ok, read_events} = Stream.read_stream_forward(stream)
+    {:ok, read_events} = Stream.read_stream_forward(stream, 0, 1_000)
     assert length(read_events) == 3
   end
 

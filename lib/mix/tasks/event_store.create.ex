@@ -42,7 +42,6 @@ defmodule Mix.Tasks.EventStore.Create do
         unless opts[:quiet] do
           Mix.shell.info "The EventStore database already exists."
         end
-      {:error, term} when is_binary(term) -> Mix.raise "The EventStore database couldn't be created, reason given: #{term}."
       {:error, term} -> Mix.raise "The EventStore database couldn't be created, reason given: #{inspect term}."
     end
   end
