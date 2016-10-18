@@ -16,7 +16,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(_event), do: false
 
-  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount} = money_transfer_requested) do
+  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, amount: amount} = money_transfer_requested) do
     transfer =
       transfer
       |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})

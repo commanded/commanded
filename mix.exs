@@ -20,7 +20,10 @@ defmodule Commanded.Mixfile do
     [
       applications: [
         :logger,
-        :eventstore
+        :eventstore,
+        :eventsourced,
+        :poison,
+        :uuid
       ],
       mod: {Commanded.Application, []}
     ]
@@ -36,7 +39,7 @@ defmodule Commanded.Mixfile do
       {:ex_doc, "~> 0.14", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 2.2"},
+      {:poison, "~> 3.0"},
       {:uuid, "~> 1.1"}
     ]
   end

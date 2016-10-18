@@ -54,7 +54,7 @@ defmodule Commanded.Event.Handler do
   defp handle_event(%EventStore.RecordedEvent{event_id: event_id, data: data, metadata: metadata}, %Handler{handler_module: handler_module}) do
     case handler_module.handle(data, Map.merge(%{event_id: event_id}, metadata)) do
       :ok -> {:ok, event_id}
-      {:error, reason} = reply -> reply
+      {:error, _reason} = reply -> reply
     end
   end
 
