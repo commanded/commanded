@@ -34,7 +34,7 @@ defmodule Commanded.ExampleDomain.BankAccount do
   alias Commands.{OpenAccount,DepositMoney,WithdrawMoney}
   alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn}
 
-  def open_account(%BankAccount{state: %{is_active?: true}} = account, %OpenAccount{}) do
+  def open_account(%BankAccount{state: %{is_active?: true}}, %OpenAccount{}) do
     {:error, :account_already_open}
   end
 

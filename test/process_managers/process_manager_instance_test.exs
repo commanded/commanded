@@ -27,7 +27,7 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
     account1_uuid = UUID.uuid4
     account2_uuid = UUID.uuid4
 
-    {:ok, process_manager} = ProcessManagerInstance.start_link(Router, TransferMoneyProcessManager, process_uuid)
+    {:ok, process_manager} = ProcessManagerInstance.start_link(Router, "TransferMoneyProcessManager", TransferMoneyProcessManager, process_uuid)
 
     event = %MoneyTransferRequested{
       transfer_uuid: process_uuid,

@@ -54,7 +54,7 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp do_assert_receive(event_type, predicate_fn, assertion_fn) do
-    assert_receive {:events, received_events}, 1_000
+    assert_receive {:events, received_events, _subscription}, 1_000
 
     expected_type = Atom.to_string(event_type)
     expected_event = Enum.find(received_events, fn received_event ->
@@ -75,7 +75,7 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp do_wait_for_event(event_type, predicate_fn) do
-    assert_receive {:events, received_events}, 1_000
+    assert_receive {:events, received_events, _subscription}, 1_000
 
     expected_type = Atom.to_string(event_type)
     expected_event = Enum.find(received_events, fn received_event ->
