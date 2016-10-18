@@ -42,12 +42,14 @@ defmodule EventStore.Storage.Database do
 
     args = []
 
-    if username = config[:username] do
-      args = ["-U", username|args]
+    args = case config[:username] do
+      nil -> args
+      username -> ["-U", username | args]
     end
 
-    if port = config[:port] do
-      args = ["-p", to_string(port)|args]
+    args = case config[:port] do
+      nil -> args
+      port -> ["-p", to_string(port) | args]
     end
 
     host = config[:hostname] || System.get_env("PGHOST") || "localhost"

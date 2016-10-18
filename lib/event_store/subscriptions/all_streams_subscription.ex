@@ -22,7 +22,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     AllStream.read_stream_forward(start_event_id)
   end
 
-  def ack_last_seen_event(stream_uuid, subscription_name, last_event_id) do
+  def ack_last_seen_event(@all_stream, subscription_name, last_event_id) do
     Storage.ack_last_seen_event(@all_stream, subscription_name, last_event_id, nil)
   end
 end
