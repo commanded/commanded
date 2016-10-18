@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.2
+
+### Enhancements
+
+- Provide typespecs for the public API ([#16](https://github.com/slashdotdash/eventstore/issues/16))
+- Fix compilation warnings in mix database task ([#14](https://github.com/slashdotdash/eventstore/issues/14))
+
+### Bug fixes
+
+- Read stream forward does not use count to limit returned events ([#10](https://github.com/slashdotdash/eventstore/issues/10))
+
 ## v0.5.0
 
 ### Enhancements
