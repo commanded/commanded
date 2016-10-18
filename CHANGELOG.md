@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.0
+
+### Enhancements
+
+- Confirm receipt of events in event handler and process manager router.
+- Convert keys to atoms when decoding JSON using Poison decoder.
+- Prefix process manager instance snapshot uuid with process manager name.
+
 ## v0.5.0
 
 ### Enhancements
