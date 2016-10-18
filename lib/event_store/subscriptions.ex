@@ -60,9 +60,11 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_call({:unsubscribe_from_stream, stream_uuid, subscription_name}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
-    case get_subscription(stream_uuid, subscription_name, subscriptions) do
-      nil -> nil
-      subscription -> delete_subscription(supervisor, subscription)
+    subscriptions = case get_subscription(stream_uuid, subscription_name, subscriptions) do
+      nil -> subscriptions
+      subscription ->
+        delete_subscription(supervisor, subscription)
+        remove_subscription(subscriptions, stream_uuid, subscription_name, subscription)
     end
 
     {:reply, :ok, subscriptions}
@@ -77,14 +79,13 @@ defmodule EventStore.Subscriptions do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscriptions{subscription_pids: subscription_pids} = subscriptions) do
-    Logger.info(fn -> "subscription down due to: #{inspect reason}" end)
+    _ = Logger.info(fn -> "subscription down due to: #{inspect reason}" end)
 
     {stream_uuid, subscription_name} = Map.get(subscription_pids, pid)
 
     subscriptions =
       subscriptions
-      |> remove_subscription(stream_uuid, subscription_name)
-      |> remove_subscription_pid(pid)
+      |> remove_subscription(stream_uuid, subscription_name, pid)
 
     {:noreply, subscriptions}
   end
@@ -101,7 +102,7 @@ defmodule EventStore.Subscriptions do
   end
 
   defp create_subscription(supervisor, stream_uuid, stream, subscription_name, subscriber) do
-    Logger.debug(fn -> "creating subscription process on stream #{inspect stream_uuid} named: #{inspect subscription_name}" end)
+    _ = Logger.debug(fn -> "creating subscription process on stream #{inspect stream_uuid} named: #{inspect subscription_name}" end)
 
     {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber)
 
@@ -112,8 +113,7 @@ defmodule EventStore.Subscriptions do
 
   defp delete_subscription(supervisor, subscription) do
     :ok = Subscription.unsubscribe(subscription)
-
-    Subscriptions.Supervisor.unsubscribe_from_stream(supervisor, subscription)
+    :ok = Subscriptions.Supervisor.unsubscribe_from_stream(supervisor, subscription)
   end
 
   defp append_subscription(@all_stream, subscription_name, subscription, %Subscriptions{all_stream: all_stream, subscription_pids: subscription_pids} = subscriptions) do
@@ -147,6 +147,12 @@ defmodule EventStore.Subscriptions do
       data: serializer.deserialize(data, type: event_type),
       metadata: serializer.deserialize(metadata, [])
     }
+  end
+
+  defp remove_subscription(%Subscriptions{} = subscriptions, stream_uuid, subscription_name, subscription) do
+    subscriptions
+    |> remove_subscription(stream_uuid, subscription_name)
+    |> remove_subscription_pid(subscription)
   end
 
   defp remove_subscription(%Subscriptions{all_stream: all_stream} = subscriptions, @all_stream, subscription_name) do

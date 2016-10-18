@@ -47,22 +47,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate catching_up do
-    defevent catch_up, data: %SubscriptionData{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen} = data do
-      case subscription_provider(stream_uuid).state(stream) do
-        {:ok, 0} ->
-          # no events
-          next_state(:subscribed, data)
+    defevent catch_up, data: %SubscriptionData{} = data do
+      {state, data} = catch_up_from_stream(data)
 
-        {:ok, ^last_seen} ->
-          # already seen latest event
-          next_state(:subscribed, data)
-
-        {:ok, _latest_event} ->
-          # must catch-up with all unseen events from stream
-          data = catch_up_from_stream(data)
-
-          next_state(:subscribed, data)
-      end
+      next_state(state, data)
     end
 
     defevent ack(ack), data: %SubscriptionData{} = data do
@@ -198,12 +186,21 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     Storage.unsubscribe_from_stream(stream_uuid, subscription_name)
   end
 
+  # fetch unseen events from the stream
+  # transition to `subscribed` state when no events are found
   defp catch_up_from_stream(%SubscriptionData{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen} = data) do
-    last_event = case subscription_provider(stream_uuid).unseen_events(stream, last_seen) do
-      {:ok, events} -> notify_subscriber_events(data, events)
-    end
+    case subscription_provider(stream_uuid).unseen_events(stream, last_seen, @max_buffer_size) do
+      {:ok, []} -> {:subscribed, data}
+      {:ok, events} ->
+        last_event = notify_subscriber_events(data, events)
+        data = %SubscriptionData{data | last_seen: subscription_provider(stream_uuid).event_id(last_event)}
 
-    %SubscriptionData{data | last_seen: subscription_provider(stream_uuid).event_id(last_event)}
+        if length(events) < @max_buffer_size do
+          {:subscribed, data}
+        else
+          {:catching_up, data}
+        end
+    end
   end
 
   # chunk events by correlation id and send to subscriber

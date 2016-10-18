@@ -41,11 +41,10 @@ defmodule EventStore.Streams.AllStream do
   end
 
   defp read_storage_forward(start_event_id, count, serializer) do
-    {:ok, recorded_events} = Storage.read_all_streams_forward(start_event_id, count)
-
-    events = Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)
-
-    {:ok, events}
+    case Storage.read_all_streams_forward(start_event_id, count) do
+      {:ok, recorded_events} -> {:ok, Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)}
+      {:error, _reason} = reply -> reply
+    end
   end
 
   defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do

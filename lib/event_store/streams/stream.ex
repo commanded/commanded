@@ -91,9 +91,7 @@ defmodule EventStore.Streams.Stream do
     {reply, state}
   end
 
-  defp append_to_storage(_expected_version, _events, _state) do
-    {:error, :wrong_expected_version}
-  end
+  defp append_to_storage(_expected_version, _events, _state), do: {:error, :wrong_expected_version}
 
   defp prepare_events(events, stream_id, stream_version, serializer) do
     initial_stream_version = stream_version + 1
@@ -128,10 +126,7 @@ defmodule EventStore.Streams.Stream do
       {:error, _reason} = reply -> reply
     end
   end
-
-  defp read_storage_forward(_stream_id, _start_version, _count, _serializer) do
-    {:error, :stream_not_found}
-  end
+  defp read_storage_forward(_stream_id, _start_version, _count, _serializer), do: {:error, :stream_not_found}
 
   defp deserialize_recorded_events(recorded_events, serializer) do
     Enum.map(recorded_events, &deserialize_recorded_event(&1, serializer))

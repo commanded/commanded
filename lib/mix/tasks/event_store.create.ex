@@ -21,7 +21,7 @@ defmodule Mix.Tasks.EventStore.Create do
 
   @doc false
   def run(args) do
-    Application.ensure_all_started(:postgrex)
+    {:ok, _} = Application.ensure_all_started(:postgrex)
 
     config = EventStore.Config.parse Application.get_env(:eventstore, Storage)
     {opts, _, _} = OptionParser.parse(args, switches: [quiet: :boolean])

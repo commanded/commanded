@@ -14,14 +14,16 @@ defmodule EventStore.Mixfile do
       consolidate_protocols: Mix.env == :prod,
       aliases: aliases,
       deps: deps,
-      dialyzer: [plt_add_deps: :project, flags: ["-Werror_handling", "-Wrace_conditions", "-Wunderspecs"]]
+      dialyzer: [plt_add_deps: :project]
     ]
   end
 
   def application do
     [
       applications: [
+        :fsm,
         :logger,
+        :poolboy,
         :postgrex
       ],
       mod: {EventStore.Application, []}
