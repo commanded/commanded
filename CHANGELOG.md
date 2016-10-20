@@ -4,7 +4,7 @@
 
 ### Enhancements
 
-- Confirm receipt of events in event handler and process manager router.
+- Confirm receipt of events in event handler and process manager router ([#19](https://github.com/slashdotdash/commanded/pull/19)).
 - Convert keys to atoms when decoding JSON using Poison decoder.
 - Prefix process manager instance snapshot uuid with process manager name.
 - Multi command dispatch registration in router ([#16](https://github.com/slashdotdash/commanded/issues/16)).
