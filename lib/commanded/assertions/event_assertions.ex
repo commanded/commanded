@@ -1,6 +1,8 @@
 defmodule Commanded.Assertions.EventAssertions do
   import ExUnit.Assertions
 
+  @receive_timeout 1_000
+
   @doc """
   Wait for an event of the given event type to be published
   """
@@ -54,7 +56,9 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp do_assert_receive(event_type, predicate_fn, assertion_fn) do
-    assert_receive {:events, received_events, _subscription}, 1_000
+    assert_receive {:events, received_events, subscription}, @receive_timeout
+
+    ack_events(subscription, received_events)
 
     expected_type = Atom.to_string(event_type)
     expected_event = Enum.find(received_events, fn received_event ->
@@ -75,7 +79,9 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp do_wait_for_event(event_type, predicate_fn) do
-    assert_receive {:events, received_events, _subscription}, 1_000
+    assert_receive {:events, received_events, subscription}, @receive_timeout
+
+    ack_events(subscription, received_events)
 
     expected_type = Atom.to_string(event_type)
     expected_event = Enum.find(received_events, fn received_event ->
@@ -89,5 +95,9 @@ defmodule Commanded.Assertions.EventAssertions do
       nil -> do_wait_for_event(event_type, predicate_fn)
       received_event -> received_event
     end
+  end
+
+  defp ack_events(subscription, events) do
+    send(subscription, {:ack, List.last(events).event_id})
   end
 end
