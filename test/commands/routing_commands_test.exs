@@ -3,8 +3,8 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   doctest Commanded.Commands.Router
 
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler}
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
+  alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,WithdrawMoneyHandler}
+  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount,DepositMoney,WithdrawMoney}
 
   defmodule UnregisteredCommand do
     defstruct aggregate_uuid: UUID.uuid4
@@ -41,17 +41,28 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  defmodule MultiCommandRouter do
+    use Commanded.Commands.Router
+
+    dispatch [OpenAccount,CloseAccount], to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+  end
+
   test "should allow multiple module registrations for multiple commands in a single dispatch" do
-    alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount}
+    :ok = MultiCommandRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    :ok = MultiCommandRouter.dispatch(%CloseAccount{account_number: "ACC123"})
+  end
 
-    defmodule MultiRouter do
-      use Commanded.Commands.Router
+  defmodule MultiCommandHandlerRouter do
+    use Commanded.Commands.Router
 
-      dispatch [OpenAccount,CloseAccount], to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
-    end
+    dispatch [OpenAccount,CloseAccount], to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+    dispatch [DepositMoney], to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
+    dispatch [WithdrawMoney], to: WithdrawMoneyHandler, aggregate: BankAccount, identity: :account_number
+  end
 
-    :ok = MultiRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
-    :ok = MultiRouter.dispatch(%CloseAccount{account_number: "ACC123"})
+  test "should allow multiple module registrations for different command handlers" do
+    :ok = MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    :ok = MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100})
   end
 
   test "should fail to dispatch command with nil identity" do
