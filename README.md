@@ -2,7 +2,7 @@
 
 Command handling middleware for CQRS applications in Elixir.
 
-Provides support for command registration and dispatch; delegation to aggregate roots; event handling; and long running process managers.
+Provides support for command registration and dispatch; hosting and delegation to aggregate roots; event handling; and long running process managers.
 
 Use with [eventstore](https://github.com/slashdotdash/eventstore) and [eventsourced](https://github.com/slashdotdash/eventsourced) as components that comprise a [CQRS](http://cqrs.nu/Faq) framework for Elixir.
 
@@ -18,7 +18,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.4"}]
+      [{:commanded, "~> 0.6"}]
     end
     ```
 
