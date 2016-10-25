@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.0
+
+### Enhancements
+
+- Use `NaiveDateTime` for each recorded event's `created_at` property.
+
 ## v0.5.2
 
 ### Enhancements

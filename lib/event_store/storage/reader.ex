@@ -64,8 +64,13 @@ defmodule EventStore.Storage.Reader do
         correlation_id: correlation_id,
         data: data,
         metadata: metadata,
-        created_at: created_at
+        created_at: to_naive(created_at)
       }
+    end
+
+    defp to_naive(%Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: minute, sec: second, usec: microsecond}) do
+      {:ok, naive} = NaiveDateTime.new(year, month, day, hour, minute, second, {microsecond,  6})
+      naive
     end
   end
 

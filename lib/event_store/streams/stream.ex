@@ -112,8 +112,14 @@ defmodule EventStore.Streams.Stream do
       correlation_id: correlation_id,
       event_type: event_type,
       data: serializer.serialize(data),
-      metadata: serializer.serialize(metadata)
+      metadata: serializer.serialize(metadata),
+      created_at: utc_now
     }
+  end
+
+  # Returns the current naive date time in UTC.
+  defp utc_now do
+    DateTime.utc_now |> DateTime.to_naive
   end
 
   defp write_to_stream(prepared_events, stream_id, stream_uuid) do

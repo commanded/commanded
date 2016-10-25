@@ -40,40 +40,49 @@ defmodule EventStore.Streams.StreamTest do
     assert stream != nil
   end
 
-  test "append events to stream" do
-    stream_uuid = UUID.uuid4
-    events = EventFactory.create_events(3)
+  describe "append events to stream" do
+    setup [:append_events_to_stream]
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
-    :ok = Stream.append_to_stream(stream, 0, events)
-  end
+    test "should persist events", context do
+      {:ok, events} = Stream.read_stream_forward(context[:stream], 0, 1_000)
 
-  test "attempt to append events for wrong expected version should error" do
-    stream_uuid = UUID.uuid4
-    events = EventFactory.create_events(3)
+      assert length(events) == 3
+    end
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
-    :ok = Stream.append_to_stream(stream, 0, events)
+    test "should set created at datetime", context do
+      now = DateTime.utc_now |> DateTime.to_naive
 
-    {:error, :wrong_expected_version} = Stream.append_to_stream(stream, 0, events)
+      {:ok, [event|_]} = Stream.read_stream_forward(context[:stream], 0, 1_000)
+
+      created_at = event.created_at
+      assert created_at != nil
+      assert created_at.year == now.year
+      assert created_at.month == now.month
+      assert created_at.day == now.day
+      assert created_at.hour == now.hour
+      assert created_at.minute == now.minute
+    end
+
+    test "for wrong expected version should error", context do
+      {:error, :wrong_expected_version} = Stream.append_to_stream(context[:stream], 0, context[:events])
+    end
   end
 
   test "attempt to read an unknown stream forward should error stream not found" do
-    stream_uuid = UUID.uuid4
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+    unknown_stream_uuid = UUID.uuid4
+    {:ok, stream} = Streams.open_stream(unknown_stream_uuid)
 
     {:error, :stream_not_found} = Stream.read_stream_forward(stream, 0, 1)
   end
 
-  test "read stream forward" do
-    stream_uuid = UUID.uuid4
-    events = EventFactory.create_events(3)
+  describe "read stream forward" do
+    setup [:append_events_to_stream]
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
-    :ok = Stream.append_to_stream(stream, 0, events)
+    test "should fetch all events", context do
+      {:ok, read_events} = Stream.read_stream_forward(context[:stream], 0, 1_000)
 
-    {:ok, read_events} = Stream.read_stream_forward(stream, 0, 1_000)
-    assert length(read_events) == 3
+      assert length(read_events) == 3
+    end
   end
 
   test "stream should correctly restore stream_version after reopening" do
@@ -95,5 +104,15 @@ defmodule EventStore.Streams.StreamTest do
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
     {:ok, 3} = Stream.stream_version(stream)
+  end
+
+  defp append_events_to_stream(_context) do
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_events(3)
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+    :ok = Stream.append_to_stream(stream, 0, events)
+
+    [stream_uuid: stream_uuid, events: events, stream: stream]
   end
 end

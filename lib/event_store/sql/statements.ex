@@ -119,13 +119,13 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = "INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, data, metadata) VALUES"
+    insert = "INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, data, metadata, created_at) VALUES"
 
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
-        index = (event_number - 1) * 7
-        "($#{index + 1}, $#{index + 2}, $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6}, $#{index + 7})"
+        index = (event_number - 1) * 8
+        "($#{index + 1}, $#{index + 2}, $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6}, $#{index + 7}, $#{index + 8})"
       end)
       |> Enum.join(",")
 

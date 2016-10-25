@@ -4,14 +4,6 @@ defmodule EventStore.RecordedEvent do
 
   Events are immutable once recorded.
   """
-  defstruct event_id: nil,
-            stream_id: nil,
-            stream_version: nil,
-            correlation_id: nil,
-            event_type: nil ,
-            data: nil,
-            metadata: nil,
-            created_at: nil
 
   @type t :: %EventStore.RecordedEvent{
     event_id: non_neg_integer,
@@ -21,6 +13,17 @@ defmodule EventStore.RecordedEvent do
     event_type: String.t,
     data: binary,
     metadata: binary,
-    created_at: NaiveDateTime.t
+    created_at: NaiveDateTime.t,
   }
+
+  defstruct [
+    event_id: nil,
+    stream_id: nil,
+    stream_version: nil,
+    correlation_id: nil,
+    event_type: nil ,
+    data: nil,
+    metadata: nil,
+    created_at: nil,
+  ]
 end

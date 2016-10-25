@@ -34,7 +34,8 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
       password: "postgres",
       database: "eventstore_dev",
       hostname: "localhost",
-      pool_size: 10      
+      pool_size: 10,
+      extensions: [{Postgrex.Extensions.Calendar, []}]
     ```
 
   4. Create the EventStore database and tables using the `mix` task

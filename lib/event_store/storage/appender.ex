@@ -38,7 +38,8 @@ defmodule EventStore.Storage.Appender do
         event.correlation_id,
         event.event_type,
         event.data,
-        event.metadata
+        event.metadata,
+        event.created_at,
       ]
     end)
     |> List.flatten
