@@ -3,7 +3,7 @@
   "decimal": {:hex, :decimal, "1.2.0", "462960fd71af282e570f7b477f6be56bf8968e68277d4d0b641a635269bf4b0d", [:mix], []},
   "earmark": {:hex, :earmark, "1.0.2", "a0b0904d74ecc14da8bd2e6e0248e1a409a2bc91aade75fcf428125603de3853", [:mix], []},
   "eventsourced": {:hex, :eventsourced, "0.2.1", "eeaaa30e4bafd101e66f022c5e817fe9648196b85027b339f5f416ec991c01b1", [:mix], []},
-  "eventstore": {:hex, :eventstore, "0.5.2", "1a3852748347300461c133d5041ef13437b6250a2838046a27366e923dfa9c1e", [:mix], [{:fsm, "~> 0.2", [hex: :fsm, optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, optional: false]}, {:postgrex, "~> 0.12", [hex: :postgrex, optional: false]}]},
+  "eventstore": {:hex, :eventstore, "0.6.0", "2650fd1f4bb77bfcbf024417a890b720b7c1a9e367b7ecb45a4f220ff77adb61", [:mix], [{:fsm, "~> 0.2", [hex: :fsm, optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, optional: false]}, {:postgrex, "~> 0.12", [hex: :postgrex, optional: false]}]},
   "ex_doc": {:hex, :ex_doc, "0.14.3", "e61cec6cf9731d7d23d254266ab06ac1decbb7651c3d1568402ec535d387b6f7", [:mix], [{:earmark, "~> 1.0", [hex: :earmark, optional: false]}]},
   "fs": {:hex, :fs, "0.9.2", "ed17036c26c3f70ac49781ed9220a50c36775c6ca2cf8182d123b6566e49ec59", [:rebar], []},
   "fsm": {:hex, :fsm, "0.2.0", "53bcc0fd4a470c92cbbc3bae2d7f7dd8462898eedd62c37a6be556b94fba0e05", [:mix], []},

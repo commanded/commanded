@@ -35,8 +35,12 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> "event handler received events: #{inspect events}" end)
 
     state = Enum.reduce(events, state, fn (event, state) ->
-      case handle_event(event, state) do
-        {:ok, event_id} -> confirm_receipt(state, subscription, event_id)
+      event_id = extract_event_id(event)
+      data = extract_data(event)
+      metadata = extract_metadata(event)
+
+      case handle_event(event_id, data, metadata, state) do
+        :ok -> confirm_receipt(state, subscription, event_id)
         {:error, :already_seen_event} -> state
       end
     end)
@@ -44,18 +48,21 @@ defmodule Commanded.Event.Handler do
     {:noreply, state}
   end
 
+  defp extract_event_id(%EventStore.RecordedEvent{event_id: event_id}), do: event_id
+  defp extract_data(%EventStore.RecordedEvent{data: data}), do: data
+  defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}) do
+    Map.merge(%{event_id: event_id, created_at: created_at}, metadata)
+  end
+
   # ignore already seen events
-  defp handle_event(%EventStore.RecordedEvent{event_id: event_id} = event, %Handler{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
-    Logger.debug(fn -> "event handler has already seen event: #{inspect event}" end)
+  defp handle_event(event_id, _data, _metadata, %Handler{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
+    Logger.debug(fn -> "event handler has already seen event id: #{inspect event_id}" end)
     {:error, :already_seen_event}
   end
 
   # delegate event to handler module
-  defp handle_event(%EventStore.RecordedEvent{event_id: event_id, data: data, metadata: metadata}, %Handler{handler_module: handler_module}) do
-    case handler_module.handle(data, Map.merge(%{event_id: event_id}, metadata)) do
-      :ok -> {:ok, event_id}
-      {:error, _reason} = reply -> reply
-    end
+  defp handle_event(_event_id, data, metadata, %Handler{handler_module: handler_module}) do
+    handler_module.handle(data, metadata)
   end
 
   # confirm receipt of event

@@ -12,8 +12,10 @@ defmodule Commanded.Helpers.EventFactory do
         event_type: event.event_type,
         data: event.data,
         metadata: event.metadata,
-        created_at: :calendar.universal_time
+        created_at: now
       }
     end)
   end
+
+  defp now, do: DateTime.utc_now |> DateTime.to_naive
 end

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.1
+
+### Enhancements
+
+- Upgrade `eventstore` mix dependency to v0.6.0 to use support for recorded events created_at as `NaiveDateTime`.
+
 ## v0.6.0
 
 ### Enhancements

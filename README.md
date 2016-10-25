@@ -39,7 +39,8 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
       password: "postgres",
       database: "eventstore_dev",
       hostname: "localhost",
-      pool_size: 10
+      pool_size: 10,
+      extensions: [{Postgrex.Extensions.Calendar, []}]
     ```
 
   4. Create the `eventstore` database and tables using the `mix` task
