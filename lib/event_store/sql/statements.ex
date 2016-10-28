@@ -119,17 +119,32 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = "INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, data, metadata, created_at) VALUES"
+    insert = ["INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, data, metadata, created_at) VALUES"]
 
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
         index = (event_number - 1) * 8
-        "($#{index + 1}, $#{index + 2}, $#{index + 3}, $#{index + 4}, $#{index + 5}, $#{index + 6}, $#{index + 7}, $#{index + 8})"
-      end)
-      |> Enum.join(",")
+        event_params = [
+          "($",
+          Integer.to_string(index + 1), ", $",
+          Integer.to_string(index + 2), ", $",
+          Integer.to_string(index + 3), ", $",
+          Integer.to_string(index + 4), ", $",
+          Integer.to_string(index + 5), ", $",
+          Integer.to_string(index + 6), ", $",
+          Integer.to_string(index + 7), ", $",
+          Integer.to_string(index + 8), ")"
+        ]
 
-    insert <> " " <> params <> ";"
+        if event_number == number_of_events do
+          event_params
+        else
+          [event_params, ","]
+        end
+      end)
+
+    [insert, " ", params, ";"]
   end
 
   def create_subscription do

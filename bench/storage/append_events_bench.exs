@@ -5,7 +5,6 @@ defmodule AppendEventsBench do
   alias EventStore.Storage
 
   setup_all do
-    Code.require_file("event_factory.ex", "test")
     Application.ensure_all_started(:eventstore)
   end
 

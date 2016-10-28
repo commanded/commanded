@@ -31,6 +31,7 @@ defmodule EventStore.Mixfile do
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:bench), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
@@ -42,7 +43,7 @@ defmodule EventStore.Mixfile do
       {:fsm, "~> 0.2"},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 3.0", only: :test},
+      {:poison, "~> 3.0", only: [:bench, :test]},
       {:poolboy, "~> 1.5"},
       {:postgrex, "~> 0.12"},
       {:uuid, "~> 1.1", only: [:bench, :test]}
@@ -68,7 +69,8 @@ EventStore using PostgreSQL for persistence.
   defp aliases do
     [
       "es.setup": ["event_store.create"],
-      "es.reset": ["event_store.drop", "event_store.create"]
+      "es.reset": ["event_store.drop", "event_store.create"],
+      "benchmark": ["es.reset", "app.start", "bench"],
     ]
   end
 end
