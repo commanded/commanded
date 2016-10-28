@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.1
+
+### Enhancements
+
+- Use IO lists to build insert events SQL statement ([#23](https://github.com/slashdotdash/eventstore/issues/23)).
+
 ## v0.6.0
 
 ### Enhancements
