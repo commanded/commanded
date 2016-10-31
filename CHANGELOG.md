@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.2
+
+### Bug fixes
+
+- Fix pending aggregates restarts: supervisor restarts aggregate process but it cannot accept commands ([#22](https://github.com/slashdotdash/commanded/pull/22)).
+
 ## v0.6.1
 
 ### Enhancements
