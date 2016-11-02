@@ -119,7 +119,7 @@ end
 
 ### Command dispatch and routing
 
-Create a router to handle registration of each command to its associated handler. Configure each command, mapping it to its handler and aggregate root.
+You create a router to handle registration of each command to its associated handler. Configure each command by mapping it to a handler and aggregate root.
 
 ```elixir
 defmodule BankRouter do
@@ -135,6 +135,28 @@ You can then dispatch a command using the router.
 ```elixir
 :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```
+
+#### Timeouts
+
+A command handler has a default timeout of 5 seconds. The same as a `GenServer` process call. It must handle the command in this period, otherwise the call fails and the caller exits.
+
+You can configure a different timeout value during command registration or dispatch.
+
+```elixir
+defmodule BankRouter do
+  use Commanded.Commands.Router
+
+  # configure a timeout of 1 second for the open account command handler
+  dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number, timeout: 1_000
+end
+```
+
+```elixir
+# dispatch the open account command with a timeout of 2 seconds
+:ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, 2_000)
+```
+
+#### Multi command registration
 
 Command routers support multi command registration so you can group related command handlers into the same module.
 

@@ -2,6 +2,10 @@
 
 ## v0.6.2
 
+### Enhancements
+
+- Command dispatch timeout. Allow a `timeout` value to be configured during command registration or dispatch. This overrides the default timeout of 5 seconds. The same as the default `GenServer` call timeout.
+
 ### Bug fixes
 
 - Fix pending aggregates restarts: supervisor restarts aggregate process but it cannot accept commands ([#22](https://github.com/slashdotdash/commanded/pull/22)).

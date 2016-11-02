@@ -23,6 +23,12 @@ defmodule Commanded.Commands.Router do
 
   defmacro dispatch(command_module, to: handler, aggregate: aggregate, identity: identity) do
     quote do
+      dispatch(unquote(command_module), to: unquote(handler), aggregate: unquote(aggregate), identity: unquote(identity), timeout: 5_000)
+    end
+  end
+
+  defmacro dispatch(command_module, to: handler, aggregate: aggregate, identity: identity, timeout: timeout) do
+    quote do
       if Enum.member?(@registered_commands, unquote(command_module)) do
         raise "duplicate command registration for: #{unquote(command_module)}"
       end
@@ -34,10 +40,24 @@ defmodule Commanded.Commands.Router do
 
       Returns `:ok` on success.
       """
-      @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}      
+      @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command) do
-        Commanded.Commands.Dispatcher.dispatch(command, unquote(handler), unquote(aggregate), unquote(identity))
+        Commanded.Commands.Dispatcher.dispatch(command, unquote(handler), unquote(aggregate), unquote(identity), unquote(timeout))
+      end
+
+      @doc """
+      Dispatch the given command to the registered handler providing a timeout.
+
+      - `timeout` is an integer greater than zero which specifies how many milliseconds to allow the command to be handled, or the atom :infinity to wait indefinitely.
+        The default value is 5000.
+
+      Returns `:ok` on success.
+      """
+      @spec dispatch(command :: struct, timeout :: integer | :infinity) :: :ok | {:error, reason :: term}
+      def dispatch(command, timeout)
+      def dispatch(%unquote(command_module){} = command, timeout) do
+        Commanded.Commands.Dispatcher.dispatch(command, unquote(handler), unquote(aggregate), unquote(identity), timeout)
       end
     end
   end
