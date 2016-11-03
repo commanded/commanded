@@ -135,7 +135,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
     end
 
     # wait for ack of event
-    :timer.sleep 1_000
+    :timer.sleep 2_000
 
     Helpers.Process.shutdown(process_router)
 

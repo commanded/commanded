@@ -5,9 +5,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   use GenServer
   require Logger
 
-  alias Commanded.ProcessManagers.ProcessManagerInstance
+  alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
 
-  defstruct command_dispatcher: nil, process_manager_name: nil, process_manager_module: nil, process_uuid: nil, process_state: nil
+  defstruct [
+    command_dispatcher: nil,
+    process_manager_name: nil,
+    process_manager_module: nil,
+    process_uuid: nil,
+    process_state: nil,
+  ]
 
   def start_link(command_dispatcher, process_manager_name, process_manager_module, process_uuid) do
     GenServer.start_link(__MODULE__, %ProcessManagerInstance{
@@ -15,7 +21,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
       process_uuid: process_uuid,
-      process_state: process_manager_module.new(process_uuid)
+      process_state: process_manager_module.new(process_uuid),
     })
   end
 
@@ -25,10 +31,21 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
-  Handle the given event by calling the process manager module
+  Handle the given event by delegating to the process manager module
   """
-  def process_event(process_manager, event) do
-    GenServer.call(process_manager, {:process_event, event})
+  def process_event(process_manager, %EventStore.RecordedEvent{} = event, process_router) do
+    GenServer.cast(process_manager, {:process_event, event, process_router})
+  end
+
+  @doc """
+  Fetch the process state of this instance
+  """
+  def process_state(process_manager) do
+    GenServer.call(process_manager, {:process_state})
+  end
+
+  def handle_call({:process_state}, _from, %ProcessManagerInstance{process_state: process_state} = state) do
+    {:reply, process_state.state, state}
   end
 
   @doc """
@@ -44,40 +61,33 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
-  Fetch the process state of this instance
-  """
-  def process_state(process_manager) do
-    GenServer.call(process_manager, {:process_state})
-  end
-
-  def handle_call({:process_state}, _from, %ProcessManagerInstance{process_state: process_state} = state) do
-    {:reply, process_state.state, state}
-  end
-
-  @doc """
   Handle the given event, using the process manager module, against the current process state
   """
-  def handle_call({:process_event, event}, _from, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
+  def handle_cast({:process_event, %EventStore.RecordedEvent{} = event, process_router}, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
     process_state =
       process_state
-      |> process_event(event, process_manager_module)
+      |> do_process_event(event, process_manager_module)
       |> dispatch_commands(command_dispatcher)
 
     state = %ProcessManagerInstance{state | process_state: process_state}
 
     persist_state(state)
+    ack_event(event, process_router)
 
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
-  defp process_event(process_state, event, process_manager_module) do
-    {:ok, process_state} = process_manager_module.handle(process_state, event)
+  defp do_process_event(process_state, %EventStore.RecordedEvent{data: data}, process_manager_module) do
+    {:ok, process_state} = process_manager_module.handle(process_state, data)
     process_state
   end
 
   defp dispatch_commands(%{commands: []} = process_state, _command_dispatcher), do: process_state
   defp dispatch_commands(%{commands: commands} = process_state, command_dispatcher) when is_list(commands) do
-    Enum.each(commands, fn command -> command_dispatcher.dispatch(command) end)
+    Enum.each(commands, fn command ->
+      Logger.debug(fn -> "process manager instance attempting to dispatch command: #{inspect command}" end)
+      :ok = command_dispatcher.dispatch(command)
+    end)
 
     %{process_state | commands: []}
   end
@@ -89,6 +99,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       source_type: Atom.to_string(Module.concat(process_manager_module, State)),
       data: process_state.state
     })
+  end
+
+  defp ack_event(%EventStore.RecordedEvent{event_id: event_id}, process_router) do
+    ProcessRouter.ack_event(process_router, event_id)
   end
 
   defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"

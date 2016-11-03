@@ -9,7 +9,16 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   alias Commanded.ProcessManagers.{ProcessManagerInstance,Supervisor}
 
   defmodule State do
-    defstruct process_manager_name: nil, process_manager_module: nil, command_dispatcher: nil, process_managers: %{}, supervisor: nil, last_seen_event_id: nil
+    defstruct [
+      process_manager_name: nil,
+      process_manager_module: nil,
+      command_dispatcher: nil,
+      process_managers: %{},
+      supervisor: nil,
+      last_seen_event_id: nil,
+      pending_events: [],
+      subscription: nil,
+    ]
   end
 
   def start_link(process_manager_name, process_manager_module, command_dispatcher) do
@@ -28,6 +37,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     GenServer.cast(self, {:subscribe_to_events})
 
     {:ok, state}
+  end
+
+  @doc """
+  Acknowlegde successful handling of the given event id by a process manager instance
+  """
+  def ack_event(process_router, event_id) when is_integer(event_id) do
+    GenServer.cast(process_router, {:ack_event, event_id})
   end
 
   @doc """
@@ -54,17 +70,30 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, state}
   end
 
-  def handle_info({:events, events, subscription}, %State{process_manager_name: process_manager_name} = state) do
-    Logger.debug(fn -> "process manager router \"#{process_manager_name}\" received events: #{inspect events}" end)
+  def handle_cast({:ack_event, event_id}, %State{} = state) do
+    confirm_receipt(state, event_id)
 
-    state =
-      events
-      |> Enum.filter(fn event -> !already_seen_event?(event, state) end)
-      |> Enum.reduce(state, fn (event, state) -> handle_event(event, state) end)
-
-    state = confirm_receipt(state, subscription, events)
+    # continue processing any pending events
+    GenServer.cast(self, {:process_pending_events})
 
     {:noreply, state}
+  end
+
+  def handle_cast({:process_pending_events}, %State{pending_events: []} = state), do: {:noreply, state}
+  def handle_cast({:process_pending_events}, %State{pending_events: [event | pending_events]} = state) do
+    state = handle_event(event, state)
+
+    {:noreply, %State{state | pending_events: pending_events}}
+  end
+
+  def handle_info({:events, events, subscription}, %State{process_manager_name: process_manager_name, pending_events: pending_events} = state) do
+    Logger.debug(fn -> "process router \"#{process_manager_name}\" received events: #{inspect events}" end)
+
+    unseen_events = Enum.filter(events, fn event -> !already_seen_event?(event, state) end)
+
+    GenServer.cast(self, {:process_pending_events})
+
+    {:noreply, %State{state | pending_events: pending_events ++ unseen_events, subscription: subscription}}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %State{process_managers: process_managers} = state) do
@@ -74,38 +103,40 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   # ignore already seen event
-  defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id} = event, %State{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
+  defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id} = event, %State{last_seen_event_id: last_seen_event_id})
+  when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id
+  do
     Logger.debug(fn -> "process manager has already seen event: #{inspect event}" end)
     true
   end
   defp already_seen_event?(_event, _state), do: false
 
-  defp handle_event(%EventStore.RecordedEvent{data: data}, %State{process_manager_module: process_manager_module, process_managers: process_managers} = state) do
+  defp handle_event(%EventStore.RecordedEvent{data: data, event_id: event_id} = event, %State{process_manager_module: process_manager_module, process_managers: process_managers} = state) do
     {process_uuid, process_manager} = case process_manager_module.interested?(data) do
       {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
       {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
       false -> {nil, nil}
     end
 
-    state = case process_uuid do
-      nil -> state
-      _ -> %State{state | process_managers: Map.put(process_managers, process_uuid, process_manager)}
+    case process_uuid do
+      nil ->
+        # no process instance, just confirm receipt of event
+        confirm_receipt(state, event_id)
+      _ ->
+        # delegate event to process instance who will ack event processing on success
+        :ok = delegate_event(process_manager, event)
+
+        %State{state | process_managers: Map.put(process_managers, process_uuid, process_manager)}
     end
-
-    :ok = process_event(process_manager, data)
-
-    state
   end
 
-  # confirm receipt of events
-  defp confirm_receipt(%State{} = state, subscription, events) do
-    last_seen_event_id = List.last(events).event_id
+  # confirm receipt of given event
+  defp confirm_receipt(%State{process_manager_name: process_manager_name, subscription: subscription} = state, event_id) do
+    Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event: #{event_id}" end)
 
-    Logger.debug(fn -> "process router confirming receipt of event: #{last_seen_event_id}" end)
+    send(subscription, {:ack, event_id})
 
-    send(subscription, {:ack, last_seen_event_id})
-
-    %State{state | last_seen_event_id: last_seen_event_id}
+    %State{state | last_seen_event_id: event_id}
   end
 
   defp start_process_manager(process_uuid, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, supervisor: supervisor}) do
@@ -128,8 +159,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     end)
   end
 
-  defp process_event(nil, _event), do: :ok
-  defp process_event(process_manager, event) do
-    ProcessManagerInstance.process_event(process_manager, event)
+  defp delegate_event(nil, _event), do: :ok
+  defp delegate_event(process_manager, %EventStore.RecordedEvent{} = event) do
+    ProcessManagerInstance.process_event(process_manager, event, self)
   end
 end

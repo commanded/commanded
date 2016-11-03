@@ -35,15 +35,11 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   end
 
   def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = money_deposited) do
-    transfer = update(transfer, money_deposited)
-
-    {:ok, transfer}
+    {:ok, update(transfer, money_deposited)}
   end
 
-  def handle(transfer, _event) do
-    # ignore any other events
-    {:ok, transfer}
-  end
+  # ignore any other events
+  def handle(transfer, _event), do: {:ok, transfer}
 
   ## state mutators
 
