@@ -43,7 +43,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   Acknowlegde successful handling of the given event id by a process manager instance
   """
   def ack_event(process_router, event_id) when is_integer(event_id) do
-    GenServer.cast(process_router, {:ack_event, event_id})
+    GenServer.call(process_router, {:ack_event, event_id})
   end
 
   @doc """
@@ -62,6 +62,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:reply, reply, state}
   end
 
+  def handle_call({:ack_event, event_id}, _from, %State{} = state) do
+    state = confirm_receipt(state, event_id)
+
+    # continue processing any pending events
+    GenServer.cast(self, {:process_pending_events})
+
+    {:reply, :ok, state}
+  end
+
   @doc """
   Subscribe the process router to all events
   """
@@ -70,24 +79,17 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, state}
   end
 
-  def handle_cast({:ack_event, event_id}, %State{} = state) do
-    state = confirm_receipt(state, event_id)
-
-    # continue processing any pending events
-    GenServer.cast(self, {:process_pending_events})
-
-    {:noreply, state}
-  end
-
   def handle_cast({:process_pending_events}, %State{pending_events: []} = state), do: {:noreply, state}
-  def handle_cast({:process_pending_events}, %State{pending_events: [event | pending_events]} = state) do
+  def handle_cast({:process_pending_events}, %State{pending_events: [event | pending_events], process_manager_name: process_manager_name} = state) do
+    Logger.debug(fn ->  "process router \"#{process_manager_name}\" has #{length(pending_events)} pending event(s) to process" end)
+
     state = handle_event(event, state)
 
     {:noreply, %State{state | pending_events: pending_events}}
   end
 
   def handle_info({:events, events, subscription}, %State{process_manager_name: process_manager_name, pending_events: pending_events} = state) do
-    Logger.debug(fn -> "process router \"#{process_manager_name}\" received events: #{inspect events}" end)
+    Logger.debug(fn -> "process router \"#{process_manager_name}\" received #{length(events)} event(s)" end)
 
     unseen_events = Enum.reject(events, &already_seen_event?(&1, state))
 
@@ -111,7 +113,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
   defp already_seen_event?(_event, _state), do: false
 
-  defp handle_event(%EventStore.RecordedEvent{data: data, event_id: event_id} = event, %State{process_manager_module: process_manager_module, process_managers: process_managers} = state) do
+  defp handle_event(%EventStore.RecordedEvent{data: data, event_id: event_id} = event, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, process_managers: process_managers} = state) do
     {process_uuid, process_manager} = case process_manager_module.interested?(data) do
       {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
       {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
@@ -120,9 +122,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     case process_uuid do
       nil ->
-        # no process instance, just confirm receipt of event
+        Logger.debug(fn -> "process router \"#{process_manager_name}\" is not interested in event id: #{event_id}" end)
+
+        # no process instance, continue processing any pending events and confirm receipt of this event
+        GenServer.cast(self, {:process_pending_events})
+
         confirm_receipt(state, event_id)
       _ ->
+        Logger.debug(fn -> "process router \"#{process_manager_name}\" is interested in event id: #{event_id}" end)
+
         # delegate event to process instance who will ack event processing on success
         :ok = delegate_event(process_manager, event)
 

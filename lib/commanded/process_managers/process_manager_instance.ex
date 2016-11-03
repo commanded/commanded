@@ -117,7 +117,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp ack_event(%EventStore.RecordedEvent{event_id: event_id}, process_router) do
-    ProcessRouter.ack_event(process_router, event_id)
+    :ok = ProcessRouter.ack_event(process_router, event_id)
   end
 
   defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"
