@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.3
+
+### Enhancements
+
+- Process manager instance processes event non-blocking to prevent timeout during event processing and any command dispatching. It persists last seen event id to ensure events are handled only once.
+
 ## v0.6.2
 
 ### Enhancements

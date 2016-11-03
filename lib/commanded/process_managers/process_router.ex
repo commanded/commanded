@@ -71,7 +71,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   def handle_cast({:ack_event, event_id}, %State{} = state) do
-    confirm_receipt(state, event_id)
+    state = confirm_receipt(state, event_id)
 
     # continue processing any pending events
     GenServer.cast(self, {:process_pending_events})
@@ -89,7 +89,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_info({:events, events, subscription}, %State{process_manager_name: process_manager_name, pending_events: pending_events} = state) do
     Logger.debug(fn -> "process router \"#{process_manager_name}\" received events: #{inspect events}" end)
 
-    unseen_events = Enum.filter(events, fn event -> !already_seen_event?(event, state) end)
+    unseen_events = Enum.reject(events, &already_seen_event?(&1, state))
 
     GenServer.cast(self, {:process_pending_events})
 
@@ -103,10 +103,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   # ignore already seen event
-  defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id} = event, %State{last_seen_event_id: last_seen_event_id})
+  defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id}, %State{last_seen_event_id: last_seen_event_id})
   when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id
   do
-    Logger.debug(fn -> "process manager has already seen event: #{inspect event}" end)
+    Logger.debug(fn -> "process manager has already seen event id: #{inspect event_id}" end)
     true
   end
   defp already_seen_event?(_event, _state), do: false
@@ -132,7 +132,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   # confirm receipt of given event
   defp confirm_receipt(%State{process_manager_name: process_manager_name, subscription: subscription} = state, event_id) do
-    Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event: #{event_id}" end)
+    Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event id: #{inspect event_id}" end)
 
     send(subscription, {:ack, event_id})
 

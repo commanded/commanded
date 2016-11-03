@@ -2,6 +2,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   use Commanded.StorageCase
 
   alias Commanded.Helpers
+  alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
 
   import Commanded.Assertions.EventAssertions
@@ -134,8 +135,10 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       assert event.status == "start"
     end
 
-    # wait for ack of event
-    :timer.sleep 2_000
+    # wait for process instance to receive event
+    Wait.until(fn ->
+      %{status_history: ["start"]} = ProcessRouter.process_state(process_router, process_uuid)
+    end)
 
     Helpers.Process.shutdown(process_router)
 
