@@ -37,6 +37,17 @@ defmodule EventStore.Snapshots.Snapshotter do
     GenServer.call(__MODULE__, {:record_snapshot, snapshot})
   end
 
+  @doc """
+  Record a snapshot of the data and metadata for a given source
+
+  - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely. The default value is 5000. If no reply is received within the specified time, the function call fails and the caller exits.
+
+  Returns `:ok` on success
+  """
+  def record_snapshot(%SnapshotData{} = snapshot, timeout) do
+    GenServer.call(__MODULE__, {:record_snapshot, snapshot}, timeout)
+  end
+
   def handle_call({:read_snapshot, source_uuid}, _from, %Snapshotter{serializer: serializer} = state) do
     reply = case Storage.read_snapshot(source_uuid) do
       {:ok, snapshot} -> {:ok, deserialize_snapshot(snapshot, serializer)}

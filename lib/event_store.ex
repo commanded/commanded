@@ -158,4 +158,16 @@ defmodule EventStore do
   def record_snapshot(%SnapshotData{} = snapshot) do
     Snapshotter.record_snapshot(snapshot)
   end
+
+  @doc """
+  Record a snapshot of the data and metadata for a given source
+
+  - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely. The default value is 5000. If no reply is received within the specified time, the function call fails and the caller exits.
+  
+  Returns `:ok` on success
+  """
+  @spec record_snapshot(SnapshotData.t, timeout :: integer) :: :ok | {:error, reason :: term}
+  def record_snapshot(%SnapshotData{} = snapshot, timeout) do
+    Snapshotter.record_snapshot(snapshot, timeout)
+  end
 end
