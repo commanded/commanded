@@ -40,7 +40,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc """
-  Acknowlegde successful handling of the given event id by a process manager instance
+  Acknowledge successful handling of the given event id by a process manager instance
   """
   def ack_event(process_router, event_id) when is_integer(event_id) do
     GenServer.call(process_router, {:ack_event, event_id})

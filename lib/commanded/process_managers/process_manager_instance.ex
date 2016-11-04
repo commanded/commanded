@@ -68,7 +68,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Handle the given event, using the process manager module, against the current process state
   """
-  def handle_cast({:process_event, %EventStore.RecordedEvent{event_id: event_id} = event, process_router}, %ProcessManagerInstance{last_seen_event_id: last_seen_event_id} = state) when event_id <= last_seen_event_id do
+  def handle_cast({:process_event, %EventStore.RecordedEvent{event_id: event_id} = event, process_router}, %ProcessManagerInstance{last_seen_event_id: last_seen_event_id} = state)
+  when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id
+  do
     # already seen event, so just ack
     ack_event(event, process_router)
 
