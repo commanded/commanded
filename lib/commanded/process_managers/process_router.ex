@@ -93,9 +93,22 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     unseen_events = Enum.reject(events, &already_seen_event?(&1, state))
 
-    GenServer.cast(self, {:process_pending_events})
+    state = case {pending_events, unseen_events} do
+      {[], []} ->
+        # no pending or unseen events, so state is unmodified
+        state
 
-    {:noreply, %State{state | pending_events: pending_events ++ unseen_events, subscription: subscription}}
+      {[], _} ->
+        # no pending events, but some unseen events so start processing them
+        GenServer.cast(self, {:process_pending_events})
+        %State{state | pending_events: unseen_events, subscription: subscription}
+
+      {_, _} ->
+        # already processing pending events, append the unseen events so they are processed afterwards
+        %State{state | pending_events: pending_events ++ unseen_events, subscription: subscription}
+    end
+
+    {:noreply, state}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %State{process_managers: process_managers} = state) do
