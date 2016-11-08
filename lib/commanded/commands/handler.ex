@@ -1,5 +1,4 @@
 defmodule Commanded.Commands.Handler do
-
   @type aggregate_root :: struct()
   @type command :: struct()
   @type reason :: term()

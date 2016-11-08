@@ -5,6 +5,16 @@ defmodule Commanded.Commands.Router do
       import unquote(__MODULE__)
       @before_compile unquote(__MODULE__)
       @registered_commands []
+      @registered_middleware []
+    end
+  end
+
+  @doc """
+  Include the given middleware module to be called before, after, and failure of each command dispatch
+  """
+  defmacro middleware(middleware_module) do
+    quote do
+      @registered_middleware @registered_middleware ++ [unquote(middleware_module)]
     end
   end
 
@@ -43,7 +53,14 @@ defmodule Commanded.Commands.Router do
       @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command) do
-        Commanded.Commands.Dispatcher.dispatch(command, unquote(handler), unquote(aggregate), unquote(identity), unquote(timeout))
+        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Context{
+          command: command,
+          handler_module: unquote(handler),
+          aggregate_module: unquote(aggregate),
+          identity: unquote(identity),
+          timeout: unquote(timeout),
+          middleware: @registered_middleware,
+        })
       end
 
       @doc """
@@ -57,7 +74,14 @@ defmodule Commanded.Commands.Router do
       @spec dispatch(command :: struct, timeout :: integer | :infinity) :: :ok | {:error, reason :: term}
       def dispatch(command, timeout)
       def dispatch(%unquote(command_module){} = command, timeout) do
-        Commanded.Commands.Dispatcher.dispatch(command, unquote(handler), unquote(aggregate), unquote(identity), timeout)
+        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Context{
+          command: command,
+          handler_module: unquote(handler),
+          aggregate_module: unquote(aggregate),
+          identity: unquote(identity),
+          timeout: timeout,
+          middleware: @registered_middleware,
+        })
       end
     end
   end

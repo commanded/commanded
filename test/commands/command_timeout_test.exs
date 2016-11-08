@@ -25,7 +25,7 @@ defmodule Commanded.Commands.CommandTimeoutTest do
     dispatch TimeoutCommand, to: TimeoutCommandHandler, aggregate: StubAggregateRoot, identity: :aggregate_uuid, timeout: 500
   end
 
-  test "should allow timeout to be specified for a command registration" do
+  test "should allow timeout to be specified during command registration" do
     {_pid, ref} = spawn_monitor(fn ->
       # handler is set to take longer than the configured timeout (1s sleep vs 500ms timeout)
       :ok = TimeoutRouter.dispatch(%TimeoutCommand{sleep_in_ms: 1_000})
