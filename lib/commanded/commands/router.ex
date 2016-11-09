@@ -10,7 +10,9 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc """
-  Include the given middleware module to be called before, after, and failure of each command dispatch
+  Include the given middleware module to be called before and after success or failure of each command dispatch
+
+  Middleware modules are executed in the order they’ve been defined.
   """
   defmacro middleware(middleware_module) do
     quote do

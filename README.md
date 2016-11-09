@@ -197,19 +197,24 @@ Implement the `Commanded.Middleware` behaviour in your module and define the `be
 defmodule NoOpMiddleware do
   @behaviour Commanded.Middleware
 
-  def before_dispatch(%{command: command} = pipeline) do
+  alias Commanded.Middleware.Pipeline
+  import Pipeline
+
+  def before_dispatch(%Pipeline{command: command} = pipeline) do
     pipeline
   end
 
-  def after_dispatch(%{command: command} = pipeline) do
+  def after_dispatch(%Pipeline{} = pipeline) do
     pipeline
   end
 
-  def after_failure(%{command: command} = pipeline) do
+  def after_failure(%Pipeline{} = pipeline) do
     pipeline
   end
 end
 ```
+
+Commanded provides a `Commanded.Middleware.Logger` middleware for logging the name of each dispatched command and its execution duration.
 
 ### Event handlers
 
