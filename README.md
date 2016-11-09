@@ -18,7 +18,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.6"}]
+      [{:commanded, "~> 0.7"}]
     end
     ```
 
@@ -167,6 +167,54 @@ defmodule BankRouter do
   dispatch [OpenAccount,CloseAccount], to: BankAccountHandler, aggregate: BankAccount, identity: :account_number
 end
 ```
+
+### Middleware
+
+Allows a command router to define middleware modules that are executed before and after success or failure of each command dispatch.
+
+This provides an extension point to add in command validation, authorization, logging, and other behaviour that you want to be called for every command the router dispatches.
+
+```elixir
+defmodule BankingRouter do
+  use Commanded.Commands.Router
+
+  middleware CommandLogger
+  middleware MyCommandValidator
+  middleware AuthorizeCommand
+
+  dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+  dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
+end
+```
+
+The middleware modules are executed in the order they’ve been defined. They will receive a `Commanded.Middleware.Pipeline` struct containing the command being dispatched.
+
+#### Example middleware
+
+Implement the `Commanded.Middleware` behaviour in your module and define the `before_dispatch`, `after_dispatch`, and `after_failure` callback functions.
+
+```elixir
+defmodule NoOpMiddleware do
+  @behaviour Commanded.Middleware
+
+  alias Commanded.Middleware.Pipeline
+  import Pipeline
+
+  def before_dispatch(%Pipeline{command: command} = pipeline) do
+    pipeline
+  end
+
+  def after_dispatch(%Pipeline{} = pipeline) do
+    pipeline
+  end
+
+  def after_failure(%Pipeline{} = pipeline) do
+    pipeline
+  end
+end
+```
+
+Commanded provides a `Commanded.Middleware.Logger` middleware for logging the name of each dispatched command and its execution duration.
 
 ### Event handlers
 

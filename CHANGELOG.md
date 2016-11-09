@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.0
+
+### Enhancements
+
+- Command handling middleware allows a command router to define middleware modules that are executed before, and after success or failure of each command dispatch ([#12](https://github.com/slashdotdash/commanded/issues/12)).
+
 ## v0.6.3
 
 ### Enhancements

@@ -30,6 +30,8 @@ defmodule Commanded.Aggregates.Aggregate do
   Execute the given command against the aggregate, optionally providing a timeout.
   - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
     The default value is 5000.
+
+  Returns `:ok` on success, or `{:error, reason}` on failure
   """
   def execute(server, command, handler, timeout \\ 5_000) do
     GenServer.call(server, {:execute_command, command, handler}, timeout)
