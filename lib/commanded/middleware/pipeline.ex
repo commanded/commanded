@@ -9,6 +9,7 @@ defmodule Commanded.Middleware.Pipeline do
     * `assigns` - shared user data as a map
     * `command` - the command struct being dispatched
     * `halted` - the boolean status on whether the pipeline was halted
+    * `response` - override the response to send back to the caller (optional)
 
   """
 
