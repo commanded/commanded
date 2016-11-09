@@ -1,10 +1,11 @@
 defmodule Commanded.Commands.Dispatcher do
+  use GenServer
   require Logger
 
   alias Commanded.Aggregates
   alias Commanded.Middleware.Pipeline
 
-  defmodule Context do
+  defmodule Payload do
     defstruct [
       command: nil,
       handler_module: nil,
@@ -17,51 +18,83 @@ defmodule Commanded.Commands.Dispatcher do
 
   @doc """
   Dispatch the given command to the handler module for the aggregate root as identified
-  Returns `:ok` on success.
+
+  Returns `:ok` on success, or `{:error, reason}` on failure.
   """
-  @spec dispatch(context :: struct) :: :ok | {:error, reason :: term}
-  def dispatch(%Context{command: command, identity: identity} = context) do
-    Logger.debug(fn -> "attempting to dispatch command: #{inspect command}, to: #{inspect context.handler_module}, aggregate: #{inspect context.aggregate_module}, identity: #{inspect identity}" end)
+  @spec dispatch(payload :: struct) :: :ok | {:error, reason :: term}
+  def dispatch(%Payload{command: command} = payload) do
+    pipeline = before_dispatch(%Pipeline{command: command}, payload)
 
-    case Map.get(command, identity) do
-      nil -> {:error, :invalid_aggregate_identity}
-      aggregate_uuid -> execute(context, aggregate_uuid)
+    # TODO: don't continue if pipeline halted/terminated
+
+    case extract_aggregate_uuid(payload) do
+      nil ->
+        error = :invalid_aggregate_identity
+        after_failure(pipeline, error, payload)
+        {:error, error}
+
+      aggregate_uuid ->
+        execute(payload, pipeline, aggregate_uuid)
     end
   end
 
-  defp execute(%Context{command: command, aggregate_module: aggregate_module, handler_module: handler_module, timeout: timeout, middleware: middleware}, aggregate_uuid) do
-    pipeline =
-      %Pipeline{
-        command: command,
-        timeout: timeout,
-      }
-      |> before_dispatch(middleware)
+  defp execute(
+    %Payload{handler_module: handler_module, timeout: timeout} = payload,
+    %Pipeline{command: command} = pipeline,
+    aggregate_uuid)
+  do
+    {:ok, aggregate} = open_aggregate(payload, aggregate_uuid)
 
-    {:ok, aggregate} = Aggregates.Registry.open_aggregate(aggregate_module, aggregate_uuid)
+    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate, command, handler_module, timeout])
 
-    reply = Aggregates.Aggregate.execute(aggregate, command, handler_module, timeout)
-
-    case reply do
-      :ok -> after_dispatch(pipeline, middleware)
-      {:error, error} -> after_failure(pipeline, error, middleware)
+    result = case Task.yield(task, timeout) || Task.shutdown(task) do
+      {:ok, reply} -> reply
+      {:error, reason} -> {:error, :aggregate_execution_failed, reason}
+      {:exit, reason} -> {:error, :aggregate_execution_failed, reason}
+      nil -> {:error, :aggregate_execution_timeout}
     end
 
-    reply
+    case result do
+      :ok = reply ->
+        after_dispatch(pipeline, payload)
+        reply
+
+      {:error, error} = reply ->
+        after_failure(pipeline, error, payload)
+        reply
+
+      {:error, error, reason} ->
+        after_failure(pipeline, error, reason, payload)
+        {:error, error}
+     end
   end
 
-  def before_dispatch(%Pipeline{} = pipeline, middleware) do
+  defp open_aggregate(%Payload{aggregate_module: aggregate_module}, aggregate_uuid) do
+    Aggregates.Registry.open_aggregate(aggregate_module, aggregate_uuid)
+  end
+
+  defp extract_aggregate_uuid(%Payload{command: command, identity: identity}), do: Map.get(command, identity)
+
+  defp before_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
     pipeline
     |> Pipeline.chain(:before_dispatch, middleware)
   end
 
-  def after_dispatch(%Pipeline{} = pipeline, middleware) do
+  defp after_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
     pipeline
     |> Pipeline.chain(:after_dispatch, middleware)
   end
 
-  def after_failure(%Pipeline{} = pipeline, error, middleware) do
+  defp after_failure(%Pipeline{} = pipeline, error, %Payload{middleware: middleware}) do
     pipeline
     |> Pipeline.assign(:error, error)
+    |> Pipeline.chain(:after_failure, middleware)
+  end
+
+  defp after_failure(%Pipeline{} = pipeline, error, reason, %Payload{middleware: middleware}) do
+    pipeline
+    |> Pipeline.assign(:error, error)
+    |> Pipeline.assign(:error_reason, reason)
     |> Pipeline.chain(:after_failure, middleware)
   end
 end

@@ -53,7 +53,7 @@ defmodule Commanded.Commands.Router do
       @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command) do
-        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Context{
+        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
           handler_module: unquote(handler),
           aggregate_module: unquote(aggregate),
@@ -74,7 +74,7 @@ defmodule Commanded.Commands.Router do
       @spec dispatch(command :: struct, timeout :: integer | :infinity) :: :ok | {:error, reason :: term}
       def dispatch(command, timeout)
       def dispatch(%unquote(command_module){} = command, timeout) do
-        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Context{
+        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
           handler_module: unquote(handler),
           aggregate_module: unquote(aggregate),

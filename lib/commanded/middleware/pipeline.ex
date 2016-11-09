@@ -7,7 +7,6 @@ defmodule Commanded.Middleware.Pipeline do
   defstruct [
     assigns: %{},
     command: nil,
-    timeout: nil,
     halted: false,
     terminated: false,
   ]
