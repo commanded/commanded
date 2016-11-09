@@ -25,18 +25,25 @@ defmodule Commanded.Commands.Dispatcher do
   def dispatch(%Payload{command: command} = payload) do
     pipeline = before_dispatch(%Pipeline{command: command}, payload)
 
-    # TODO: don't continue if pipeline halted/terminated
+    # don't continue if pipeline halted
+    case Map.get(pipeline, :halted, false) do
+      true -> respond(pipeline, {:error, :halted})
+      false ->
+        case extract_aggregate_uuid(payload) do
+          nil ->
+            error = :invalid_aggregate_identity
+            after_failure(pipeline, error, payload)
+            {:error, error}
 
-    case extract_aggregate_uuid(payload) do
-      nil ->
-        error = :invalid_aggregate_identity
-        after_failure(pipeline, error, payload)
-        {:error, error}
-
-      aggregate_uuid ->
-        execute(payload, pipeline, aggregate_uuid)
+          aggregate_uuid ->
+            result = execute(payload, pipeline, aggregate_uuid)
+            respond(pipeline, result)
+        end
     end
   end
+
+  defp respond(%Pipeline{response: nil}, result), do: result
+  defp respond(%Pipeline{response: response}, _result), do: response
 
   defp execute(
     %Payload{handler_module: handler_module, timeout: timeout} = payload,

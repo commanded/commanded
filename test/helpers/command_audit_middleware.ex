@@ -38,6 +38,15 @@ defmodule Commanded.Helpers.CommandAuditMiddleware do
   end
 
   @doc """
+  Get the counts of the dispatched, succeeded, and failed commands
+  """
+  def count_commands do
+    Agent.get(__MODULE__, fn %AuditLog{dispatched: dispatched, succeeded: succeeded, failed: failed} ->
+      {length(dispatched), length(succeeded), length(failed)}
+    end)
+  end
+
+  @doc """
   Access the dispatched commands the middleware received
   """
   def dispatched_commands do
