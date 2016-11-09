@@ -90,7 +90,6 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     ], to: CommandHandler, aggregate: CounterAggregateRoot, identity: :aggregate_uuid
   end
 
-  @tag :wip
   test "should call middleware for each command dispatch" do
     aggregate_uuid = UUID.uuid4
 
@@ -111,7 +110,6 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     assert pluck(succeeded_commands, :by) == [1, 2, 3]
   end
 
-  @tag :wip
   test "should execute middleware failure callback when aggregate process returns an error tagged tuple" do
     aggregate_uuid = UUID.uuid4
 
@@ -129,7 +127,6 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     assert length(failed_commands) == 1
   end
 
-  @tag :wip
   test "should execute middleware failure callback when aggregate process errors" do
     aggregate_uuid = UUID.uuid4
 
@@ -147,14 +144,13 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     assert length(failed_commands) == 1
   end
 
-  @tag :wip
   test "should execute middleware failure callback when aggregate process dies" do
     aggregate_uuid = UUID.uuid4
 
     {:ok, _} = CommandAuditMiddleware.start_link
 
     # force command handling to timeout so the aggregate process is terminated
-    {:error, :aggregate_execution_timeout} = reply = Router.dispatch(%Timeout{aggregate_uuid: aggregate_uuid}, 50)
+    {:error, :aggregate_execution_timeout} = Router.dispatch(%Timeout{aggregate_uuid: aggregate_uuid}, 50)
 
     dispatched_commands = CommandAuditMiddleware.dispatched_commands
     succeeded_commands = CommandAuditMiddleware.succeeded_commands
