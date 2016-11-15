@@ -1,21 +1,35 @@
 defmodule Commanded.Assertions.EventAssertions do
   import ExUnit.Assertions
 
-  @receive_timeout 1_000
+  @default_receive_timeout 1_000
 
   @doc """
   Wait for an event of the given event type to be published
   """
   def wait_for_event(event_type) do
-    wait_for_event(event_type, fn _event -> true end)
+    wait_for_event(event_type, fn _event -> true end, @default_receive_timeout)
+  end
+
+  @doc """
+  Wait for an event of the given event type to be published until the timeout.
+  """
+  def wait_for_event(event_type, timeout) when is_integer(timeout) do
+    wait_for_event(event_type, fn _event -> true end, timeout)
   end
 
   @doc """
   Wait for an event of the given event type, matching the predicate, to be published.
   """
-  def wait_for_event(event_type, predicate_fn) do
+  def wait_for_event(event_type, predicate_fn) when is_function(predicate_fn) do
+    wait_for_event(event_type, predicate_fn, @default_receive_timeout)
+  end
+
+  @doc """
+  Wait for an event of the given event type, matching the predicate, to be published until the timeout.
+  """
+  def wait_for_event(event_type, predicate_fn, timeout) when is_function(predicate_fn) and is_integer(timeout) do
     with_subscription(fn ->
-      do_wait_for_event(event_type, predicate_fn)
+      do_wait_for_event(event_type, predicate_fn, timeout)
     end)
   end
 
@@ -56,7 +70,7 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp do_assert_receive(event_type, predicate_fn, assertion_fn) do
-    assert_receive {:events, received_events, subscription}, @receive_timeout
+    assert_receive {:events, received_events, subscription}, @default_receive_timeout
 
     ack_events(subscription, received_events)
 
@@ -78,8 +92,8 @@ defmodule Commanded.Assertions.EventAssertions do
     end
   end
 
-  defp do_wait_for_event(event_type, predicate_fn) do
-    assert_receive {:events, received_events, subscription}, @receive_timeout
+  defp do_wait_for_event(event_type, predicate_fn, timeout) do
+    assert_receive {:events, received_events, subscription}, timeout
 
     ack_events(subscription, received_events)
 
@@ -92,7 +106,7 @@ defmodule Commanded.Assertions.EventAssertions do
     end)
 
     case expected_event do
-      nil -> do_wait_for_event(event_type, predicate_fn)
+      nil -> do_wait_for_event(event_type, predicate_fn, timeout)
       received_event -> received_event
     end
   end

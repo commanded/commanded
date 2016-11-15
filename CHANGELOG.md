@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.1
+
+### Bug fixes
+
+- Restarting aggregate process should load all events from its stream in batches. The Event Store read stream default limit is 1,000 events.
+
 ## v0.7.0
 
 ### Enhancements
