@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.2
+
+### Bug fixes
+
+- Subscriptions that are at max capacity should wait until all pending events have been acknowledged by the subscriber being catching up with any unseen events.
+
 ## v0.6.1
 
 ### Enhancements

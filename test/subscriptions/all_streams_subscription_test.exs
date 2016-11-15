@@ -106,7 +106,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert subscription.data.last_ack == 3
     end
 
-    test "should replay events when not acknowledged", %{conn: conn} do
+    test "should replay events when catching up and events had not been acknowledged", %{conn: conn} do
       stream_uuid = UUID.uuid4
       {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
       {:ok, 3} = Appender.append(conn, stream_id, EventFactory.create_recorded_events(3, stream_id))
@@ -173,8 +173,10 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
       assert pluck(received_events, :data) == pluck(remaining_events, :data)
     end
+  end
 
-    test "restrict pending event buffer" do
+  describe "pending event buffer limit" do
+    test "should restrict pending events until ack" do
       events = EventFactory.create_recorded_events(6, 1)
       initial_events = Enum.take(events, 3)
       remaining_events = Enum.drop(events, 3)
@@ -193,6 +195,50 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
       assert pluck(received_events, :data) == pluck(initial_events, :data)
+
+      subscription =
+        subscription
+        |> StreamSubscription.ack(3)
+
+      assert subscription.state == :catching_up
+
+      # now receive all remaining events
+      assert_receive {:events, received_events, nil}
+
+      assert length(received_events) == 3
+      assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
+      assert pluck(received_events, :data) == pluck(remaining_events, :data)
+    end
+
+    test "should receive pending events on ack after reaching max capacity" do
+      events = EventFactory.create_recorded_events(6, 1)
+      initial_events = Enum.take(events, 3)
+      remaining_events = Enum.drop(events, 3)
+
+      subscription =
+        create_subscription(max_size: 3)
+        |> StreamSubscription.catch_up
+        |> StreamSubscription.notify_events(initial_events)
+        |> StreamSubscription.notify_events(remaining_events)
+
+      assert subscription.state == :max_capacity
+
+      subscription =
+        subscription
+        |> StreamSubscription.ack(1)
+
+      assert subscription.state == :max_capacity
+
+      assert_receive {:events, received_events, nil}
+      refute_receive {:events, _received_events, nil}
+
+      assert length(received_events) == 3
+
+      subscription =
+        subscription
+        |> StreamSubscription.ack(2)
+
+      assert subscription.state == :max_capacity
 
       subscription =
         subscription

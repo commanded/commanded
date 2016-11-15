@@ -54,7 +54,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
 
     defevent ack(ack), data: %SubscriptionData{} = data do
-      data = ack_events(data, ack)
+      data =
+        data
+        |> ack_events(ack)
+        |> notify_pending_events
 
       next_state(:catching_up, data)
     end
@@ -127,7 +130,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate max_capacity do
-    # ignore event notifications while catching up
+    # ignore event notifications while over capacity
     defevent notify_events(_events), data: %SubscriptionData{} = data do
       next_state(:max_capacity, data)
     end
@@ -138,7 +141,15 @@ defmodule EventStore.Subscriptions.StreamSubscription do
         |> ack_events(ack)
         |> notify_pending_events
 
-      next_state(:catching_up, data)
+      case data.pending_events do
+        [] ->
+          # no further pending events so catch up with any unseen
+          next_state(:catching_up, data)
+
+        _ ->
+          # pending events remain, wait until subscriber ack's
+          next_state(:max_capacity, data)
+      end
     end
 
     defevent catch_up, data: %SubscriptionData{} = data do
@@ -187,7 +198,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   # fetch unseen events from the stream
-  # transition to `subscribed` state when no events are found
+  # transition to `subscribed` state when no events are found or count of events is less than max buffer size so no further unseen events
   defp catch_up_from_stream(%SubscriptionData{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen} = data) do
     case subscription_provider(stream_uuid).unseen_events(stream, last_seen, @max_buffer_size) do
       {:ok, []} -> {:subscribed, data}
