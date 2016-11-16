@@ -1,5 +1,7 @@
 # Commanded
 
+[![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Command handling middleware for CQRS applications in Elixir.
 
 Provides support for command registration and dispatch; hosting and delegation to aggregate roots; event handling; and long running process managers.
