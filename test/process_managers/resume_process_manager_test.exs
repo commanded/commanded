@@ -62,7 +62,9 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   end
 
   defmodule ExampleProcessManager do
-    use Commanded.ProcessManagers.ProcessManager, fields: [
+    @behaviour Commanded.ProcessManagers.ProcessManager
+
+    defstruct [
       status_history: []
     ]
 
@@ -72,24 +74,19 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
     def interested?(%ProcessResumed{process_uuid: process_uuid}), do: {:continue, process_uuid}
     def interested?(_event), do: false
 
-    def handle(%ExampleProcessManager{} = process, %ProcessStarted{} = process_started) do
-      {:ok, update(process, process_started)}
-    end
-
-    def handle(%ExampleProcessManager{} = process, %ProcessResumed{} = process_resumed) do
-      {:ok, update(process, process_resumed)}
-    end
+    def handle(%ExampleProcessManager{}, %ProcessStarted{}), do: []
+    def handle(%ExampleProcessManager{}, %ProcessResumed{}), do: []
 
     ## state mutators
 
-    def apply(%ExampleProcessManager.State{status_history: status_history} = process, %ProcessStarted{status: status}) do
-      %ExampleProcessManager.State{process |
+    def apply(%ExampleProcessManager{status_history: status_history} = process, %ProcessStarted{status: status}) do
+      %ExampleProcessManager{process |
         status_history: status_history ++ [status]
       }
     end
 
-    def apply(%ExampleProcessManager.State{status_history: status_history} = process, %ProcessResumed{status: status}) do
-      %ExampleProcessManager.State{process |
+    def apply(%ExampleProcessManager{status_history: status_history} = process, %ProcessResumed{status: status}) do
+      %ExampleProcessManager{process |
         status_history: status_history ++ [status]
       }
     end

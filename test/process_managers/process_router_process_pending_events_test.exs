@@ -45,16 +45,14 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     defp publish_interesting(aggregate_uuid, interesting, index) do
       [
         %Events.Interested{aggregate_uuid: aggregate_uuid, index: index},
-        publish_interesting(aggregate_uuid, interesting - 1, index + 1),
-      ]
+      ] ++ publish_interesting(aggregate_uuid, interesting - 1, index + 1)
     end
 
     defp publish_uninteresting(_aggregate_uuid, 0, _index), do: []
     defp publish_uninteresting(aggregate_uuid, interesting, index) do
       [
         %Events.Uninterested{aggregate_uuid: aggregate_uuid, index: index},
-        publish_uninteresting(aggregate_uuid, interesting - 1, index + 1),
-      ]
+      ] ++ publish_uninteresting(aggregate_uuid, interesting - 1, index + 1)
     end
 
     # state mutatators
@@ -77,7 +75,9 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   end
 
   defmodule ExampleProcessManager do
-    use Commanded.ProcessManagers.ProcessManager, fields: [
+    @behaviour Commanded.ProcessManagers.ProcessManager
+    
+    defstruct [
       status: nil,
       items: [],
     ]
@@ -87,40 +87,29 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
     def interested?(_event), do: false
 
-    def handle(%ExampleProcessManager{} = process_manager, %Started{} = started), do: {:ok, update(process_manager, started)}
-
-    def handle(%ExampleProcessManager{} = process_manager, %Interested{index: 10, aggregate_uuid: aggregate_uuid} = interested) do
-      process_manager =
-        process_manager
-        |> dispatch(%Stop{aggregate_uuid: aggregate_uuid})
-        |> update(interested)
-
-      {:ok, process_manager}
+    def handle(%ExampleProcessManager{}, %Interested{index: 10, aggregate_uuid: aggregate_uuid}) do
+      %Stop{aggregate_uuid: aggregate_uuid}
     end
 
-    def handle(%ExampleProcessManager{} = process_manager, %Interested{} = interested), do: {:ok, update(process_manager, interested)}
-
-    def handle(%ExampleProcessManager{} = process_manager, %Stopped{} = stopped), do: {:ok, update(process_manager, stopped)}
-
-    # ignore any other events
-    def handle(process_manager, _event), do: {:ok, process_manager}
+    # ignore other events
+    def handle(_process_manager, _event), do: []
 
     ## state mutators
 
-    def apply(%ExampleProcessManager.State{} = process_manager, %Started{}) do
-      %ExampleProcessManager.State{process_manager |
+    def apply(%ExampleProcessManager{} = process_manager, %Started{}) do
+      %ExampleProcessManager{process_manager |
         status: :started
       }
     end
 
-    def apply(%ExampleProcessManager.State{items: items} = process_manager, %Interested{index: index}) do
-      %ExampleProcessManager.State{process_manager |
+    def apply(%ExampleProcessManager{items: items} = process_manager, %Interested{index: index}) do
+      %ExampleProcessManager{process_manager |
         items: items ++ [index]
       }
     end
 
-    def apply(%ExampleProcessManager.State{} = process_manager, %Stopped{}) do
-      %ExampleProcessManager.State{process_manager |
+    def apply(%ExampleProcessManager{} = process_manager, %Stopped{}) do
+      %ExampleProcessManager{process_manager |
         status: :stopped
       }
     end
