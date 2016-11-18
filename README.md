@@ -279,8 +279,8 @@ Each process manager `handle/2` function should return an `{:ok, process_manager
 ```elixir
 defmodule TransferMoneyProcessManager do
   use Commanded.ProcessManagers.ProcessManager, fields: [
-    source_account: nil,
-    target_account: nil,
+    debit_account: nil,
+    credit_account: nil,
     amount: nil,
     status: nil
   ]
@@ -290,10 +290,10 @@ defmodule TransferMoneyProcessManager do
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(_event), do: false
 
-  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount} = money_transfer_requested) do
+  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{debit_account: debit_account, credit_account: credit_account, amount: amount} = money_transfer_requested) do
     transfer =
       transfer
-      |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})
+      |> dispatch(%WithdrawMoney{account_number: debit_account, transfer_uuid: transfer_uuid, amount: amount})
       |> update(money_transfer_requested)
 
     {:ok, transfer}
@@ -302,7 +302,7 @@ defmodule TransferMoneyProcessManager do
   def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid, state: state} = transfer, %MoneyWithdrawn{} = money_withdrawn) do
     transfer =
       transfer
-      |> dispatch(%DepositMoney{account_number: state.target_account, transfer_uuid: transfer_uuid, amount: state.amount})
+      |> dispatch(%DepositMoney{account_number: state.credit_account, transfer_uuid: transfer_uuid, amount: state.amount})
       |> update(money_withdrawn)
 
     {:ok, transfer}
@@ -316,18 +316,18 @@ defmodule TransferMoneyProcessManager do
 
   ## state mutators
 
-  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
+  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyTransferRequested{debit_account: debit_account, credit_account: credit_account, amount: amount}) do
     %TransferMoneyProcessManager.State{transfer |
-      source_account: source_account,
-      target_account: target_account,
+      debit_account: debit_account,
+      credit_account: credit_account,
       amount: amount,
-      status: :withdraw_money_from_source_account
+      status: :withdraw_money_from_debit_account
     }
   end
 
   def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyWithdrawn{}) do
     %TransferMoneyProcessManager.State{transfer |
-      status: :deposit_money_in_target_account
+      status: :deposit_money_in_credit_account
     }
   end
 

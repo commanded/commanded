@@ -33,8 +33,8 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
       event_id: 1,
       data: %MoneyTransferRequested{
         transfer_uuid: process_uuid,
-        source_account: account1_uuid,
-        target_account: account2_uuid,
+        debit_account: account1_uuid,
+        credit_account: account2_uuid,
         amount: 100
       },
     }

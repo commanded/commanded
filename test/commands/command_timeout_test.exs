@@ -2,20 +2,15 @@ defmodule Commanded.Commands.CommandTimeoutTest do
   use Commanded.StorageCase
   doctest Commanded.Commands.Router
 
-  defmodule StubAggregateRoot do
-    use EventSourced.AggregateRoot, fields: []
-  end
-
-  defmodule TimeoutCommand do
-    defstruct aggregate_uuid: UUID.uuid4, sleep_in_ms: nil
-  end
+  defmodule StubAggregateRoot, do: defstruct []
+  defmodule TimeoutCommand, do: defstruct [aggregate_uuid: nil, sleep_in_ms: nil]
 
   defmodule TimeoutCommandHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(%StubAggregateRoot{} = aggregate, %TimeoutCommand{sleep_in_ms: sleep_in_ms}) do
+    def handle(%StubAggregateRoot{}, %TimeoutCommand{sleep_in_ms: sleep_in_ms}) do
       :timer.sleep(sleep_in_ms)
-      {:ok, aggregate}
+      []
     end
   end
 

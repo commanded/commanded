@@ -7,80 +7,62 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   import Commanded.Enumerable
 
   defmodule ExampleAggregate do
-    use EventSourced.AggregateRoot, fields: [
+    defstruct [
+      uuid: nil,
       state: nil,
       items: [],
     ]
 
     defmodule Commands do
-      defmodule Start do
-        defstruct [:aggregate_uuid]
-      end
-
-      defmodule Publish do
-        defstruct [:aggregate_uuid, :interesting, :uninteresting]
-      end
-
-      defmodule Stop do
-        defstruct [:aggregate_uuid]
-      end
+      defmodule Start, do: defstruct [:aggregate_uuid]
+      defmodule Publish, do: defstruct [:aggregate_uuid, :interesting, :uninteresting]
+      defmodule Stop, do: defstruct [:aggregate_uuid]
     end
 
     defmodule Events do
-      defmodule Started do
-        defstruct [:aggregate_uuid]
-      end
-
-      defmodule Interested do
-        defstruct [:aggregate_uuid, :index]
-      end
-
-      defmodule Uninterested do
-        defstruct [:aggregate_uuid, :index]
-      end
-
-      defmodule Stopped do
-        defstruct [:aggregate_uuid]
-      end
+      defmodule Started, do: defstruct [:aggregate_uuid]
+      defmodule Interested, do: defstruct [:aggregate_uuid, :index]
+      defmodule Uninterested, do: defstruct [:aggregate_uuid, :index]
+      defmodule Stopped, do: defstruct [:aggregate_uuid]
     end
 
-    def start(%ExampleAggregate{uuid: aggregate_uuid} = aggregate) do
-      {:ok, update(aggregate, %Events.Started{aggregate_uuid: aggregate_uuid})}
+    def start(%ExampleAggregate{}, aggregate_uuid) do
+      %Events.Started{aggregate_uuid: aggregate_uuid}
     end
 
-    def publish(%ExampleAggregate{} = aggregate, interesting, uninteresting) do
-      aggregate =
-        aggregate
-        |> publish_interesting(interesting, 1)
-        |> publish_uninteresting(uninteresting, 1)
-
-      {:ok, aggregate}
+    def publish(%ExampleAggregate{uuid: aggregate_uuid}, interesting, uninteresting) do
+      Enum.concat(
+        publish_interesting(aggregate_uuid, interesting, 1),
+        publish_uninteresting(aggregate_uuid, uninteresting, 1)
+      )
     end
 
-    def stop(%ExampleAggregate{uuid: aggregate_uuid} = aggregate) do
-      {:ok, update(aggregate, %Events.Stopped{aggregate_uuid: aggregate_uuid})}
+    def stop(%ExampleAggregate{uuid: aggregate_uuid}) do
+      %Events.Stopped{aggregate_uuid: aggregate_uuid}
     end
 
-    defp publish_interesting(aggregate, 0, _index), do: aggregate
-    defp publish_interesting(%ExampleAggregate{uuid: aggregate_uuid} = aggregate, interesting, index) do
-      aggregate
-        |> update(%Events.Interested{aggregate_uuid: aggregate_uuid, index: index})
-        |> publish_interesting(interesting - 1, index + 1)
+    defp publish_interesting(_aggregate_uuid, 0, _index), do: []
+    defp publish_interesting(aggregate_uuid, interesting, index) do
+      [
+        %Events.Interested{aggregate_uuid: aggregate_uuid, index: index},
+        publish_interesting(aggregate_uuid, interesting - 1, index + 1),
+      ]
     end
 
-    defp publish_uninteresting(aggregate, 0, _index), do: aggregate
-    defp publish_uninteresting(%ExampleAggregate{uuid: aggregate_uuid} = aggregate, interesting, index) do
-      aggregate
-        |> update(%Events.Uninterested{aggregate_uuid: aggregate_uuid, index: index})
-        |> publish_uninteresting(interesting - 1, index + 1)
+    defp publish_uninteresting(_aggregate_uuid, 0, _index), do: []
+    defp publish_uninteresting(aggregate_uuid, interesting, index) do
+      [
+        %Events.Uninterested{aggregate_uuid: aggregate_uuid, index: index},
+        publish_uninteresting(aggregate_uuid, interesting - 1, index + 1),
+      ]
     end
 
     # state mutatators
 
-    def apply(%ExampleAggregate.State{} = state, %Events.Started{}), do: %ExampleAggregate.State{state | state: :started}
-    def apply(%ExampleAggregate.State{items: items} = state, %Events.Interested{index: index}), do: %ExampleAggregate.State{state | items: items ++ [index]}
-    def apply(%ExampleAggregate.State{} = state, %Events.Uninterested{}), do: state
-    def apply(%ExampleAggregate.State{} = state, %Events.Stopped{}), do: %ExampleAggregate.State{state | state: :stopped}
+    def apply(%ExampleAggregate{} = state, %Events.Started{aggregate_uuid: aggregate_uuid}), do: %ExampleAggregate{state | uuid: aggregate_uuid, state: :started}
+    def apply(%ExampleAggregate{items: items} = state, %Events.Interested{index: index}), do: %ExampleAggregate{state | items: items ++ [index]}
+    def apply(%ExampleAggregate{} = state, %Events.Uninterested{}), do: state
+    def apply(%ExampleAggregate{} = state, %Events.Stopped{}), do: %ExampleAggregate{state | state: :stopped}
   end
 
   alias ExampleAggregate.Commands.{Start,Publish,Stop}
@@ -89,7 +71,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   defmodule ExampleCommandHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(%ExampleAggregate{} = aggregate, %Start{}), do: ExampleAggregate.start(aggregate)
+    def handle(%ExampleAggregate{} = aggregate, %Start{aggregate_uuid: aggregate_uuid}), do: ExampleAggregate.start(aggregate, aggregate_uuid)
     def handle(%ExampleAggregate{} = aggregate, %Publish{interesting: interesting, uninteresting: uninteresting}), do: ExampleAggregate.publish(aggregate, interesting, uninteresting)
     def handle(%ExampleAggregate{} = aggregate, %Stop{}), do: ExampleAggregate.stop(aggregate)
   end

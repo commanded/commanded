@@ -47,13 +47,18 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Access the aggregate's state
   """
-  def aggregate_state(server) do
-    GenServer.call(server, {:aggregate_state})
-  end
+  def aggregate_state(server), do: GenServer.call(server, {:aggregate_state})
+  def aggregate_state(server, timeout), do: GenServer.call(server, {:aggregate_state}, timeout)
 
-  def aggregate_state(server, timeout) do
-    GenServer.call(server, {:aggregate_state}, timeout)
-  end
+  @doc """
+  Access the aggregate's UUID
+  """
+  def aggregate_uuid(server), do: GenServer.call(server, {:aggregate_uuid})
+
+  @doc """
+  Access the aggregate's version
+  """
+  def aggregate_version(server), do: GenServer.call(server, {:aggregate_version})
 
   @doc """
   Load any existing events for the aggregate from storage and repopulate the state using those events
@@ -77,40 +82,48 @@ defmodule Commanded.Aggregates.Aggregate do
     {:reply, aggregate_state, state}
   end
 
-  defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid} = state) do
-    aggregate_state = case load_events(state) do
-      {:ok, events} ->
-        # fetched all events, load aggregate
-        load_aggregate(aggregate_module, map_from_recorded_events(events))
+  def handle_call({:aggregate_uuid}, _from, %Aggregate{aggregate_uuid: aggregate_uuid} = state) do
+    {:reply, aggregate_uuid, state}
+  end
+
+  def handle_call({:aggregate_version}, _from, %Aggregate{aggregate_version: aggregate_version} = state) do
+    {:reply, aggregate_version, state}
+  end
+
+  defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do
+    rebuild_from_events(%Aggregate{state |
+      aggregate_version: 0,
+      aggregate_state: struct(aggregate_module)
+    })
+  end
+
+  defp rebuild_from_events(%Aggregate{} = state), do: rebuild_from_events(state, 1)
+
+  # load events from the event store, in batches of 100 events, to rebuild the aggregate state
+  defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
+    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
+      {:ok, batch} ->
+        # rebuild the aggregate's state from the batch of events
+        aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
+
+        state = %Aggregate{state |
+          aggregate_version: start_version,
+          aggregate_state: aggregate_state
+        }
+
+        case length(batch) < @read_event_batch_size do
+          true ->
+            # end of event stream for aggregate so return its state
+            state
+            
+          false ->
+            # fetch next batch of events to apply to updated aggregate state
+            rebuild_from_events(state, start_version + @read_event_batch_size)
+        end
 
       {:error, :stream_not_found} ->
-        # aggregate does not exist so create new
-        struct(aggregate_module)
-    end
-
-    %Aggregate{state | aggregate_state: aggregate_state}
-  end
-
-  # rebuild the aggregate's state from the given events applied to its empty state
-  defp load_aggregate(aggregate_module, events) do
-    apply_events(aggregate_module, struct(aggregate_module), events)
-  end
-
-  defp load_events(%Aggregate{} = state), do: load_events(state, 1, [])
-
-  # load events from the event store, in batches of 100 events, and create the aggregate
-  defp load_events(%Aggregate{aggregate_uuid: aggregate_uuid} = state, start_version, events) do
-    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
-      {:ok, batch} when length(batch) < @read_event_batch_size ->
-        {:ok, events ++ batch}
-
-      {:ok, batch} ->
-        next_version = start_version + @read_event_batch_size
-
-        # fetch next batch of events
-        load_events(state, next_version, events ++ batch)
-
-      {:error, :stream_not_found} = reply -> reply
+        # aggregate does not exist so return empty state
+        state
     end
   end
 

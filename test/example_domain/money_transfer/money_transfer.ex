@@ -1,38 +1,37 @@
 defmodule Commanded.ExampleDomain.MoneyTransfer do
-  use EventSourced.AggregateRoot, fields: [transfer_uuid: nil, source_account: nil, target_account: nil, amount: 0, reversed?: false]
+  defstruct [
+    transfer_uuid: nil,
+    debit_account: nil,
+    credit_account: nil,
+    amount: 0,
+  ]
 
   alias Commanded.ExampleDomain.MoneyTransfer
 
   defmodule Commands do
-    defmodule TransferMoney do
-      defstruct transfer_uuid: UUID.uuid4, source_account: nil, target_account: nil, amount: nil
-    end
+    defmodule TransferMoney, do: defstruct [transfer_uuid: nil, debit_account: nil, credit_account: nil, amount: nil]
   end
 
   defmodule Events do
-    defmodule MoneyTransferRequested do
-      defstruct transfer_uuid: nil, source_account: nil, target_account: nil, amount: nil
-    end
+    defmodule MoneyTransferRequested, do: defstruct [transfer_uuid: nil, debit_account: nil, credit_account: nil, amount: nil]
   end
 
   alias Commands.{TransferMoney}
   alias Events.{MoneyTransferRequested}
 
-  def transfer_money(%MoneyTransfer{} = money_transfer, %TransferMoney{transfer_uuid: transfer_uuid, source_account: source_account, target_account: target_account, amount: amount}) when amount > 0 do
-    money_transfer =
-      money_transfer
-      |> update(%MoneyTransferRequested{transfer_uuid: transfer_uuid, source_account: source_account, target_account: target_account, amount: amount})
-
-    {:ok, money_transfer}
+  def transfer_money(%MoneyTransfer{} = money_transfer, %TransferMoney{transfer_uuid: transfer_uuid, debit_account: debit_account, credit_account: credit_account, amount: amount})
+    when amount > 0
+  do
+    %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, credit_account: credit_account, amount: amount}
   end
 
   # state mutatators
 
-  def apply(%MoneyTransfer.State{} = state, %MoneyTransferRequested{} = transfer_requested) do
-    %MoneyTransfer.State{state |
+  def apply(%MoneyTransfer{} = state, %MoneyTransferRequested{} = transfer_requested) do
+    %MoneyTransfer{state |
       transfer_uuid: transfer_requested.transfer_uuid,
-      source_account: transfer_requested.source_account,
-      target_account: transfer_requested.target_account,
+      debit_account: transfer_requested.debit_account,
+      credit_account: transfer_requested.credit_account,
       amount: transfer_requested.amount
     }
   end

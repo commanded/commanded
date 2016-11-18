@@ -8,60 +8,33 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   import Commanded.Assertions.EventAssertions
 
   defmodule ExampleAggregate do
-    use EventSourced.AggregateRoot, fields: [status: nil]
+    defstruct [status: nil]
 
     defmodule Commands do
-      defmodule StartProcess do
-        defstruct process_uuid: UUID.uuid4, status: nil
-      end
-
-      defmodule ResumeProcess do
-        defstruct process_uuid: UUID.uuid4, status: nil
-      end
+      defmodule StartProcess, do: defstruct [process_uuid: nil, status: nil]
+      defmodule ResumeProcess, do: defstruct [process_uuid: nil, status: nil]
     end
 
     defmodule Events do
-      defmodule ProcessStarted do
-        defstruct process_uuid: nil, status: nil
-      end
-
-      defmodule ProcessResumed do
-        defstruct process_uuid: nil, status: nil
-      end
+      defmodule ProcessStarted, do: defstruct [process_uuid: nil, status: nil]
+      defmodule ProcessResumed, do: defstruct [process_uuid: nil, status: nil]
     end
 
     alias Commands.{StartProcess,ResumeProcess}
     alias Events.{ProcessStarted,ProcessResumed}
 
-    def start_process(%ExampleAggregate{} = aggregate, %StartProcess{process_uuid: process_uuid, status: status}) do
-      aggregate =
-        aggregate
-        |> update(%ProcessStarted{process_uuid: process_uuid, status: status})
-
-      {:ok, aggregate}
+    def start_process(%ExampleAggregate{}, %StartProcess{process_uuid: process_uuid, status: status}) do
+      %ProcessStarted{process_uuid: process_uuid, status: status}
     end
 
-    def resume_process(%ExampleAggregate{} = aggregate, %ResumeProcess{process_uuid: process_uuid, status: status}) do
-      aggregate =
-        aggregate
-        |> update(%ProcessResumed{process_uuid: process_uuid, status: status})
-
-      {:ok, aggregate}
+    def resume_process(%ExampleAggregate{}, %ResumeProcess{process_uuid: process_uuid, status: status}) do
+      %ProcessResumed{process_uuid: process_uuid, status: status}
     end
 
     # state mutatators
 
-    def apply(%ExampleAggregate.State{} = state, %ProcessStarted{status: status}) do
-      %ExampleAggregate.State{state |
-        status: status
-      }
-    end
-
-    def apply(%ExampleAggregate.State{} = state, %ProcessResumed{status: status}) do
-      %ExampleAggregate.State{state |
-        status: status
-      }
-    end
+    def apply(%ExampleAggregate{} = state, %ProcessStarted{status: status}), do: %ExampleAggregate{state | status: status}
+    def apply(%ExampleAggregate{} = state, %ProcessResumed{status: status}), do: %ExampleAggregate{state | status: status}
   end
 
   alias ExampleAggregate.Commands.{StartProcess,ResumeProcess}
