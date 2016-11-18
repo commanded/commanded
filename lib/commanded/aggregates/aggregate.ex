@@ -131,7 +131,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   defp execute_command(command, handler, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
     case execute_command(handler, aggregate_state, command) do
-      {:error, reason} = reply -> {reply, state}
+      {:error, _reason} = reply -> {reply, state}
       nil -> {:ok, state}
       [] -> {:ok, state}
       events ->

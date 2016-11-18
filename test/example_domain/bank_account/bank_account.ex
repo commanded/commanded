@@ -25,7 +25,7 @@ defmodule Commanded.ExampleDomain.BankAccount do
   alias Commands.{OpenAccount,DepositMoney,WithdrawMoney,CloseAccount}
   alias Events.{BankAccountOpened,MoneyDeposited,MoneyWithdrawn,AccountOverdrawn,BankAccountClosed}
 
-  def open_account(%BankAccount{state: nil} = account, %OpenAccount{account_number: account_number, initial_balance: initial_balance})
+  def open_account(%BankAccount{state: nil}, %OpenAccount{account_number: account_number, initial_balance: initial_balance})
     when is_number(initial_balance) and initial_balance > 0
   do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
@@ -53,7 +53,7 @@ defmodule Commanded.ExampleDomain.BankAccount do
     end
   end
 
-  def close_account(%BankAccount{state: :active} = account, %CloseAccount{account_number: account_number}) do
+  def close_account(%BankAccount{state: :active}, %CloseAccount{account_number: account_number}) do
     %BankAccountClosed{account_number: account_number}
   end
 

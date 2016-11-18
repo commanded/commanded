@@ -8,11 +8,11 @@ defmodule Commanded.Helpers.Commands do
   defmodule Timeout, do: defstruct [:aggregate_uuid]
   defmodule Validate, do: defstruct [:aggregate_uuid, :valid?]
   defmodule CountIncremented, do: defstruct [:count]
-  
+
   defmodule CounterAggregateRoot do
     defstruct [count: 0]
 
-    def increment(%CounterAggregateRoot{count: count} = counter, increment_by)
+    def increment(%CounterAggregateRoot{count: count}, increment_by)
       when is_integer(increment_by)
     do
       %CountIncremented{count: count + increment_by}
@@ -38,12 +38,12 @@ defmodule Commanded.Helpers.Commands do
       raise "failed"
     end
 
-    def handle(%CounterAggregateRoot{} = aggregate, %Timeout{}) do
+    def handle(%CounterAggregateRoot{}, %Timeout{}) do
       :timer.sleep 1_000
       []
     end
 
-    def handle(%CounterAggregateRoot{} = aggregate, %Validate{}) do
+    def handle(%CounterAggregateRoot{}, %Validate{}) do
       []
     end
   end
