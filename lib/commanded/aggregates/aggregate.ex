@@ -103,19 +103,21 @@ defmodule Commanded.Aggregates.Aggregate do
   defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
     case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
       {:ok, batch} ->
+        batch_size = length(batch)
+
         # rebuild the aggregate's state from the batch of events
         aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
 
         state = %Aggregate{state |
-          aggregate_version: start_version,
+          aggregate_version: start_version - 1 + batch_size,
           aggregate_state: aggregate_state
         }
 
-        case length(batch) < @read_event_batch_size do
+        case batch_size < @read_event_batch_size do
           true ->
             # end of event stream for aggregate so return its state
             state
-            
+
           false ->
             # fetch next batch of events to apply to updated aggregate state
             rebuild_from_events(state, start_version + @read_event_batch_size)
@@ -128,19 +130,28 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp execute_command(command, handler, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
-    pending_events = execute_command(handler, aggregate_state, command)
+    case execute_command(handler, aggregate_state, command) do
+      {:error, reason} = reply -> {reply, state}
+      nil -> {:ok, state}
+      [] -> {:ok, state}
+      events ->
+        pending_events = List.wrap(events)
 
-    updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
+        updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-    :ok = persist_events(pending_events, aggregate_uuid, expected_version)
+        :ok = persist_events(pending_events, aggregate_uuid, expected_version)
 
-    {:ok, %Aggregate{state | aggregate_state: updated_state}}
+        state = %Aggregate{state |
+          aggregate_state: updated_state,
+          aggregate_version: expected_version + length(pending_events),
+        }
+
+        {:ok, state}
+    end
   end
 
   defp execute_command(handler, aggregate_state, command) do
-    aggregate_state
-    |> handler.handle(command)
-    |> List.wrap
+    handler.handle(aggregate_state, command)
   end
 
   defp apply_events(aggregate_module, aggregate_state, events) do

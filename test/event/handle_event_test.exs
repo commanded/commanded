@@ -1,6 +1,7 @@
 defmodule Commanded.Event.HandleEventTest do
 	use Commanded.StorageCase
-	doctest Commanded.Event.Handler
+
+  import Commanded.Enumerable, only: [pluck: 2]
 
   alias Commanded.Event.AppendingEventHandler
   alias Commanded.Helpers.EventFactory
@@ -26,9 +27,7 @@ defmodule Commanded.Event.HandleEventTest do
     assert AccountBalanceHandler.current_balance == 1_050
 	end
 
-  defmodule UninterestingEvent do
-    defstruct field: nil
-  end
+  defmodule UninterestingEvent, do: defstruct [field: nil]
 
   test "should ignore uninterested events" do
     {:ok, _} = AccountBalanceHandler.start_link
@@ -81,8 +80,4 @@ defmodule Commanded.Event.HandleEventTest do
     assert AppendingEventHandler.received_events == events
     assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
 	end
-
-  defp pluck(enumerable, field) do
-    Enum.map(enumerable, &Map.get(&1, field))
-  end
 end

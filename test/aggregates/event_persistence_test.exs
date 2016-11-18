@@ -43,10 +43,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
   defmodule AppendItemsHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(%ExampleAggregate{} = aggregate, %AppendItems{count: count}) do
-      aggregate
-      |> ExampleAggregate.append_items(count)
-    end
+    def handle(%ExampleAggregate{} = aggregate, %AppendItems{count: count}), do: ExampleAggregate.append_items(aggregate, count)
   end
 
   test "should persist pending events in order applied" do
@@ -71,12 +68,10 @@ defmodule Commanded.Entities.EventPersistenceTest do
     Commanded.Helpers.Process.shutdown(aggregate)
 
     {:ok, aggregate} = Registry.open_aggregate(ExampleAggregate, aggregate_uuid)
-    aggregate_state = Aggregate.aggregate_state(aggregate)
 
-    # assert aggregate_state.uuid == aggregate_uuid
-    # assert aggregate_state.version == 10
-    # assert aggregate_state.pending_events == []
-    assert aggregate_state == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
+    assert Aggregate.aggregate_uuid(aggregate) == aggregate_uuid
+    assert Aggregate.aggregate_version(aggregate) == 10
+    assert Aggregate.aggregate_state(aggregate) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
       items: 1..10 |> Enum.to_list,
       last_index: 10,
     }
@@ -97,9 +92,8 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     aggregate_state = Aggregate.aggregate_state(aggregate)
 
-    # assert aggregate_state.uuid == aggregate_uuid
-    # assert aggregate_state.version == 201
-    # assert aggregate_state.pending_events == []
+    assert Aggregate.aggregate_uuid(aggregate) == aggregate_uuid
+    assert Aggregate.aggregate_version(aggregate) == 201
     assert aggregate_state == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
       items: 1..201 |> Enum.to_list,
       last_index: 201,

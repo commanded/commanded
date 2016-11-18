@@ -3,26 +3,12 @@ defmodule Commanded.Helpers.Commands do
     defstruct [aggregate_uuid: nil, by: 1]
   end
 
-  defmodule Fail do
-    defstruct [:aggregate_uuid]
-  end
-
-  defmodule RaiseError do
-    defstruct [:aggregate_uuid]
-  end
-
-  defmodule Timeout do
-    defstruct [:aggregate_uuid]
-  end
-
-  defmodule Validate do
-    defstruct [:aggregate_uuid, :valid?]
-  end
-
-  defmodule CountIncremented do
-    defstruct [:count]
-  end
-
+  defmodule Fail, do: defstruct [:aggregate_uuid]
+  defmodule RaiseError, do: defstruct [:aggregate_uuid]
+  defmodule Timeout, do: defstruct [:aggregate_uuid]
+  defmodule Validate, do: defstruct [:aggregate_uuid, :valid?]
+  defmodule CountIncremented, do: defstruct [:count]
+  
   defmodule CounterAggregateRoot do
     defstruct [count: 0]
 

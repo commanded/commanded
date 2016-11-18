@@ -6,9 +6,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,WithdrawMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount,DepositMoney,WithdrawMoney}
 
-  defmodule UnregisteredCommand do
-    defstruct aggregate_uuid: UUID.uuid4
-  end
+  defmodule UnregisteredCommand, do: defstruct [aggregate_uuid: UUID.uuid4]
 
   defmodule ExampleRouter do
     use Commanded.Commands.Router
