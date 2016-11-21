@@ -50,8 +50,9 @@ defmodule Commanded.Commands.Dispatcher do
     {:ok, aggregate} = open_aggregate(payload, aggregate_uuid)
 
     task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate, command, handler_module, timeout])
-
-    result = case Task.yield(task, timeout) || Task.shutdown(task) do
+    task_result = Task.yield(task, timeout) || Task.shutdown(task)
+    
+    result = case task_result do
       {:ok, reply} -> reply
       {:error, reason} -> {:error, :aggregate_execution_failed, reason}
       {:exit, reason} -> {:error, :aggregate_execution_failed, reason}

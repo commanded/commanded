@@ -1,10 +1,10 @@
 # Commanded
 
-Command handling middleware for CQRS applications in Elixir.
+Command handling middleware for Command Query Responsibility Segregation (CQRS) applications in Elixir. Use Commanded to build your own applications following the [CQRS/ES](http://cqrs.nu/Faq) architecture.
 
 Provides support for command registration and dispatch; hosting and delegation to aggregate roots; event handling; and long running process managers.
 
-Use with [eventstore](https://github.com/slashdotdash/eventstore) and [eventsourced](https://github.com/slashdotdash/eventsourced) as components that comprise a [CQRS](http://cqrs.nu/Faq) framework for Elixir.
+Uses [eventstore](https://github.com/slashdotdash/eventstore) for persistence to PostgreSQL.
 
 MIT License
 
@@ -12,13 +12,13 @@ MIT License
 
 ## Getting started
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+The package can be installed from hex as follows.
 
   1. Add commanded to your list of dependencies in `mix.exs`:
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.7"}]
+      [{:commanded, "~> 0.8"}]
     end
     ```
 
@@ -30,7 +30,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
     end
     ```
 
-  3. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev/exs`), specifying usage of the JSON serializer:
+  3. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev.exs`), specifying usage of the included JSON serializer:
 
     ```elixir
     config :eventstore, EventStore.Storage,
@@ -43,7 +43,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
       extensions: [{Postgrex.Extensions.Calendar, []}]
     ```
 
-  4. Create the `eventstore` database and tables using the `mix` task
+  4. Create the `eventstore` database and tables using the `mix` task.
 
     ```
     mix event_store.create
@@ -61,30 +61,48 @@ You may manually start the top level Supervisor process.
 
 ### Aggregate roots
 
-Use the [eventsourced](https://github.com/slashdotdash/eventsourced) library to build your aggregate roots. This is the expected approach to writing event-sourced domain models.
+Build your aggregate roots using standard Elixir modules and functions, with structs to hold state. There is no external dependency requirement.
 
-Follow the convention of returning an `{:ok, aggregate}` tuple on success. For business rule violations and errors you should return an `{:error, reason}` tuple.
+An aggregate root is comprised of its state, public command functions, and state mutators.
+
+#### Command functions
+
+A command function receives the aggregate root's state and the command to execute. It must return the resultant domain events. This may be none, one, or multiple events.
+
+For business rule violations and errors you may return an `{:error, reason}` tagged tuple or raise an exception.
+
+#### State mutators
+
+The state of an aggregate root can only be mutated by applying a raised domain event to its state. This is achieved by an `apply/2` function that receives the state and the domain event. It returns the modified state.
+
+Pattern matching is used to invoke the respective `apply/2` function for an event. These functions *must never fail* as they are used when rebuilding the aggregate state from its history of raised domain events. You cannot reject the event once it has occurred.
+
+#### Example aggregate root
 
 ```elixir
 defmodule BankAccount do
-  use EventSourced.AggregateRoot, fields: [account_number: nil, balance: nil]
+  defstruct [account_number: nil, balance: nil]
 
   # public command API
 
-  def open_account(%BankAccount{} = account, account_number, initial_balance) when initial_balance <= 0 do
-    {:error, :initial_balance_must_be_above_zero}
+  def open_account(%BankAccount{} = account, account_number, initial_balance)
+    when initial_balance > 0
+  do
+    %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
-  def open_account(%BankAccount{} = account, account_number, initial_balance) when initial_balance > 0 do
-    {:ok, update(account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance})}
+  def open_account(%BankAccount{} = account, account_number, initial_balance)
+    when initial_balance <= 0
+  do
+    {:error, :initial_balance_must_be_above_zero}
   end
 
   # state mutators
 
-  def apply(%BankAccount.State{} = state, %BankAccountOpened{} = account_opened) do
-    %BankAccount.State{state|
-      account_number: account_opened.account_number,
-      balance: account_opened.initial_balance
+  def apply(%BankAccount{} = account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}) do
+    %BankAccount{account |
+      account_number: account_number,
+      balance: initial_balance
     }
   end
 end
@@ -104,7 +122,7 @@ end
 
 Implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function.
 
-It receives the aggregate root and the command to be handled. It must return an `{:ok, aggregate_root}` tuple on success, otherwise an `{:error, reason}` tuple on failure.
+It receives the aggregate root state and the command to be handled. It must return the raised domain events from the aggregate root. It may return an `{:error, reason}` tuple on failure.
 
 ```elixir
 defmodule OpenAccountHandler do
@@ -138,7 +156,7 @@ You can then dispatch a command using the router.
 
 #### Timeouts
 
-A command handler has a default timeout of 5 seconds. The same as a `GenServer` process call. It must handle the command in this period, otherwise the call fails and the caller exits.
+A command handler has a default timeout of 5 seconds. The same default as a `GenServer` process call. It must handle the command in this period, otherwise the call fails and the caller exits.
 
 You can configure a different timeout value during command registration or dispatch.
 
@@ -240,10 +258,8 @@ defmodule AccountBalanceHandler do
     Agent.update(__MODULE__, fn _ -> balance end)
   end
 
-  def handle(_event, _metadata) do
-    # ignore all other events
-    :ok
-  end
+  # ignore all other events
+  def handle(_event, _metadata), do: :ok
 
   def current_balance do
     Agent.get(__MODULE__, fn balance -> balance end)
@@ -262,25 +278,34 @@ Register the event handler with a given name. The name is used when subscribing 
 
 A process manager is responsible for coordinating one or more aggregate roots.
 
-It handles events and may dispatch one or more commands in response. Process managers have state that can be used to track which aggregate roots are being coordinated.
+It handles events and may dispatch commands in response. Process managers have state that can be used to track which aggregate roots are being orchestrated.
 
-A process manager must implement the `interested?/1` function to indicate which events are used. The response is used to route the event to an existing instance or start a new process.
+A process manager must implement the `Commanded.ProcessManagers.ProcessManager` behaviour. It defines three callback functions: `interested?/1`, `handle/2`, and `apply/2`.
+
+#### `interested?/1`
+
+The `interested?/1` function is used to indicate which events the process manager receives. The response is used to route the event to an existing instance or start a new process instance.
 
 - Return `{:start, process_uuid}` to create a new instance of the process manager.
 - Return `{:continue, process_uuid}` to continue execution of an existing process manager.
-- Return `false` to ignore the event
+- Return `false` to ignore the event.
 
-A `handle/2` function must exist for each interested event. It receives the process manager's state and the event to be handled. It must return the state, including any commands that should be dispatched.
+#### `handle/2`
 
-Use the `Commanded.ProcessManagers.ProcessManager` macro to define the required state for your process manager. The `dispatch/2` function is used to dispatch a command. This can be called multiple times to dispatch more than one command in response to a received domain event. The process manager's state is updated by calling the `update/2` function. This delegates to an `apply/2` function that mutates the state.
+A `handle/2` function must exist for each interested event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
 
-Each process manager `handle/2` function should return an `{:ok, process_manager}` success tuple.
+#### `apply/2`
+
+The `apply/2` function is used to mutate the process manager's state. It receives its current state and the interested event. It must return the modified state.
 
 ```elixir
 defmodule TransferMoneyProcessManager do
-  use Commanded.ProcessManagers.ProcessManager, fields: [
-    source_account: nil,
-    target_account: nil,
+  @behaviour Commanded.ProcessManagers.ProcessManager
+
+  defstruct [
+    transfer_uuid: nil,
+    debit_account: nil,
+    credit_account: nil,
     amount: nil,
     status: nil
   ]
@@ -290,63 +315,49 @@ defmodule TransferMoneyProcessManager do
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(_event), do: false
 
-  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount} = money_transfer_requested) do
-    transfer =
-      transfer
-      |> dispatch(%WithdrawMoney{account_number: source_account, transfer_uuid: transfer_uuid, amount: amount})
-      |> update(money_transfer_requested)
-
-    {:ok, transfer}
+  def handle(%TransferMoneyProcessManager{}, %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, amount: amount}) do
+    %WithdrawMoney{account_number: debit_account, transfer_uuid: transfer_uuid, amount: amount}
   end
 
-  def handle(%TransferMoneyProcessManager{process_uuid: transfer_uuid, state: state} = transfer, %MoneyWithdrawn{} = money_withdrawn) do
-    transfer =
-      transfer
-      |> dispatch(%DepositMoney{account_number: state.target_account, transfer_uuid: transfer_uuid, amount: state.amount})
-      |> update(money_withdrawn)
-
-    {:ok, transfer}
+  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid, credit_account: credit_account, amount: amount}, %MoneyWithdrawn{}) do
+    %DepositMoney{account_number: credit_account, transfer_uuid: transfer_uuid, amount: amount}
   end
 
-  def handle(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{} = money_deposited) do
-    transfer = update(transfer, money_deposited)
-
-    {:ok, transfer}
-  end
+  def handle(%TransferMoneyProcessManager{}, %MoneyDeposited{}), do: []
 
   ## state mutators
 
-  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyTransferRequested{source_account: source_account, target_account: target_account, amount: amount}) do
-    %TransferMoneyProcessManager.State{transfer |
-      source_account: source_account,
-      target_account: target_account,
+  def apply(%TransferMoneyProcessManager{} = transfer, %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, credit_account: credit_account, amount: amount}) do
+    %TransferMoneyProcessManager{transfer |
+      transfer_uuid: transfer_uuid,
+      debit_account: debit_account,
+      credit_account: credit_account,
       amount: amount,
-      status: :withdraw_money_from_source_account
+      status: :withdraw_money_from_debit_account
     }
   end
 
-  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyWithdrawn{}) do
-    %TransferMoneyProcessManager.State{transfer |
-      status: :deposit_money_in_target_account
+  def apply(%TransferMoneyProcessManager{} = transfer, %MoneyWithdrawn{}) do
+    %TransferMoneyProcessManager{transfer |
+      status: :deposit_money_in_credit_account
     }
   end
 
-  def apply(%TransferMoneyProcessManager.State{} = transfer, %MoneyDeposited{}) do
-    %TransferMoneyProcessManager.State{transfer |
+  def apply(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{}) do
+    %TransferMoneyProcessManager{transfer |
       status: :transfer_complete
     }
   end
 end
-
 ```
 
-Register the process manager router, with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
+Register the process manager router with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
 
 ```elixir
 {:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
 ```
 
-Process manager instance state is persisted to storage after each handled event. This allows the a process manager to resume should the host process terminate.
+Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
 
 ### Supervision
 
@@ -397,7 +408,9 @@ end
 
 ### Serialization
 
-JSON serialization is used by default for event and snapshot data. The included `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
+JSON serialization is used by default for event and snapshot data.
+
+The included `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
 
 The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `NaiveDateTime` struct.
 
@@ -417,6 +430,8 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
   end
 end
 ```
+
+You can implement the `EventStore.Serializer` behaviour to use an alternative serialization format if preferred.
 
 ## Contributing
 

@@ -90,7 +90,10 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     {:ok, _} = CommandAuditMiddleware.start_link
 
     # force command handling to timeout so the aggregate process is terminated
-    {:error, :aggregate_execution_timeout} = Router.dispatch(%Timeout{aggregate_uuid: UUID.uuid4}, 50)
+    :ok = case Router.dispatch(%Timeout{aggregate_uuid: UUID.uuid4}, 50) do
+      {:error, :aggregate_execution_timeout} -> :ok
+      {:error, :aggregate_execution_failed} -> :ok
+    end
 
     {dispatched, succeeded, failed} = CommandAuditMiddleware.count_commands
 

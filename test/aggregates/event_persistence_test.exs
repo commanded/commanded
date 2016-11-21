@@ -1,40 +1,37 @@
 defmodule Commanded.Entities.EventPersistenceTest do
   use Commanded.StorageCase
 
+  import Commanded.Enumerable, only: [pluck: 2]
+
   alias Commanded.Aggregates.{Registry,Aggregate}
 
   defmodule ExampleAggregate do
-    use EventSourced.AggregateRoot, fields: [items: [], last_index: 0]
+    defstruct [
+      items: [],
+      last_index: 0,
+    ]
 
     defmodule Commands do
-      defmodule AppendItems do
-        defstruct count: 0
-      end
+      defmodule AppendItems, do: defstruct [count: 0]
     end
 
     defmodule Events do
-      defmodule ItemAppended do
-        defstruct index: nil
-      end
+      defmodule ItemAppended, do: defstruct [index: nil]
     end
 
     alias Commands.{AppendItems}
     alias Events.{ItemAppended}
 
-    def append_items(%ExampleAggregate{state: %{last_index: last_index}} = aggregate, count) do
-      range = 1..count
-
-      aggregate = Enum.reduce(range, aggregate, fn (index, aggregate) ->
-        update(aggregate, %ItemAppended{index: last_index + index})
+    def append_items(%ExampleAggregate{last_index: last_index}, count) do
+      Enum.map(1..count, fn index ->
+        %ItemAppended{index: last_index + index}
       end)
-
-      {:ok, aggregate}
     end
 
     # state mutatators
 
-    def apply(%ExampleAggregate.State{items: items} = state, %ItemAppended{index: index}) do
-      %ExampleAggregate.State{state |
+    def apply(%ExampleAggregate{items: items} = state, %ItemAppended{index: index}) do
+      %ExampleAggregate{state |
         items: items ++ [index],
         last_index: index,
       }
@@ -46,10 +43,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
   defmodule AppendItemsHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(%ExampleAggregate{} = aggregate, %AppendItems{count: count}) do
-      aggregate
-      |> ExampleAggregate.append_items(count)
-    end
+    def handle(%ExampleAggregate{} = aggregate, %AppendItems{count: count}), do: ExampleAggregate.append_items(aggregate, count)
   end
 
   test "should persist pending events in order applied" do
@@ -74,12 +68,10 @@ defmodule Commanded.Entities.EventPersistenceTest do
     Commanded.Helpers.Process.shutdown(aggregate)
 
     {:ok, aggregate} = Registry.open_aggregate(ExampleAggregate, aggregate_uuid)
-    aggregate_state = Aggregate.aggregate_state(aggregate)
 
-    assert aggregate_state.uuid == aggregate_uuid
-    assert aggregate_state.version == 10
-    assert aggregate_state.pending_events == []
-    assert aggregate_state.state == %Commanded.Entities.EventPersistenceTest.ExampleAggregate.State{
+    assert Aggregate.aggregate_uuid(aggregate) == aggregate_uuid
+    assert Aggregate.aggregate_version(aggregate) == 10
+    assert Aggregate.aggregate_state(aggregate) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
       items: 1..10 |> Enum.to_list,
       last_index: 10,
     }
@@ -100,16 +92,11 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     aggregate_state = Aggregate.aggregate_state(aggregate)
 
-    assert aggregate_state.uuid == aggregate_uuid
-    assert aggregate_state.version == 201
-    assert aggregate_state.pending_events == []
-    assert aggregate_state.state == %Commanded.Entities.EventPersistenceTest.ExampleAggregate.State{
+    assert Aggregate.aggregate_uuid(aggregate) == aggregate_uuid
+    assert Aggregate.aggregate_version(aggregate) == 201
+    assert aggregate_state == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
       items: 1..201 |> Enum.to_list,
       last_index: 201,
     }
-  end
-
-  defp pluck(enumerable, field) do
-    Enum.map(enumerable, &Map.get(&1, field))
   end
 end

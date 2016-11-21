@@ -12,7 +12,12 @@ defmodule Commanded.Aggregates.Aggregate do
 
   @read_event_batch_size 100
 
-  defstruct aggregate_module: nil, aggregate_uuid: nil, aggregate_state: nil
+  defstruct [
+    aggregate_module: nil,
+    aggregate_uuid: nil,
+    aggregate_state: nil,
+    aggregate_version: 0,
+  ]
 
   def start_link(aggregate_module, aggregate_uuid) do
     GenServer.start_link(__MODULE__, %Aggregate{
@@ -42,13 +47,18 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Access the aggregate's state
   """
-  def aggregate_state(server) do
-    GenServer.call(server, {:aggregate_state})
-  end
+  def aggregate_state(server), do: GenServer.call(server, {:aggregate_state})
+  def aggregate_state(server, timeout), do: GenServer.call(server, {:aggregate_state}, timeout)
 
-  def aggregate_state(server, timeout) do
-    GenServer.call(server, {:aggregate_state}, timeout)
-  end
+  @doc """
+  Access the aggregate's UUID
+  """
+  def aggregate_uuid(server), do: GenServer.call(server, {:aggregate_uuid})
+
+  @doc """
+  Access the aggregate's version
+  """
+  def aggregate_version(server), do: GenServer.call(server, {:aggregate_version})
 
   @doc """
   Load any existing events for the aggregate from storage and repopulate the state using those events
@@ -72,74 +82,89 @@ defmodule Commanded.Aggregates.Aggregate do
     {:reply, aggregate_state, state}
   end
 
-  defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid} = state) do
-    aggregate_state = case load_events(state, 1, []) do
-      {:ok, events} ->
-        # fetched all events, load aggregate
-        aggregate_module.load(aggregate_uuid, map_from_recorded_events(events))
+  def handle_call({:aggregate_uuid}, _from, %Aggregate{aggregate_uuid: aggregate_uuid} = state) do
+    {:reply, aggregate_uuid, state}
+  end
+
+  def handle_call({:aggregate_version}, _from, %Aggregate{aggregate_version: aggregate_version} = state) do
+    {:reply, aggregate_version, state}
+  end
+
+  defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do
+    rebuild_from_events(%Aggregate{state |
+      aggregate_version: 0,
+      aggregate_state: struct(aggregate_module)
+    })
+  end
+
+  defp rebuild_from_events(%Aggregate{} = state), do: rebuild_from_events(state, 1)
+
+  # load events from the event store, in batches of 100 events, to rebuild the aggregate state
+  defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
+    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
+      {:ok, batch} ->
+        batch_size = length(batch)
+
+        # rebuild the aggregate's state from the batch of events
+        aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
+
+        state = %Aggregate{state |
+          aggregate_version: start_version - 1 + batch_size,
+          aggregate_state: aggregate_state
+        }
+
+        case batch_size < @read_event_batch_size do
+          true ->
+            # end of event stream for aggregate so return its state
+            state
+
+          false ->
+            # fetch next batch of events to apply to updated aggregate state
+            rebuild_from_events(state, start_version + @read_event_batch_size)
+        end
 
       {:error, :stream_not_found} ->
-        # aggregate does not exist so create new
-        aggregate_module.new(aggregate_uuid)
-    end
-
-    # events list should only include uncommitted events
-    aggregate_state = %{aggregate_state | pending_events: []}
-
-    %Aggregate{state | aggregate_state: aggregate_state}
-  end
-
-  # load events from the event store, in batches of 1,000 events, and create the aggregate
-  defp load_events(%Aggregate{aggregate_uuid: aggregate_uuid} = state, start_version, events) do
-    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
-      {:ok, batch} when length(batch) < @read_event_batch_size ->
-        {:ok, events ++ batch}
-
-      {:ok, batch} ->
-        next_version = start_version + @read_event_batch_size
-
-        # fetch next batch of events
-        load_events(state, next_version, events ++ batch)
-
-      {:error, :stream_not_found} = reply -> reply
+        # aggregate does not exist so return empty state
+        state
     end
   end
 
-  defp execute_command(command, handler, %Aggregate{aggregate_state: %{version: version} = aggregate_state} = state) do
-    expected_version = version
+  defp execute_command(command, handler, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
+    case execute_command(handler, aggregate_state, command) do
+      {:error, _reason} = reply -> {reply, state}
+      nil -> {:ok, state}
+      [] -> {:ok, state}
+      events ->
+        pending_events = List.wrap(events)
 
-    with {:ok, aggregate_state} <- handle_command(handler, aggregate_state, command),
-         {:ok, aggregate_state} <- persist_events(aggregate_state, expected_version)
-      do {:ok, %Aggregate{state | aggregate_state: aggregate_state}}
-    else
-      {:error, reason} = reply ->
-        Logger.warn(fn -> "failed to execute command due to: #{inspect reason}" end)
-        {reply, state}
+        updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
+
+        :ok = persist_events(pending_events, aggregate_uuid, expected_version)
+
+        state = %Aggregate{state |
+          aggregate_state: updated_state,
+          aggregate_version: expected_version + length(pending_events),
+        }
+
+        {:ok, state}
     end
   end
 
-  defp handle_command(handler, aggregate_state, command) do
-    # command handler must return `{:ok, aggregate}` or `{:error, reason}`
-    case handler.handle(aggregate_state, command) do
-      {:ok, _aggregate} = reply -> reply
-      {:error, _reason} = reply -> reply
-    end
+  defp execute_command(handler, aggregate_state, command) do
+    handler.handle(aggregate_state, command)
   end
 
-  # no pending events to persist, do nothing
-  defp persist_events(%{pending_events: []} = aggregate_state, _expected_version), do: {:ok, aggregate_state}
+  defp apply_events(aggregate_module, aggregate_state, events) do
+    Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
+  end
 
-  defp persist_events(%{uuid: aggregate_uuid, pending_events: pending_events} = aggregate_state, expected_version) do
+  defp persist_events([], _aggregate_uuid, _expected_version), do: :ok
+  defp persist_events(pending_events, aggregate_uuid, expected_version) do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
     :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
-
-    # clear pending events after appending to stream
-    {:ok, %{aggregate_state | pending_events: []}}
   end
 
-  defp map_from_recorded_events(recorded_events) when is_list(recorded_events) do
-    Mapper.map_from_recorded_events(recorded_events)
-  end
+  defp map_from_recorded_events(recorded_events), do: Mapper.map_from_recorded_events(recorded_events)
 end

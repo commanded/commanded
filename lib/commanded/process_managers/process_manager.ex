@@ -4,53 +4,22 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   """
 
   @type domain_event :: struct
+  @type command :: struct
   @type process_manager :: struct
-  @type uuid :: String.t
+  @type process_uuid :: String.t
 
   @doc """
   Is the process manager interested in the given command?
   """
-  @callback interested?(domain_event) :: {:start, uuid} | {:continue, uuid} | false
+  @callback interested?(domain_event) :: {:start, process_uuid} | {:continue, process_uuid} | false
 
   @doc """
-  Process manager instance handles the domain event
+  Process manager instance handles the domain event, returning commands to dispatch
   """
-  @callback handle(process_manager, domain_event) :: process_manager
+  @callback handle(process_manager, domain_event) :: list(command)
 
-  defmacro __using__(fields: fields) do
-    quote do
-      @behaviour Commanded.ProcessManagers.ProcessManager
-
-      import Kernel, except: [apply: 2]
-
-      defstruct process_uuid: nil, commands: [], state: nil
-
-      defmodule State do
-        defstruct unquote(fields)
-      end
-
-      @doc """
-      Create a new process manager struct given a unique identity
-      """
-      def new(process_uuid, %__MODULE__.State{} = state \\ %__MODULE__.State{}) do
-        %__MODULE__{process_uuid: process_uuid, state: state}
-      end
-
-      # dispatch a command for the given process manager
-      defp dispatch(%__MODULE__{commands: commands} = process_manager, command) do
-        %__MODULE__{process_manager |
-          commands: commands ++ [command]
-        }
-      end
-
-      # Receives a single event and is used to mutate the process manager's internal state
-      defp update(%__MODULE__{state: state} = process_manager, event) do
-        state = __MODULE__.apply(state, event)
-
-        %__MODULE__{process_manager |
-          state: state
-        }
-      end
-    end
-  end
+  @doc """
+  Mutate the process manager's state by applying the domain event
+  """
+  @callback apply(process_manager, domain_event) :: process_manager
 end

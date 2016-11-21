@@ -8,33 +8,31 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
 
-  defmodule OpenAccountHandler do
+  defmodule NullHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(%BankAccount{} = aggregate, %WithdrawMoney{}) do
-      {:ok, aggregate}
-    end
+    def handle(_aggregate, _command), do: []
   end
 
   defmodule Router do
     use Commanded.Commands.Router
 
-    dispatch WithdrawMoney, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+    dispatch WithdrawMoney, to: NullHandler, aggregate: BankAccount, identity: :account_number
   end
 
   test "process manager handles an event" do
-    process_uuid = UUID.uuid4
+    transfer_uuid = UUID.uuid4
     account1_uuid = UUID.uuid4
     account2_uuid = UUID.uuid4
 
-    {:ok, process_manager} = ProcessManagerInstance.start_link(Router, "TransferMoneyProcessManager", TransferMoneyProcessManager, process_uuid)
+    {:ok, process_manager} = ProcessManagerInstance.start_link(Router, "TransferMoneyProcessManager", TransferMoneyProcessManager, transfer_uuid)
 
     event = %EventStore.RecordedEvent{
       event_id: 1,
       data: %MoneyTransferRequested{
-        transfer_uuid: process_uuid,
-        source_account: account1_uuid,
-        target_account: account2_uuid,
+        transfer_uuid: transfer_uuid,
+        debit_account: account1_uuid,
+        credit_account: account2_uuid,
         amount: 100
       },
     }

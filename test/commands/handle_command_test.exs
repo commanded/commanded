@@ -4,14 +4,17 @@ defmodule Commanded.Commands.HandleCommandTest do
 
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
   test "command handler implements behaviour" do
-    {:ok, account} =
-      BankAccount.new("1")
-      |> OpenAccountHandler.handle(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    initial_state = %BankAccount{}
+    event = OpenAccountHandler.handle(initial_state, %OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 
-    assert account.state.account_number == "ACC123"
-    assert length(account.pending_events) == 1
-    assert account.version == 1
+    assert event == %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}
+    assert BankAccount.apply(initial_state, event) == %BankAccount{
+      account_number: "ACC123",
+      balance: 1_000,
+      state: :active,
+    }
   end
 end

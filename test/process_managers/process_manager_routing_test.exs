@@ -33,11 +33,11 @@ defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
     :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number2, initial_balance:  500})
 
     # transfer funds between account 1 and account 2
-    :ok = BankRouter.dispatch(%TransferMoney{source_account: account_number1, target_account: account_number2, amount: 100})
+    :ok = BankRouter.dispatch(%TransferMoney{transfer_uuid: UUID.uuid4, debit_account: account_number1, credit_account: account_number2, amount: 100})
 
     assert_receive_event MoneyTransferRequested, fn event ->
-      assert event.source_account == account_number1
-      assert event.target_account == account_number2
+      assert event.debit_account == account_number1
+      assert event.credit_account == account_number2
       assert event.amount == 100
     end
 
