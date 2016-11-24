@@ -112,6 +112,9 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     Helpers.Process.shutdown(process_router)
 
+    # wait for subscription to receive DOWN notification and remove subscription's PID
+    :timer.sleep(1_000)
+
     {:ok, process_router} = ProcessRouter.start_link("ExampleProcessManager", ExampleProcessManager, ExampleRouter)
 
     :ok = ExampleRouter.dispatch(%ResumeProcess{process_uuid: process_uuid, status: "resume"})

@@ -137,7 +137,7 @@ end
 
 ### Command dispatch and routing
 
-You create a router to handle registration of each command to its associated handler. Configure each command by mapping it to a handler and aggregate root.
+You must create a router to register each command with its associated handler.
 
 ```elixir
 defmodule BankRouter do
@@ -147,6 +147,18 @@ defmodule BankRouter do
   dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
 end
 ```
+
+It is also possible to route a command directly to an aggregate root. Without requiring an intermediate command handler.
+
+```elixir
+defmodule BankRouter do
+  use Commanded.Commands.Router
+
+  dispatch OpenAccount, to: BankAccount, identity: :account_number
+end
+```
+
+The aggregate root must implement an `execute/2` function that receives the aggregate's state and the command to execute.
 
 You can then dispatch a command using the router.
 
