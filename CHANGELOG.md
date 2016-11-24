@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.8.1
+
+### Enhancements
+
+- Command handlers should be optional by default ([#30](https://github.com/slashdotdash/commanded/issues/30)).
+
+## v0.8.0
+
+### Enhancements
+
+- Simplify aggregate roots and process managers ([#31](https://github.com/slashdotdash/commanded/issues/31)).
+
 ## v0.7.1
 
 ### Bug fixes
