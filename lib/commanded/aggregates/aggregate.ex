@@ -40,8 +40,8 @@ defmodule Commanded.Aggregates.Aggregate do
 
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
-  def execute(server, command, handler, timeout \\ 5_000) do
-    GenServer.call(server, {:execute_command, command, handler}, timeout)
+  def execute(server, command, handler, function \\ :execute, timeout \\ 5_000) do
+    GenServer.call(server, {:execute_command, handler, function, command}, timeout)
   end
 
   @doc """
@@ -72,8 +72,8 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Execute the given command, using the provided handler, against the current aggregate state
   """
-  def handle_call({:execute_command, command, handler}, _from, %Aggregate{} = state) do
-    {reply, state} = execute_command(command, handler, state)
+  def handle_call({:execute_command, handler, function, command}, _from, %Aggregate{} = state) do
+    {reply, state} = execute_command(handler, function, command, state)
 
     {:reply, reply, state}
   end
@@ -129,8 +129,8 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp execute_command(command, handler, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
-    case execute_command(handler, aggregate_state, command) do
+  defp execute_command(handler, function, command, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
+    case Kernel.apply(handler, function, [aggregate_state, command]) do
       {:error, _reason} = reply -> {reply, state}
       nil -> {:ok, state}
       [] -> {:ok, state}
@@ -148,10 +148,6 @@ defmodule Commanded.Aggregates.Aggregate do
 
         {:ok, state}
     end
-  end
-
-  defp execute_command(handler, aggregate_state, command) do
-    handler.handle(aggregate_state, command)
   end
 
   defp apply_events(aggregate_module, aggregate_state, events) do

@@ -13,7 +13,24 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
 
-    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler)
+    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, BankAccount, :open_account)
+
+    Helpers.Process.shutdown(aggregate)
+
+    # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
+    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+
+    assert Aggregate.aggregate_uuid(aggregate) == account_number
+    assert Aggregate.aggregate_version(aggregate) == 1
+    assert Aggregate.aggregate_state(aggregate) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
+  end
+
+  test "execute command via a command handler" do
+    account_number = UUID.uuid4
+
+    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+
+    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
 
     Helpers.Process.shutdown(aggregate)
 
@@ -30,12 +47,12 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
 
-    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler)
+    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
 
     state_before = Aggregate.aggregate_state(aggregate)
 
     assert_process_exit(aggregate, fn ->
-      Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler)
+      Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler, :handle)
     end)
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
@@ -60,7 +77,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     ])
 
     assert_process_exit(aggregate, fn ->
-      Aggregate.execute(aggregate, %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler)
+      Aggregate.execute(aggregate, %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler, :handle)
     end)
   end
 

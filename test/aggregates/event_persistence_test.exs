@@ -51,7 +51,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, aggregate} = Registry.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    :ok = Aggregate.execute(aggregate, %AppendItems{count: 10}, AppendItemsHandler)
+    :ok = Aggregate.execute(aggregate, %AppendItems{count: 10}, AppendItemsHandler, :handle)
 
     {:ok, recorded_events} = EventStore.read_stream_forward(aggregate_uuid, 0)
 
@@ -63,7 +63,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, aggregate} = Registry.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    :ok = Aggregate.execute(aggregate, %AppendItems{count: 10}, AppendItemsHandler)
+    :ok = Aggregate.execute(aggregate, %AppendItems{count: 10}, AppendItemsHandler, :handle)
 
     Commanded.Helpers.Process.shutdown(aggregate)
 
@@ -82,9 +82,9 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, aggregate} = Registry.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    :ok = Aggregate.execute(aggregate, %AppendItems{count: 100}, AppendItemsHandler)
-    :ok = Aggregate.execute(aggregate, %AppendItems{count: 100}, AppendItemsHandler)
-    :ok = Aggregate.execute(aggregate, %AppendItems{count: 1}, AppendItemsHandler)
+    :ok = Aggregate.execute(aggregate, %AppendItems{count: 100}, AppendItemsHandler, :handle)
+    :ok = Aggregate.execute(aggregate, %AppendItems{count: 100}, AppendItemsHandler, :handle)
+    :ok = Aggregate.execute(aggregate, %AppendItems{count: 1}, AppendItemsHandler, :handle)
 
     Commanded.Helpers.Process.shutdown(aggregate)
 
