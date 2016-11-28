@@ -38,7 +38,12 @@ defmodule Commanded.Mixfile do
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:poison, "~> 3.0"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      # devs
+      {:dialyxir, "~> 0.3.5", only: :dev},   # simplify dialyzer, type: mix dialyzer.plt first
+			{:mix_test_watch, "~> 0.2", only: :dev} # use mix test.watch for adicted TDD development
+                                              # use mix test.watch blabla to point to your test file
+
     ]
   end
 
