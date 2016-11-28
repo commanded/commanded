@@ -19,8 +19,8 @@ defmodule Commanded.Serialization.JsonSerializer do
   """
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type, nil) do
-      nil -> []
-      type -> type |> String.to_atom |> struct
+      nil -> nil
+      type -> type |> String.to_existing_atom |> struct
     end
 
     binary

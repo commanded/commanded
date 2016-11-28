@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.2
+
+### Bug fixes
+
+- JsonSerializer should ensure event type atom exists when deserializing ([#28](https://github.com/slashdotdash/commanded/issues/28)).
+
 ## v0.8.1
 
 ### Enhancements
