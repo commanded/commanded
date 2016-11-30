@@ -49,6 +49,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     {:reply, process_state, state}
   end
 
+
+
+
   @doc """
   Attempt to fetch intial process state from snapshot storage
   """
@@ -134,4 +137,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"
+
+
+  #TODO: implement fetch state from the persistence layer
+  # @doc "Fetch state from persistence"
+  # def fetch_state(%ProcessManagerInstance{} = state) do
+  #   fetcher = fn(snapshot) ->
+  #       %ProcessManagerInstance{state |
+  #         process_state: snapshot.data,
+  #         last_seen_event_id: snapshot.source_version,
+  #       }
+  #   end
+  # end
+
+
 end

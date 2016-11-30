@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Persistenceer do
+defmodule Commanded.Storage.Persistence do
   @moduledoc """
   The triangle: Aggregate Data Structure + Server's State (Container) + Side Effects
   This module encapsulates the Database side-efects over the aggregate's container. 
@@ -50,10 +50,8 @@ defmodule Commanded.Storage.Persistenceer do
   @type state     :: struct()           # the aggregate or process manager data structure
   @type container :: struct()           # the server that holds the aggregate data structure
   @type positions :: list(integer)      # positions from first and last saved events, i.e. {:ok, [3,5]}
-  #@type module    :: atom()
   @type events    :: [struct()]
   @type uuid      :: String.t
-
 
 
   #@spec rehydrate(module, uuid)            :: aggregate
@@ -61,8 +59,14 @@ defmodule Commanded.Storage.Persistenceer do
   @spec append_events(state)               :: state
   @spec append_snapshot(state)             :: state
   @spec persist(state)      :: state
-  @spec load_events(container)             :: {:error, any()} | {:ok, events}
+  #@spec load_events(container)             :: {:error, any()} | {:ok, events}
   #@spec load_snapshot(container)          :: {:error, any()} | {:ok, container}
+
+
+  @doc "Receive a module that implements apply function, and rebuild the state from events"
+  def apply_events(module, state, events), do:
+    Enum.reduce(events, state, &module.apply(&2, &1))
+
 
   #### API #########
   @doc """
@@ -86,6 +90,7 @@ defmodule Commanded.Storage.Persistenceer do
   #   new_state = persist(state)
   #   %{container | state: new_state}
   # end
+
 
 
   ##### INTERNAL #####
