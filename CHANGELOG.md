@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.3
+
+### Enhancements
+
+- Middleware `after_failure` callback is executed even when a middleware halts execution. 
+
 ## v0.8.2
 
 ### Bug fixes

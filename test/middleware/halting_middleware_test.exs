@@ -61,7 +61,7 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
 
     assert dispatched == 1
     assert succeeded == 0
-    assert failed == 0
+    assert failed == 1
   end
 
   test "should allow middleware to set dispatch response" do
@@ -73,6 +73,6 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
 
     assert dispatched == 1
     assert succeeded == 0
-    assert failed == 0
+    assert failed == 1
   end
 end

@@ -46,12 +46,13 @@ defmodule Commanded.Middleware.Pipeline do
   end
 
   @doc """
-  Implements the middleware chain
+  Executes the middleware chain
   """
   def chain(pipeline, stage, middleware)
-  def chain(pipeline, _stage, []), do: pipeline
-  def chain(%Pipeline{halted: true} = pipeline, _stage, _middleware), do: pipeline
-  def chain(pipeline, stage, [module | modules]) do
+  def chain(%Pipeline{} = pipeline, _stage, []), do: pipeline
+  def chain(%Pipeline{halted: true} = pipeline, :before_dispatch, _middleware), do: pipeline
+  def chain(%Pipeline{halted: true} = pipeline, :after_dispatch, _middleware), do: pipeline
+  def chain(%Pipeline{} = pipeline, stage, [module | modules]) do
     chain(apply(module, stage, [pipeline]), stage, modules)
   end
 end
