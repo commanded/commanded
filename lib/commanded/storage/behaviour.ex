@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Behaviour do
+defmodule Commanded.Storage.Adapter do
   @moduledoc """
   Implement this functions below to add a new data storage for your events and snapshots. Consider this as the most
   low level layer to communicate with the dbs layers. When you implement your db layer, try to send at least some value

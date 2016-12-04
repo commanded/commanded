@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Persistence do
+defmodule Commanded.Aggregates.Persistence do
   @moduledoc """
   The triangle: Aggregate Data Structure + Server's State (Container) + Side Effects
   This module encapsulates the Database side-efects over the aggregate's container.

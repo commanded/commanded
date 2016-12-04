@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Dbs.Postgre do
+defmodule Commanded.Storage.Postgre.Adapter do
 
   @type aggregate_uuid      :: String.t
   @type start_version       :: String.t

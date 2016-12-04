@@ -7,7 +7,7 @@ defmodule Commanded.Aggregates.Aggregate do
   use GenServer
   require Logger
 
-  alias Commanded.Storage.Persistence
+  alias Commanded.Aggregates.Persistence
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Event.Mapper
 

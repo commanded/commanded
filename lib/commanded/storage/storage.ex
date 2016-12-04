@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Dbs do
+defmodule Commanded.Storage.Storage do
   require Logger
   #@snapshot_period 3
   #@storage Commanded.Settings.get(:storage)   # can be Eventstore or Postgres

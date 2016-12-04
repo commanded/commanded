@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Dbs.Eventstore do
+defmodule Commanded.Storage.Eventstore.Adapter do
   require Logger
   alias Extreme.Messages.ReadEventCompleted
   @event_store     Engine.EventStore
