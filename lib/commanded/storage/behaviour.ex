@@ -5,6 +5,9 @@ defmodule Commanded.Storage.Behaviour do
   if you don't support position, batch, etc... Sometimes your db lacks loading from a specific position [needed for batch],
   or snapshooting, so implement this feedback also, and the system will deal automatically. If position reading is not
   supported, the persistence.ex will use the load_all_events instead.
+  Auto-snapshotting should be implemented as a separate feature from the storage abstraction. Since snapshotting can 
+  be run as a background activity. Completely separate from persisting events for an aggregate. This also ensures that 
+  there won't be increased latency on aggregate operations because a snapshot is also being recorded.
   """
 
   @type stream      :: String.t             # The Stream ID

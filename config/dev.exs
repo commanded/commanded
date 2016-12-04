@@ -1,5 +1,10 @@
 use Mix.Config
 
+
+config :commanded, Repo,
+  adapter: Commanded.Adapters.Postgres
+
+
 config :eventstore, EventStore.Storage,
   serializer: Commanded.Serialization.JsonSerializer,
   username: "postgres",

@@ -40,7 +40,6 @@ defmodule Commanded.Storage.TestDbs do
 
 
   test "should be true" do
-    Commands.Storage.Persistence.jim
     assert 1 == 1
   end
   # test "should persist pending events in order applied" do

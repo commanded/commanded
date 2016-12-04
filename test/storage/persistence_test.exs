@@ -38,17 +38,17 @@ defmodule Commanded.Storage.PersistenceTest do
 
 
 
-  test "should be true" do
+  test "Apply events for a data structure" do
 
     aggregate = %ExampleAggregate{}
 
-    #aggregate.append_item(aggregate, %AppendItems{count: 7})
     events = ExampleAggregate.append_items(aggregate, 5)
 
     res = Commanded.Storage.Persistence.apply_events(ExampleAggregate, aggregate, events)
-    #Persistence.jim
-    IO.inspect res
-    assert 1 == 1
+
+
+    last_state = %ExampleAggregate{items: [1, 2, 3, 4, 5], last_index: 5}
+    assert res = last_state
   end
   # test "should persist pending events in order applied" do
   #   aggregate_uuid = UUID.uuid4
