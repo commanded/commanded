@@ -9,7 +9,10 @@ defmodule Commanded.Storage.Storage do
   what is the choosen storage, and route the call to the specifc implementation.
   http://elixir-lang.org/docs/stable/elixir/typespecs
   """
+  # defaults
+  @default_adapter Commanded.Storage.Postgre.Adapter
   @read_event_batch_size 100
+
   # types
   @type position :: integer
   @type result   :: {position, String.t}
@@ -23,28 +26,17 @@ defmodule Commanded.Storage.Storage do
   @spec append_events(stream, events) :: any()
 
 
-  @doc "Rebuild the state from aggregates or process managers"
-  def rebuild_from_events(fun) do
-    # case @storage.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
-    #   {:ok, batch} ->
-    #     batch_size = length(batch)
-    #
-    #     case batch_size < @read_event_batch_size do
-    #       true ->
-    #         # end of event stream for aggregate so return its state
-    #         state
-    #
-    #       false ->
-    #         # fetch next batch of events to apply to updated aggregate state
-    #         rebuild_from_events(state, start_version + @read_event_batch_size)
-    #     end
-    #
-    #   {:error, :stream_not_found} ->
-    #     # aggregate does not exist so return empty state
-    #     state
-    # end
 
+
+
+
+  @doc "Recieve internal event data to append. message building is an adapter task."
+  def append_to_stream(stream_id, expected_version, events) do
+    config  = Application.get_env(:commanded, __MODULE__, [])
+    adapter = config[:adapter] || @default_adapter
+    adapter.append_to_stream(stream_id, expected_version, events)
   end
+
 
 
 

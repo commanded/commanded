@@ -1,8 +1,11 @@
 use Mix.Config
 
 
-config :commanded, Repo,
-  adapter: Commanded.Adapters.Postgres
+
+# dependency injection from config files
+config :commanded, Commanded.Storage.Storage,
+  adapter: Commanded.Storage.Postgre.Adapter
+
 
 
 config :eventstore, EventStore.Storage,

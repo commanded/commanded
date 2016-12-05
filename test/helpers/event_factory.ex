@@ -1,7 +1,7 @@
 defmodule Commanded.Helpers.EventFactory do
   def map_to_recorded_events(events) do
     events
-    |> Commanded.Event.Mapper.map_to_event_data(UUID.uuid4)
+    |> Commanded.Storage.Postgre.Mapper.map_to_event_data(UUID.uuid4)    #TODO: refactor mapper
     |> Enum.with_index(1)
     |> Enum.map(fn {event, index} ->
       %EventStore.RecordedEvent{

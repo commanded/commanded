@@ -1,5 +1,13 @@
 use Mix.Config
 
+
+
+
+# dependency injection from config files
+config :commanded, Commanded.Storage.Storage,
+  adapter: Commanded.Storage.Postgre.Adapter
+
+
 # Print only warnings and errors during test
 config :logger, :console, level: :warn, format: "[$level] $message\n"
 

@@ -1,4 +1,6 @@
 defmodule Commanded.Storage.Postgre.Adapter do
+  alias Commanded.Storage.Postgre.Mapper
+  @behaviour Commanded.Storage.Adapter
 
   @type aggregate_uuid      :: String.t
   @type start_version       :: String.t
@@ -7,30 +9,33 @@ defmodule Commanded.Storage.Postgre.Adapter do
   @type reason              :: atom()
 
 
-  @spec load_events(aggregate_uuid, start_version, batch_size)
-        :: {:ok, batch} | {:error, reason}
+  # @spec load_events(aggregate_uuid, start_version, batch_size)
+  #       :: {:ok, batch} | {:error, reason}
 
 
     @doc "Save a list of events to the stream."
-    def append_events(stream, events) do
+    def append_to_stream(stream_id, expected_version,  pending_events) do
+      correlation_id = UUID.uuid4
+      event_data = Mapper.map_to_event_data(pending_events, correlation_id)
+      :ok = EventStore.append_to_stream(stream_id, expected_version, event_data)
     end
 
-    @doc "Load all events for that stream"
-    def load_all_events(stream) do
-    end
-
-    @doc "Load events, but from a specific position"
-    def load_events(stream, position, batch_size \\ @read_event_batch_size) do
-      EventStore.read_stream_forward(stream, position, batch_size)
-    end
-
-    @doc "snapshot adding -snapshot to its stream name"
-    def append_snapshot(stream, state) do
-    end
-
-    @doc "Load the last snapshot for that stream"
-    def load_snapshot(stream) do
-    end
+    # @doc "Load all events for that stream"
+    # def load_all_events(stream) do
+    # end
+    #
+    # @doc "Load events, but from a specific position"
+    # def load_events(stream, position, batch_size \\ @read_event_batch_size) do
+    #   EventStore.read_stream_forward(stream, position, batch_size)
+    # end
+    #
+    # @doc "snapshot adding -snapshot to its stream name"
+    # def append_snapshot(stream, state) do
+    # end
+    #
+    # @doc "Load the last snapshot for that stream"
+    # def load_snapshot(stream) do
+    # end
 
 
 end

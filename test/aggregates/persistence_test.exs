@@ -42,12 +42,14 @@ defmodule Commanded.Aggregates.PersistenceTest do
 
     aggregate = %ExampleAggregate{}
 
-    events = ExampleAggregate.append_items(aggregate, 5)
+    events = ExampleAggregate.append_items(aggregate, 6)
+    res = Persistence.persist_events(events, "id-02", 0)
+    IO.inspect res
 
     res = Commanded.Aggregates.Persistence.apply_events(ExampleAggregate, aggregate, events)
 
 
-    last_state = %ExampleAggregate{items: [1, 2, 3, 4, 5], last_index: 5}
+    last_state = %ExampleAggregate{items: [1, 2, 3, 4, 5, 6], last_index: 6}
     assert res = last_state
   end
   # test "should persist pending events in order applied" do

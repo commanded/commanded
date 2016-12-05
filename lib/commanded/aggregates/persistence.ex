@@ -7,6 +7,7 @@ defmodule Commanded.Aggregates.Persistence do
 
   alias Commanded.Event.Mapper
   alias Commanded.Aggregates.Aggregate
+  alias Commanded.Storage.Storage
   require Logger
 
 
@@ -57,10 +58,7 @@ defmodule Commanded.Aggregates.Persistence do
 
   def persist_events([], _aggregate_uuid, _expected_version), do: :ok
   def persist_events(pending_events, aggregate_uuid, expected_version) do
-    correlation_id = UUID.uuid4
-    event_data = Mapper.map_to_event_data(pending_events, correlation_id)
-
-    :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
+    :ok = Storage.append_to_stream(aggregate_uuid, expected_version, pending_events)
   end
 
 
@@ -68,7 +66,7 @@ defmodule Commanded.Aggregates.Persistence do
   def apply_events(module, state, events), do:
     Enum.reduce(events, state, &module.apply(&2, &1))
 
-  defp map_from_recorded_events(recorded_events), do: Mapper.map_from_recorded_events(recorded_events)
+  defp map_from_recorded_events(recorded_events), do: Commanded.Storage.Postgre.Mapper.map_from_recorded_events(recorded_events)
 
 end
 
