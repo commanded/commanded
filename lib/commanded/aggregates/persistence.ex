@@ -1,4 +1,5 @@
 defmodule Commanded.Aggregates.Persistence do
+  @read_event_batch_size 100
   @moduledoc """
   The triangle: Aggregate Data Structure + Server's State (Container) + Side Effects
   This module encapsulates the Database side-efects over the aggregate's container.
@@ -27,12 +28,12 @@ defmodule Commanded.Aggregates.Persistence do
   @doc "Rebuild from events"
   def rebuild_from_events(%Aggregate{} = state),  do: rebuild_from_events(state, 1)
   def rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
-    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
+    case Storage.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
       {:ok, batch} ->
         batch_size = length(batch)
 
         # rebuild the aggregate's state from the batch of events
-        aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
+        aggregate_state = apply_events(aggregate_module, aggregate_state, batch)
 
         state = %Aggregate{state |
           aggregate_version: start_version - 1 + batch_size,
@@ -55,7 +56,6 @@ defmodule Commanded.Aggregates.Persistence do
     end
   end
 
-
   def persist_events([], _aggregate_uuid, _expected_version), do: :ok
   def persist_events(pending_events, aggregate_uuid, expected_version) do
     :ok = Storage.append_to_stream(aggregate_uuid, expected_version, pending_events)
@@ -65,8 +65,6 @@ defmodule Commanded.Aggregates.Persistence do
   @doc "Receive a module that implements apply function, and rebuild the state from events"
   def apply_events(module, state, events), do:
     Enum.reduce(events, state, &module.apply(&2, &1))
-
-  defp map_from_recorded_events(recorded_events), do: Commanded.Storage.Postgre.Mapper.map_from_recorded_events(recorded_events)
 
 end
 

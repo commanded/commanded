@@ -4,30 +4,26 @@ defmodule Commanded.ProcessManagers.Persistence do
   """
 
   alias Commanded.ProcessManagers.ProcessManagerInstance
+  alias Commanded.Storage.Storage
 
   def persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, 
     process_state: process_state} = state, event_id) do
 
-      :ok = EventStore.record_snapshot(%EventStore.Snapshots.SnapshotData{
-        source_uuid: process_state_uuid(state),
-        source_version: event_id,
-        source_type: Atom.to_string(process_manager_module),
-        data: process_state
-      })
+    :ok = Storage.persist_state(process_state_uuid(state), event_id, process_manager_module, process_state)
   end
 
   def fetch_state(%ProcessManagerInstance{} = state) do
-    case EventStore.read_snapshot(process_state_uuid(state)) do
-      {:ok, snapshot} ->
+    case Storage.fetch_state(process_state_uuid(state), state) do
+      {:ok, data, version} ->
         %ProcessManagerInstance{state |
-          process_state: snapshot.data,
-          last_seen_event_id: snapshot.source_version,
+          process_state: data,
+          last_seen_event_id: version,
         }
-
       {:error, :snapshot_not_found} ->
         state
     end
   end
+
 
 
   defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}),
