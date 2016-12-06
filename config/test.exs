@@ -5,7 +5,7 @@ use Mix.Config
 
 # dependency injection from config files
 config :commanded, Commanded.Storage.Storage,
-  adapter: Commanded.Storage.Postgre.Adapter
+  adapter: Commanded.Storage.EventStore.Adapter
 
 
 # Print only warnings and errors during test

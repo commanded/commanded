@@ -41,7 +41,6 @@ defmodule Commanded.Mixfile do
       {:uuid, "~> 1.1"},
       # devs
       {:dialyxir, "~> 0.3.5", only: :dev},   # simplify dialyzer, type: mix dialyzer.plt first
-			{:mix_test_watch, "~> 0.2", only: :dev} # use mix test.watch for adicted TDD development
                                               # use mix test.watch blabla to point to your test file
 
     ]
