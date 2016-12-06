@@ -49,28 +49,27 @@ defmodule Commanded.Event.Handler do
   end
 
   defp extract_event_id(%EventStore.RecordedEvent{event_id: event_id}), do: event_id
-  defp extract_data(%EventStore.RecordedEvent{data: data}), do: data
-  defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}) do
+  defp extract_data(%EventStore.RecordedEvent{data: data}),             do: data
+  defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}), do:
     Map.merge(%{event_id: event_id, created_at: created_at}, metadata)
-  end
 
   # ignore already seen events
-  defp handle_event(event_id, _data, _metadata, %Handler{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
-    Logger.debug(fn -> "event handler has already seen event id: #{inspect event_id}" end)
-    {:error, :already_seen_event}
+  defp handle_event(event_id, _data, _metadata, 
+    %Handler{last_seen_event_id: last_seen_event_id})
+    when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
+      Logger.debug(fn -> "event handler has already seen event id: #{inspect event_id}" end)
+      {:error, :already_seen_event}
   end
 
   # delegate event to handler module
-  defp handle_event(_event_id, data, metadata, %Handler{handler_module: handler_module}) do
+  defp handle_event(_event_id, data, metadata, %Handler{handler_module: handler_module}), do:
     handler_module.handle(data, metadata)
-  end
 
   # confirm receipt of event
   defp confirm_receipt(state, subscription, event_id) do
     Logger.debug(fn -> "event handler confirming receipt of event: #{event_id}" end)
-
     send(subscription, {:ack, event_id})
-
     %Handler{state | last_seen_event_id: event_id}
   end
+
 end

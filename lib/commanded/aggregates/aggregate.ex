@@ -7,6 +7,7 @@ defmodule Commanded.Aggregates.Aggregate do
   use GenServer
   require Logger
 
+  alias Commanded.Aggregates.Persistence
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Event.Mapper
 
@@ -40,38 +41,29 @@ defmodule Commanded.Aggregates.Aggregate do
 
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
-  def execute(server, command, handler, function \\ :execute, timeout \\ 5_000) do
+  def execute(server, command, handler, function \\ :execute, timeout \\ 5_000), do:
     GenServer.call(server, {:execute_command, handler, function, command}, timeout)
-  end
 
-  @doc """
-  Access the aggregate's state
-  """
+  @doc "Access the aggregate's state"
   def aggregate_state(server), do: GenServer.call(server, {:aggregate_state})
+
+  @doc "Access the aggregate's state, with timout"
   def aggregate_state(server, timeout), do: GenServer.call(server, {:aggregate_state}, timeout)
 
-  @doc """
-  Access the aggregate's UUID
-  """
+  @doc "Access the aggregate's UUID"
   def aggregate_uuid(server), do: GenServer.call(server, {:aggregate_uuid})
 
-  @doc """
-  Access the aggregate's version
-  """
+  @doc "Access the aggregate's version"
   def aggregate_version(server), do: GenServer.call(server, {:aggregate_version})
 
-  @doc """
-  Load any existing events for the aggregate from storage and repopulate the state using those events
-  """
+  @doc "Load any existing events for the aggregate from storage and repopulate the state using those events"
   def handle_cast({:populate_aggregate_state}, %Aggregate{} = state) do
     state = populate_aggregate_state(state)
 
     {:noreply, state}
   end
 
-  @doc """
-  Execute the given command, using the provided handler, against the current aggregate state
-  """
+  @doc "Execute the given command, using the provided handler, against the current aggregate state"
   def handle_call({:execute_command, handler, function, command}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(handler, function, command, state)
 
@@ -91,43 +83,12 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do
-    rebuild_from_events(%Aggregate{state |
+    Persistence.rebuild_from_events(%Aggregate{state |
       aggregate_version: 0,
       aggregate_state: struct(aggregate_module)
     })
   end
 
-  defp rebuild_from_events(%Aggregate{} = state), do: rebuild_from_events(state, 1)
-
-  # load events from the event store, in batches of 100 events, to rebuild the aggregate state
-  defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
-    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
-      {:ok, batch} ->
-        batch_size = length(batch)
-
-        # rebuild the aggregate's state from the batch of events
-        aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
-
-        state = %Aggregate{state |
-          aggregate_version: start_version - 1 + batch_size,
-          aggregate_state: aggregate_state
-        }
-
-        case batch_size < @read_event_batch_size do
-          true ->
-            # end of event stream for aggregate so return its state
-            state
-
-          false ->
-            # fetch next batch of events to apply to updated aggregate state
-            rebuild_from_events(state, start_version + @read_event_batch_size)
-        end
-
-      {:error, :stream_not_found} ->
-        # aggregate does not exist so return empty state
-        state
-    end
-  end
 
   defp execute_command(handler, function, command, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
     case Kernel.apply(handler, function, [aggregate_state, command]) do
@@ -137,9 +98,9 @@ defmodule Commanded.Aggregates.Aggregate do
       events ->
         pending_events = List.wrap(events)
 
-        updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
+        updated_state = Persistence.apply_events(aggregate_module, aggregate_state, pending_events)
 
-        :ok = persist_events(pending_events, aggregate_uuid, expected_version)
+        :ok = Persistence.persist_events(pending_events, aggregate_uuid, expected_version)
 
         state = %Aggregate{state |
           aggregate_state: updated_state,
@@ -150,17 +111,4 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp apply_events(aggregate_module, aggregate_state, events) do
-    Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
-  end
-
-  defp persist_events([], _aggregate_uuid, _expected_version), do: :ok
-  defp persist_events(pending_events, aggregate_uuid, expected_version) do
-    correlation_id = UUID.uuid4
-    event_data = Mapper.map_to_event_data(pending_events, correlation_id)
-
-    :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
-  end
-
-  defp map_from_recorded_events(recorded_events), do: Mapper.map_from_recorded_events(recorded_events)
 end

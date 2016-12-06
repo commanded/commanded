@@ -1,4 +1,4 @@
-defmodule Commanded.Event.Mapper do
+defmodule Commanded.Storage.EventStore.Mapper do
   @moduledoc """
   Map raw events to event data structs ready to be persisted to the event store.
   """
