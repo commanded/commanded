@@ -86,14 +86,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   # process instance is given the event and returns applicable commands (may be none, one or many)
-  defp handle_event(process_manager_module, process_state, %EventStore.RecordedEvent{data: data}) do
+  defp handle_event(process_manager_module, process_state, %EventStore.RecordedEvent{data: data}), do:
     process_manager_module.handle(process_state, data)
-  end
 
   # update the process instance's state by applying the event
-  defp mutate_state(process_manager_module, process_state, %EventStore.RecordedEvent{data: data}) do
+  defp mutate_state(process_manager_module, process_state, %EventStore.RecordedEvent{data: data}), do:
     process_manager_module.apply(process_state, data)
-  end
 
   defp dispatch_commands([], _command_dispatcher), do: :ok
   defp dispatch_commands(commands, command_dispatcher) when is_list(commands) do
@@ -103,24 +101,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end)
   end
 
-
-  defp ack_event(%EventStore.RecordedEvent{event_id: event_id}, process_router) do
+  defp ack_event(%EventStore.RecordedEvent{event_id: event_id}, process_router), do:
     :ok = ProcessRouter.ack_event(process_router, event_id)
-  end
 
-  defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"
-
-
-  #TODO: implement fetch state from the persistence layer
-  # @doc "Fetch state from persistence"
-  # def fetch_state(%ProcessManagerInstance{} = state) do
-  #   fetcher = fn(snapshot) ->
-  #       %ProcessManagerInstance{state |
-  #         process_state: snapshot.data,
-  #         last_seen_event_id: snapshot.source_version,
-  #       }
-  #   end
-  # end
-
+  defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), 
+    do: "#{process_manager_name}-#{process_uuid}"
 
 end

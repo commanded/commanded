@@ -8,7 +8,7 @@ defmodule Commanded.Aggregates.Persistence do
 
   alias Commanded.Event.Mapper
   alias Commanded.Aggregates.Aggregate
-  alias Commanded.Storage.Storage
+  alias Commanded.Storage
   require Logger
 
 

@@ -51,9 +51,7 @@ defmodule Commanded.Commands.Router do
     end
   end
 
-  @doc """
-  Dispatch the given command to the corresponding handler for a given aggregate root uniquely identified
-  """
+  @doc "Dispatch the given command to the corresponding handler for a given aggregate root uniquely identified"
   defmacro dispatch(command_module, opts)
 
   defmacro dispatch(command_modules, opts) when is_list(command_modules) do
@@ -67,26 +65,30 @@ defmodule Commanded.Commands.Router do
   # dispatch directly to the aggregate root
   defmacro dispatch(command_module, to: aggregate, identity: identity) do
     quote do
-      register(unquote(command_module), to: unquote(aggregate), function: :execute, aggregate: unquote(aggregate), identity: unquote(identity), timeout: @default_dispatch_timeout)
+      register(unquote(command_module), to: unquote(aggregate), function: :execute, aggregate: unquote(aggregate),
+        identity: unquote(identity), timeout: @default_dispatch_timeout)
     end
   end
 
   # dispatch directly to the aggregate root
   defmacro dispatch(command_module, to: aggregate, identity: identity, timeout: timeout) do
     quote do
-      register(unquote(command_module), to: unquote(aggregate), function: :execute, aggregate: unquote(aggregate), identity: unquote(identity), timeout: unquote(timeout))
+      register(unquote(command_module), to: unquote(aggregate), function: :execute, aggregate: unquote(aggregate),
+        identity: unquote(identity), timeout: unquote(timeout))
     end
   end
 
   defmacro dispatch(command_module, to: handler, aggregate: aggregate, identity: identity) do
     quote do
-      register(unquote(command_module), to: unquote(handler), function: :handle, aggregate: unquote(aggregate), identity: unquote(identity), timeout: @default_dispatch_timeout)
+      register(unquote(command_module), to: unquote(handler), function: :handle, aggregate: unquote(aggregate),
+        identity: unquote(identity), timeout: @default_dispatch_timeout)
     end
   end
 
   defmacro dispatch(command_module, to: handler, aggregate: aggregate, identity: identity, timeout: timeout) do
     quote do
-      register(unquote(command_module), to: unquote(handler), function: :handle, aggregate: unquote(aggregate), identity: unquote(identity), timeout: unquote(timeout))
+      register(unquote(command_module), to: unquote(handler), function: :handle, aggregate: unquote(aggregate),
+        identity: unquote(identity), timeout: unquote(timeout))
     end
   end
 

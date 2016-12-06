@@ -4,7 +4,7 @@ defmodule Commanded.ProcessManagers.Persistence do
   """
 
   alias Commanded.ProcessManagers.ProcessManagerInstance
-  alias Commanded.Storage.Storage
+  alias Commanded.Storage
 
   def persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, 
     process_state: process_state} = state, event_id) do

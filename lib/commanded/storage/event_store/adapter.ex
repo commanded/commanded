@@ -1,5 +1,5 @@
-defmodule Commanded.Storage.Postgre.Adapter do
-  alias Commanded.Storage.Postgre.Mapper
+defmodule Commanded.Storage.EventStore.Adapter do
+  alias Commanded.Storage.EventStore.Mapper
 
   @behaviour Commanded.Storage.Adapter
 

@@ -1,4 +1,4 @@
-defmodule Commanded.Storage.Storage do
+defmodule Commanded.Storage do
   require Logger
   @moduledoc """
   Proxy API layer to provide a Facade for different data storages, with optimization logic,
@@ -9,7 +9,7 @@ defmodule Commanded.Storage.Storage do
   """
 
   # defaults
-  @default_adapter Commanded.Storage.Postgre.Adapter
+  @default_adapter Commanded.Storage.EventStore.Adapter
   @read_event_batch_size 100
 
   # types
