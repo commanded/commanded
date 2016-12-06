@@ -106,8 +106,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id}, 
     %State{last_seen_event_id: last_seen_event_id})
     when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
-    Logger.debug(fn -> "process manager has already seen event id: #{inspect event_id}" end)
-    true
+      Logger.debug(fn -> "process manager has already seen event id: #{inspect event_id}" end)
+      true
   end
 
   defp already_seen_event?(_event, _state), do: false
