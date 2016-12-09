@@ -1,9 +1,11 @@
 defmodule Commanded.Event.Handler do
+  use Commanded.EventStore
   use GenServer
   require Logger
 
   alias Commanded.Event.Handler
-
+  alias Commanded.EventStore.RecordedEvent
+  
   @type domain_event :: struct
   @type metadata :: struct
 
@@ -27,7 +29,7 @@ defmodule Commanded.Event.Handler do
   end
 
   def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name} = state) do
-    {:ok, _} = EventStore.subscribe_to_all_streams(handler_name, self)
+    {:ok, _} = @event_store.subscribe_to_all_streams(handler_name, self)
     {:noreply, state}
   end
 
@@ -48,9 +50,9 @@ defmodule Commanded.Event.Handler do
     {:noreply, state}
   end
 
-  defp extract_event_id(%EventStore.RecordedEvent{event_id: event_id}), do: event_id
-  defp extract_data(%EventStore.RecordedEvent{data: data}), do: data
-  defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}) do
+  defp extract_event_id(%RecordedEvent{event_id: event_id}), do: event_id
+  defp extract_data(%RecordedEvent{data: data}), do: data
+  defp extract_metadata(%RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}) do
     Map.merge(%{event_id: event_id, created_at: created_at}, metadata)
   end
 

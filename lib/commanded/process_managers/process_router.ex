@@ -3,11 +3,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   Process router is responsible for starting, continuing and completing process managers in response to raised domain events.
   """
 
+  use Commanded.EventStore
   use GenServer
   require Logger
 
   alias Commanded.ProcessManagers.{ProcessManagerInstance,Supervisor}
-
+  alias Commanded.EventStore.RecordedEvent
+  
   defmodule State do
     defstruct [
       process_manager_name: nil,
@@ -43,7 +45,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   Acknowledge successful handling of the given event id by a process manager instance
   """
   def ack_event(process_router, event_id) when is_integer(event_id) do
-    GenServer.call(process_router, {:ack_event, event_id})
+    GenServer.cast(process_router, {:ack_event, event_id})
+    :ok
   end
 
   @doc """
@@ -62,20 +65,20 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:reply, reply, state}
   end
 
-  def handle_call({:ack_event, event_id}, _from, %State{} = state) do
+  def handle_cast({:ack_event, event_id}, %State{} = state) do
     state = confirm_receipt(state, event_id)
 
     # continue processing any pending events
     GenServer.cast(self, {:process_pending_events})
 
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
   @doc """
   Subscribe the process router to all events
   """
   def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name} = state) do
-    {:ok, _} = EventStore.subscribe_to_all_streams(process_manager_name, self)
+    {:ok, _} = @event_store.subscribe_to_all_streams(process_manager_name, self)
     {:noreply, state}
   end
 
@@ -118,7 +121,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   # ignore already seen event
-  defp already_seen_event?(%EventStore.RecordedEvent{event_id: event_id}, %State{last_seen_event_id: last_seen_event_id})
+  defp already_seen_event?(%RecordedEvent{event_id: event_id}, %State{last_seen_event_id: last_seen_event_id})
   when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id
   do
     Logger.debug(fn -> "process manager has already seen event id: #{inspect event_id}" end)
@@ -126,7 +129,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
   defp already_seen_event?(_event, _state), do: false
 
-  defp handle_event(%EventStore.RecordedEvent{data: data, event_id: event_id} = event, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, process_managers: process_managers} = state) do
+  defp handle_event(%RecordedEvent{data: data, event_id: event_id} = event, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, process_managers: process_managers} = state) do
     {process_uuid, process_manager} = case process_manager_module.interested?(data) do
       {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
       {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
@@ -155,7 +158,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp confirm_receipt(%State{process_manager_name: process_manager_name, subscription: subscription} = state, event_id) do
     Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event id: #{inspect event_id}" end)
 
-    send(subscription, {:ack, event_id})
+    @event_store.ack_events(subscription, event_id)
 
     %State{state | last_seen_event_id: event_id}
   end
@@ -181,7 +184,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   defp delegate_event(nil, _event), do: :ok
-  defp delegate_event(process_manager, %EventStore.RecordedEvent{} = event) do
+  defp delegate_event(process_manager, %RecordedEvent{} = event) do
     ProcessManagerInstance.process_event(process_manager, event, self)
   end
 end

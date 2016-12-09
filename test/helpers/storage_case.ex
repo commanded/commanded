@@ -1,6 +1,6 @@
 defmodule Commanded.StorageCase do
   use ExUnit.CaseTemplate
-
+  
   setup do
     Application.stop(:commanded)
     Application.stop(:eventstore)

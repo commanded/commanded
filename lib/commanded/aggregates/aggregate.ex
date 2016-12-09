@@ -4,6 +4,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   Allows execution of commands against an aggregate and handles persistence of events to the event store.
   """
+  use Commanded.EventStore
   use GenServer
   require Logger
 
@@ -101,7 +102,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   # load events from the event store, in batches of 100 events, to rebuild the aggregate state
   defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
-    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
+    case @event_store.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
       {:ok, batch} ->
         batch_size = length(batch)
 
@@ -159,7 +160,7 @@ defmodule Commanded.Aggregates.Aggregate do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
-    :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
+    :ok = @event_store.append_to_stream(aggregate_uuid, expected_version, event_data)
   end
 
   defp map_from_recorded_events(recorded_events), do: Mapper.map_from_recorded_events(recorded_events)

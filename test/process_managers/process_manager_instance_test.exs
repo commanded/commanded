@@ -27,7 +27,7 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
 
     {:ok, process_manager} = ProcessManagerInstance.start_link(Router, "TransferMoneyProcessManager", TransferMoneyProcessManager, transfer_uuid)
 
-    event = %EventStore.RecordedEvent{
+    event = %Commanded.EventStore.RecordedEvent{
       event_id: 1,
       data: %MoneyTransferRequested{
         transfer_uuid: transfer_uuid,
@@ -40,6 +40,6 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
     :ok = ProcessManagerInstance.process_event(process_manager, event, self)
 
     # should send ack to process router after processing event
-    assert_receive({:"$gen_call", _, {:ack_event, 1}}, 1_000)
+    assert_receive({:"$gen_cast", {:ack_event, 1}}, 1_000)
   end
 end
