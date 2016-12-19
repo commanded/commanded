@@ -14,7 +14,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
     ```elixir    
     def deps do
-      [{:eventstore, "~> 0.5"}]
+      [{:eventstore, "~> 0.7"}]
     end
     ```
 
@@ -47,7 +47,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
 ### Writing to a stream
 
-Create a unique identity for each stream. It **must** be a string. This example uses the `uuid` package.
+Create a unique identity for each stream. It **must** be a string. This example uses the [uuid](https://hex.pm/packages/uuid) package.
 
 ```elixir
 stream_uuid = UUID.uuid4
@@ -83,6 +83,15 @@ Read all events from the stream, starting at the stream's first event.
 
 ```elixir
 {:ok, events} = EventStore.read_stream_forward(stream_uuid)
+```
+
+### Reading from all streams
+
+Read all events from all streams.
+
+```elixir
+# defaults to reading the first 1,000 events from all streams
+{:ok, events} = EventStore.read_all_streams_forward()
 ```
 
 ### Subscribe to streams
