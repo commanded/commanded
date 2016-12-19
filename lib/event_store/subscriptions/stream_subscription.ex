@@ -23,7 +23,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   defstate initial do
     defevent subscribe(stream_uuid, stream, subscription_name, source, subscriber, opts), data: %SubscriptionData{} = data do
-      case subscribe_to_stream(stream_uuid, subscription_name) do
+      case subscribe_to_stream(stream_uuid, subscription_name, opts[:start_from_event_id], opts[:start_from_stream_version]) do
         {:ok, subscription} ->
           last_ack = subscription_provider(stream_uuid).last_ack(subscription) || 0
 
@@ -189,8 +189,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   defp subscription_provider(@all_stream), do: AllStreamsSubscription
   defp subscription_provider(_stream_uuid), do: SingleStreamSubscription
 
-  defp subscribe_to_stream(stream_uuid, subscription_name) do
-    Storage.subscribe_to_stream(stream_uuid, subscription_name)
+  defp subscribe_to_stream(stream_uuid, subscription_name, start_from_event_id, start_from_stream_version) do
+    Storage.subscribe_to_stream(stream_uuid, subscription_name, start_from_event_id, start_from_stream_version)
   end
 
   defp unsubscribe_from_stream(stream_uuid, subscription_name) do

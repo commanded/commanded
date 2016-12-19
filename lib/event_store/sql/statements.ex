@@ -149,8 +149,8 @@ RETURNING stream_id;
 
   def create_subscription do
 """
-INSERT INTO subscriptions (stream_uuid, subscription_name)
-VALUES ($1, $2)
+INSERT INTO subscriptions (stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version)
+VALUES ($1, $2, $3, $4)
 RETURNING subscription_id, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version, created_at;
 """
   end

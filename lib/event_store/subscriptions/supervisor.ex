@@ -9,8 +9,8 @@ defmodule EventStore.Subscriptions.Supervisor do
     Supervisor.start_link(__MODULE__, nil)
   end
 
-  def subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber) do
-    Supervisor.start_child(supervisor, [stream_uuid, stream, subscription_name, subscriber])
+  def subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber, opts) do
+    Supervisor.start_child(supervisor, [stream_uuid, stream, subscription_name, subscriber, opts])
   end
 
   def unsubscribe_from_stream(supervisor, subscription) do

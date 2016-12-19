@@ -25,6 +25,20 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
     assert subscription.data.subscription_name == @subscription_name
     assert subscription.data.subscriber == self
     assert subscription.data.last_seen == 0
+    assert subscription.data.last_ack == 0
+  end
+
+  test "create subscription to a single stream from starting stream version" do
+    stream_uuid = UUID.uuid4
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    subscription = create_subscription(stream_uuid, stream, start_from_stream_version: 2)
+
+    assert subscription.state == :catching_up
+    assert subscription.data.subscription_name == @subscription_name
+    assert subscription.data.subscriber == self
+    assert subscription.data.last_seen == 2
+    assert subscription.data.last_ack == 2
   end
 
   test "catch-up subscription, no persisted events" do

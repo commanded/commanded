@@ -15,13 +15,24 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     {:ok, %{conn: conn}}
   end
 
-  test "create subscription to stream" do
+  test "create subscription to all streams" do
     subscription = create_subscription
 
     assert subscription.state == :catching_up
     assert subscription.data.subscription_name == @subscription_name
     assert subscription.data.subscriber == self
     assert subscription.data.last_seen == 0
+    assert subscription.data.last_ack == 0
+  end
+
+  test "create subscription to all streams from starting event id" do
+    subscription = create_subscription(start_from_event_id: 2)
+
+    assert subscription.state == :catching_up
+    assert subscription.data.subscription_name == @subscription_name
+    assert subscription.data.subscriber == self
+    assert subscription.data.last_seen == 2
+    assert subscription.data.last_ack == 2
   end
 
   test "catch-up subscription, no persisted events" do

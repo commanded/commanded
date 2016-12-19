@@ -57,6 +57,23 @@ defmodule EventStoreTest do
     assert hd(received_events).data == hd(events).data
   end
 
+  test "subscribe to all streams from current position" do
+    stream_uuid = UUID.uuid4
+    initial_events = EventFactory.create_events(1)
+    new_events = EventFactory.create_events(1, 2)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 0, initial_events)
+
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self, :current)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 1, new_events)
+
+    assert_receive {:events, received_events, ^subscription}
+
+    assert length(received_events) == 1
+    assert hd(received_events).data == hd(new_events).data
+  end
+
   defmodule ExampleData do
     defstruct [:data]
   end

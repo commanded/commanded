@@ -14,6 +14,8 @@ defmodule EventStore do
       {:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
   """
 
+  @type start_from :: :origin | :current | integer
+
   alias EventStore.Snapshots.{SnapshotData,Snapshotter}
   alias EventStore.{EventData,RecordedEvent,Streams,Subscriptions}
   alias EventStore.Streams.{AllStream,Stream}
@@ -88,13 +90,13 @@ defmodule EventStore do
 
   Returns `{:ok, subscription}` when subscription succeeds.
   """
-  @spec subscribe_to_stream(String.t, String.t, pid) :: {:ok, subscription :: pid}
+  @spec subscribe_to_stream(String.t, String.t, pid, start_from) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
-  def subscribe_to_stream(stream_uuid, subscription_name, subscriber) do
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, start_from \\ :origin) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    Stream.subscribe_to_stream(stream, subscription_name, subscriber)
+    Stream.subscribe_to_stream(stream, subscription_name, subscriber, start_from)
   end
 
   @doc """
@@ -106,11 +108,11 @@ defmodule EventStore do
 
   Returns `{:ok, subscription}` when subscription succeeds.
   """
-  @spec subscribe_to_all_streams(String.t, pid) :: {:ok, subscription :: pid}
+  @spec subscribe_to_all_streams(String.t, pid, start_from) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
-  def subscribe_to_all_streams(subscription_name, subscriber) do
-    AllStream.subscribe_to_stream(subscription_name, subscriber)
+  def subscribe_to_all_streams(subscription_name, subscriber, start_from \\ :origin) do
+    AllStream.subscribe_to_stream(subscription_name, subscriber, start_from)
   end
 
   @doc """
@@ -163,7 +165,7 @@ defmodule EventStore do
   Record a snapshot of the data and metadata for a given source
 
   - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely. The default value is 5000. If no reply is received within the specified time, the function call fails and the caller exits.
-  
+
   Returns `:ok` on success
   """
   @spec record_snapshot(SnapshotData.t, timeout :: integer) :: :ok | {:error, reason :: term}

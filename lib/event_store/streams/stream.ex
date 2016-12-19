@@ -30,8 +30,8 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:read_stream_forward, start_version, count})
   end
 
-  def subscribe_to_stream(stream, subscription_name, subscriber) do
-    GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber})
+  def subscribe_to_stream(stream, subscription_name, subscriber, start_from) do
+    GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber, start_from})
   end
 
   def stream_version(stream) do
@@ -66,8 +66,8 @@ defmodule EventStore.Streams.Stream do
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe_to_stream, subscription_name, subscriber}, _from, %Stream{stream_uuid: stream_uuid} = state) do
-    reply = Subscriptions.subscribe_to_stream(stream_uuid, self, subscription_name, subscriber)
+  def handle_call({:subscribe_to_stream, subscription_name, subscriber, start_from}, _from, %Stream{stream_uuid: stream_uuid} = state) do
+    reply = Subscriptions.subscribe_to_stream(stream_uuid, self, subscription_name, subscriber, start_from_stream_version(state, start_from))
 
     {:reply, reply, state}
   end
@@ -75,6 +75,10 @@ defmodule EventStore.Streams.Stream do
   def handle_call({:stream_version}, _from, %Stream{stream_version: stream_version} = state) do
     {:reply, {:ok, stream_version}, state}
   end
+
+  defp start_from_stream_version(%Stream{} = _stream, :origin), do: 0
+  defp start_from_stream_version(%Stream{stream_version: stream_version}, :current), do: stream_version
+  defp start_from_stream_version(%Stream{} = _stream, start_from) when is_integer(start_from), do: start_from
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     {:ok, stream_id} = Storage.create_stream(stream_uuid)
@@ -113,7 +117,7 @@ defmodule EventStore.Streams.Stream do
       event_type: event_type,
       data: serializer.serialize(data),
       metadata: serializer.serialize(metadata),
-      created_at: utc_now
+      created_at: utc_now,
     }
   end
 

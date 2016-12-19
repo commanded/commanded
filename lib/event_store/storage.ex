@@ -72,10 +72,10 @@ defmodule EventStore.Storage do
   end
 
   @doc """
-  Create, or locate an existing, persistent subscription to a stream using a unique name
+  Create, or locate an existing, persistent subscription to a stream using a unique name and starting position (event id or stream version)
   """
-  def subscribe_to_stream(stream_uuid, subscription_name) do
-    execute_using_storage_pool(&Subscription.subscribe_to_stream(&1, stream_uuid, subscription_name))
+  def subscribe_to_stream(stream_uuid, subscription_name, start_from_event_id \\ nil, start_from_stream_version \\ nil) do
+    execute_using_storage_pool(&Subscription.subscribe_to_stream(&1, stream_uuid, subscription_name, start_from_event_id, start_from_stream_version))
   end
 
   @doc """

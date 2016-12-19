@@ -11,15 +11,23 @@ defmodule EventStore.Subscriptions.Subscription do
 
   alias EventStore.Subscriptions.{StreamSubscription,Subscription}
 
-  defstruct stream_uuid: nil, stream: nil, subscription_name: nil, subscriber: nil, subscription: nil
+  defstruct [
+    stream_uuid: nil,
+    stream: nil,
+    subscription_name: nil,
+    subscriber: nil,
+    subscription: nil,
+    subscription_opts: [],
+  ]
 
-  def start_link(stream_uuid, stream, subscription_name, subscriber) do
+  def start_link(stream_uuid, stream, subscription_name, subscriber, opts) do
     GenServer.start_link(__MODULE__, %Subscription{
       stream_uuid: stream_uuid,
       stream: stream,
       subscription_name: subscription_name,
       subscriber: subscriber,
-      subscription: StreamSubscription.new
+      subscription: StreamSubscription.new,
+      subscription_opts: opts,
     })
   end
 
@@ -39,10 +47,10 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
-  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription} = state) do
+  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
     subscription =
       subscription
-      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self, subscriber, [])
+      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self, subscriber, opts)
 
     state = %Subscription{state | subscription: subscription}
 

@@ -17,10 +17,10 @@ defmodule EventStore.Storage.Subscription do
     Subscription.All.execute(conn)
   end
 
-  def subscribe_to_stream(conn, stream_uuid, subscription_name) do
+  def subscribe_to_stream(conn, stream_uuid, subscription_name, start_from_event_id, start_from_stream_version) do
     case Subscription.Query.execute(conn, stream_uuid, subscription_name) do
       {:ok, subscription} -> {:ok, subscription}
-      {:error, :subscription_not_found} -> Subscription.Subscribe.execute(conn, stream_uuid, subscription_name)
+      {:error, :subscription_not_found} -> Subscription.Subscribe.execute(conn, stream_uuid, subscription_name, start_from_event_id, start_from_stream_version)
     end
   end
 
@@ -65,11 +65,11 @@ defmodule EventStore.Storage.Subscription do
   end
 
   defmodule Subscribe do
-    def execute(conn, stream_uuid, subscription_name) do
+    def execute(conn, stream_uuid, subscription_name, start_from_event_id, start_from_stream_version) do
       _ = Logger.debug(fn -> "attempting to create subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
 
       conn
-      |> Postgrex.query(Statements.create_subscription, [stream_uuid, subscription_name])
+      |> Postgrex.query(Statements.create_subscription, [stream_uuid, subscription_name, start_from_event_id, start_from_stream_version])
       |> handle_response(stream_uuid, subscription_name)
     end
 

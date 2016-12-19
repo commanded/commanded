@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.0
+
+### Enhancements
+
+- Subscribe to a single stream, or all streams, from a specified start position ([#17](https://github.com/slashdotdash/eventstore/issues/17)).
+
 ## v0.6.2
 
 ### Bug fixes
