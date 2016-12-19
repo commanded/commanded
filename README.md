@@ -281,9 +281,11 @@ end
 Register the event handler with a given name. The name is used when subscribing to the event store to record the last seen event.
 
 ```elixir
-{:ok, _} = AccountBalanceHandler.start_link
-{:ok, _} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+{:ok, _balance} = AccountBalanceHandler.start_link
+{:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler, start_from: :origin)
 ```
+
+You should use a [supervisor](#Supervision) to start your event handlers to ensure they are restarted on error.
 
 ### Process managers
 
@@ -387,10 +389,10 @@ defmodule Bank.Supervisor do
       supervisor(Commanded.Supervisor, []),
 
       # process manager
-      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter], id: :transfer_money_process_manager),
+      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter, start_from: :current], id: :transfer_money_process_manager),
 
       # event handler
-      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler], id: :account_balance_handler)
+      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler, start_from: :origin], id: :account_balance_handler)
     ]
 
     supervise(children, strategy: :one_for_one)

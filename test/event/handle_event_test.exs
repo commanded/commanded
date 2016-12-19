@@ -2,6 +2,7 @@ defmodule Commanded.Event.HandleEventTest do
 	use Commanded.StorageCase
 
   import Commanded.Enumerable, only: [pluck: 2]
+  import Commanded.Assertions.EventAssertions
 
   alias Commanded.Event.AppendingEventHandler
   alias Commanded.Helpers.EventFactory
@@ -55,6 +56,46 @@ defmodule Commanded.Event.HandleEventTest do
 
     assert AccountBalanceHandler.current_balance == 1_050
   end
+
+  @tag :wip
+  test "should ignore events created before the event handler's subscription when starting from `current`" do
+    {:ok, _} = AppendingEventHandler.start_link
+
+    stream_uuid = UUID.uuid4
+    initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+    new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
+
+    :ok = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+
+    {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :current)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+
+    wait_for_event MoneyDeposited
+
+    assert AppendingEventHandler.received_events == new_events
+    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [2]
+	end
+
+  @tag :wip
+  test "should receive events created before the event handler's subscription when starting from `origin`" do
+    {:ok, _} = AppendingEventHandler.start_link
+
+    stream_uuid = UUID.uuid4
+    initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+    new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
+
+    :ok = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+
+    {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :origin)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+
+    wait_for_event MoneyDeposited
+
+    assert AppendingEventHandler.received_events == initial_events ++ new_events
+    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
+	end
 
 	test "should ignore already seen events" do
     {:ok, _} = AppendingEventHandler.start_link
