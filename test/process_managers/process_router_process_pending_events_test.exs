@@ -153,6 +153,8 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
 
+    :timer.sleep 100
+
     %{items: items} = ProcessRouter.process_state(process_router, aggregate_uuid)
     assert items == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   end
@@ -209,7 +211,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
 
     wait_for_event Interested, fn event -> event.index == 6 end
-    :timer.sleep 1_000
+    :timer.sleep 100
 
     %{items: items} = ProcessRouter.process_state(process_router, aggregate_uuid)
     assert items == [1, 2, 3, 4, 5, 6]
