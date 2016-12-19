@@ -196,6 +196,44 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
     end
 
+    test "should monitor subscriber and terminate subscription on error", %{subscription_name: subscription_name} do
+      stream_uuid = UUID.uuid4
+      events = EventFactory.create_events(1)
+
+      {:ok, stream} = Streams.open_stream(stream_uuid)
+      {:ok, subscriber1} = Subscriber.start_link(self)
+      {:ok, subscriber2} = Subscriber.start_link(self)
+
+      {:ok, subscription1} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-1", subscriber1)
+      {:ok, subscription2} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-2", subscriber2)
+
+      send(subscription1, {:ack, 1})
+      send(subscription2, {:ack, 1})
+
+      # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
+      Process.unlink(subscriber1)
+
+      ProcessHelper.shutdown(subscriber1)
+
+      # should kill subscription and subscriber
+      assert Process.alive?(subscription1) == false
+      assert Process.alive?(subscriber1) == false
+
+      # other subscription should be unaffected
+      assert Process.alive?(subscription2) == true
+      assert Process.alive?(subscriber2) == true
+
+      # should still notify subscription 2
+      :ok = Stream.append_to_stream(stream, 0, events)
+
+      # subscription 2 should still receive events
+      assert_receive {:events, received_events}, @receive_timeout
+      refute_receive {:events, _events}, @receive_timeout
+
+      assert pluck(received_events, :data) == pluck(events, :data)
+      assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
+    end
+
     test "unsubscribe from a single stream subscription should stop subscriber from receiving events", %{subscription_name: subscription_name} do
       stream_uuid = UUID.uuid4
       events = EventFactory.create_events(1)
