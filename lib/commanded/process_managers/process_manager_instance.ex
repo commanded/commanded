@@ -39,6 +39,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
+  Stop the given process manager, typically when it has reached its final state
+  """
+  def stop(process_manager) do
+    GenServer.stop(process_manager)
+  end
+
+  @doc """
   Fetch the process state of this instance
   """
   def process_state(process_manager) do
