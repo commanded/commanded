@@ -13,6 +13,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       process_manager_name: nil,
       process_manager_module: nil,
       command_dispatcher: nil,
+      subscribe_from: nil,
       process_managers: %{},
       supervisor: nil,
       last_seen_event_id: nil,
@@ -21,11 +22,12 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     ]
   end
 
-  def start_link(process_manager_name, process_manager_module, command_dispatcher) do
+  def start_link(process_manager_name, process_manager_module, command_dispatcher, opts \\ []) do
     GenServer.start_link(__MODULE__, %State{
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
-      command_dispatcher: command_dispatcher
+      command_dispatcher: command_dispatcher,
+      subscribe_from: opts[:start_from] || :origin,
     })
   end
 
@@ -74,8 +76,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   @doc """
   Subscribe the process router to all events
   """
-  def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name} = state) do
-    {:ok, _} = EventStore.subscribe_to_all_streams(process_manager_name, self)
+  def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
+    {:ok, _} = EventStore.subscribe_to_all_streams(process_manager_name, self, subscribe_from)
     {:noreply, state}
   end
 

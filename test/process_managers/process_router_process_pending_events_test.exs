@@ -76,7 +76,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
   defmodule ExampleProcessManager do
     @behaviour Commanded.ProcessManagers.ProcessManager
-    
+
     defstruct [
       status: nil,
       items: [],
@@ -153,6 +153,8 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
 
+    :timer.sleep 100
+
     %{items: items} = ProcessRouter.process_state(process_router, aggregate_uuid)
     assert items == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   end
@@ -193,5 +195,25 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Interested{aggregate_uuid: aggregate_uuid, index: 10},
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
+  end
+
+  test "should ignore past events when starting subscription from current" do
+    aggregate_uuid = UUID.uuid4
+
+    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 4, uninteresting: 0})
+
+    wait_for_event Interested, fn event -> event.index == 4 end
+
+    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router, start_from: :current)
+
+    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
+
+    wait_for_event Interested, fn event -> event.index == 6 end
+    :timer.sleep 100
+
+    %{items: items} = ProcessRouter.process_state(process_router, aggregate_uuid)
+    assert items == [1, 2, 3, 4, 5, 6]
   end
 end

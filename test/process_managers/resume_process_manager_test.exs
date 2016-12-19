@@ -105,6 +105,8 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       assert event.status == "start"
     end
 
+    :timer.sleep 100
+
     # wait for process instance to receive event
     Wait.until(fn ->
       %{status_history: ["start"]} = ProcessRouter.process_state(process_router, process_uuid)
