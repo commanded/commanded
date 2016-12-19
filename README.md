@@ -10,6 +10,22 @@ MIT License
 
 [![Build Status](https://travis-ci.org/slashdotdash/commanded.svg?branch=master)](https://travis-ci.org/slashdotdash/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+---
+
+### Overview
+
+- [Getting started](#getting-started)
+- [Aggregate roots](#aggregate-roots)
+- [Commands](#commands)
+  - [Command handlers](#command-handlers)
+  - [Command dispatch and routing](#command-dispatch-and-routing)
+- [Middleware](#middleware)
+- [Event handlers](#event-handlers)
+- [Process managers](#process-managers)
+- [Supervision](#supervision)
+- [Serialization](#serialization)
+- [Contributing](#contributing)
+
 ## Getting started
 
 The package can be installed from hex as follows.
