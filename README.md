@@ -6,6 +6,25 @@ MIT License
 
 [![Build Status](https://travis-ci.org/slashdotdash/eventstore.svg?branch=master)](https://travis-ci.org/slashdotdash/eventstore)
 
+---
+
+### Overview
+
+- [Getting started](#getting-started)
+- [Using the EventStore](#using-the-eventstore)
+  - [Writing to a stream](#writing-to-a-stream)
+  - [Reading from a stream](#reading-from-a-stream)
+  - [Reading from all streams](#reading-from-all-streams)
+  - [Subscribe to streams](#subscribe-to-streams)
+    - [Ack received events](#ack-received-events)
+    - [Example subscriber](#example-subscriber)
+- [Event serialization](#event-serialization)
+- [Benchmarking performance](#benchmarking-performance)
+- [Contributing](#contributing)
+  - [Contributors](#contributors)
+
+---
+
 ## Getting started
 
 EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be installed as follows:
