@@ -8,7 +8,7 @@ defmodule EventStore.Streams.StreamTest do
   alias EventStore.Streams
   alias EventStore.Streams.Stream
 
-  @all_stream "$all"
+  @subscription_name "test_subscription"
 
   test "open a stream" do
     stream_uuid = UUID.uuid4
@@ -52,7 +52,7 @@ defmodule EventStore.Streams.StreamTest do
     test "should set created at datetime", context do
       now = DateTime.utc_now |> DateTime.to_naive
 
-      {:ok, [event|_]} = Stream.read_stream_forward(context[:stream], 0, 1_000)
+      {:ok, [event]} = Stream.read_stream_forward(context[:stream], 0, 1)
 
       created_at = event.created_at
       assert created_at != nil
@@ -85,7 +85,37 @@ defmodule EventStore.Streams.StreamTest do
     end
   end
 
-  test "stream should correctly restore stream_version after reopening" do
+  describe "subscribe to stream" do
+    setup [:append_events_to_stream]
+
+    test "from origin should receive all events", context do
+      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self, :origin)
+
+      assert_receive {:events, received_events, _}
+      assert length(received_events) == 3
+    end
+
+    test "from current should receive only new events", context do
+      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self, :current)
+
+      refute_receive {:events, _received_events, _}
+
+      events = EventFactory.create_events(1, 4)
+      :ok = Stream.append_to_stream(context[:stream], 3, events)
+
+      assert_receive {:events, received_events, _}
+      assert length(received_events) == 1
+    end
+
+    test "from given stream version should receive only later events", context do
+      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self, 2)
+
+      assert_receive {:events, received_events, _}
+      assert length(received_events) == 1
+    end
+  end
+
+  test "stream should correctly restore `stream_version` after reopening" do
     stream_uuid = UUID.uuid4
     events = EventFactory.create_events(3)
 

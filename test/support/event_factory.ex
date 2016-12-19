@@ -5,7 +5,7 @@ defmodule EventStore.EventFactory do
     defstruct event: nil
   end
 
-  def create_events(number_of_events) when number_of_events > 0 do
+  def create_events(number_of_events, initial_event_number \\ 1) when number_of_events > 0 do
     correlation_id = UUID.uuid4
 
     1..number_of_events
@@ -13,7 +13,7 @@ defmodule EventStore.EventFactory do
       %EventData{
         correlation_id: correlation_id,
         event_type: "Elixir.EventStore.EventFactory.Event",
-        data: %EventStore.EventFactory.Event{event: number},
+        data: %EventStore.EventFactory.Event{event: (initial_event_number + number - 1)},
         metadata: %{"user" => "user@example.com"}
       }
     end)

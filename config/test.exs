@@ -11,5 +11,4 @@ config :eventstore, EventStore.Storage,
   password: "postgres",
   database: "eventstore_test",
   hostname: "localhost",
-  pool_size: 1,
-  extensions: [{Postgrex.Extensions.Calendar, []}]
+  pool_size: 1

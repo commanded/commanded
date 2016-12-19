@@ -34,8 +34,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
       password: "postgres",
       database: "eventstore_dev",
       hostname: "localhost",
-      pool_size: 10,
-      extensions: [{Postgrex.Extensions.Calendar, []}]
+      pool_size: 10
     ```
 
   4. Create the EventStore database and tables using the `mix` task
@@ -90,9 +89,15 @@ Read all events from the stream, starting at the stream's first event.
 
 Subscriptions to a stream will guarantee at least once delivery of every persisted event. Each subscription may be independently paused, then later resumed from where it stopped. A subscription can be created to receive events published from a single logical stream or from all streams.
 
-Events are received in batches after being persisted to storage. Each batch contains events from a single stream only with the same correlation id.
+Events are received in batches after being persisted to storage. Each batch contains events from a single stream only and with the same correlation id.
 
 Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
+
+By default subscriptions are created from the single stream, or all stream, origin. So it will receive all events from the single stream, or all streams. You can optionally specify a given start position.
+
+- `:origin` - subscribe to events from the start of the stream (identical to using 0). This is the current behaviour and will remain the default.
+- `:current` - subscribe to events from the current version.
+- `stream_version` or `event_id` (integer) - specify an exact stream version to subscribe from for a single stream subscription. You provide an event id for an all stream subscription.
 
 #### Ack received events
 
