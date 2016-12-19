@@ -18,7 +18,7 @@ defmodule EventStore.JsonSerializer do
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type, nil) do
       nil -> []
-      type -> type |> String.to_atom |> struct
+      type -> type |> String.to_existing_atom |> struct
     end
     Poison.decode!(binary, as: type)
   end
