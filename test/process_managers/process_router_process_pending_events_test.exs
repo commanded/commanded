@@ -1,10 +1,11 @@
 defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   use Commanded.StorageCase
 
-  alias Commanded.ProcessManagers.ProcessRouter
-
   import Commanded.Assertions.EventAssertions
   import Commanded.Enumerable
+
+  alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
+  alias Commanded.Helpers.Wait
 
   defmodule ExampleAggregate do
     defstruct [
@@ -147,10 +148,13 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
 
-    :timer.sleep 100
+    Wait.until fn ->
+      # process instance should be stopped
+      assert ProcessRouter.process_instance(process_router, aggregate_uuid) == {:error, :process_manager_not_found}
 
-    # process instance should be stopped
-    {:error, :process_manager_not_found} = ProcessRouter.process_state(process_router, aggregate_uuid)
+      # process state snapshot should be deleted
+      assert EventStore.read_snapshot("example_process_manager-#{aggregate_uuid}") == {:error, :snapshot_not_found}
+    end
   end
 
   test "should ignore uninteresting events" do
@@ -190,8 +194,10 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
 
-    # process instance should be stopped
-    {:error, :process_manager_not_found} = ProcessRouter.process_state(process_router, aggregate_uuid)
+    Wait.until fn ->
+      # process instance should be stopped
+      assert ProcessRouter.process_instance(process_router, aggregate_uuid) == {:error, :process_manager_not_found}
+    end
   end
 
   test "should ignore past events when starting subscription from current" do
@@ -210,7 +216,8 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     wait_for_event Interested, fn event -> event.index == 6 end
     :timer.sleep 100
 
-    %{items: items} = ProcessRouter.process_state(process_router, aggregate_uuid)
+    process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
+    %{items: items} = ProcessManagerInstance.process_state(process_instance)
     assert items == [1, 2, 3, 4, 5, 6]
   end
 end

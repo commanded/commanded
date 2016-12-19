@@ -49,16 +49,16 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc """
-  Fetch the state of an individual process manager instance identified by the given `process_uuid`
+  Fetch the pid of an individual process manager instance identified by the given `process_uuid`
   """
-  def process_state(process_router, process_uuid) do
-    GenServer.call(process_router, {:process_state, process_uuid})
+  def process_instance(process_router, process_uuid) do
+    GenServer.call(process_router, {:process_instance, process_uuid})
   end
 
-  def handle_call({:process_state, process_uuid}, _from, %State{process_managers: process_managers} = state) do
+  def handle_call({:process_instance, process_uuid}, _from, %State{process_managers: process_managers} = state) do
     reply = case Map.get(process_managers, process_uuid) do
       nil -> {:error, :process_manager_not_found}
-      process_manager -> ProcessManagerInstance.process_state(process_manager)
+      process_manager -> process_manager
     end
 
     {:reply, reply, state}
@@ -186,11 +186,11 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     end
   end
 
-  defp stop_process_manager(process_uuid, %State{process_managers: process_managers} = state) do
+  defp stop_process_manager(process_uuid, %State{process_managers: process_managers}) do
     case Map.get(process_managers, process_uuid) do
       nil -> nil
       process_manager ->
-        ProcessManagerInstance.stop(process_manager)
+        :ok = ProcessManagerInstance.stop(process_manager)
         nil
     end
   end

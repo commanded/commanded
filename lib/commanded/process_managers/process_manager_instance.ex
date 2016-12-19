@@ -2,6 +2,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @moduledoc """
   Defines an instance of a process manager.
   """
+
   use GenServer
   require Logger
 
@@ -39,10 +40,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
-  Stop the given process manager, typically when it has reached its final state
+  Stop the given process manager and delete its persisted state.
+
+  Typically called when it has reached its final state.
   """
   def stop(process_manager) do
-    GenServer.stop(process_manager)
+    GenServer.call(process_manager, {:stop})
   end
 
   @doc """
@@ -50,6 +53,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   """
   def process_state(process_manager) do
     GenServer.call(process_manager, {:process_state})
+  end
+
+  def handle_call({:stop}, _from, %ProcessManagerInstance{} = state) do
+    delete_state(state)
+
+    # stop the process with a normal reason
+    {:stop, :normal, :ok, state}
   end
 
   def handle_call({:process_state}, _from, %ProcessManagerInstance{process_state: process_state} = state) do
@@ -134,6 +144,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       source_type: Atom.to_string(process_manager_module),
       data: process_state
     })
+  end
+
+  defp delete_state(%ProcessManagerInstance{} = state) do
+    :ok = EventStore.delete_snapshot(process_state_uuid(state))
   end
 
   defp ack_event(%EventStore.RecordedEvent{event_id: event_id}, process_router) do
