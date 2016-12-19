@@ -57,7 +57,6 @@ defmodule Commanded.Event.HandleEventTest do
     assert AccountBalanceHandler.current_balance == 1_050
   end
 
-  @tag :wip
   test "should ignore events created before the event handler's subscription when starting from `current`" do
     {:ok, _} = AppendingEventHandler.start_link
 
@@ -77,7 +76,6 @@ defmodule Commanded.Event.HandleEventTest do
     assert pluck(AppendingEventHandler.received_metadata, :event_id) == [2]
 	end
 
-  @tag :wip
   test "should receive events created before the event handler's subscription when starting from `origin`" do
     {:ok, _} = AppendingEventHandler.start_link
 
