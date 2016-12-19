@@ -4,7 +4,13 @@
 
 ### Enhancements
 
-- Middleware `after_failure` callback is executed even when a middleware halts execution. 
+- Event handler and process manager subscriptions should be created from a given stream position ([#14](https://github.com/slashdotdash/commanded/issues/14)).
+
+## v0.8.3
+
+### Enhancements
+
+- Middleware `after_failure` callback is executed even when a middleware halts execution.
 
 ## v0.8.2
 

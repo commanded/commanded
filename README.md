@@ -185,7 +185,7 @@ end
 :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, 2_000)
 ```
 
-#### Multi command registration
+#### Multi-command registration
 
 Command routers support multi command registration so you can group related command handlers into the same module.
 
@@ -278,14 +278,23 @@ defmodule AccountBalanceHandler do
 end
 ```
 
-Register the event handler with a given name. The name is used when subscribing to the event store to record the last seen event.
+Register the event handler with a given name. This is used when subscribing to the event store to track which events the handler has seen during restarts.
 
 ```elixir
 {:ok, _balance} = AccountBalanceHandler.start_link
+{:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+```
+
+You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so your handler will receive all events.
+
+```elixir
+# start from :origin, :current, or an explicit event id
 {:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler, start_from: :origin)
 ```
 
-You should use a [supervisor](#Supervision) to start your event handlers to ensure they are restarted on error.
+Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
+
+You should use a [supervisor](#supervision) to start your event handlers to ensure they are restarted on error.
 
 ### Process managers
 
@@ -367,8 +376,10 @@ end
 Register the process manager router with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
 
 ```elixir
-{:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
+{:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager, start_from: :current)
 ```
+
+You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
 
 Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
 
