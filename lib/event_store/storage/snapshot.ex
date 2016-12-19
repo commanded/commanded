@@ -10,14 +10,18 @@ defmodule EventStore.Storage.Snapshot do
   alias EventStore.Storage.Snapshot
 
   def read_snapshot(conn, source_uuid) do
-    Snapshot.QueryGetSnapshot.execute(conn, source_uuid)
+    Snapshot.QuerySnapshot.execute(conn, source_uuid)
   end
 
   def record_snapshot(conn, %SnapshotData{} = snapshot) do
     Snapshot.RecordSnapshot.execute(conn, snapshot)
   end
 
-  defmodule QueryGetSnapshot do
+  def delete_snapshot(conn, source_uuid) do
+    Snapshot.DeleteSnapshot.execute(conn, source_uuid)
+  end
+
+  defmodule QuerySnapshot do
     def execute(conn, source_uuid) do
       conn
       |> Postgrex.query(Statements.query_get_snapshot, [source_uuid])
@@ -57,6 +61,23 @@ defmodule EventStore.Storage.Snapshot do
 
     defp handle_response({:error, error}, source_uuid, source_version) do
       _ = Logger.warn(fn -> "failed to record snapshot for source \"#{source_uuid}\" at version \"#{source_version}\" due to: #{inspect error}" end)
+      {:error, error}
+    end
+  end
+
+  defmodule DeleteSnapshot do
+    def execute(conn, source_uuid) do
+      conn
+      |> Postgrex.query(Statements.delete_snapshot, [source_uuid])
+      |> handle_response(source_uuid)
+    end
+
+    defp handle_response({:ok, _result}, _source_uuid) do
+      :ok
+    end
+
+    defp handle_response({:error, error}, source_uuid) do
+      _ = Logger.warn(fn -> "failed to delete snapshot for source \"#{source_uuid}\" due to: #{inspect error}" end)
       {:error, error}
     end
   end

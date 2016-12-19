@@ -172,4 +172,14 @@ defmodule EventStore do
   def record_snapshot(%SnapshotData{} = snapshot, timeout) do
     Snapshotter.record_snapshot(snapshot, timeout)
   end
+
+  @doc """
+  Delete a previously recorded snapshop for a given source
+
+  Returns `:ok` on success, or when the snapshot does not exist 
+  """
+  @spec delete_snapshot(String.t) :: :ok | {:error, reason :: term}
+  def delete_snapshot(source_uuid) do
+    Snapshotter.delete_snapshot(source_uuid)
+  end
 end

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.1
+
+### Enhancements
+
+- Allow snapshots to be deleted ([#26](https://github.com/slashdotdash/eventstore/issues/26)).
+
 ## v0.7.0
 
 ### Enhancements

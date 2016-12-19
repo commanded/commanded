@@ -29,7 +29,7 @@ defmodule EventStore.Snapshots.Snapshotter do
   end
 
   @doc """
-  Record a snapshot of the data and metadata for a given source
+  Record a snapshot containing data and metadata for a given source
 
   Returns `:ok` on success
   """
@@ -38,14 +38,25 @@ defmodule EventStore.Snapshots.Snapshotter do
   end
 
   @doc """
-  Record a snapshot of the data and metadata for a given source
+  Record a snapshot containing data and metadata for a given source
 
-  - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely. The default value is 5000. If no reply is received within the specified time, the function call fails and the caller exits.
+  - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
+    If no reply is received within the specified time, the function call fails and the caller exits.
+    The default value is 5000.
 
   Returns `:ok` on success
   """
   def record_snapshot(%SnapshotData{} = snapshot, timeout) do
     GenServer.call(__MODULE__, {:record_snapshot, snapshot}, timeout)
+  end
+
+  @doc """
+  Delete a previously recorded snapshot for a given source
+
+  Returns `:ok` on success
+  """
+  def delete_snapshot(source_uuid) do
+    GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
   def handle_call({:read_snapshot, source_uuid}, _from, %Snapshotter{serializer: serializer} = state) do
@@ -62,6 +73,12 @@ defmodule EventStore.Snapshots.Snapshotter do
       snapshot
       |> serialize_snapshot(serializer)
       |> Storage.record_snapshot
+
+    {:reply, reply, state}
+  end
+
+  def handle_call({:delete_snapshot, source_uuid}, _from, %Snapshotter{} = state) do
+    reply = Storage.delete_snapshot(source_uuid)
 
     {:reply, reply, state}
   end

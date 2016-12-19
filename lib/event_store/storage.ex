@@ -113,6 +113,13 @@ defmodule EventStore.Storage do
     execute_using_storage_pool(&Snapshot.record_snapshot(&1, snapshot))
   end
 
+  @doc """
+  Delete an existing snapshot for a given source
+  """
+  def delete_snapshot(source_uuid) do
+    execute_using_storage_pool(&Snapshot.delete_snapshot(&1, source_uuid))
+  end
+
   # Execute the given `transaction` function using a database worker from the pool
   defp execute_using_storage_pool(transaction) do
     :poolboy.transaction(@storage_pool_name, transaction)

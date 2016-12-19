@@ -13,7 +13,6 @@ defmodule EventStore.Sql.Statements do
       create_subscriptions_table,
       create_subscription_index,
       create_snapshots_table,
-      create_snapshots_index
     ]
   end
 
@@ -93,20 +92,13 @@ CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscripti
 """
 CREATE TABLE snapshots
 (
-    snapshot_id bigserial PRIMARY KEY NOT NULL,
-    source_uuid text NOT NULL,
+    source_uuid text PRIMARY KEY NOT NULL,
     source_version bigint NOT NULL,
     source_type text NOT NULL,
     data bytea NOT NULL,
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
-"""
-  end
-
-  defp create_snapshots_index do
-"""
-CREATE UNIQUE INDEX ix_snapshots_source_uuid ON snapshots (source_uuid);
 """
   end
 
@@ -176,6 +168,13 @@ INSERT INTO snapshots (source_uuid, source_version, source_type, data, metadata)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (source_uuid)
 DO UPDATE SET source_version = $2, source_type = $3, data = $4, metadata = $5;
+"""
+  end
+
+  def delete_snapshot do
+"""
+DELETE FROM snapshots
+WHERE source_uuid = $1;
 """
   end
 

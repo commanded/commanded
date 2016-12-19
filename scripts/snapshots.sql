@@ -1,5 +1,4 @@
 select
-	snapshot_id,
 	source_uuid,
 	source_version,
 	source_type,

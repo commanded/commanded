@@ -79,23 +79,11 @@ defmodule EventStoreTest do
   end
 
   test "record snapshot" do
-    snapshot = %SnapshotData{
-      source_uuid: UUID.uuid4,
-      source_version: 1,
-      source_type: Atom.to_string(ExampleData),
-      data: %ExampleData{data: "some data"}
-    }
-    :ok = EventStore.record_snapshot(snapshot)
+    assert record_snapshot != nil
   end
 
   test "read a snapshot" do
-    snapshot = %SnapshotData{
-      source_uuid: UUID.uuid4,
-      source_version: 1,
-      source_type: Atom.to_string(ExampleData),
-      data: %ExampleData{data: "some data"}
-    }
-    :ok = EventStore.record_snapshot(snapshot)
+    snapshot = record_snapshot
 
     {:ok, read_snapshot} = EventStore.read_snapshot(snapshot.source_uuid)
 
@@ -103,5 +91,26 @@ defmodule EventStoreTest do
     assert snapshot.source_version == read_snapshot.source_version
     assert snapshot.source_type == read_snapshot.source_type
     assert snapshot.data == read_snapshot.data
+  end
+
+  test "delete a snapshot" do
+    snapshot = record_snapshot
+
+    :ok = EventStore.delete_snapshot(snapshot.source_uuid)
+
+    {:error, :snapshot_not_found} = EventStore.read_snapshot(snapshot.source_uuid)
+  end
+
+  defp record_snapshot do
+    snapshot = %SnapshotData{
+      source_uuid: UUID.uuid4,
+      source_version: 1,
+      source_type: Atom.to_string(ExampleData),
+      data: %ExampleData{data: "some data"}
+    }
+
+    :ok = EventStore.record_snapshot(snapshot)
+
+    snapshot
   end
 end
