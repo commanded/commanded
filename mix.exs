@@ -33,7 +33,7 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:eventstore, "~> 0.6"},
+      {:eventstore, "~> 0.7"},
       {:ex_doc, "~> 0.14", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
