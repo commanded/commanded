@@ -326,11 +326,12 @@ The `interested?/1` function is used to indicate which events the process manage
 
 - Return `{:start, process_uuid}` to create a new instance of the process manager.
 - Return `{:continue, process_uuid}` to continue execution of an existing process manager.
+- Return `{:stop, process_uuid}` to stop an existing process manager and shutdown its process.
 - Return `false` to ignore the event.
 
 #### `handle/2`
 
-A `handle/2` function must exist for each interested event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
+A `handle/2` function must exist for each `:start` and `:continue` tagged event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
 
 #### `apply/2`
 

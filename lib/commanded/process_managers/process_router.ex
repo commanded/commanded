@@ -49,16 +49,16 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc """
-  Fetch the state of an individual process manager instance identified by the given `process_uuid`
+  Fetch the pid of an individual process manager instance identified by the given `process_uuid`
   """
-  def process_state(process_router, process_uuid) do
-    GenServer.call(process_router, {:process_state, process_uuid})
+  def process_instance(process_router, process_uuid) do
+    GenServer.call(process_router, {:process_instance, process_uuid})
   end
 
-  def handle_call({:process_state, process_uuid}, _from, %State{process_managers: process_managers} = state) do
+  def handle_call({:process_instance, process_uuid}, _from, %State{process_managers: process_managers} = state) do
     reply = case Map.get(process_managers, process_uuid) do
       nil -> {:error, :process_manager_not_found}
-      process_manager -> ProcessManagerInstance.process_state(process_manager)
+      process_manager -> process_manager
     end
 
     {:reply, reply, state}
@@ -132,6 +132,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {process_uuid, process_manager} = case process_manager_module.interested?(data) do
       {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
       {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
+      {:stop, process_uuid} -> {:stopped, stop_process_manager(process_uuid, state)}
       false -> {nil, nil}
     end
 
@@ -139,10 +140,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       nil ->
         Logger.debug(fn -> "process router \"#{process_manager_name}\" is not interested in event id: #{event_id}" end)
 
-        # no process instance, continue processing any pending events and confirm receipt of this event
-        GenServer.cast(self, {:process_pending_events})
+        ack_and_continue(state, event_id)
 
-        confirm_receipt(state, event_id)
+      :stopped ->
+        Logger.debug(fn -> "process manager instance \"#{process_manager_name}\" has been stopped by event id: #{event_id}" end)
+
+        ack_and_continue(state, event_id)
+
       _ ->
         Logger.debug(fn -> "process router \"#{process_manager_name}\" is interested in event id: #{event_id}" end)
 
@@ -151,6 +155,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
         %State{state | process_managers: Map.put(process_managers, process_uuid, process_manager)}
     end
+  end
+
+  # continue processing any pending events and confirm receipt of the given event id
+  defp ack_and_continue(%State{} = state, event_id) do
+    GenServer.cast(self, {:process_pending_events})
+
+    confirm_receipt(state, event_id)
   end
 
   # confirm receipt of given event
@@ -172,6 +183,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     case Map.get(process_managers, process_uuid) do
       nil -> start_process_manager(process_uuid, state)
       process_manager -> process_manager
+    end
+  end
+
+  defp stop_process_manager(process_uuid, %State{process_managers: process_managers}) do
+    case Map.get(process_managers, process_uuid) do
+      nil -> nil
+      process_manager ->
+        :ok = ProcessManagerInstance.stop(process_manager)
+        nil
     end
   end
 
