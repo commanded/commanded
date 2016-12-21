@@ -417,10 +417,10 @@ defmodule Bank.Supervisor do
       supervisor(Commanded.Supervisor, []),
 
       # process manager
-      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter, start_from: :current], id: :transfer_money_process_manager),
+      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter, [start_from: :current]], id: :transfer_money_process_manager),
 
       # event handler
-      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler, start_from: :origin], id: :account_balance_handler)
+      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler, [start_from: :origin]], id: :account_balance_handler)
     ]
 
     supervise(children, strategy: :one_for_one)
