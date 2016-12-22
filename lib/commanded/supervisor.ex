@@ -9,6 +9,7 @@ defmodule Commanded.Supervisor do
     children = [
       worker(Commanded.Aggregates.Registry, []),
       supervisor(Task.Supervisor, [[name: Commanded.Commands.TaskDispatcher]]),
+      supervisor(Commanded.EventStore.Supervisor, [])
     ]
 
     supervise(children, strategy: :one_for_one)

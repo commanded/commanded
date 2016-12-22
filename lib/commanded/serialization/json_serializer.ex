@@ -3,7 +3,7 @@ defmodule Commanded.Serialization.JsonSerializer do
   A serializer that uses the JSON format.
   """
 
-  @behaviour EventStore.Serializer
+  @behaviour Commanded.EventStore.Serializer
 
   alias Commanded.Serialization.JsonDecoder
 
@@ -15,7 +15,7 @@ defmodule Commanded.Serialization.JsonSerializer do
   end
 
   @doc """
-  Deserialize given JSON binary data to the expected type.
+  Deserialize given JSON binary data to the expected type.
   """
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type, nil) do

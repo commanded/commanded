@@ -1,12 +1,13 @@
-defmodule Commanded.EventStore.Adapters.PostgresSubscription do
+if Code.ensure_loaded?(EventStore) do 
+defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
 
   require Logger
 
   use GenServer
 
-  alias Commanded.EventStore.Adapters.PostgresEventStore
+  alias Commanded.EventStore.Adapters.EventStoreEventStore
 
-  def start_link(subscription_name, subscriber) do
+  def start(subscription_name, subscriber) do
     state = %{
       name: subscription_name,
       subscriber: subscriber,
@@ -15,7 +16,7 @@ defmodule Commanded.EventStore.Adapters.PostgresSubscription do
       subscription: nil
     }
 
-    GenServer.start_link(__MODULE__, state)
+    GenServer.start(__MODULE__, state)
   end
 
   def init(state) do
@@ -55,7 +56,7 @@ defmodule Commanded.EventStore.Adapters.PostgresSubscription do
   def handle_info({:events, events, _subscription_pid}, state) do
     send(
       state.subscriber,
-      {:events, Enum.map(events, &PostgresEventStore.from_pg_recorded_event(&1)), state.subscription}
+      {:events, Enum.map(events, &EventStoreEventStore.from_pg_recorded_event(&1)), state.subscription}
     )
 
     {:noreply, state}
@@ -67,4 +68,5 @@ defmodule Commanded.EventStore.Adapters.PostgresSubscription do
     {:noreply, state}
   end
 
+end
 end

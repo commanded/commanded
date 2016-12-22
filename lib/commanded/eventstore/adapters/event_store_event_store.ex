@@ -1,21 +1,33 @@
-defmodule Commanded.EventStore.Adapters.PostgresEventStore do
+if Code.ensure_loaded?(EventStore) do 
+defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
 
   @behaviour Commanded.EventStore
+
+  use GenServer
 
   require Logger
 
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
-  alias Commanded.EventStore.Adapters.PostgresSubscription
+  alias Commanded.EventStore.Adapters.EventStoreSubscription
+
+  def start_link() do
+    state = %{subscriptions: %{}}
+
+    GenServer.start_link(__MODULE__, state, [name: __MODULE__])
+  end
   
   @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events) do
-    Logger.debug("append to stream")
-
     EventStore.append_to_stream(
       stream_uuid,
       expected_version,
       Enum.map(events, &to_pg_event_data(&1))
     )
+  end
+
+  @spec record_snapshot(SnapshotData.t) :: :ok | {:error, reason :: term}
+  def record_snapshot(snapshot = %SnapshotData{}) do
+    EventStore.record_snapshot(to_pg_snapshot_data(snapshot))
   end
 
   @spec read_snapshot(String.t) :: {:ok, SnapshotData.t} | {:error, :snapshot_not_found}
@@ -36,14 +48,9 @@ defmodule Commanded.EventStore.Adapters.PostgresEventStore do
     end
   end  
   
-  @spec record_snapshot(SnapshotData.t) :: :ok | {:error, reason :: term}
-  def record_snapshot(snapshot = %SnapshotData{}) do
-    EventStore.record_snapshot(to_pg_snapshot_data(snapshot))
-  end
-
-  @callback read_all_streams_forward() :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @callback read_all_streams_forward(non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @callback read_all_streams_forward(non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_all_streams_forward() :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_all_streams_forward(non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+  @spec read_all_streams_forward(non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_all_streams_forward(start_event_id \\ 0, count \\ 1_000) do
     case EventStore.read_all_streams_forward(start_event_id, count) do
       {:ok, events} -> {:ok, Enum.map(events, &from_pg_recorded_event(&1))}
@@ -53,20 +60,33 @@ defmodule Commanded.EventStore.Adapters.PostgresEventStore do
 
   @spec subscribe_to_all_streams(String.t, pid) :: {:ok, subscription :: any}
   def subscribe_to_all_streams(subscription_name, subscriber) do
-    {:ok, pid} = PostgresSubscription.start_link(subscription_name, subscriber)
-
-    PostgresSubscription.result(pid)
+    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber})
   end
 
   @spec unsubscribe_from_all_streams(String.t) :: :ok
   def unsubscribe_from_all_streams(subscription_name) do
-    EventStore.unsubscribe_from_all_streams(subscription_name)
-    :ok
+    GenServer.call(__MODULE__, {:unsubscribe_all, subscription_name})
   end
 
   @spec ack_events(subscription :: any, non_neg_integer) :: :ok
   def ack_events(subscription, last_seen_event_id) do
-    PostgresSubscription.ack_events(subscription.pid, last_seen_event_id)
+    EventStoreSubscription.ack_events(subscription.pid, last_seen_event_id)
+  end
+
+  def handle_call({:unsubscribe_all, subscription_name}, _from, state) do
+    {subscription_pid, subscriptions} = Map.pop(state.subscriptions, subscription_name)
+
+    EventStore.unsubscribe_from_all_streams(subscription_name)
+    Process.exit(subscription_pid, :kill)
+
+    {:reply, :ok, %{state | subscriptions: subscriptions}}
+  end
+
+  def handle_call({:subscribe_all, subscription_name, subscriber}, _from, state) do
+    {:ok, pid} = EventStoreSubscription.start(subscription_name, subscriber)
+    state = %{ state | subscriptions: Map.put(state.subscriptions, subscription_name, pid)}
+
+    {:reply, EventStoreSubscription.result(pid), state}
   end
 
   def to_pg_snapshot_data(snapshot = %SnapshotData{}) do
@@ -78,10 +98,15 @@ defmodule Commanded.EventStore.Adapters.PostgresEventStore do
   end
 
   def from_pg_snapshot_data(snapshot_data = %EventStore.Snapshots.SnapshotData{}) do
-    struct(SnapshotData, Map.from_struct(snapshot_data))
+    snapshot = struct(SnapshotData, Map.from_struct(snapshot_data))
+    %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: min, sec: sec, usec: usec} = snapshot.created_at
+    {:ok, created_at} = NaiveDateTime.new(year, month, day, hour, min, sec, usec)
+
+    %SnapshotData{snapshot | created_at: created_at}
   end
 
   def from_pg_recorded_event(recorded_event = %EventStore.RecordedEvent{}) do
     struct(RecordedEvent, Map.from_struct(recorded_event))
   end
+end
 end

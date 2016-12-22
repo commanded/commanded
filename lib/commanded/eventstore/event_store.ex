@@ -3,8 +3,22 @@ defmodule Commanded.EventStore do
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
   defmacro __using__(_) do
+    mapping = %{
+      Extreme              => Commanded.EventStore.Adapters.ExtremeEventStore,
+      EventStore           => Commanded.EventStore.Adapters.EventStoreEventStore,
+    }
+
+    default_adapter =
+      Map.get(
+	mapping,
+	Enum.find(Map.keys(mapping), &Code.ensure_loaded?(&1)),
+	:no_event_store_loaded
+      )
+    
+    adapter = Application.get_env(:commanded, :event_store_adapter, default_adapter)
+
     quote do
-      @event_store Commanded.EventStore.Adapters.PostgresEventStore
+      @event_store unquote adapter
     end
   end
   

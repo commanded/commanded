@@ -22,7 +22,8 @@ defmodule Commanded.Mixfile do
         :logger,
         :eventstore,
         :poison,
-        :uuid
+        :uuid,
+	:extreme
       ],
       mod: {Commanded.Application, []}
     ]
@@ -33,12 +34,15 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:eventstore, "~> 0.6"},
+      {:eventstore, "~> 0.6", optional: true, only: :test},
       {:ex_doc, "~> 0.14", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 3.0"},
-      {:uuid, "~> 1.1"}
+      {:poison, "~> 2.2"},
+      {:uuid, "~> 1.1"},
+      {:extreme, "~> 0.5.4", optional: true, only: :test},
+      {:hackney, "~> 1.6.0", override: true},
+      {:docker, github: "bearice/elixir-docker", only: :test}
     ]
   end
 
