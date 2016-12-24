@@ -58,9 +58,11 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
     end
   end
 
-  @spec subscribe_to_all_streams(String.t, pid) :: {:ok, subscription :: any}
-  def subscribe_to_all_streams(subscription_name, subscriber) do
-    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber})
+  @spec subscribe_to_all_streams(String.t, pid, Commanded.EventStore.start_from) :: {:ok, subscription :: any}
+    | {:error, :subscription_already_exists}
+    | {:error, reason :: term}
+  def subscribe_to_all_streams(subscription_name, subscriber, start_from \\ :origin) do
+    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber, start_from})
   end
 
   @spec unsubscribe_from_all_streams(String.t) :: :ok
@@ -68,9 +70,9 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
     GenServer.call(__MODULE__, {:unsubscribe_all, subscription_name})
   end
 
-  @spec ack_events(subscription :: any, non_neg_integer) :: :ok
-  def ack_events(subscription, last_seen_event_id) do
-    EventStoreSubscription.ack_events(subscription.pid, last_seen_event_id)
+  @spec delete_snapshot(String.t) :: :ok | {:error, reason :: term}
+  def delete_snapshot(source_uuid) do
+    EventStore.delete_snapshot(source_uuid)
   end
 
   def handle_call({:unsubscribe_all, subscription_name}, _from, state) do
@@ -82,8 +84,8 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
     {:reply, :ok, %{state | subscriptions: subscriptions}}
   end
 
-  def handle_call({:subscribe_all, subscription_name, subscriber}, _from, state) do
-    {:ok, pid} = EventStoreSubscription.start(subscription_name, subscriber)
+  def handle_call({:subscribe_all, subscription_name, subscriber, start_from}, _from, state) do
+    {:ok, pid} = EventStoreSubscription.start(subscription_name, subscriber, start_from)
     state = %{ state | subscriptions: Map.put(state.subscriptions, subscription_name, pid)}
 
     {:reply, EventStoreSubscription.result(pid), state}
@@ -98,11 +100,7 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
   end
 
   def from_pg_snapshot_data(snapshot_data = %EventStore.Snapshots.SnapshotData{}) do
-    snapshot = struct(SnapshotData, Map.from_struct(snapshot_data))
-    %Postgrex.Timestamp{year: year, month: month, day: day, hour: hour, min: min, sec: sec, usec: usec} = snapshot.created_at
-    {:ok, created_at} = NaiveDateTime.new(year, month, day, hour, min, sec, usec)
-
-    %SnapshotData{snapshot | created_at: created_at}
+    struct(SnapshotData, Map.from_struct(snapshot_data))
   end
 
   def from_pg_recorded_event(recorded_event = %EventStore.RecordedEvent{}) do

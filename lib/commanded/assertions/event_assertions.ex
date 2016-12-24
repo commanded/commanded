@@ -114,6 +114,6 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp ack_events(subscription, events) do
-    @event_store.ack_events(subscription, List.last(events).event_id)
+    send(subscription, {:ack, List.last(events).event_id})
   end
 end

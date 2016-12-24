@@ -8,11 +8,12 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
 
   alias Commanded.EventStore.Adapters.ExtremeEventStore
 
-  def start(stream, subscription_name, subscriber) do
+  def start(stream, subscription_name, subscriber, start_from) do
     state = %{
       stream: stream,
       name: subscription_name,
       subscriber: subscriber,
+      start_from: start_from,
       result: nil,
       subscription: nil
     }
@@ -23,15 +24,25 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
   def init(state) do
     Process.monitor(state.subscriber)
 
-    Logger.debug(fn -> "subscribe to stream: #{state.stream}" end)
+    Logger.debug(fn -> "subscribe to stream: #{state.stream} | start_from: #{state.start_from}" end)
 
-    state = 
-      case Extreme.read_and_stay_subscribed(@server, self, state.stream) do
-	{:ok, _} ->
-	  subscription = %{pid: self}
-	  
-	  %{state | result: {:ok, subscription}, subscription: subscription}
-	err -> %{state | result: err}
+    from_event_number =
+      case state.start_from do
+	:origin      -> 0
+	:current     -> nil
+	event_number -> event_number
+      end
+
+    result =
+      case from_event_number do
+	nil          -> Extreme.subscribe_to(@server, self, state.stream)
+	event_number -> Extreme.read_and_stay_subscribed(@server, self, state.stream, event_number)
+      end
+
+    state =
+      case result do
+	{:ok, _} -> %{state | result: {:ok, self}, subscription: self}
+	err      -> %{state | result: err}
       end
 
     {:ok, state}
@@ -43,6 +54,12 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
 
   def handle_call(:result, _from, state) do
     {:reply, state.result, state}
+  end
+
+  def handle_info({:ack, _last_seen_event_id}, state) do
+    # not implemented
+
+    {:noreply, state}
   end
 
   def handle_info({:on_event, event}, state) do

@@ -2,10 +2,11 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   use Commanded.StorageCase
   use Commanded.EventStore
 
-  alias Commanded.ProcessManagers.ProcessRouter
-
   import Commanded.Assertions.EventAssertions
   import Commanded.Enumerable
+
+  alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
+  alias Commanded.Helpers.Wait
 
   defmodule ExampleAggregate do
     defstruct [
@@ -77,7 +78,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
   defmodule ExampleProcessManager do
     @behaviour Commanded.ProcessManagers.ProcessManager
-    
+
     defstruct [
       status: nil,
       items: [],
@@ -85,7 +86,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
     def interested?(%Started{aggregate_uuid: aggregate_uuid}), do: {:start, aggregate_uuid}
     def interested?(%Interested{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
-    def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
+    def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:stop, aggregate_uuid}
     def interested?(_event), do: false
 
     def handle(%ExampleProcessManager{}, %Interested{index: 10, aggregate_uuid: aggregate_uuid}) do
@@ -106,12 +107,6 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     def apply(%ExampleProcessManager{items: items} = process_manager, %Interested{index: index}) do
       %ExampleProcessManager{process_manager |
         items: items ++ [index]
-      }
-    end
-
-    def apply(%ExampleProcessManager{} = process_manager, %Stopped{}) do
-      %ExampleProcessManager{process_manager |
-        status: :stopped
       }
     end
   end
@@ -154,14 +149,19 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
 
-    %{items: items} = ProcessRouter.process_state(process_router, aggregate_uuid)
-    assert items == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    Wait.until fn ->
+      # process instance should be stopped
+      assert ProcessRouter.process_instance(process_router, aggregate_uuid) == {:error, :process_manager_not_found}
+
+      # process state snapshot should be deleted
+      assert EventStore.read_snapshot("example_process_manager-#{aggregate_uuid}") == {:error, :snapshot_not_found}
+    end
   end
 
   test "should ignore uninteresting events" do
     aggregate_uuid = UUID.uuid4
 
-    {:ok, _} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router)
+    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router)
 
     :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
 
@@ -194,5 +194,31 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       %Interested{aggregate_uuid: aggregate_uuid, index: 10},
       %Stopped{aggregate_uuid: aggregate_uuid},
     ]
+
+    Wait.until fn ->
+      # process instance should be stopped
+      assert ProcessRouter.process_instance(process_router, aggregate_uuid) == {:error, :process_manager_not_found}
+    end
+  end
+
+  test "should ignore past events when starting subscription from current" do
+    aggregate_uuid = UUID.uuid4
+
+    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 4, uninteresting: 0})
+
+    wait_for_event Interested, fn event -> event.index == 4 end
+
+    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router, start_from: :current)
+
+    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
+
+    wait_for_event Interested, fn event -> event.index == 6 end
+    :timer.sleep 100
+
+    process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
+    %{items: items} = ProcessManagerInstance.process_state(process_instance)
+    assert items == [1, 2, 3, 4, 5, 6]
   end
 end

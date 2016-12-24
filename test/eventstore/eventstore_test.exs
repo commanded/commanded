@@ -114,7 +114,7 @@ defmodule Commanded.EventStore.EventStoreTest do
 	    end
 	    ev_count = ev_count + length(events)
 
-	    @event_store.ack_events(subscription, List.last(events).event_id)	    
+	    send(subscription, {:ack, List.last(events).event_id})
 
 	    if (ev_count < 3), do: loop_fn.(ev_count, loop_fn), else: ev_count
 	  ev ->
@@ -140,7 +140,7 @@ defmodule Commanded.EventStore.EventStoreTest do
       loop = fn(ev_count, loop_fn) ->
 	receive do
 	  {:events, events, subscription} ->
-	    @event_store.ack_events(subscription, List.last(events).event_id)
+	    send(subscription, {:ack, List.last(events).event_id})
 
 	    loop_fn.(ev_count + length(events), loop_fn)
 	  :exit -> ev_count

@@ -13,8 +13,7 @@ config :eventstore, EventStore.Storage,
   password: "postgres",
   database: "commanded_test",
   hostname: "localhost",
-  pool_size: 1,
-  extensions: [{Postgrex.Extensions.Calendar, []}]
+  pool_size: 1
 
 config :commanded, :extreme,
   db_type: :node, 
@@ -23,8 +22,10 @@ config :commanded, :extreme,
   username: "admin", 
   password: "changeit",
   reconnect_delay: 2_000,
-  max_attempts: :infinity
+  max_attempts: :infinity,
+  streams_prefix: "testcommanded"
 
 config :commanded,
     event_store_adapter: String.to_atom(
       "Elixir.#{Map.get(System.get_env(), "COMMANDED_EVENT_STORE_ADAPTER", "Commanded.EventStore.Adapters.EventStoreEventStore")}")
+

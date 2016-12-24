@@ -2,6 +2,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @moduledoc """
   Defines an instance of a process manager.
   """
+
   use GenServer
   use Commanded.EventStore
   require Logger
@@ -42,10 +43,26 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
+  Stop the given process manager and delete its persisted state.
+
+  Typically called when it has reached its final state.
+  """
+  def stop(process_manager) do
+    GenServer.call(process_manager, {:stop})
+  end
+
+  @doc """
   Fetch the process state of this instance
   """
   def process_state(process_manager) do
     GenServer.call(process_manager, {:process_state})
+  end
+
+  def handle_call({:stop}, _from, %ProcessManagerInstance{} = state) do
+    delete_state(state)
+
+    # stop the process with a normal reason
+    {:stop, :normal, :ok, state}
   end
 
   def handle_call({:process_state}, _from, %ProcessManagerInstance{process_state: process_state} = state) do
@@ -148,6 +165,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   defp ack_event(%RecordedEvent{event_id: event_id, stream_id: stream_id}, process_router) do
     :ok = ProcessRouter.ack_event(process_router, stream_id, event_id)
+  end
+
+  defp delete_state(%ProcessManagerInstance{} = state) do
+    :ok = @event_store.delete_snapshot(process_state_uuid(state))
   end
 
   defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"

@@ -1,10 +1,17 @@
 # Changelog
 
+## v0.8.4
+
+### Enhancements
+
+- Event handler and process manager subscriptions should be created from a given stream position ([#14](https://github.com/slashdotdash/commanded/issues/14)).
+- Stop process manager instance after reaching its final state ([#24](https://github.com/slashdotdash/commanded/issues/24)).
+
 ## v0.8.3
 
 ### Enhancements
 
-- Middleware `after_failure` callback is executed even when a middleware halts execution. 
+- Middleware `after_failure` callback is executed even when a middleware halts execution.
 
 ## v0.8.2
 

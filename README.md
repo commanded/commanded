@@ -10,6 +10,22 @@ MIT License
 
 [![Build Status](https://travis-ci.org/slashdotdash/commanded.svg?branch=master)](https://travis-ci.org/slashdotdash/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+---
+
+### Overview
+
+- [Getting started](#getting-started)
+- [Aggregate roots](#aggregate-roots)
+- [Commands](#commands)
+  - [Command handlers](#command-handlers)
+  - [Command dispatch and routing](#command-dispatch-and-routing)
+- [Middleware](#middleware)
+- [Event handlers](#event-handlers)
+- [Process managers](#process-managers)
+- [Supervision](#supervision)
+- [Serialization](#serialization)
+- [Contributing](#contributing)
+
 ## Getting started
 
 The package can be installed from hex as follows.
@@ -39,8 +55,7 @@ The package can be installed from hex as follows.
       password: "postgres",
       database: "eventstore_dev",
       hostname: "localhost",
-      pool_size: 10,
-      extensions: [{Postgrex.Extensions.Calendar, []}]
+      pool_size: 10
     ```
 
   4. Create the `eventstore` database and tables using the `mix` task.
@@ -186,7 +201,7 @@ end
 :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, 2_000)
 ```
 
-#### Multi command registration
+#### Multi-command registration
 
 Command routers support multi command registration so you can group related command handlers into the same module.
 
@@ -279,12 +294,23 @@ defmodule AccountBalanceHandler do
 end
 ```
 
-Register the event handler with a given name. The name is used when subscribing to the event store to record the last seen event.
+Register the event handler with a given name. This is used when subscribing to the event store to track which events the handler has seen during restarts.
 
 ```elixir
-{:ok, _} = AccountBalanceHandler.start_link
-{:ok, _} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+{:ok, _balance} = AccountBalanceHandler.start_link
+{:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
 ```
+
+You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so your handler will receive all events.
+
+```elixir
+# start from :origin, :current, or an explicit event id
+{:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler, start_from: :origin)
+```
+
+Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
+
+You should use a [supervisor](#supervision) to start your event handlers to ensure they are restarted on error.
 
 ### Process managers
 
@@ -300,11 +326,12 @@ The `interested?/1` function is used to indicate which events the process manage
 
 - Return `{:start, process_uuid}` to create a new instance of the process manager.
 - Return `{:continue, process_uuid}` to continue execution of an existing process manager.
+- Return `{:stop, process_uuid}` to stop an existing process manager and shutdown its process.
 - Return `false` to ignore the event.
 
 #### `handle/2`
 
-A `handle/2` function must exist for each interested event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
+A `handle/2` function must exist for each `:start` and `:continue` tagged event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
 
 #### `apply/2`
 
@@ -366,8 +393,10 @@ end
 Register the process manager router with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
 
 ```elixir
-{:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager)
+{:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager, start_from: :current)
 ```
+
+You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
 
 Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
 
@@ -388,10 +417,10 @@ defmodule Bank.Supervisor do
       supervisor(Commanded.Supervisor, []),
 
       # process manager
-      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter], id: :transfer_money_process_manager),
+      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter, [start_from: :current]], id: :transfer_money_process_manager),
 
       # event handler
-      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler], id: :account_balance_handler)
+      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler, [start_from: :origin]], id: :account_balance_handler)
     ]
 
     supervise(children, strategy: :one_for_one)

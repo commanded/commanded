@@ -7,10 +7,11 @@ defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
 
   alias Commanded.EventStore.Adapters.EventStoreEventStore
 
-  def start(subscription_name, subscriber) do
+  def start(subscription_name, subscriber, start_from) do
     state = %{
       name: subscription_name,
       subscriber: subscriber,
+      start_from: start_from,
       result: nil,
       remote_subscription_pid: nil,
       subscription: nil
@@ -23,11 +24,9 @@ defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
     Process.monitor(state.subscriber)
 
     state = 
-      case EventStore.subscribe_to_all_streams(state.name, self) do
+      case EventStore.subscribe_to_all_streams(state.name, self, state.start_from) do
 	{:ok, pid} ->
-	  subscription = %{pid: self}
-	
-	  %{state | result: {:ok, subscription}, remote_subscription_pid: pid, subscription: subscription}
+	  %{state | result: {:ok, self}, remote_subscription_pid: pid, subscription: self}
 	err -> %{state | result: err}
       end
 
@@ -38,16 +37,11 @@ defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
     GenServer.call(pid, :result)
   end
 
-  def ack_events(pid, last_seen_event_id) do
-    GenServer.cast(pid, {:ack_events, last_seen_event_id})
-    :ok
-  end
-
   def handle_call(:result, _from, state) do
     {:reply, state.result, state}
   end
 
-  def handle_cast({:ack_events, last_seen_event_id}, state) do
+  def handle_info({:ack, last_seen_event_id}, state) do
     send(state.remote_subscription_pid, {:ack, last_seen_event_id})
 
     {:noreply, state}

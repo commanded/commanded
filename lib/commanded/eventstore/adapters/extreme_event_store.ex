@@ -13,7 +13,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   alias Extreme.Messages, as: ExMsg
 
   @server Commanded.ExtremeEventStore
-  @stream_prefix "app1"
+  @stream_prefix Keyword.get(Application.get_env(:commanded, :extreme), :streams_prefix)
 
   def start_link() do
     state = %{subscriptions: %{}}
@@ -57,7 +57,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     
     Logger.debug(fn -> "record snapshot to stream: #{stream}" end)
 
-    add_to_stream(stream, :last_event, [event_data])
+    add_to_stream(stream, :any_version, [event_data])
   end
   
   @spec read_snapshot(String.t) :: {:ok, SnapshotData.t} | {:error, :snapshot_not_found}
@@ -77,9 +77,11 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     end
   end
 
-  @spec subscribe_to_all_streams(String.t, pid) :: {:ok, subscription :: any}
-  def subscribe_to_all_streams(subscription_name, subscriber) do
-    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber})
+  @spec subscribe_to_all_streams(String.t, pid, Commanded.EventStore.start_from) :: {:ok, subscription :: any}
+    | {:error, :subscription_already_exists}
+    | {:error, reason :: term}
+  def subscribe_to_all_streams(subscription_name, subscriber, start_from \\ :origin) do
+    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber, start_from})
   end
 
   @spec unsubscribe_from_all_streams(String.t) :: :ok
@@ -87,10 +89,12 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     GenServer.call(__MODULE__, {:unsubscribe_all, subscription_name})
   end
 
-  @spec ack_events(subscription :: any, non_neg_integer) :: :ok
-  def ack_events(_subscription, _last_seen_event_id) do
+  @spec delete_snapshot(String.t) :: :ok | {:error, reason :: term}
+  def delete_snapshot(_source_uuid) do
+    Logger.warn("delete snapshot not implemented")
     :ok
   end
+
 
   def handle_call({:unsubscribe_all, subscription_name}, _from, state) do
     {subscription_pid, subscriptions} = Map.pop(state.subscriptions, subscription_name)
@@ -100,12 +104,19 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     {:reply, :ok, %{state | subscriptions: subscriptions}}
   end
 
-  def handle_call({:subscribe_all, subscription_name, subscriber}, _from, state) do
-    stream = "$ce-#{@stream_prefix}"
-    {:ok, pid} = ExtremeSubscription.start(stream, subscription_name, subscriber)
-    state = %{ state | subscriptions: Map.put(state.subscriptions, subscription_name, pid)}
+  def handle_call({:subscribe_all, subscription_name, subscriber, start_from}, _from, state) do
+    case subscriber == Map.get(state.subscriptions, subscription_name) do
+      true ->
+	{:reply, {:error, :subscription_already_exists}, state}
 
-    {:reply, ExtremeSubscription.result(pid), state}
+      false ->
+	stream = "$ce-#{@stream_prefix}"
+	{:ok, pid} = ExtremeSubscription.start(stream, subscription_name, subscriber, start_from)
+	state = %{ state | subscriptions: Map.put(state.subscriptions, subscription_name, pid)}
+
+	{:reply, ExtremeSubscription.result(pid), state}
+
+    end
   end
 
 
@@ -173,7 +184,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
       end
     
     %RecordedEvent{
-      event_id: ev.event_number,
+      event_id: ev.event_number + 1,
       stream_id: to_stream_id(ev),
       stream_version: stream_version,
       correlation_id: correlation_id,
@@ -242,9 +253,8 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   defp write_events(stream_id, expected_version, events) do
     expected_version =
       case expected_version do
-	0           -> -1
-	:last_event -> -2
-	_           -> expected_version - 1
+	:any_version -> -2
+	_            -> expected_version - 1
       end
 
     proto_events = Enum.map(events, fn event ->

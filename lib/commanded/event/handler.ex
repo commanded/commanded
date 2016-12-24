@@ -8,18 +8,25 @@ defmodule Commanded.Event.Handler do
   
   @type domain_event :: struct
   @type metadata :: struct
+  @type subscribe_from :: :origin | :current | non_neg_integer
 
   @doc """
   Event handler behaviour to handle a domain event and its metadata
   """
   @callback handle(domain_event, metadata) :: :ok | {:error, reason :: atom}
 
-  defstruct handler_name: nil, handler_module: nil, last_seen_event_id: nil
+  defstruct [
+    handler_name: nil,
+    handler_module: nil,
+    last_seen_event_id: nil,
+    subscribe_from: nil,
+  ]
 
-  def start_link(handler_name, handler_module) do
+  def start_link(handler_name, handler_module, opts \\ []) do
     GenServer.start_link(__MODULE__, %Handler{
       handler_name: handler_name,
-      handler_module: handler_module
+      handler_module: handler_module,
+      subscribe_from: opts[:start_from] || :origin,
     })
   end
 
@@ -28,8 +35,8 @@ defmodule Commanded.Event.Handler do
     {:ok, state}
   end
 
-  def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name} = state) do
-    {:ok, _} = @event_store.subscribe_to_all_streams(handler_name, self)
+  def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state) do
+    {:ok, _} = @event_store.subscribe_to_all_streams(handler_name, self, subscribe_from)
     {:noreply, state}
   end
 
@@ -72,7 +79,7 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> "event handler confirming receipt of event: #{event_id}" end)
 
     send(subscription, {:ack, event_id})
-
+ 
     %Handler{state | last_seen_event_id: event_id}
   end
 end
