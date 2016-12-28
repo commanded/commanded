@@ -23,7 +23,8 @@ config :commanded, :extreme,
   password: "changeit",
   reconnect_delay: 2_000,
   max_attempts: :infinity,
-  streams_prefix: "testcommanded"
+  streams_prefix: "testcommanded",
+  serializer: Commanded.Serialization.JsonSerializer
 
 config :commanded,
     event_store_adapter: String.to_atom(

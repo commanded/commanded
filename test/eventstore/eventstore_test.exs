@@ -33,7 +33,7 @@ defmodule Commanded.EventStore.EventStoreTest do
     }    
   end
 
-  defp snapshot_zero_created_at_seconds(snapshot) do
+  defp snapshot_created_at_seconds_to_zero(snapshot) do
     %NaiveDateTime{year: year, month: month, day: day, hour: hour, minute: min} = snapshot.created_at
     {:ok, zeroed_created_at} = NaiveDateTime.new(year, month, day, hour, min, 0, 0)
 
@@ -92,16 +92,23 @@ defmodule Commanded.EventStore.EventStoreTest do
     snapshot2 = create_snapshot_data(101)
     snapshot3 = create_snapshot_data(102)
 
-    assert :ok = @event_store.record_snapshot(snapshot1)
-    assert :ok = @event_store.record_snapshot(snapshot2)
-    assert :ok = @event_store.record_snapshot(snapshot3)
+    assert :ok == @event_store.record_snapshot(snapshot1)
+    assert :ok == @event_store.record_snapshot(snapshot2)
+    assert :ok == @event_store.record_snapshot(snapshot3)
 
     {:ok, snapshot} = @event_store.read_snapshot(snapshot3.source_uuid)
-    assert snapshot_zero_created_at_seconds(snapshot) == snapshot_zero_created_at_seconds(snapshot3)
+    assert snapshot_created_at_seconds_to_zero(snapshot) == snapshot_created_at_seconds_to_zero(snapshot3)
   end
 
-  test "should not find a snapshot" do
-    assert {:error, :snapshot_not_found} ==  @event_store.read_snapshot(UUID.uuid4)
+  test "should delete a snapshot" do
+    snapshot1 = create_snapshot_data(100)
+
+    assert :ok == @event_store.record_snapshot(snapshot1)
+    {:ok, snapshot} = @event_store.read_snapshot(snapshot1.source_uuid)
+    assert snapshot_created_at_seconds_to_zero(snapshot) == snapshot_created_at_seconds_to_zero(snapshot1)
+
+    assert :ok == @event_store.delete_snapshot(snapshot1.source_uuid)
+    assert {:error, :snapshot_not_found} == @event_store.read_snapshot(snapshot1.source_uuid)
   end
 
   test "should subscribe to all streams" do

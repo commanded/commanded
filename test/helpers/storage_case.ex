@@ -6,7 +6,6 @@ defmodule Commanded.StorageCase do
   
   setup do
     Application.stop(:commanded)
-    Application.stop(:eventstore)
 
     reset_storage
 
@@ -17,9 +16,15 @@ defmodule Commanded.StorageCase do
   defp reset_storage do
     case @event_store do
       Commanded.EventStore.Adapters.EventStoreEventStore -> 
+	Application.ensure_all_started(:eventstore)
 	reset_event_store_storage
+	Application.stop(:eventstore)
+	Application.ensure_all_started(:eventstore)
       Commanded.EventStore.Adapters.ExtremeEventStore ->
+	Application.ensure_all_started(:extreme)
 	reset_extreme_storage
+	Application.stop(:extreme)
+	Application.ensure_all_started(:extreme)
     end
   end
 

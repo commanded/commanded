@@ -20,10 +20,8 @@ defmodule Commanded.Mixfile do
     [
       applications: [
         :logger,
-        :eventstore,
         :poison,
         :uuid,
-	:extreme
       ],
       mod: {Commanded.Application, []}
     ]

@@ -1,5 +1,7 @@
 defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   use Commanded.StorageCase
+  use Commanded.EventStore
+
   doctest Commanded.Aggregates.Aggregate
 
   alias Commanded.Aggregates.{Registry,Aggregate}
@@ -63,14 +65,14 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     account_number = UUID.uuid4
 
     {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
-    {:ok, stream} = EventStore.Streams.open_stream(account_number)
+    stream = account_number
 
     # block until aggregate has loaded its initial (empty) state
     Aggregate.aggregate_state(aggregate)
 
     # write an event to the aggregate's stream, bypassing the aggregate process (simulate concurrency error)
-    :ok = EventStore.Streams.Stream.append_to_stream(stream, 0, [
-      %EventStore.EventData{
+    :ok = @event_store.append_to_stream(stream, 0, [
+      %Commanded.EventStore.EventData{
         event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
         data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000}
       }

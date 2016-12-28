@@ -4,6 +4,7 @@ defmodule Commanded.Event.Mapper do
   """
 
   use Commanded.EventStore
+  use Commanded.EventStore.Serializer
   alias Commanded.EventStore.{EventData,RecordedEvent}
   
   def map_to_event_data(events, correlation_id) when is_list(events) do
@@ -13,7 +14,7 @@ defmodule Commanded.Event.Mapper do
   def map_to_event_data(event, correlation_id) do
     %EventData{
       correlation_id: correlation_id,
-      event_type: Atom.to_string(event.__struct__),
+      event_type: @serializer.to_event_name(event.__struct__),
       data: event,
       metadata: %{}
     }

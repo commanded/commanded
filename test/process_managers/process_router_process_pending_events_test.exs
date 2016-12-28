@@ -154,7 +154,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       assert ProcessRouter.process_instance(process_router, aggregate_uuid) == {:error, :process_manager_not_found}
 
       # process state snapshot should be deleted
-      assert EventStore.read_snapshot("example_process_manager-#{aggregate_uuid}") == {:error, :snapshot_not_found}
+      assert @event_store.read_snapshot("example_process_manager-#{aggregate_uuid}") == {:error, :snapshot_not_found}
     end
   end
 

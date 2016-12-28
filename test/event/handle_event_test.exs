@@ -67,13 +67,13 @@ defmodule Commanded.Event.HandleEventTest do
 
     :ok = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
 
-    :timer.sleep(400)
+    wait_for_event BankAccountOpened
     {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :current)
 
     :ok = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
 
     wait_for_event MoneyDeposited
-    :timer.sleep(200)
+    :timer.sleep(200) # maybe AppendingEventHandler has not yet been notified about event
 
     assert AppendingEventHandler.received_events == new_events
     assert pluck(AppendingEventHandler.received_metadata, :event_id) == [2]
