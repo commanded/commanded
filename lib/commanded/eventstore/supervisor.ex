@@ -10,7 +10,7 @@ defmodule Commanded.EventStore.Supervisor do
   def init(_) do
     extreme_settings = Application.get_env :commanded, :extreme
 
-    children = 
+    children = [worker(Commanded.Aggregates.Registry, [])] ++
       case @event_store do
 	Commanded.EventStore.Adapters.EventStoreEventStore -> [
 	  worker(Commanded.EventStore.Adapters.EventStoreEventStore, [])
@@ -21,6 +21,6 @@ defmodule Commanded.EventStore.Supervisor do
 	]
       end
 
-    supervise(children, strategy: :one_for_one)
+    supervise(children, strategy: :one_for_all)
   end
 end

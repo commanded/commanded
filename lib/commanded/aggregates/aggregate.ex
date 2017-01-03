@@ -109,8 +109,14 @@ defmodule Commanded.Aggregates.Aggregate do
         # rebuild the aggregate's state from the batch of events
         aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
 
+	aggregate_version =
+	  case batch_size do
+	    0 -> start_version - 1
+	    _ -> List.last(batch).event_id
+	  end
+
         state = %Aggregate{state |
-          aggregate_version: start_version - 1 + batch_size,
+          aggregate_version: aggregate_version,
           aggregate_state: aggregate_state
         }
 
