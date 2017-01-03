@@ -109,11 +109,9 @@ defmodule Commanded.Aggregates.Aggregate do
         # rebuild the aggregate's state from the batch of events
         aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
 
-	aggregate_version =
-	  case batch_size do
-	    0 -> start_version - 1
-	    _ -> List.last(batch).event_id
-	  end
+	aggregate_version = if batch_size > 0,
+	  do: List.last(batch).stream_version,
+	  else: state.aggregate_version
 
         state = %Aggregate{state |
           aggregate_version: aggregate_version,
@@ -132,7 +130,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
       {:error, :stream_not_found} ->
         # aggregate does not exist so return empty state
-        state
+	state
     end
   end
 
@@ -148,12 +146,20 @@ defmodule Commanded.Aggregates.Aggregate do
 
         :ok = persist_events(pending_events, aggregate_uuid, expected_version)
 
-        state = %Aggregate{state |
-          aggregate_state: updated_state,
-          aggregate_version: expected_version + length(pending_events),
-        }
-
-        {:ok, state}
+	case expected_version do
+	  0 ->
+	    # when new stream was created reread state from eventstore
+	    # because in case of geteventstore.com eventstore first event
+	    # stream_version can be greater than 1. This happens when the
+	    # stream has been soft deleted before
+	    {:ok, populate_aggregate_state(state)}
+          _ ->
+	    state = %Aggregate{state |
+              aggregate_state: updated_state,
+              aggregate_version: expected_version + length(pending_events),
+            }
+            {:ok, state}
+	end
     end
   end
 

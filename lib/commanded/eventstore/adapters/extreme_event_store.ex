@@ -69,7 +69,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     case read_backward(stream, -1, 1) do
       {:ok, [recorded_event]} -> 
 	{:ok, to_snapshot_data(recorded_event)}
-      {:ok, []} -> 
+      {:error, :stream_not_found} -> 
 	{:error, :snapshot_not_found}
       err ->
 	Logger.error(fn -> "error reading snapshot: #{inspect err}" end)
@@ -175,7 +175,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   defp execute_read(stream, start_version, count, direction) do
     case Extreme.execute(@server, read_events(stream, start_version, count, direction)) do
       {:ok, result} -> {:ok, Enum.map(result.events, &to_recorded_event(&1))}
-      {:error, :NoStream, _} -> {:ok, []}
+      {:error, :NoStream, _} -> {:error, :stream_not_found}
       err -> err
     end
   end
@@ -189,7 +189,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   end
 
   def to_recorded_event(ev = %Extreme.Messages.EventRecord{}) do
-    stream_version = UUID.binary_to_string!(ev.event_id)
+    event_id = UUID.binary_to_string!(ev.event_id)
     data = @serializer.deserialize(ev.data, [type: ev.event_type])
     {correlation_id, meta_data} =
       case ev.metadata do
@@ -199,9 +199,9 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
       end
     
     %RecordedEvent{
-      event_id: ev.event_number + 1,
+      event_id: event_id,
       stream_id: to_stream_id(ev),
-      stream_version: stream_version,
+      stream_version: ev.event_number + 1,
       correlation_id: correlation_id,
       event_type: ev.event_type,
       data: data,

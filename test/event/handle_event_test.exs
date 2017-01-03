@@ -76,7 +76,7 @@ defmodule Commanded.Event.HandleEventTest do
     :timer.sleep(200) # maybe AppendingEventHandler has not yet been notified about event
 
     assert AppendingEventHandler.received_events == new_events
-    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [2]
+    assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [2]
 	end
 
   test "should receive events created before the event handler's subscription when starting from `origin`" do
@@ -96,7 +96,7 @@ defmodule Commanded.Event.HandleEventTest do
     :timer.sleep(200)
 
     assert AppendingEventHandler.received_events == initial_events ++ new_events
-    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
+    assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
 	end
 
 	test "should ignore already seen events" do
@@ -121,6 +121,6 @@ defmodule Commanded.Event.HandleEventTest do
     refute_receive({:ack, _event_id})
 
     assert AppendingEventHandler.received_events == events
-    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
+    assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
 	end
 end

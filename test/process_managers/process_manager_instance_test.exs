@@ -30,6 +30,7 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
     event = %Commanded.EventStore.RecordedEvent{
       event_id: 1,
       stream_id: "stream-id",
+      stream_version: 1,
       data: %MoneyTransferRequested{
         transfer_uuid: transfer_uuid,
         debit_account: account1_uuid,
@@ -41,6 +42,6 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
     :ok = ProcessManagerInstance.process_event(process_manager, event, self)
 
     # should send ack to process router after processing event
-    assert_receive({:"$gen_cast", {:ack_event, "stream-id", 1}}, 1_000)
+    assert_receive({:"$gen_cast", {:ack_event, ^event}}, 1_000)
   end
 end

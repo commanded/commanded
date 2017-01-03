@@ -99,10 +99,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     {:noreply, state}
   end 
 
-  defp event_already_seen?(%RecordedEvent{event_id: event_id, stream_id: stream_id}, %ProcessManagerInstance{last_seen_events: last_seen_events}) do
-    last_seen_event_id = Map.get(last_seen_events, stream_id)
+  defp event_already_seen?(%RecordedEvent{stream_id: stream_id, stream_version: stream_version}, %ProcessManagerInstance{last_seen_events: last_seen_events}) do
+    last_seen_stream_version = Map.get(last_seen_events, stream_id)
 
-    not is_nil(last_seen_event_id) and event_id <= last_seen_event_id
+    not is_nil(last_seen_stream_version) and stream_version <= last_seen_stream_version
   end
 
   defp process_seen_event(event = %RecordedEvent{}, process_router, state) do
@@ -112,10 +112,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     state
   end
 
-  defp process_unseen_event(%RecordedEvent{event_id: event_id, stream_id: stream_id} = event, process_router, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state, last_seen_events: last_seen_events} = state) do
+  defp process_unseen_event(%RecordedEvent{stream_id: stream_id, stream_version: stream_version} = event, process_router, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state, last_seen_events: last_seen_events} = state) do
     case handle_event(process_manager_module, process_state, event) do
       {:error, reason} ->
-        Logger.warn(fn -> "process manager instance failed to handle event id #{inspect event_id} due to: #{inspect reason}" end)
+        Logger.warn(fn -> "process manager instance failed to handle event id #{inspect stream_id}|#{inspect stream_version} due to: #{inspect reason}" end)
 
 	state
       commands ->
@@ -125,10 +125,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
         state = %ProcessManagerInstance{state |
           process_state: process_state,
-          last_seen_events: Map.put(last_seen_events, stream_id, event_id)
+          last_seen_events: Map.put(last_seen_events, stream_id, stream_version)
         }
 
-        persist_state(state, stream_id, event_id)
+        persist_state(state, stream_id, stream_version)
         ack_event(event, process_router)
 
 	state
@@ -153,18 +153,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end)
   end
 
-  defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state, stream_id, event_id) do
+  defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state, stream_id, stream_version) do
     :ok = @event_store.record_snapshot(%SnapshotData{
       source_uuid: process_state_uuid(state),
-      source_version: event_id,
+      source_version: stream_version,
       source_stream_id: stream_id,
       source_type: Atom.to_string(process_manager_module),
       data: process_state
     })
   end
 
-  defp ack_event(%RecordedEvent{event_id: event_id, stream_id: stream_id}, process_router) do
-    :ok = ProcessRouter.ack_event(process_router, stream_id, event_id)
+  defp ack_event(%RecordedEvent{} = event, process_router) do
+    :ok = ProcessRouter.ack_event(process_router, event)
   end
 
   defp delete_state(%ProcessManagerInstance{} = state) do
