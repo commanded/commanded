@@ -74,6 +74,10 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
     {:noreply, state}
   end
 
+  def handle_info(:caught_up, state) do
+    {:noreply, state}
+  end
+  
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
     Process.exit(self, :subscriber_shutdown)
 

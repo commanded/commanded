@@ -65,12 +65,12 @@ defmodule Commanded.Event.HandleEventTest do
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
-    :ok = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+    {:ok, _} = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
 
     wait_for_event BankAccountOpened
     {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :current)
 
-    :ok = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+    {:ok, _} = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
 
     wait_for_event MoneyDeposited
     :timer.sleep(200) # maybe AppendingEventHandler has not yet been notified about event
@@ -86,11 +86,11 @@ defmodule Commanded.Event.HandleEventTest do
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
-    :ok = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+    {:ok, _} = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
 
     {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :origin)
 
-    :ok = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+    {:ok, _} = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
 
     wait_for_event MoneyDeposited
     :timer.sleep(200)

@@ -71,7 +71,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     Aggregate.aggregate_state(aggregate)
 
     # write an event to the aggregate's stream, bypassing the aggregate process (simulate concurrency error)
-    :ok = @event_store.append_to_stream(stream, 0, [
+    {:ok, _} = @event_store.append_to_stream(stream, 0, [
       %Commanded.EventStore.EventData{
         event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
         data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000}

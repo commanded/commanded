@@ -66,8 +66,25 @@ defmodule Commanded.StorageCase do
 	"EVENTSTORE_START_STANDARD_PROJECTIONS=True"
       ]
     }
+
     Docker.Container.start conn, container_name
 
-    :timer.sleep(2400)
+    wait_eventstore_ready
+    :timer.sleep(200)
+  end
+
+  defp wait_eventstore_ready do
+    headers = ["Accept": "application/vnd.eventstore.atom+json"]
+    options = [recv_timeout: 400]
+
+    case HTTPoison.get "http://localhost:2113/streams/somestream", headers, options do
+      {:ok, %HTTPoison.Response{status_code: 404}=resp} ->
+	Logger.debug("event store ready: #{inspect resp}")
+	:ok
+      result ->
+	Logger.debug("ev store result: #{inspect result}")
+	:timer.sleep(400)
+	wait_eventstore_ready
+    end
   end
 end

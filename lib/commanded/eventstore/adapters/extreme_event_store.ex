@@ -21,7 +21,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     GenServer.start_link(__MODULE__, state, [name: __MODULE__])
   end
 
-  @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
+  @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: {:ok, stream_version :: integer} | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events) do
     stream = "#{@stream_prefix}-#{stream_uuid}"
 
@@ -57,7 +57,10 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     
     Logger.debug(fn -> "record snapshot to stream: #{stream}" end)
 
-    add_to_stream(stream, :any_version, [event_data])
+    case add_to_stream(stream, :any_version, [event_data]) do
+      {:ok, _} -> :ok
+      err -> err
+    end
   end
   
   @spec read_snapshot(String.t) :: {:ok, SnapshotData.t} | {:error, :snapshot_not_found}
@@ -147,7 +150,8 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
 
   defp add_to_stream(stream, expected_version, events) do
     case Extreme.execute(@server, write_events(stream, expected_version, events)) do
-      {:ok, _response} -> :ok
+      {:ok, response} ->
+	{:ok, response.last_event_number + 1}
       {:error, :WrongExpectedVersion, detail} ->
 	Logger.info(fn -> "Extreme eventstore wrong expected version '#{expected_version}': #{inspect detail}" end)
 	{:error, :wrong_expected_version}

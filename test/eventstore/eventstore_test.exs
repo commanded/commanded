@@ -41,9 +41,9 @@ defmodule Commanded.EventStore.EventStoreTest do
   end
 
   test "should append an event to a stream" do
-    assert :ok == @event_store.append_to_stream("astream", 0, new_test_events(2))
-    assert :ok == @event_store.append_to_stream("astream", 2, new_test_events(2))
-    assert :ok == @event_store.append_to_stream("astream", 4, new_test_events(1))
+    assert {:ok, 2} == @event_store.append_to_stream("astream", 0, new_test_events(2))
+    assert {:ok, 4} == @event_store.append_to_stream("astream", 2, new_test_events(2))
+    assert {:ok, 5} == @event_store.append_to_stream("astream", 4, new_test_events(1))
   end
 
   test "should fail to append to a stream because of wrong expected version" do
@@ -56,7 +56,7 @@ defmodule Commanded.EventStore.EventStoreTest do
     events = new_test_events 4
     coerce = fn(evs) -> Enum.map(evs, &(%{correlation_id: &1.correlation_id, data: &1.data})) end
 
-    assert :ok == @event_store.append_to_stream("astream", 0, events)
+    assert {:ok, 4} == @event_store.append_to_stream("astream", 0, events)
 
     {:ok, result } = @event_store.read_stream_forward("astream", 1)
     assert coerce.(events) == coerce.(result)
@@ -70,8 +70,8 @@ defmodule Commanded.EventStore.EventStoreTest do
     events2 = new_test_events 4
     coerce = fn(evs) -> Enum.map(evs, &(%{correlation_id: &1.correlation_id, data: &1.data})) end
 
-    assert :ok == @event_store.append_to_stream("astream", 0, events1)
-    assert :ok == @event_store.append_to_stream("asecondstream", 0, events2)
+    assert {:ok, 4} == @event_store.append_to_stream("astream", 0, events1)
+    assert {:ok, 4} == @event_store.append_to_stream("asecondstream", 0, events2)
 
     :timer.sleep(500)
 
@@ -134,9 +134,9 @@ defmodule Commanded.EventStore.EventStoreTest do
     end
     {:ok, _subscription} = @event_store.subscribe_to_all_streams("subscription-name", subscriber_task.pid)
 
-    :ok = @event_store.append_to_stream("astream1", 0, new_test_events(1))
-    :ok = @event_store.append_to_stream("astream2", 0, new_test_events(1))
-    :ok = @event_store.append_to_stream("astream3", 0, new_test_events(1))
+    {:ok, 1} = @event_store.append_to_stream("astream1", 0, new_test_events(1))
+    {:ok, 1} = @event_store.append_to_stream("astream2", 0, new_test_events(1))
+    {:ok, 1} = @event_store.append_to_stream("astream3", 0, new_test_events(1))
 
     assert 3 == Task.await(subscriber_task, 2_000)
   end
@@ -160,16 +160,16 @@ defmodule Commanded.EventStore.EventStoreTest do
       loop.(0, loop)
     end
 
-    :ok = @event_store.append_to_stream("astream1", 0, new_test_events(4))
+    {:ok, 4} = @event_store.append_to_stream("astream1", 0, new_test_events(4))
 
     {:ok, _subscription} = @event_store.subscribe_to_all_streams("sub1", subscriber_task.pid)
 
-    :ok = @event_store.append_to_stream("astream2", 0, new_test_events(3))
+    {:ok, 3} = @event_store.append_to_stream("astream2", 0, new_test_events(3))
 
     :timer.sleep(400) # give subscriber a chance to receive events
     assert :ok = @event_store.unsubscribe_from_all_streams("sub1")
 
-    :ok = @event_store.append_to_stream("astream2", 3, new_test_events(3))
+    {:ok, 6} = @event_store.append_to_stream("astream2", 3, new_test_events(3))
 
     :timer.sleep(400) # give subscriber a chance to receive events
     send(subscriber_task.pid, :exit)

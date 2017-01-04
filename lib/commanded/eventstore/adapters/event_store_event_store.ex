@@ -18,11 +18,16 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
   
   @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events) do
-    EventStore.append_to_stream(
+    result = EventStore.append_to_stream(
       stream_uuid,
       expected_version,
       Enum.map(events, &to_pg_event_data(&1))
     )
+
+    case result do
+      :ok -> {:ok, expected_version + length(events)}
+      err -> err
+    end
   end
 
   @spec record_snapshot(SnapshotData.t) :: :ok | {:error, reason :: term}

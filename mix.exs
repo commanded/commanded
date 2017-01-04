@@ -38,9 +38,10 @@ defmodule Commanded.Mixfile do
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:poison, "~> 2.2"},
       {:uuid, "~> 1.1"},
-      {:extreme, "~> 0.5.4", optional: true, only: :test},
+      {:extreme, "~> 0.7", optional: true, only: :test},
       {:hackney, "~> 1.6.0", override: true},
-      {:docker, github: "bearice/elixir-docker", only: :test}
+      {:docker, github: "bearice/elixir-docker", only: :test},
+      {:httpoison, "~> 0.8.0", only: :test},
     ]
   end
 

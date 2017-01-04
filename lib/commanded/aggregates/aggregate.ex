@@ -144,22 +144,13 @@ defmodule Commanded.Aggregates.Aggregate do
 
         updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        :ok = persist_events(pending_events, aggregate_uuid, expected_version)
+        {:ok, stream_version} = persist_events(pending_events, aggregate_uuid, expected_version)
 
-	case expected_version do
-	  0 ->
-	    # when new stream was created reread state from eventstore
-	    # because in case of geteventstore.com eventstore first event
-	    # stream_version can be greater than 1. This happens when the
-	    # stream has been soft deleted before
-	    {:ok, populate_aggregate_state(state)}
-          _ ->
-	    state = %Aggregate{state |
-              aggregate_state: updated_state,
-              aggregate_version: expected_version + length(pending_events),
-            }
-            {:ok, state}
-	end
+	state = %Aggregate{state |
+          aggregate_state: updated_state,
+          aggregate_version: stream_version
+        }
+        {:ok, state}
     end
   end
 
@@ -167,12 +158,12 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events([], _aggregate_uuid, _expected_version), do: :ok
+  defp persist_events([], _aggregate_uuid, expected_version), do: {:ok, expected_version}
   defp persist_events(pending_events, aggregate_uuid, expected_version) do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
-    :ok = @event_store.append_to_stream(aggregate_uuid, expected_version, event_data)
+    @event_store.append_to_stream(aggregate_uuid, expected_version, event_data)
   end
 
   defp map_from_recorded_events(recorded_events), do: Mapper.map_from_recorded_events(recorded_events)

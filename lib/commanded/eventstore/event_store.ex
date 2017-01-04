@@ -24,7 +24,7 @@ defmodule Commanded.EventStore do
 
   @type start_from :: :origin | :current | integer
   
-  @callback append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
+  @callback append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: {:ok, stream_version :: integer} | {:error, reason :: term}
 
   @callback read_snapshot(String.t) :: {:ok, SnapshotData.t} | {:error, :snapshot_not_found}
   
