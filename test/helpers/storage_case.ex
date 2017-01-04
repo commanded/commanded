@@ -70,7 +70,6 @@ defmodule Commanded.StorageCase do
     Docker.Container.start conn, container_name
 
     wait_eventstore_ready
-    :timer.sleep(200)
   end
 
   defp wait_eventstore_ready do
@@ -78,11 +77,10 @@ defmodule Commanded.StorageCase do
     options = [recv_timeout: 400]
 
     case HTTPoison.get "http://localhost:2113/streams/somestream", headers, options do
-      {:ok, %HTTPoison.Response{status_code: 404}=resp} ->
-	Logger.debug("event store ready: #{inspect resp}")
+      {:ok, %HTTPoison.Response{status_code: 404}} ->
+	:timer.sleep(400)
 	:ok
-      result ->
-	Logger.debug("ev store result: #{inspect result}")
+      _ ->
 	:timer.sleep(400)
 	wait_eventstore_ready
     end

@@ -178,7 +178,16 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
 
   defp execute_read(stream, start_version, count, direction) do
     case Extreme.execute(@server, read_events(stream, start_version, count, direction)) do
-      {:ok, result} -> {:ok, Enum.map(result.events, &to_recorded_event(&1))}
+      # can happen with soft deleted streams
+      {:ok, %ExMsg.ReadStreamEventsCompleted{is_end_of_stream: false, events: events}=result} when(length(events) < count) ->
+	start_version =
+	  case direction do
+	    :forward -> result.next_event_number
+	    :backward -> result.last_event_number
+	  end
+	execute_read(stream, start_version, count, direction)
+      {:ok, result} ->
+	{:ok, Enum.map(result.events, &to_recorded_event(&1))}
       {:error, :NoStream, _} -> {:error, :stream_not_found}
       err -> err
     end
