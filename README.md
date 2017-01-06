@@ -1,8 +1,13 @@
 # Commanded
 
-Command handling middleware for Command Query Responsibility Segregation (CQRS) applications in Elixir. Use Commanded to build your own applications following the [CQRS/ES](http://cqrs.nu/Faq) architecture.
+Use Commanded to build your own Elixir applications following the [CQRS/ES](http://cqrs.nu/Faq) pattern.
 
-Provides support for command registration and dispatch; hosting and delegation to aggregate roots; event handling; and long running process managers.
+Provides support for:
+
+- Command registration and dispatch.
+- Hosting and delegation to aggregate roots.
+- Event handling.
+- Long running process managers.
 
 Uses [eventstore](https://github.com/slashdotdash/eventstore) for event data persistence to a PostgreSQL database.
 
