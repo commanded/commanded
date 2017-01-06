@@ -1,6 +1,6 @@
 # EventStore
 
-CQRS Event Store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) (v9.5 or later) as the underlying storage engine.
+CQRS event store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) (v9.5 or later) as the underlying storage engine.
 
 MIT License
 
@@ -20,6 +20,7 @@ MIT License
     - [Example subscriber](#example-subscriber)
 - [Event serialization](#event-serialization)
 - [Benchmarking performance](#benchmarking-performance)
+- [Used in production?](#used-in-production)
 - [Contributing](#contributing)
   - [Contributors](#contributors)
 
@@ -247,6 +248,17 @@ read events, single reader                   1000   1578.10 µs/op
 read events, 10 concurrent readers            100   16799.80 µs/op
 read events, 100 concurrent readers            10   167397.30 µs/op
 ```
+
+## Used in production?
+
+Yes, this event store is being used in production.
+
+PostgreSQL is used for the underlying storage. Providing guarantees to store data securely. It is ACID-compliant and transactional. PostgreSQL has a proven architecture. A strong reputation for reliability, data integrity, and correctness.
+
+You can use any standard PostgreSQL tool to manage the event store data:
+
+- [Backup and restore](https://www.postgresql.org/docs/current/static/backup-dump.html).
+- [Continuous archiving and Point-in-Time Recovery (PITR)](https://www.postgresql.org/docs/current/static/continuous-archiving.html).
 
 ## Contributing
 
