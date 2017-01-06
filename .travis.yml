@@ -1,10 +1,10 @@
 language: elixir
 
 elixir:
-  - 1.3.3
+  - 1.4.0
 
 otp_release:
-  - 18.2.1
+  - 19.2
 
 services:
   - postgresql
@@ -16,4 +16,4 @@ sudo: required
 dist: trusty
 
 addons:
-  postgresql: "9.5"
+  postgresql: "9.6"
