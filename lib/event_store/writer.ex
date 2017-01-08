@@ -20,7 +20,7 @@ defmodule EventStore.Writer do
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 
-    GenServer.cast(self, {:latest_event_id})
+    GenServer.cast(self(), {:latest_event_id})
 
     {:ok, %Writer{state | conn: conn}}
   end

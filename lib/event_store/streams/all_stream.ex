@@ -35,7 +35,7 @@ defmodule EventStore.Streams.AllStream do
   end
 
   def handle_call({:subscribe_to_stream, subscription_name, subscriber, start_from}, _from, %AllStream{} = state) do
-    reply = Subscriptions.subscribe_to_all_streams(self, subscription_name, subscriber, start_from_event_id(start_from))
+    reply = Subscriptions.subscribe_to_all_streams(self(), subscription_name, subscriber, start_from_event_id(start_from))
 
     {:reply, reply, state}
   end
@@ -44,7 +44,7 @@ defmodule EventStore.Streams.AllStream do
   defp start_from_event_id(:current) do
     {:ok, event_id} = Storage.latest_event_id
     event_id
-  end  
+  end
   defp start_from_event_id(start_from) when is_integer(start_from), do: start_from
 
   defp read_storage_forward(start_event_id, count, serializer) do

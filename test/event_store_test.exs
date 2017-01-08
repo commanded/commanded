@@ -48,7 +48,7 @@ defmodule EventStoreTest do
     stream_uuid = UUID.uuid4
     events = EventFactory.create_events(1)
 
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self)
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self())
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
 
     assert_receive {:events, received_events, ^subscription}
@@ -64,7 +64,7 @@ defmodule EventStoreTest do
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, initial_events)
 
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self, :current)
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self(), :current)
 
     :ok = EventStore.append_to_stream(stream_uuid, 1, new_events)
 
@@ -79,11 +79,11 @@ defmodule EventStoreTest do
   end
 
   test "record snapshot" do
-    assert record_snapshot != nil
+    assert record_snapshot() != nil
   end
 
   test "read a snapshot" do
-    snapshot = record_snapshot
+    snapshot = record_snapshot()
 
     {:ok, read_snapshot} = EventStore.read_snapshot(snapshot.source_uuid)
 
@@ -94,7 +94,7 @@ defmodule EventStoreTest do
   end
 
   test "delete a snapshot" do
-    snapshot = record_snapshot
+    snapshot = record_snapshot()
 
     :ok = EventStore.delete_snapshot(snapshot.source_uuid)
 

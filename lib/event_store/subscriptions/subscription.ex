@@ -42,7 +42,7 @@ defmodule EventStore.Subscriptions.Subscription do
   def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
-    GenServer.cast(self, {:subscribe_to_stream})
+    GenServer.cast(self(), {:subscribe_to_stream})
 
     {:ok, state}
   end
@@ -50,7 +50,7 @@ defmodule EventStore.Subscriptions.Subscription do
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
     subscription =
       subscription
-      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self, subscriber, opts)
+      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self(), subscriber, opts)
 
     state = %Subscription{state | subscription: subscription}
 
@@ -113,7 +113,7 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   defp handle_subscription_state(%Subscription{subscription: %{state: :catching_up}}) do
-    GenServer.cast(self, {:catch_up})
+    GenServer.cast(self(), {:catch_up})
   end
 
   defp handle_subscription_state(%Subscription{subscription: %{state: :max_capacity}, subscription_name: subscription_name}) do

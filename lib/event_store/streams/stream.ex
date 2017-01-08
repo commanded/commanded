@@ -39,7 +39,7 @@ defmodule EventStore.Streams.Stream do
   end
 
   def init(%Stream{stream_uuid: stream_uuid} = state) do
-    GenServer.cast(self, {:open_stream, stream_uuid})
+    GenServer.cast(self(), {:open_stream, stream_uuid})
     {:ok, state}
   end
 
@@ -67,7 +67,7 @@ defmodule EventStore.Streams.Stream do
   end
 
   def handle_call({:subscribe_to_stream, subscription_name, subscriber, start_from}, _from, %Stream{stream_uuid: stream_uuid} = state) do
-    reply = Subscriptions.subscribe_to_stream(stream_uuid, self, subscription_name, subscriber, start_from_stream_version(state, start_from))
+    reply = Subscriptions.subscribe_to_stream(stream_uuid, self(), subscription_name, subscriber, start_from_stream_version(state, start_from))
 
     {:reply, reply, state}
   end
@@ -117,7 +117,7 @@ defmodule EventStore.Streams.Stream do
       event_type: event_type,
       data: serializer.serialize(data),
       metadata: serializer.serialize(metadata),
-      created_at: utc_now,
+      created_at: utc_now(),
     }
   end
 

@@ -5,14 +5,14 @@ defmodule EventStore.Sql.Statements do
 
   def initializers do
     [
-      create_streams_table,
-      create_stream_uuid_index,
-      create_events_table,
-      create_event_stream_id_index,
-      create_event_stream_id_and_version_index,
-      create_subscriptions_table,
-      create_subscription_index,
-      create_snapshots_table,
+      create_streams_table(),
+      create_stream_uuid_index(),
+      create_events_table(),
+      create_event_stream_id_index(),
+      create_event_stream_id_and_version_index(),
+      create_subscriptions_table(),
+      create_subscription_index(),
+      create_snapshots_table(),
     ]
   end
 

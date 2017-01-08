@@ -11,27 +11,27 @@ defmodule EventStore.Storage.DatabaseTest do
   end
 
   def create_database do
-    Database.create(temp_database_config)
+    Database.create(temp_database_config())
   end
 
   def drop_database do
-    Database.drop(temp_database_config)
+    Database.drop(temp_database_config())
   end
 
   setup do
-    on_exit fn -> drop_database end
+    on_exit fn -> drop_database() end
     :ok
   end
 
   test "create database when already exists" do
-    assert create_database == :ok
-    assert create_database == {:error, :already_up}
+    assert create_database() == :ok
+    assert create_database() == {:error, :already_up}
   end
 
   test "drop database when already dropped" do
-    create_database
+    create_database()
 
-    assert drop_database == :ok
-    assert drop_database == {:error, :already_down}
+    assert drop_database() == :ok
+    assert drop_database() == {:error, :already_down}
   end
 end

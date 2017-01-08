@@ -89,14 +89,14 @@ defmodule EventStore.Streams.StreamTest do
     setup [:append_events_to_stream]
 
     test "from origin should receive all events", context do
-      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self, :origin)
+      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self(), :origin)
 
       assert_receive {:events, received_events, _}
       assert length(received_events) == 3
     end
 
     test "from current should receive only new events", context do
-      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self, :current)
+      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self(), :current)
 
       refute_receive {:events, _received_events, _}
 
@@ -108,7 +108,7 @@ defmodule EventStore.Streams.StreamTest do
     end
 
     test "from given stream version should receive only later events", context do
-      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self, 2)
+      {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream], @subscription_name, self(), 2)
 
       assert_receive {:events, received_events, _}
       assert length(received_events) == 1

@@ -23,7 +23,7 @@ defmodule EventStore.Streams.AllStreamTest do
     setup [:append_events_to_streams]
 
     test "from origin should receive all events" do
-      {:ok, _subscription} = AllStream.subscribe_to_stream(@subscription_name, self, :origin)
+      {:ok, _subscription} = AllStream.subscribe_to_stream(@subscription_name, self(), :origin)
 
       assert_receive {:events, received_events1, _}
       assert_receive {:events, received_events2, _}
@@ -31,7 +31,7 @@ defmodule EventStore.Streams.AllStreamTest do
     end
 
     test "from current should receive only new events", context do
-      {:ok, _subscription} = AllStream.subscribe_to_stream(@subscription_name, self, :current)
+      {:ok, _subscription} = AllStream.subscribe_to_stream(@subscription_name, self(), :current)
 
       refute_receive {:events, _received_events, _}
 
@@ -43,7 +43,7 @@ defmodule EventStore.Streams.AllStreamTest do
     end
 
     test "from given event id should receive only later events" do
-      {:ok, _subscription} = AllStream.subscribe_to_stream(@subscription_name, self, 2)
+      {:ok, _subscription} = AllStream.subscribe_to_stream(@subscription_name, self(), 2)
 
       assert_receive {:events, received_events1, _}
       assert_receive {:events, received_events2, _}
@@ -52,8 +52,8 @@ defmodule EventStore.Streams.AllStreamTest do
   end
 
   defp append_events_to_streams(_context) do
-    {stream1_uuid, stream1, stream1_events} = append_events_to_stream
-    {stream2_uuid, stream2, stream2_events} = append_events_to_stream
+    {stream1_uuid, stream1, stream1_events} = append_events_to_stream()
+    {stream2_uuid, stream2, stream2_events} = append_events_to_stream()
 
     [
       stream1_uuid: stream1_uuid,

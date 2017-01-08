@@ -23,7 +23,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
 
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self)
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self())
 
       :ok = Stream.append_to_stream(stream, 0, events)
 
@@ -39,7 +39,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       {:ok, stream} = Streams.open_stream(stream_uuid)
       :ok = Stream.append_to_stream(stream, 0, initial_events)
 
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self, 1)
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self(), 1)
 
       :ok = Stream.append_to_stream(stream, 1, new_events)
 
@@ -51,8 +51,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       stream_uuid = UUID.uuid4
       {:ok, stream} = Streams.open_stream(stream_uuid)
 
-      {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self)
-      {:error, :subscription_already_exists} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self)
+      {:ok, _} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self())
+      {:error, :subscription_already_exists} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self())
     end
 
     test "subscribe to single stream should ignore events from another stream", %{subscription_name: subscription_name} do
@@ -65,7 +65,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       {:ok, interested_stream} = Streams.open_stream(interested_stream_uuid)
       {:ok, other_stream} = Streams.open_stream(other_stream_uuid)
 
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(interested_stream_uuid, interested_stream, subscription_name, self)
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(interested_stream_uuid, interested_stream, subscription_name, self())
 
       :ok = Stream.append_to_stream(interested_stream, 0, interested_events)
       :ok = Stream.append_to_stream(other_stream, 0, other_events)
@@ -84,7 +84,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       stream1_events = EventFactory.create_events(1)
       stream2_events = EventFactory.create_events(1)
 
-      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self)
+      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self())
 
       {:ok, stream1} = Streams.open_stream(stream1_uuid)
       {:ok, stream2} = Streams.open_stream(stream2_uuid)
@@ -117,7 +117,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       :ok = Stream.append_to_stream(stream1, 0, stream1_initial_events)
       :ok = Stream.append_to_stream(stream2, 0, stream2_initial_events)
 
-      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self, 2)
+      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self(), 2)
 
       :ok = Stream.append_to_stream(stream1, 1, stream1_new_events)
       :ok = Stream.append_to_stream(stream2, 1, stream2_new_events)
@@ -138,8 +138,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
 
-      {:ok, subscriber1} = Subscriber.start_link(self)
-      {:ok, subscriber2} = Subscriber.start_link(self)
+      {:ok, subscriber1} = Subscriber.start_link(self())
+      {:ok, subscriber2} = Subscriber.start_link(self())
 
       {:ok, subscription1} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name <> "1", subscriber1)
       {:ok, subscription2} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name <> "2", subscriber2)
@@ -174,7 +174,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       initial_events = Enum.take(stream_events, 3)
       remaining_events = Enum.drop(stream_events, 3)
 
-      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self)
+      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(all_stream, subscription_name, self())
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
 
@@ -211,8 +211,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       events = EventFactory.create_events(1)
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
-      {:ok, subscriber1} = Subscriber.start_link(self)
-      {:ok, subscriber2} = Subscriber.start_link(self)
+      {:ok, subscriber1} = Subscriber.start_link(self())
+      {:ok, subscriber2} = Subscriber.start_link(self())
 
       {:ok, subscription1} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-1", subscriber1)
       {:ok, subscription2} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-2", subscriber2)
@@ -249,8 +249,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       events = EventFactory.create_events(1)
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
-      {:ok, subscriber1} = Subscriber.start_link(self)
-      {:ok, subscriber2} = Subscriber.start_link(self)
+      {:ok, subscriber1} = Subscriber.start_link(self())
+      {:ok, subscriber2} = Subscriber.start_link(self())
 
       {:ok, subscription1} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-1", subscriber1)
       {:ok, subscription2} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name <> "-2", subscriber2)
@@ -287,7 +287,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       events = EventFactory.create_events(1)
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self)
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self())
 
       :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
 
@@ -302,7 +302,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       events = EventFactory.create_events(1)
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self)
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, stream, subscription_name, self())
 
       ProcessHelper.shutdown(subscription)
 

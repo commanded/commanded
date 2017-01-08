@@ -35,7 +35,7 @@ defmodule EventStore.EventFactory do
         event_type: "Elixir.EventStore.EventFactory.Event",
         data: serialize(%EventStore.EventFactory.Event{event: event_id}),
         metadata: serialize(%{"user" => "user@example.com"}),
-        created_at: now
+        created_at: now(),
       }
     end)
   end

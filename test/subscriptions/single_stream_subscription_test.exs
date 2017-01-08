@@ -23,7 +23,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
     assert subscription.state == :catching_up
     assert subscription.data.subscription_name == @subscription_name
-    assert subscription.data.subscriber == self
+    assert subscription.data.subscriber == self()
     assert subscription.data.last_seen == 0
     assert subscription.data.last_ack == 0
   end
@@ -36,7 +36,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
     assert subscription.state == :catching_up
     assert subscription.data.subscription_name == @subscription_name
-    assert subscription.data.subscriber == self
+    assert subscription.data.subscriber == self()
     assert subscription.data.last_seen == 2
     assert subscription.data.last_ack == 2
   end
@@ -204,7 +204,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
   defp create_subscription(stream_uuid, stream, opts \\ []) do
     StreamSubscription.new
-    |> StreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self, opts)
+    |> StreamSubscription.subscribe(stream_uuid, stream, @subscription_name, nil, self(), opts)
   end
 
   defp pluck(enumerable, field) do

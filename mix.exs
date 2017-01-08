@@ -4,16 +4,16 @@ defmodule EventStore.Mixfile do
   def project do
     [
       app: :eventstore,
-      version: "0.7.1",
-      elixir: "~> 1.3",
+      version: "0.7.2",
+      elixir: "~> 1.4",
       elixirc_paths: elixirc_paths(Mix.env),
-      description: description,
-      package: package,
+      description: description(),
+      package: package(),
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
       consolidate_protocols: Mix.env == :prod,
-      aliases: aliases,
-      deps: deps,
+      aliases: aliases(),
+      deps: deps(),
       dialyzer: [plt_add_deps: :project]
     ]
   end
