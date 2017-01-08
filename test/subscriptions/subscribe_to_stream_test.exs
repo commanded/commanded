@@ -157,6 +157,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert Process.alive?(subscription2) == true
       assert Process.alive?(subscriber2) == true
 
+      # wait for subscriptions to receive DOWN notification
+      :timer.sleep(500)
+
       # appending events to stream should notify subscription 2
       :ok = Stream.append_to_stream(stream, 0, events)
 

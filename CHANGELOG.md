@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.2
+
+### Enhancements
+
+- Stream all events forward ([#34](https://github.com/slashdotdash/eventstore/issues/34)).
+
 ## v0.7.1
 
 ### Enhancements

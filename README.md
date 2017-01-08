@@ -15,6 +15,7 @@ MIT License
   - [Writing to a stream](#writing-to-a-stream)
   - [Reading from a stream](#reading-from-a-stream)
   - [Reading from all streams](#reading-from-all-streams)
+  - [Stream from all streams](#stream-from-all-streams)
   - [Subscribe to streams](#subscribe-to-streams)
     - [Ack received events](#ack-received-events)
     - [Example subscriber](#example-subscriber)
@@ -112,6 +113,14 @@ Read all events from all streams.
 ```elixir
 # defaults to reading the first 1,000 events from all streams
 {:ok, events} = EventStore.read_all_streams_forward()
+```
+
+### Stream from all streams
+
+Stream all events from all streams.
+
+```elixir
+events = EventStore.stream_all_forward() |> Enum.to_list
 ```
 
 ### Subscribe to streams

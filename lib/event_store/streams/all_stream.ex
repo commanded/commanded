@@ -20,6 +20,10 @@ defmodule EventStore.Streams.AllStream do
     GenServer.call(__MODULE__, {:read_stream_forward, start_event_id, count})
   end
 
+  def stream_forward(start_event_id, read_batch_size) do
+    GenServer.call(__MODULE__, {:stream_forward, start_event_id, read_batch_size})
+  end
+
   def subscribe_to_stream(subscription_name, subscriber, start_from) do
     GenServer.call(__MODULE__, {:subscribe_to_stream, subscription_name, subscriber, start_from})
   end
@@ -30,6 +34,12 @@ defmodule EventStore.Streams.AllStream do
 
   def handle_call({:read_stream_forward, start_event_id, count}, _from, %AllStream{serializer: serializer} = state) do
     reply = read_storage_forward(start_event_id, count, serializer)
+
+    {:reply, reply, state}
+  end
+
+  def handle_call({:stream_forward, start_event_id, read_batch_size}, _from, %AllStream{serializer: serializer} = state) do
+    reply = stream_storage_forward(start_event_id, read_batch_size, serializer)
 
     {:reply, reply, state}
   end
@@ -52,6 +62,21 @@ defmodule EventStore.Streams.AllStream do
       {:ok, recorded_events} -> {:ok, Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)}
       {:error, _reason} = reply -> reply
     end
+  end
+
+  defp stream_storage_forward(0, read_batch_size, serializer), do: stream_storage_forward(1, read_batch_size, serializer)
+  defp stream_storage_forward(start_event_id, read_batch_size, serializer) do
+    Stream.resource(
+      fn -> start_event_id end,
+      fn next_event_id ->
+        case read_storage_forward(next_event_id, read_batch_size, serializer) do
+          {:ok, []} -> {:halt, next_event_id}
+          {:ok, events} -> {events, next_event_id + length(events)}
+          {:error, _reason} -> {:halt, next_event_id}
+        end
+      end,
+      fn _ -> :ok end
+    )
   end
 
   defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do

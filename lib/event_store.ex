@@ -79,6 +79,22 @@ defmodule EventStore do
   end
 
   @doc """
+  Streams events from all streams, in the order in which they were originally written.
+
+    - `start_event_id` optionally, the id of the first event to read.
+      Defaults to the beginning of the stream if not set.
+
+    - `read_batch_size` optionally, the number of events to read at a time from storage.
+      Defaults to reading 1,000 events per batch.
+  """
+  @spec stream_all_forward() :: Enumerable.t
+  @spec stream_all_forward(non_neg_integer) :: Enumerable.t
+  @spec stream_all_forward(non_neg_integer, non_neg_integer) :: Enumerable.t
+  def stream_all_forward(start_event_id \\ 0, read_batch_size \\ 1_000) do
+    AllStream.stream_forward(start_event_id, read_batch_size)
+  end
+
+  @doc """
   Subscriber will be notified of each batch of events persisted to a single stream.
 
     - `stream_uuid` is the stream to subscribe to.
@@ -176,7 +192,7 @@ defmodule EventStore do
   @doc """
   Delete a previously recorded snapshop for a given source
 
-  Returns `:ok` on success, or when the snapshot does not exist 
+  Returns `:ok` on success, or when the snapshot does not exist
   """
   @spec delete_snapshot(String.t) :: :ok | {:error, reason :: term}
   def delete_snapshot(source_uuid) do

@@ -43,7 +43,6 @@ defmodule EventStore.Storage.SnapshotTest do
       :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: source_version, source_type: recorded_event.event_type, data: recorded_event.data, metadata: recorded_event.metadata})
     end
 
-    @tag :wip
     test "should modify snapshot when already exists", %{conn: conn} do
       source_uuid = UUID.uuid4
       [recorded_event1, recorded_event2] = EventFactory.create_recorded_events(2, 1)

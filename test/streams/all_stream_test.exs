@@ -1,7 +1,5 @@
 defmodule EventStore.Streams.AllStreamTest do
   use EventStore.StorageCase
-  doctest EventStore.Streams.Supervisor
-  doctest EventStore.Streams.Stream
 
   alias EventStore.EventFactory
   alias EventStore.Streams
@@ -14,6 +12,28 @@ defmodule EventStore.Streams.AllStreamTest do
 
     test "should fetch events from all streams" do
       {:ok, read_events} = AllStream.read_stream_forward(0, 1_000)
+
+      assert length(read_events) == 6
+    end
+  end
+
+  describe "stream forward" do
+    setup [:append_events_to_streams]
+
+    test "should stream events from all streams using single event batch size" do
+      read_events = AllStream.stream_forward(0, 1) |> Enum.to_list
+
+      assert length(read_events) == 6
+    end
+
+    test "should stream events from all streams using two event batch size" do
+      read_events = AllStream.stream_forward(0, 2) |> Enum.to_list
+
+      assert length(read_events) == 6
+    end
+
+    test "should stream events from all streams uisng large batch size" do
+      read_events = AllStream.stream_forward(0, 1_000) |> Enum.to_list
 
       assert length(read_events) == 6
     end
