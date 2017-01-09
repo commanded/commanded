@@ -36,7 +36,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     state = %State{state | supervisor: supervisor}
 
-    GenServer.cast(self, {:subscribe_to_events})
+    GenServer.cast(self(), {:subscribe_to_events})
 
     {:ok, state}
   end
@@ -68,7 +68,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     state = confirm_receipt(state, event_id)
 
     # continue processing any pending events
-    GenServer.cast(self, {:process_pending_events})
+    GenServer.cast(self(), {:process_pending_events})
 
     {:reply, :ok, state}
   end
@@ -77,7 +77,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   Subscribe the process router to all events
   """
   def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
-    {:ok, _} = EventStore.subscribe_to_all_streams(process_manager_name, self, subscribe_from)
+    {:ok, _} = EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
     {:noreply, state}
   end
 
@@ -102,7 +102,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
       {[], _} ->
         # no pending events, but some unseen events so start processing them
-        GenServer.cast(self, {:process_pending_events})
+        GenServer.cast(self(), {:process_pending_events})
         %State{state | pending_events: unseen_events, subscription: subscription}
 
       {_, _} ->
@@ -159,7 +159,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   # continue processing any pending events and confirm receipt of the given event id
   defp ack_and_continue(%State{} = state, event_id) do
-    GenServer.cast(self, {:process_pending_events})
+    GenServer.cast(self(), {:process_pending_events})
 
     confirm_receipt(state, event_id)
   end
@@ -204,6 +204,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   defp delegate_event(nil, _event), do: :ok
   defp delegate_event(process_manager, %EventStore.RecordedEvent{} = event) do
-    ProcessManagerInstance.process_event(process_manager, event, self)
+    ProcessManagerInstance.process_event(process_manager, event, self())
   end
 end

@@ -29,12 +29,12 @@ defmodule Commanded.Event.Handler do
   end
 
   def init(%Handler{} = state) do
-    GenServer.cast(self, {:subscribe_to_events})
+    GenServer.cast(self(), {:subscribe_to_events})
     {:ok, state}
   end
 
   def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state) do
-    {:ok, _} = EventStore.subscribe_to_all_streams(handler_name, self, subscribe_from)
+    {:ok, _} = EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
     {:noreply, state}
   end
 

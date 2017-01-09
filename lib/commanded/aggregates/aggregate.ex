@@ -28,7 +28,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   def init(%Aggregate{} = state) do
     # initial aggregate state is populated by loading events from event store
-    GenServer.cast(self, {:populate_aggregate_state})
+    GenServer.cast(self(), {:populate_aggregate_state})
 
     {:ok, state}
   end

@@ -62,7 +62,7 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp create_subscription(subscription_name) do
-    {:ok, _subscription} = EventStore.subscribe_to_all_streams(subscription_name, self)
+    {:ok, _subscription} = EventStore.subscribe_to_all_streams(subscription_name, self())
   end
 
   defp remove_subscription(subscription_name) do
