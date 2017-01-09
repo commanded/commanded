@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.3
+
+### Enhancements
+
+- Upgrade `fsm` dependency to v0.3.0 to remove Elixir 1.4 compiler warnings.
+
 ## v0.7.2
 
 ### Enhancements
