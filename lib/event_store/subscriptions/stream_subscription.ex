@@ -40,8 +40,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate request_catch_up do
-    defevent catch_up, data: %SubscriptionState{} = data do
-      catch_up_from_stream(data)
+    defevent catch_up(notification_callback), data: %SubscriptionState{} = data do
+      catch_up_from_stream(data, notification_callback)
 
       next_state(:catching_up, data)
     end
@@ -67,7 +67,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate catching_up do
-    defevent catch_up, data: %SubscriptionState{} = data do
+    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
       next_state(:catching_up, data)
     end
 
@@ -145,7 +145,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       next_state(:subscribed, data)
     end
 
-    defevent catch_up, data: %SubscriptionState{} = data do
+    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
       next_state(:request_catch_up, data)
     end
 
@@ -178,7 +178,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       end
     end
 
-    defevent catch_up, data: %SubscriptionState{} = data do
+    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
       next_state(:max_capacity, data)
     end
 
@@ -197,7 +197,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       next_state(:unsubscribed, data)
     end
 
-    defevent catch_up, data: %SubscriptionState{} = data do
+    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
       next_state(:unsubscribed, data)
     end
 
@@ -225,7 +225,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   # fetch unseen events from the stream
   # transition to `subscribed` state when no events are found or count of events is less than max buffer size so no further unseen events
-  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen, source: source} = data) do
+  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen, source: source} = data, notification_callback) do
     unseen_event_stream = subscription_provider(stream_uuid).unseen_event_stream(stream, last_seen, @max_buffer_size)
 
     # stream through unseen events in a separate process
@@ -238,12 +238,12 @@ defmodule EventStore.Subscriptions.StreamSubscription do
         |> Enum.at(-1)
 
       last_seen = case last_event do
-        nil -> 0
+        nil -> last_seen
         event -> subscription_provider(stream_uuid).event_id(event)
       end
 
       # notify subscription caught up to given last seen event
-      send(source, {:caught_up, last_seen})
+      notification_callback.(last_seen)
     end)
   end
 

@@ -247,7 +247,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
     end
 
-    @tag :wip
     test "should monitor subscriber and terminate subscription on error", %{subscription_name: subscription_name} do
       stream_uuid = UUID.uuid4
       events = EventFactory.create_events(1)
