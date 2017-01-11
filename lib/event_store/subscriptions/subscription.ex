@@ -83,6 +83,18 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, state}
   end
 
+  def handle_info({:caught_up, last_seen}, %Subscription{subscription: subscription} = state) do
+    subscription =
+      subscription
+      |> StreamSubscription.caught_up(last_seen)
+
+    state = %Subscription{state | subscription: subscription}
+
+    handle_subscription_state(state)
+
+    {:noreply, state}
+  end
+
   @doc """
   Confirm receipt of an event by id
   """
@@ -112,7 +124,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:reply, :ok, state}
   end
 
-  defp handle_subscription_state(%Subscription{subscription: %{state: :catching_up}}) do
+  defp handle_subscription_state(%Subscription{subscription: %{state: :request_catch_up}}) do
     GenServer.cast(self(), {:catch_up})
   end
 

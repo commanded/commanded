@@ -31,7 +31,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
             max_size: opts[:max_size] || @max_buffer_size
           }
 
-          next_state(:catching_up, data)
+          next_state(:request_catch_up, data)
 
         {:error, _reason} ->
           next_state(:failed, data)
@@ -39,11 +39,36 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
   end
 
+  defstate request_catch_up do
+    defevent catch_up, data: %SubscriptionState{} = data do
+      catch_up_from_stream(data)
+
+      next_state(:catching_up, data)
+    end
+
+    defevent ack(ack), data: %SubscriptionState{} = data do
+      data =
+        data
+        |> ack_events(ack)
+        |> notify_pending_events
+
+      next_state(:request_catch_up, data)
+    end
+
+    # ignore event notifications while catching up
+    defevent notify_events(_events), data: %SubscriptionState{} = data do
+      next_state(:request_catch_up, data)
+    end
+
+    defevent unsubscribe, data: %SubscriptionState{stream_uuid: stream_uuid, subscription_name: subscription_name} = data do
+      unsubscribe_from_stream(stream_uuid, subscription_name)
+      next_state(:unsubscribed, data)
+    end
+  end
+
   defstate catching_up do
     defevent catch_up, data: %SubscriptionState{} = data do
-      {state, data} = catch_up_from_stream(data)
-
-      next_state(state, data)
+      next_state(:catching_up, data)
     end
 
     defevent ack(ack), data: %SubscriptionState{} = data do
@@ -53,6 +78,14 @@ defmodule EventStore.Subscriptions.StreamSubscription do
         |> notify_pending_events
 
       next_state(:catching_up, data)
+    end
+
+    defevent caught_up(last_seen), data: %SubscriptionState{} = data do
+      data = %SubscriptionState{data |
+        last_seen: last_seen,
+      }
+
+      next_state(:subscribed, data)
     end
 
     # ignore event notifications while catching up
@@ -99,7 +132,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
         _ ->
           # must catch-up with all unseen events
-          next_state(:catching_up, data)
+          next_state(:request_catch_up, data)
       end
     end
 
@@ -113,7 +146,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
 
     defevent catch_up, data: %SubscriptionState{} = data do
-      next_state(:catching_up, data)
+      next_state(:request_catch_up, data)
     end
 
     defevent unsubscribe, data: %SubscriptionState{stream_uuid: stream_uuid, subscription_name: subscription_name} = data do
@@ -137,7 +170,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       case data.pending_events do
         [] ->
           # no further pending events so catch up with any unseen
-          next_state(:catching_up, data)
+          next_state(:request_catch_up, data)
 
         _ ->
           # pending events remain, wait until subscriber ack's
@@ -192,43 +225,39 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   # fetch unseen events from the stream
   # transition to `subscribed` state when no events are found or count of events is less than max buffer size so no further unseen events
-  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen} = data) do
-    case subscription_provider(stream_uuid).unseen_events(stream, last_seen, @max_buffer_size) do
-      {:ok, []} -> {:subscribed, data}
-      {:ok, events} ->
-        last_event = notify_subscriber_events(data, events)
-        data = %SubscriptionState{data | last_seen: subscription_provider(stream_uuid).event_id(last_event)}
+  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen, source: source} = data) do
+    unseen_event_stream = subscription_provider(stream_uuid).unseen_event_stream(stream, last_seen, @max_buffer_size)
 
-        if length(events) < @max_buffer_size do
-          {:subscribed, data}
-        else
-          {:catching_up, data}
-        end
-    end
-  end
+    # stream through unseen events in a separate process
+    spawn_link(fn ->
+      last_event =
+        unseen_event_stream
+        |> Stream.chunk_by(&(&1.correlation_id))
+        |> Stream.each(&notify_subscriber(data, &1))
+        |> Stream.map(&Enum.at(&1, -1))
+        |> Enum.at(-1)
 
-  # chunk events by correlation id and send to subscriber
-  # returns the last notified event
-  defp notify_subscriber_events(%SubscriptionState{} = data, events) do
-    events
-    |> Enum.chunk_by(fn event -> event.correlation_id end)
-    |> Enum.map(fn events_by_correlation_id ->
-      notify_subscriber(data, events_by_correlation_id)
+      last_seen = case last_event do
+        nil -> 0
+        event -> subscription_provider(stream_uuid).event_id(event)
+      end
 
-      List.last(events_by_correlation_id)
+      # notify subscription caught up to given last seen event
+      send(source, {:caught_up, last_seen})
     end)
-    |> Enum.reduce(fn (last_event, _) -> last_event end)
   end
 
   # send pending events to subscriber if ready to receive them
   defp notify_pending_events(%SubscriptionState{pending_events: []} = data), do: data
-  defp notify_pending_events(%SubscriptionState{pending_events: [first_pending_event|_] = pending_events, stream_uuid: stream_uuid, last_ack: last_ack} = data) do
+  defp notify_pending_events(%SubscriptionState{pending_events: [first_pending_event | _] = pending_events, stream_uuid: stream_uuid, last_ack: last_ack} = data) do
     next_ack = last_ack + 1
 
     case subscription_provider(stream_uuid).event_id(first_pending_event) do
       ^next_ack ->
         # subscriber has ack'd last received event, so send pending
-        notify_subscriber_events(data, pending_events)
+        pending_events
+        |> Enum.chunk_by(&(&1.correlation_id))
+        |> Enum.each(&notify_subscriber(data, &1))
 
         %SubscriptionState{data|
           pending_events: []

@@ -10,34 +10,36 @@ defmodule EventStore.Streams.StreamTest do
 
   @subscription_name "test_subscription"
 
-  test "open a stream" do
-    stream_uuid = UUID.uuid4
+  describe "open a single stream" do
+    test "should open stream" do
+      stream_uuid = UUID.uuid4
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+      {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    assert stream != nil
-  end
+      assert stream != nil
+    end
 
-  test "open the same stream twice" do
-    stream_uuid = UUID.uuid4
+    test "should be identical stream when opening the same stream twice" do
+      stream_uuid = UUID.uuid4
 
-    {:ok, stream1} = Streams.open_stream(stream_uuid)
-    {:ok, stream2} = Streams.open_stream(stream_uuid)
+      {:ok, stream1} = Streams.open_stream(stream_uuid)
+      {:ok, stream2} = Streams.open_stream(stream_uuid)
 
-    assert stream1 != nil
-    assert stream2 != nil
-    assert stream1 == stream2
-  end
+      assert stream1 != nil
+      assert stream2 != nil
+      assert stream1 == stream2
+    end
 
-  test "stream crash should allow restarting stream process" do
-    stream_uuid = UUID.uuid4
+    test "stream crash should allow restarting stream process" do
+      stream_uuid = UUID.uuid4
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+      {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    ProcessHelper.shutdown(stream)
+      ProcessHelper.shutdown(stream)
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
-    assert stream != nil
+      {:ok, stream} = Streams.open_stream(stream_uuid)
+      assert stream != nil
+    end
   end
 
   describe "append events to stream" do
@@ -75,6 +77,13 @@ defmodule EventStore.Streams.StreamTest do
     {:error, :stream_not_found} = Stream.read_stream_forward(stream, 0, 1)
   end
 
+  # test "attempt to stream an unknown stream should error stream not found" do
+  #   unknown_stream_uuid = UUID.uuid4
+  #   {:ok, stream} = Streams.open_stream(unknown_stream_uuid)
+  #
+  #   {:error, :stream_not_found} = Stream.stream_forward(stream, 0, 1) |> Stream.run
+  # end
+
   describe "read stream forward" do
     setup [:append_events_to_stream]
 
@@ -82,6 +91,44 @@ defmodule EventStore.Streams.StreamTest do
       {:ok, read_events} = Stream.read_stream_forward(context[:stream], 0, 1_000)
 
       assert length(read_events) == 3
+    end
+  end
+
+  describe "stream forward" do
+    setup [:append_events_to_stream]
+
+    test "should stream events from single stream using single event batch size", context do
+      read_events = Stream.stream_forward(context[:stream], 0, 1) |> Enum.to_list
+
+      assert length(read_events) == 3
+      assert pluck(read_events, :event_id) == [1, 2, 3]
+      assert pluck(read_events, :stream_version) == [1, 2, 3]
+    end
+
+    test "should stream events from single stream using two event batch size", context do
+      read_events = Stream.stream_forward(context[:stream], 0, 2) |> Enum.to_list
+
+      assert length(read_events) == 3
+    end
+
+    test "should stream events from single stream uisng large batch size", context do
+      read_events = Stream.stream_forward(context[:stream], 0, 1_000) |> Enum.to_list
+
+      assert length(read_events) == 3
+    end
+
+    test "should stream events from single stream with starting version offset", context do
+      read_events = Stream.stream_forward(context[:stream], 2, 1) |> Enum.to_list
+
+      assert length(read_events) == 2
+      assert pluck(read_events, :event_id) == [2, 3]
+      assert pluck(read_events, :stream_version) == [2, 3]
+    end
+
+    test "should stream events from single stream with starting version offset outside range", context do
+      read_events = Stream.stream_forward(context[:stream], 4, 1) |> Enum.to_list
+
+      assert length(read_events) == 0
     end
   end
 
@@ -145,4 +192,6 @@ defmodule EventStore.Streams.StreamTest do
 
     [stream_uuid: stream_uuid, events: events, stream: stream]
   end
+
+  defp pluck(enumerable, field), do: Enum.map(enumerable, &Map.get(&1, field))
 end
