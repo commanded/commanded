@@ -68,11 +68,11 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def handle_cast({:catch_up}, %Subscription{subscription: subscription} = state) do
-    self = self()
+    reply_to = self()
 
     subscription = StreamSubscription.catch_up(subscription, fn last_seen ->
       # notify subscription caught up to given last seen event
-      send(self, {:caught_up, last_seen})
+      send(reply_to, {:caught_up, last_seen})
     end)
 
     state = %Subscription{state | subscription: subscription}
