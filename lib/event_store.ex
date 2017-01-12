@@ -53,13 +53,27 @@ defmodule EventStore do
     - `count` optionally, the maximum number of events to read.
       If not set it will be limited to returning 1,000 events from the stream.
   """
-  @spec read_stream_forward(String.t) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @spec read_stream_forward(String.t, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   @spec read_stream_forward(String.t, non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_stream_forward(stream_uuid, start_version \\ 0, count \\ 1_000) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
     Stream.read_stream_forward(stream, start_version, count)
+  end
+
+  @doc """
+  Streams events from the given stream, in the order in which they were originally written.
+
+    - `start_version` optionally, the version number of the first event to read.
+      Defaults to the beginning of the stream if not set.
+
+    - `read_batch_size` optionally, the number of events to read at a time from storage.
+      Defaults to reading 1,000 events per batch.
+  """
+  @spec stream_forward(String.t, non_neg_integer, non_neg_integer) :: Enumerable.t | {:error, reason :: term}
+  def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    Stream.stream_forward(stream, start_version, read_batch_size)
   end
 
   @doc """
@@ -71,8 +85,6 @@ defmodule EventStore do
     - `count` optionally, the maximum number of events to read.
     If not set it will be limited to returning 1,000 events from all streams.
   """
-  @spec read_all_streams_forward() :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @spec read_all_streams_forward(non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   @spec read_all_streams_forward(non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_all_streams_forward(start_event_id \\ 0, count \\ 1_000) do
     AllStream.read_stream_forward(start_event_id, count)
@@ -87,8 +99,6 @@ defmodule EventStore do
     - `read_batch_size` optionally, the number of events to read at a time from storage.
       Defaults to reading 1,000 events per batch.
   """
-  @spec stream_all_forward() :: Enumerable.t
-  @spec stream_all_forward(non_neg_integer) :: Enumerable.t
   @spec stream_all_forward(non_neg_integer, non_neg_integer) :: Enumerable.t
   def stream_all_forward(start_event_id \\ 0, read_batch_size \\ 1_000) do
     AllStream.stream_forward(start_event_id, read_batch_size)

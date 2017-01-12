@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.5
+
+### Enhancements
+
+- Stream events from a single stream forward.
+
 ## v0.7.4
 
 ### Enhancements

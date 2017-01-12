@@ -44,6 +44,22 @@ defmodule EventStoreTest do
     assert recorded_event.metadata == created_event.metadata
   end
 
+  test "stream forward from event store" do
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_events(1)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 0, events)
+    recorded_events = EventStore.stream_forward(stream_uuid) |> Enum.to_list
+
+    created_event = hd(events)
+    recorded_event = hd(recorded_events)
+
+    assert recorded_event.event_id > 0
+    assert recorded_event.stream_id > 0
+    assert recorded_event.data == created_event.data
+    assert recorded_event.metadata == created_event.metadata
+  end
+
   test "stream all forward from event store" do
     stream_uuid = UUID.uuid4
     events = EventFactory.create_events(1)
