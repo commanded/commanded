@@ -77,12 +77,12 @@ defmodule EventStore.Streams.StreamTest do
     {:error, :stream_not_found} = Stream.read_stream_forward(stream, 0, 1)
   end
 
-  # test "attempt to stream an unknown stream should error stream not found" do
-  #   unknown_stream_uuid = UUID.uuid4
-  #   {:ok, stream} = Streams.open_stream(unknown_stream_uuid)
-  #
-  #   {:error, :stream_not_found} = Stream.stream_forward(stream, 0, 1) |> Stream.run
-  # end
+  test "attempt to stream an unknown stream should error stream not found" do
+    unknown_stream_uuid = UUID.uuid4
+    {:ok, stream} = Streams.open_stream(unknown_stream_uuid)
+
+    {:error, :stream_not_found} = Stream.stream_forward(stream, 0, 1)
+  end
 
   describe "read stream forward" do
     setup [:append_events_to_stream]

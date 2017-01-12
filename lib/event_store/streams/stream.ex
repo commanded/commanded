@@ -149,19 +149,19 @@ defmodule EventStore.Streams.Stream do
   defp read_storage_forward(_stream_id, _start_version, _count, _serializer), do: {:error, :stream_not_found}
 
   defp stream_storage_forward(stream_id, 0, read_batch_size, serializer), do: stream_storage_forward(stream_id, 1, read_batch_size, serializer)
-  defp stream_storage_forward(stream_id, start_version, read_batch_size, serializer) do
+  defp stream_storage_forward(stream_id, start_version, read_batch_size, serializer) when not is_nil(stream_id) do
     Elixir.Stream.resource(
       fn -> start_version end,
       fn next_version ->
         case read_storage_forward(stream_id, next_version, read_batch_size, serializer) do
           {:ok, []} -> {:halt, next_version}
           {:ok, events} -> {events, next_version + length(events)}
-          {:error, _reason} -> {:halt, next_version}
         end
       end,
       fn _ -> :ok end
     )
   end
+  defp stream_storage_forward(_stream_id, _start_version, _read_batch_size, _serializer), do: {:error, :stream_not_found}
 
   defp deserialize_recorded_events(recorded_events, serializer) do
     Enum.map(recorded_events, &deserialize_recorded_event(&1, serializer))

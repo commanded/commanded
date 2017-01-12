@@ -26,5 +26,8 @@ defmodule EventStore.Subscriptions.StreamSubscriptionProvider do
   """
   @callback unseen_event_stream(stream, last_seen, read_batch_size) :: Enumerable.t
 
+  @doc """
+  Acknowledge receipt of the last seen event for the stream and subscription
+  """
   @callback ack_last_seen_event(stream_uuid, subscription_name, last_seen) :: :ok | {:error, reason :: any()}
 end
