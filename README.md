@@ -40,7 +40,7 @@ The package can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.8"}]
+      [{:commanded, "~> 0.9"}]
     end
     ```
 
