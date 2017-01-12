@@ -4,7 +4,7 @@ defmodule Commanded.Mixfile do
   def project do
     [
       app: :commanded,
-      version: "0.8.5",
+      version: "0.9.0",
       elixir: "~> 1.4",
       elixirc_paths: elixirc_paths(Mix.env),
       description: description(),
@@ -33,7 +33,7 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:eventstore, "~> 0.7"},
+      {:eventstore, "~> 0.8"},
       {:ex_doc, "~> 0.14", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},

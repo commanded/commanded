@@ -97,35 +97,31 @@ defmodule Commanded.Aggregates.Aggregate do
     })
   end
 
-  defp rebuild_from_events(%Aggregate{} = state), do: rebuild_from_events(state, 1)
-
-  # load events from the event store, in batches of 100 events, to rebuild the aggregate state
-  defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state, start_version) do
-    case EventStore.read_stream_forward(aggregate_uuid, start_version, @read_event_batch_size) do
-      {:ok, batch} ->
-        batch_size = length(batch)
-
-        # rebuild the aggregate's state from the batch of events
-        aggregate_state = apply_events(aggregate_module, aggregate_state, map_from_recorded_events(batch))
-
-        state = %Aggregate{state |
-          aggregate_version: start_version - 1 + batch_size,
-          aggregate_state: aggregate_state
-        }
-
-        case batch_size < @read_event_batch_size do
-          true ->
-            # end of event stream for aggregate so return its state
-            state
-
-          false ->
-            # fetch next batch of events to apply to updated aggregate state
-            rebuild_from_events(state, start_version + @read_event_batch_size)
-        end
-
+  # load events from the event store, in batches, to rebuild the aggregate state
+  defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module} = state) do
+    case EventStore.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
       {:error, :stream_not_found} ->
         # aggregate does not exist so return empty state
         state
+
+      event_stream ->
+        # rebuild aggregate state from event stream
+        event_stream
+        |> Stream.map(&Mapper.map_from_recorded_event/1)
+        |> Stream.transform(state, fn (event, state) ->
+          case event do
+            nil -> {:halt, state}
+            event ->
+              state = %Aggregate{state |
+                aggregate_version: state.aggregate_version + 1,
+                aggregate_state: aggregate_module.apply(state.aggregate_state, event),
+              }
+
+              {[state], state}
+          end
+        end)
+        |> Stream.take(-1)
+        |> Enum.at(0)
     end
   end
 
@@ -161,6 +157,4 @@ defmodule Commanded.Aggregates.Aggregate do
 
     :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
   end
-
-  defp map_from_recorded_events(recorded_events), do: Mapper.map_from_recorded_events(recorded_events)
 end

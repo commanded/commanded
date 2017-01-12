@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.0
+
+### Enhancements
+
+- Stream events from event store when rebuilding aggregate state.
+
 ## v0.8.5
 
 ### Enhancements
