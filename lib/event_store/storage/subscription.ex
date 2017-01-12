@@ -8,7 +8,23 @@ defmodule EventStore.Storage.Subscription do
   alias EventStore.Sql.Statements
   alias EventStore.Storage.Subscription
 
-  defstruct subscription_id: nil, stream_uuid: nil, subscription_name: nil, last_seen_event_id: nil, last_seen_stream_version: nil, created_at: nil
+  @type t :: %EventStore.Storage.Subscription{
+    subscription_id: non_neg_integer(),
+    stream_uuid: String.t,
+    subscription_name: String.t,
+    last_seen_event_id: nil | non_neg_integer(),
+    last_seen_stream_version: nil | non_neg_integer(),
+    created_at: NaiveDateTime.t,
+  }
+  
+  defstruct [
+    subscription_id: nil,
+    stream_uuid: nil,
+    subscription_name: nil,
+    last_seen_event_id: nil,
+    last_seen_stream_version: nil,
+    created_at: nil,
+  ]
 
   @doc """
   List all known subscriptions

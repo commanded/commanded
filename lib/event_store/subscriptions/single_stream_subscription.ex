@@ -1,4 +1,6 @@
 defmodule EventStore.Subscriptions.SingleStreamSubscription do
+  @behaviour EventStore.Subscriptions.StreamSubscriptionProvider
+
   alias EventStore.Storage
   alias EventStore.Streams.Stream
 
@@ -10,13 +12,8 @@ defmodule EventStore.Subscriptions.SingleStreamSubscription do
     last_seen_stream_version
   end
 
-  def unseen_events(stream, last_seen_stream_version, count) do
-    start_version = last_seen_stream_version + 1
-
-    case Stream.read_stream_forward(stream, start_version, count) do
-      {:ok, _events} = reply -> reply
-      {:error, :stream_not_found} -> {:ok, []}
-    end
+  def unseen_event_stream(stream, last_seen, read_batch_size) do
+    Stream.stream_forward(stream, last_seen + 1, read_batch_size)
   end
 
   def ack_last_seen_event(stream_uuid, subscription_name, last_stream_version) do

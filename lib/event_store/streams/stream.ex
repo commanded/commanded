@@ -30,6 +30,10 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:read_stream_forward, start_version, count})
   end
 
+  def stream_forward(stream, start_version, read_batch_size) do
+    GenServer.call(stream, {:stream_forward, start_version, read_batch_size})
+  end
+
   def subscribe_to_stream(stream, subscription_name, subscriber, start_from) do
     GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber, start_from})
   end
@@ -62,6 +66,12 @@ defmodule EventStore.Streams.Stream do
 
   def handle_call({:read_stream_forward, start_version, count}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do
     reply = read_storage_forward(stream_id, start_version, count, serializer)
+
+    {:reply, reply, state}
+  end
+
+  def handle_call({:stream_forward, start_version, read_batch_size}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do
+    reply = stream_storage_forward(stream_id, start_version, read_batch_size, serializer)
 
     {:reply, reply, state}
   end
@@ -137,6 +147,21 @@ defmodule EventStore.Streams.Stream do
     end
   end
   defp read_storage_forward(_stream_id, _start_version, _count, _serializer), do: {:error, :stream_not_found}
+
+  defp stream_storage_forward(stream_id, 0, read_batch_size, serializer), do: stream_storage_forward(stream_id, 1, read_batch_size, serializer)
+  defp stream_storage_forward(stream_id, start_version, read_batch_size, serializer) when not is_nil(stream_id) do
+    Elixir.Stream.resource(
+      fn -> start_version end,
+      fn next_version ->
+        case read_storage_forward(stream_id, next_version, read_batch_size, serializer) do
+          {:ok, []} -> {:halt, next_version}
+          {:ok, events} -> {events, next_version + length(events)}
+        end
+      end,
+      fn _ -> :ok end
+    )
+  end
+  defp stream_storage_forward(_stream_id, _start_version, _read_batch_size, _serializer), do: {:error, :stream_not_found}
 
   defp deserialize_recorded_events(recorded_events, serializer) do
     Enum.map(recorded_events, &deserialize_recorded_event(&1, serializer))

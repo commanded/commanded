@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.4
+
+### Enhancements
+
+- Subscriptions use Elixir [streams](https://hexdocs.pm/elixir/Stream.html) to read events when catching up.
+
 ## v0.7.3
 
 ### Enhancements

@@ -48,9 +48,7 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
-    subscription =
-      subscription
-      |> StreamSubscription.subscribe(stream_uuid, stream, subscription_name, self(), subscriber, opts)
+    subscription = StreamSubscription.subscribe(subscription, stream_uuid, stream, subscription_name, self(), subscriber, opts)
 
     state = %Subscription{state | subscription: subscription}
 
@@ -60,9 +58,7 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do
-    subscription =
-      subscription
-      |> StreamSubscription.notify_events(events)
+    subscription = StreamSubscription.notify_events(subscription, events)
 
     state = %Subscription{state | subscription: subscription}
 
@@ -72,9 +68,24 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def handle_cast({:catch_up}, %Subscription{subscription: subscription} = state) do
+    reply_to = self()
+
+    subscription = StreamSubscription.catch_up(subscription, fn last_seen ->
+      # notify subscription caught up to given last seen event
+      send(reply_to, {:caught_up, last_seen})
+    end)
+
+    state = %Subscription{state | subscription: subscription}
+
+    handle_subscription_state(state)
+
+    {:noreply, state}
+  end
+
+  def handle_info({:caught_up, last_seen}, %Subscription{subscription: subscription} = state) do
     subscription =
       subscription
-      |> StreamSubscription.catch_up
+      |> StreamSubscription.caught_up(last_seen)
 
     state = %Subscription{state | subscription: subscription}
 
@@ -112,7 +123,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:reply, :ok, state}
   end
 
-  defp handle_subscription_state(%Subscription{subscription: %{state: :catching_up}}) do
+  defp handle_subscription_state(%Subscription{subscription: %{state: :request_catch_up}}) do
     GenServer.cast(self(), {:catch_up})
   end
 
