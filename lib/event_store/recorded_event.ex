@@ -26,4 +26,12 @@ defmodule EventStore.RecordedEvent do
     metadata: nil,
     created_at: nil,
   ]
+
+  def fetch(map, key) when is_map(map) do
+    Map.fetch(map, key)
+  end
+
+  def get_and_update(map, key, fun) when is_map(map) do
+    Map.get_and_update(map, key, fun)
+  end
 end
