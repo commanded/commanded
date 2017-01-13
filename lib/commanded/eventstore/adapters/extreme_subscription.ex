@@ -63,13 +63,19 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
   end
 
   def handle_info({:on_event, event}, state) do
-    recorded_ev = ExtremeEventStore.to_recorded_event(event)
-    Logger.debug(fn -> "on_event (to: #{inspect state.subscriber}): #{state.name} #{event.event.event_stream_id} | #{inspect recorded_ev.data}" end)
+    event_type = event.event.event_type
 
-    send(
-      state.subscriber,
-      {:events, [recorded_ev], state.subscription}
-    )
+    if "$" != String.first(event_type) do
+      recorded_ev = ExtremeEventStore.to_recorded_event(event)
+      Logger.debug(fn -> "on_event (to: #{inspect state.subscriber}): #{state.name} #{event.event.event_stream_id} | #{inspect recorded_ev.data}" end)
+      
+      send(
+	state.subscriber,
+	{:events, [recorded_ev], state.subscription}
+      )
+    else
+      Logger.debug(fn -> "ignoring event of type: #{inspect event_type}" end)
+    end
 
     {:noreply, state}
   end
