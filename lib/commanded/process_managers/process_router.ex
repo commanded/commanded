@@ -30,7 +30,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       process_manager_module: process_manager_module,
       command_dispatcher: command_dispatcher,
       subscribe_from: opts[:start_from] || :origin,
-    })
+    }, [name: process_manager_module])
   end
 
   def init(%State{command_dispatcher: command_dispatcher} = state) do
