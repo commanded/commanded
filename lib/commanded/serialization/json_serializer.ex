@@ -75,7 +75,7 @@ defmodule Commanded.Serialization.JsonSerializer do
     end
 
     binary
-    |> Poison.decode!(as: type, keys: :atoms!)
+    |> Poison.decode!(as: type)
     |> JsonDecoder.decode
   end
 end

@@ -130,13 +130,21 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   defp snapshot_stream(source_uuid), do: "#{@stream_prefix}snapshot-#{source_uuid}"
 
   defp to_snapshot_data(event = %RecordedEvent{}) do
-    data = event.data.source_type |>
-      String.to_existing_atom |> struct(event.data.data) |> Commanded.Serialization.JsonDecoder.decode
+    data = event.data.source_type
+    |> String.to_existing_atom
+    |> struct(with_atom_keys(event.data.data))
+    |> Commanded.Serialization.JsonDecoder.decode
 
     %SnapshotData{event.data |
       data: data,
       created_at: event.created_at
     }
+  end
+
+  defp with_atom_keys(map) do
+    Enum.reduce(Map.keys(map), %{}, fn(key, m) ->
+      Map.put(m, String.to_existing_atom(key), Map.get(map, key))
+    end)
   end
 
   defp to_event_data(snapshot = %SnapshotData{}) do
