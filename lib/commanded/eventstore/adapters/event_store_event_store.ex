@@ -43,8 +43,6 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
     end
   end
   
-  @spec read_stream_forward(String.t) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @spec read_stream_forward(String.t, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   @spec read_stream_forward(String.t, non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_stream_forward(stream_uuid, start_version \\ 0, count \\ 1_000) do
     case EventStore.read_stream_forward(stream_uuid, start_version, count) do
@@ -52,9 +50,16 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
       err -> err
     end
   end  
+
+  @spec stream_forward(String.t, non_neg_integer, non_neg_integer) :: Enumerable.t | {:error, reason :: term}
+  def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
+    case EventStore.stream_forward(stream_uuid, start_version, read_batch_size) do
+      {:error, :stream_not_found}=err -> Stream.map([err], &(&1))
+      {:error, reason} -> {:error, reason}
+      stream ->	stream |> Stream.map(&from_pg_recorded_event/1)
+    end
+  end
   
-  @spec read_all_streams_forward() :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @spec read_all_streams_forward(non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   @spec read_all_streams_forward(non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_all_streams_forward(start_event_id \\ 0, count \\ 1_000) do
     case EventStore.read_all_streams_forward(start_event_id, count) do

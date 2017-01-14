@@ -24,9 +24,9 @@ defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
     Process.monitor(state.subscriber)
 
     state = 
-      case EventStore.subscribe_to_all_streams(state.name, self, state.start_from) do
+      case EventStore.subscribe_to_all_streams(state.name, self(), state.start_from) do
 	{:ok, pid} ->
-	  %{state | result: {:ok, self}, remote_subscription_pid: pid, subscription: self}
+	  %{state | result: {:ok, self()}, remote_subscription_pid: pid, subscription: self()}
 	err -> %{state | result: err}
       end
 
@@ -57,7 +57,7 @@ defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
   end
 
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
-    Process.exit(self, :subscriber_shutdown)
+    Process.exit(self(), :subscriber_shutdown)
 
     {:noreply, state}
   end

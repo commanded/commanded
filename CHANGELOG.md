@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.9.0
+
+### Enhancements
+
+- Stream events from event store when rebuilding aggregate state.
+
+## v0.8.5
+
+### Enhancements
+
+- Upgrade to Elixir 1.4 and remove compiler warnings.
+
 ## v0.8.4
 
 ### Enhancements

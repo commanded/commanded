@@ -12,7 +12,7 @@ defmodule Commanded.Helpers.EventFactory do
         event_type: event.event_type,
         data: event.data,
         metadata: event.metadata,
-        created_at: now
+        created_at: now(),
       }
     end)
   end

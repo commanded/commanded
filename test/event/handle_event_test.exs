@@ -20,7 +20,7 @@ defmodule Commanded.Event.HandleEventTest do
     ]
     recorded_events = EventFactory.map_to_recorded_events(events)
 
-    send(handler, {:events, recorded_events, self})
+    send(handler, {:events, recorded_events, self()})
 
     assert_receive({:ack, 1})
     assert_receive({:ack, 2})
@@ -45,7 +45,7 @@ defmodule Commanded.Event.HandleEventTest do
     ]
     recorded_events = EventFactory.map_to_recorded_events(events)
 
-    send(handler, {:events, recorded_events, self})
+    send(handler, {:events, recorded_events, self()})
 
     # handler ack's each received event
     assert_receive({:ack, 1})
@@ -111,8 +111,8 @@ defmodule Commanded.Event.HandleEventTest do
 
     # send each event twice to simulate duplicate receives
     Enum.each(recorded_events, fn recorded_event ->
-      send(handler, {:events, [recorded_event], self})
-      send(handler, {:events, [recorded_event], self})
+      send(handler, {:events, [recorded_event], self()})
+      send(handler, {:events, [recorded_event], self()})
     end)
 
     # handler ack's both events

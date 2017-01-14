@@ -31,7 +31,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   def init(%ProcessManagerInstance{} = state) do
-    GenServer.cast(self, {:fetch_state})
+    GenServer.cast(self(), {:fetch_state})
     {:ok, state}
   end
 

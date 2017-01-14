@@ -39,7 +39,7 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
       },
     }
 
-    :ok = ProcessManagerInstance.process_event(process_manager, event, self)
+    :ok = ProcessManagerInstance.process_event(process_manager, event, self())
 
     # should send ack to process router after processing event
     assert_receive({:"$gen_cast", {:ack_event, ^event}}, 1_000)

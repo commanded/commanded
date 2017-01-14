@@ -7,7 +7,7 @@ defmodule Commanded.StorageCase do
   setup do
     Application.stop(:commanded)
 
-    reset_storage
+    reset_storage()
 
     Application.ensure_all_started(:commanded)
     :ok
@@ -17,12 +17,12 @@ defmodule Commanded.StorageCase do
     case @event_store do
       Commanded.EventStore.Adapters.EventStoreEventStore -> 
 	Application.ensure_all_started(:eventstore)
-	reset_event_store_storage
+	reset_event_store_storage()
 	Application.stop(:eventstore)
 	Application.ensure_all_started(:eventstore)
       Commanded.EventStore.Adapters.ExtremeEventStore ->
 	Application.ensure_all_started(:extreme)
-	reset_extreme_storage
+	reset_extreme_storage()
 	Application.stop(:extreme)
 	Application.ensure_all_started(:extreme)
     end
@@ -69,7 +69,7 @@ defmodule Commanded.StorageCase do
 
     Docker.Container.start conn, container_name
 
-    wait_eventstore_ready
+    wait_eventstore_ready()
   end
 
   defp wait_eventstore_ready do
@@ -82,7 +82,7 @@ defmodule Commanded.StorageCase do
 	:ok
       _ ->
 	:timer.sleep(400)
-	wait_eventstore_ready
+	wait_eventstore_ready()
     end
   end
 end

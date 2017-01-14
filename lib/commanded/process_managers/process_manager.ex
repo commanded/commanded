@@ -1,6 +1,6 @@
 defmodule Commanded.ProcessManagers.ProcessManager do
   @moduledoc """
-  Macro and behaviour to define a process manager
+  Behaviour to define a process manager
   """
 
   @type domain_event :: struct

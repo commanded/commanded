@@ -23,26 +23,44 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
 
   @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: {:ok, stream_version :: integer} | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events) do
-    stream = "#{@stream_prefix}-#{stream_uuid}"
+    stream = stream_name(stream_uuid)
 
     Logger.debug(fn -> "append to stream: #{stream} | #{inspect events}" end)
 
     add_to_stream(stream, expected_version, events)
   end
 
-  @spec read_stream_forward(String.t) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @spec read_stream_forward(String.t, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   @spec read_stream_forward(String.t, non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_stream_forward(stream_uuid, start_version \\ 0, count \\ 1_000) do
-    stream = "#{@stream_prefix}-#{stream_uuid}"
-    start_version = if (start_version > 0), do: start_version - 1, else: start_version
+    stream = stream_name(stream_uuid)
+    start_version = normalize_start_version(start_version)
 
     read_forward(stream, start_version, count)
   end
 
+  @spec stream_forward(String.t, non_neg_integer, non_neg_integer) :: Enumerable.t | {:error, reason :: term}
+  def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
+    stream = stream_name(stream_uuid)
+    start_version = normalize_start_version(start_version)
 
-  @spec read_all_streams_forward() :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
-  @spec read_all_streams_forward(non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
+    Stream.resource(
+      fn -> {start_version, false} end,
+      fn({next_version, halt?} = acc) ->
+	case halt? do
+	  true -> {:halt, acc}
+	  false ->
+	    case execute_read(stream, next_version, read_batch_size, :forward) do
+	      {:ok, events, end_of_stream?} ->
+		acc = {next_version + length(events), end_of_stream?}
+		{events, acc}
+	      {:error, :stream_not_found}=err -> {[err], {next_version, true}}
+	    end
+	end
+      end,
+      fn(_) -> :ok end
+    )
+  end
+
   @spec read_all_streams_forward(non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_all_streams_forward(start_version \\ 0, count \\ 1_000) do
     stream = "$ce-#{@stream_prefix}"
@@ -129,6 +147,12 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
 
   defp snapshot_stream(source_uuid), do: "#{@stream_prefix}snapshot-#{source_uuid}"
 
+  defp stream_name(stream), do: "#{@stream_prefix}-#{stream}"
+
+  defp normalize_start_version(start_version) do
+    if (start_version > 0), do: start_version - 1, else: start_version
+  end
+
   defp to_snapshot_data(event = %RecordedEvent{}) do
     data = event.data.source_type
     |> String.to_existing_atom
@@ -177,25 +201,34 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   end
 
   defp read_forward(stream, start_version, count) do
-    execute_read(stream, start_version, count, :forward)
+    execute_read!(stream, start_version, count, :forward)
   end
 
   defp read_backward(stream, start_version, count) do
-    execute_read(stream, start_version, count, :backward)
+    execute_read!(stream, start_version, count, :backward)
   end
 
+  defp execute_read!(stream, start_version, count, direction) do
+    case execute_read(stream, start_version, count, direction) do
+      {:ok, events, _} -> {:ok, events}
+      err -> err
+    end
+  end
+  
   defp execute_read(stream, start_version, count, direction) do
     case Extreme.execute(@server, read_events(stream, start_version, count, direction)) do
-      # can happen with soft deleted streams
-      {:ok, %ExMsg.ReadStreamEventsCompleted{is_end_of_stream: false, events: events}=result} when(length(events) < count) ->
-	start_version =
-	  case direction do
-	    :forward -> result.next_event_number
-	    :backward -> result.last_event_number
-	  end
-	execute_read(stream, start_version, count, direction)
-      {:ok, result} ->
-	{:ok, Enum.map(result.events, &to_recorded_event(&1))}
+      {:ok, %ExMsg.ReadStreamEventsCompleted{is_end_of_stream: end_of_stream?, events: events}=result} ->
+	if end_of_stream? || length(events) == count do
+	  {:ok, Enum.map(events, &to_recorded_event/1), end_of_stream?}
+	else
+          # can occur with soft deleted streams
+	  start_version =
+	    case direction do
+	      :forward -> result.next_event_number
+	      :backward -> result.last_event_number
+	    end
+	  execute_read(stream, start_version, count, direction)
+	end
       {:error, :NoStream, _} -> {:error, :stream_not_found}
       err -> err
     end

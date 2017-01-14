@@ -35,13 +35,13 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
 
     result =
       case from_event_number do
-	nil          -> Extreme.subscribe_to(@server, self, state.stream)
-	event_number -> Extreme.read_and_stay_subscribed(@server, self, state.stream, event_number)
+	nil          -> Extreme.subscribe_to(@server, self(), state.stream)
+	event_number -> Extreme.read_and_stay_subscribed(@server, self(), state.stream, event_number)
       end
 
     state =
       case result do
-	{:ok, _} -> %{state | result: {:ok, self}, subscription: self}
+	{:ok, _} -> %{state | result: {:ok, self()}, subscription: self()}
 	err      -> %{state | result: err}
       end
 
@@ -85,7 +85,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeSubscription do
   end
   
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
-    Process.exit(self, :subscriber_shutdown)
+    Process.exit(self(), :subscriber_shutdown)
 
     {:noreply, state}
   end
