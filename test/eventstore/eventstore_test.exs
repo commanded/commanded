@@ -121,7 +121,7 @@ defmodule Commanded.EventStore.EventStoreTest do
 	    end
 	    ev_count = ev_count + length(events)
 
-	    send(subscription, {:ack, List.last(events).event_id})
+	    @event_store.ack_event(subscription, List.last(events))
 
 	    if (ev_count < 3), do: loop_fn.(ev_count, loop_fn), else: ev_count
 	  ev ->
@@ -141,13 +141,12 @@ defmodule Commanded.EventStore.EventStoreTest do
     assert 3 == Task.await(subscriber_task, 2_000)
   end
 
-  @tag :wip
   test "should unsubscribe from all streams" do
     subscriber_task = Task.async fn ->
       loop = fn(ev_count, loop_fn) ->
 	receive do
 	  {:events, events, subscription} ->
-	    send(subscription, {:ack, List.last(events).event_id})
+	    @event_store.ack_event(subscription, List.last(events))
 
 	    loop_fn.(ev_count + length(events), loop_fn)
 	  :exit -> ev_count
@@ -175,5 +174,39 @@ defmodule Commanded.EventStore.EventStoreTest do
     send(subscriber_task.pid, :exit)
 
     assert 7 == Task.await(subscriber_task, 2_000)
+  end
+
+  if @event_store == Commanded.EventStore.Adapters.ExtremeEventStore do
+    @tag :wip
+    test "back pressure" do
+      count = 20
+      test_events = new_test_events(count)
+      {:ok, count} = @event_store.append_to_stream("astream1", 0, test_events)
+
+      subscriber_task = Task.async fn ->
+	loop = fn(evs, loop_fn) ->
+	  receive do
+	    {:events, events, subscription} ->
+	      evs = events ++ evs
+	      {:messages, messages} = Process.info(self(), :messages)
+	      queue_len = length(messages)
+
+	      :timer.sleep(100)
+	      assert queue_len < 11
+	      @event_store.ack_event(subscription, List.last(events))
+	      
+	      if length(evs) < count, do: loop_fn.(evs, loop_fn), else: evs
+	    :exit -> evs
+	  end
+	end
+
+	loop.([], loop)
+      end
+
+      @event_store.subscribe_to_all_streams("sub1", subscriber_task.pid, :origin, [max_buffer_size: 10])
+
+      received_events = Task.await(subscriber_task, 3_000)
+      assert Enum.map(test_events, &(&1.data)) == Enum.map(Enum.reverse(received_events), &(&1.data))
+    end
   end
 end

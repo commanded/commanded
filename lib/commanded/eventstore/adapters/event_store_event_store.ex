@@ -15,6 +15,11 @@ defmodule Commanded.EventStore.Adapters.EventStoreEventStore do
 
     GenServer.start_link(__MODULE__, state, [name: __MODULE__])
   end
+
+  @spec ack_event(pid, RecordedEvent.t) :: any
+  def ack_event(subscription, %RecordedEvent{} = last_seen_event) do
+    send(subscription, {:ack, last_seen_event.event_id})
+  end
   
   @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events) do

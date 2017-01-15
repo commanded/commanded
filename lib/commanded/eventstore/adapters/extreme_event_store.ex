@@ -21,6 +21,11 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     GenServer.start_link(__MODULE__, state, [name: __MODULE__])
   end
 
+  @spec ack_event(pid, RecordedEvent.t) :: any
+  def ack_event(subscription, %RecordedEvent{} = last_seen_event) do
+    send(subscription, {:ack, last_seen_event.stream_version})
+  end
+
   @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: {:ok, stream_version :: integer} | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events) do
     stream = stream_name(stream_uuid)
@@ -101,8 +106,8 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   @spec subscribe_to_all_streams(String.t, pid, Commanded.EventStore.start_from) :: {:ok, subscription :: any}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
-  def subscribe_to_all_streams(subscription_name, subscriber, start_from \\ :origin) do
-    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber, start_from})
+  def subscribe_to_all_streams(subscription_name, subscriber, start_from \\ :origin, opts \\ []) do
+    GenServer.call(__MODULE__, {:subscribe_all, subscription_name, subscriber, start_from, opts})
   end
 
   @spec unsubscribe_from_all_streams(String.t) :: :ok
@@ -129,14 +134,14 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     {:reply, :ok, %{state | subscriptions: subscriptions}}
   end
 
-  def handle_call({:subscribe_all, subscription_name, subscriber, start_from}, _from, state) do
+  def handle_call({:subscribe_all, subscription_name, subscriber, start_from, opts}, _from, state) do
     case subscriber == Map.get(state.subscriptions, subscription_name) do
       true ->
 	{:reply, {:error, :subscription_already_exists}, state}
 
       false ->
 	stream = "$ce-#{@stream_prefix}"
-	{:ok, pid} = ExtremeSubscription.start(stream, subscription_name, subscriber, start_from)
+	{:ok, pid} = ExtremeSubscription.start(stream, subscription_name, subscriber, start_from, opts)
 	state = %{ state | subscriptions: Map.put(state.subscriptions, subscription_name, pid)}
 
 	{:reply, ExtremeSubscription.result(pid), state}

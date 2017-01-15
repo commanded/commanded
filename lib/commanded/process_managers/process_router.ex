@@ -173,7 +173,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp confirm_receipt(%State{process_manager_name: process_manager_name, subscription: subscription, last_seen_events: last_seen_events} = state, %RecordedEvent{} = event) do
     Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event id: #{inspect event.stream_id}|#{inspect event.stream_version}" end)
 
-    send(subscription, {:ack, event.event_id})
+    @event_store.ack_event(subscription, event)
 
     %State{state | last_seen_events: Map.put(last_seen_events, event.stream_id, event.stream_version)}
   end

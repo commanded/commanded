@@ -44,4 +44,6 @@ defmodule Commanded.EventStore do
 
   @callback delete_snapshot(String.t) :: :ok | {:error, reason :: term}
   
+  @callback ack_event(pid, RecordedEvent.t) :: any
+
 end

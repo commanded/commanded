@@ -48,6 +48,8 @@ defmodule Commanded.EventStore.Adapters.EventStoreSubscription do
   end
 
   def handle_info({:events, events, _subscription_pid}, state) do
+    Logger.debug("subscription received events: #{inspect length(events)}")
+
     send(
       state.subscriber,
       {:events, Enum.map(events, &EventStoreEventStore.from_pg_recorded_event(&1)), state.subscription}

@@ -49,7 +49,7 @@ defmodule Commanded.Event.Handler do
       metadata = extract_metadata(event)
 
       case handle_event(stream_version, data, metadata, state) do
-        :ok -> confirm_receipt(state, subscription, stream_version)
+        :ok -> confirm_receipt(state, subscription, event)
         {:error, :already_seen_event} -> state
       end
     end)
@@ -75,10 +75,12 @@ defmodule Commanded.Event.Handler do
   end
 
   # confirm receipt of event
-  defp confirm_receipt(state, subscription, stream_version) do
+  defp confirm_receipt(state, subscription, %RecordedEvent{} = event) do
+    stream_version = extract_stream_version(event)
+
     Logger.debug(fn -> "event handler confirming receipt of event: #{stream_version}" end)
 
-    send(subscription, {:ack, stream_version})
+    @event_store.ack_event(subscription, event)
  
     %Handler{state | last_seen_stream_version: stream_version}
   end
