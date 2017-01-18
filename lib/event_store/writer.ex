@@ -16,7 +16,9 @@ defmodule EventStore.Writer do
   end
 
   def init(%Writer{} = state) do
-    storage_config = Application.get_env(:eventstore, EventStore.Storage)
+    storage_config =
+      Application.get_env(:eventstore, EventStore.Storage)
+      |> EventStore.Config.parse()
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 
