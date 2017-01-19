@@ -103,13 +103,13 @@ defmodule Commanded.Aggregates.Aggregate do
     # rebuild aggregate state from event stream
     @event_store.stream_forward(aggregate_uuid, 0, @read_event_batch_size)
     |> Stream.reject(fn(elem) -> elem == {:error, :stream_not_found} end)
-    |> Stream.map(&Mapper.map_from_recorded_event/1)
-    |> Stream.transform(state, fn (event, state) ->
+    |> Stream.map(fn(ev) -> {Mapper.map_from_recorded_event(ev), ev.stream_version} end)
+    |> Stream.transform(state, fn ({event, stream_version}, state) ->
       case event do
         nil -> {:halt, state}
         event ->
           state = %Aggregate{state |
-			     aggregate_version: state.aggregate_version + 1,
+			     aggregate_version: stream_version,
 			     aggregate_state: aggregate_module.apply(state.aggregate_state, event),
 			    }
 
