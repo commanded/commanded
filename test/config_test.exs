@@ -26,4 +26,19 @@ defmodule EventStore.ConfigTest do
       hostname: "localhost"
     ]
   end
+
+  test "dynamically fetch url" do
+    System.put_env("SOME_ENV_VAR", "postgres://username:password@localhost/database")
+    on_exit(fn -> System.delete_env("SOME_ENV_VAR") end)
+
+    config = Config.parse([ url: {:system, "SOME_ENV_VAR"} ])
+
+    assert config == [
+      username: "username",
+      password: "password",
+      database: "database",
+      hostname: "localhost"
+    ]
+  end
+
 end

@@ -1,5 +1,5 @@
 defmodule EventStore.Config do
-  
+
   @doc """
   Normalizes the application configuration.
   """
@@ -12,6 +12,9 @@ defmodule EventStore.Config do
   Converts a database url into a Keyword list
   """
   def parse_url(""), do: []
+  def parse_url({:system, env}) when is_binary(env) do
+    parse_url(System.get_env(env) || "")
+  end
   def parse_url(url) do
     info = url |> URI.decode() |> URI.parse()
 
