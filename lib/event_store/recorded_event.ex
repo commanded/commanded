@@ -21,7 +21,7 @@ defmodule EventStore.RecordedEvent do
     stream_id: nil,
     stream_version: nil,
     correlation_id: nil,
-    event_type: nil ,
+    event_type: nil,
     data: nil,
     metadata: nil,
     created_at: nil,
