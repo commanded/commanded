@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.8.1
+
+### Enhancements
+
+- Add Access functions to `EventStore.EventData` and `EventStore.RecordedEvent` modules ([#37](https://github.com/slashdotdash/eventstore/pull/37)).
+- Allow database connection URL to be provided as a system variable ([#39](https://github.com/slashdotdash/eventstore/pull/39)).
+
+### Bug fixes
+
+- Writer not parsing database connection URL from config ([#38](https://github.com/slashdotdash/eventstore/pull/38/files)).
+
 ## v0.8.0
 
 ### Enhancements

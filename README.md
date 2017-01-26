@@ -280,4 +280,6 @@ You should include unit tests to cover any changes.
 ### Contributors
 
 - [Andrey Akulov](https://github.com/astery)
+- [Craig Savolainen](https://github.com/maedhr)
+- [Paul Iannazzo](https://github.com/boxxxie)
 - [Stuart Corbishley](https://github.com/stuartc)
