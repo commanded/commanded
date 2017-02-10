@@ -1,26 +1,28 @@
-defmodule Commanded.Serialization.JsonSerializer.EventNameMapper do
-  def to_name(_), do: nil
-  def to_type(_), do: nil
-end
 
 defmodule Commanded.Serialization.JsonSerializer.EventName do
 
   alias Commanded.Serialization.JsonSerializer.EventNameMapper
+  alias Commanded.Serialization.JsonSerializer.EventNameMapper.EventNames
 
   defmacro __using__(event_name) do
-    event_names = Enum.filter(EventNameMapper.__info__(:attributes), &(:event_names == elem(&1, 0)))
-    event_names = Enum.map(event_names, &(List.first(elem(&1, 1))))
-
+    mapping = {:"#{event_name}", __CALLER__.module}
+    event_names =
+      case :erlang.get(EventNames) do
+	:undefined -> [mapping]
+	ev_names -> [mapping | ev_names]
+      end
+    
+    :erlang.put(EventNames, event_names)
+    
     quote do
       event_names = unquote(event_names)
-      event_name = unquote(event_name)
       
       content = quote do
-	Module.register_attribute __MODULE__, :event_names, accumulate: true, persist: true
+	Module.register_attribute __MODULE__, :event_names, accumulate: true
+	
 	for ev_name <- unquote(event_names) do
 	    @event_names ev_name
 	end
-	@event_names {:"#{unquote(event_name)}", unquote(__MODULE__)}
 
 	def to_name(module) do
 	  case Enum.find(@event_names, &(module == elem(&1, 1))) do
@@ -50,12 +52,28 @@ defmodule Commanded.Serialization.JsonSerializer do
   alias Commanded.Serialization.JsonDecoder
   alias Commanded.Serialization.JsonSerializer.EventNameMapper
 
+  defp event_mapper_to_name(module) do
+    if Code.ensure_loaded?(EventNameMapper) do
+      apply(EventNameMapper, :to_name, [module])
+    else
+      nil
+    end
+  end
+
+  defp event_mapper_to_type(event_name) do
+    if Code.ensure_loaded?(EventNameMapper) do
+      apply(EventNameMapper, :to_type, [event_name])
+    else
+      nil
+    end
+  end
+
   def to_event_name(module) do
-    EventNameMapper.to_name(module) || Atom.to_string(module)
+    event_mapper_to_name(module) || Atom.to_string(module)
   end
 
   defp to_event_type(event_name) do
-    (EventNameMapper.to_type(event_name) || event_name |> String.to_existing_atom) |> struct
+    (event_mapper_to_type(event_name) || event_name |> String.to_existing_atom) |> struct
   end
 
   @doc """
