@@ -1,4 +1,4 @@
-defmodule Commanded.Serialization.JsonSerializerTest do
+defmodule Commanded.ConfigTest do
   use ExUnit.Case
 
   alias Commanded.Config
