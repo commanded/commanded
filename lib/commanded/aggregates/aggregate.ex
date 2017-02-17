@@ -4,6 +4,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   Allows execution of commands against an aggregate and handles persistence of events to the event store.
   """
+  use Commanded.EventStore
   use GenServer
   require Logger
 
@@ -99,30 +100,24 @@ defmodule Commanded.Aggregates.Aggregate do
 
   # load events from the event store, in batches, to rebuild the aggregate state
   defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module} = state) do
-    case EventStore.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
-      {:error, :stream_not_found} ->
-        # aggregate does not exist so return empty state
-        state
+    # rebuild aggregate state from event stream
+    @event_store.stream_forward(aggregate_uuid, 0, @read_event_batch_size)
+    |> Stream.reject(fn(elem) -> elem == {:error, :stream_not_found} end)
+    |> Stream.map(fn(ev) -> {Mapper.map_from_recorded_event(ev), ev.stream_version} end)
+    |> Stream.transform(state, fn ({event, stream_version}, state) ->
+      case event do
+        nil -> {:halt, state}
+        event ->
+          state = %Aggregate{state |
+			     aggregate_version: stream_version,
+			     aggregate_state: aggregate_module.apply(state.aggregate_state, event),
+			    }
 
-      event_stream ->
-        # rebuild aggregate state from event stream
-        event_stream
-        |> Stream.map(&Mapper.map_from_recorded_event/1)
-        |> Stream.transform(state, fn (event, state) ->
-          case event do
-            nil -> {:halt, state}
-            event ->
-              state = %Aggregate{state |
-                aggregate_version: state.aggregate_version + 1,
-                aggregate_state: aggregate_module.apply(state.aggregate_state, event),
-              }
-
-              {[state], state}
-          end
-        end)
-        |> Stream.take(-1)
-        |> Enum.at(0)
-    end
+          {[state], state}
+      end
+    end)
+    |> Stream.take(-1)
+    |> Enum.at(0) || state
   end
 
   defp execute_command(handler, function, command, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
@@ -135,13 +130,12 @@ defmodule Commanded.Aggregates.Aggregate do
 
         updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        :ok = persist_events(pending_events, aggregate_uuid, expected_version)
+        {:ok, stream_version} = persist_events(pending_events, aggregate_uuid, expected_version)
 
-        state = %Aggregate{state |
+	state = %Aggregate{state |
           aggregate_state: updated_state,
-          aggregate_version: expected_version + length(pending_events),
+          aggregate_version: stream_version
         }
-
         {:ok, state}
     end
   end
@@ -150,11 +144,11 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events([], _aggregate_uuid, _expected_version), do: :ok
+  defp persist_events([], _aggregate_uuid, expected_version), do: {:ok, expected_version}
   defp persist_events(pending_events, aggregate_uuid, expected_version) do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
-    :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
+    @event_store.append_to_stream(aggregate_uuid, expected_version, event_data)
   end
 end
