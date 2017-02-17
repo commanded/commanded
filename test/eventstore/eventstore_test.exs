@@ -177,7 +177,6 @@ defmodule Commanded.EventStore.EventStoreTest do
   end
 
   if @event_store == Commanded.EventStore.Adapters.ExtremeEventStore do
-    @tag :wip
     test "back pressure" do
       count = 20
       test_events = new_test_events(count)
@@ -207,6 +206,26 @@ defmodule Commanded.EventStore.EventStoreTest do
 
       received_events = Task.await(subscriber_task, 3_000)
       assert Enum.map(test_events, &(&1.data)) == Enum.map(Enum.reverse(received_events), &(&1.data))
+    end
+
+    @tag :wip
+    test "should read from soft deleted stream" do
+      events = new_test_events 10
+      ev_batch1 = Enum.slice(events, 0, 5)
+      ev_batch2 = Enum.slice(events, 5, 5)
+      coerce = fn(evs) -> Enum.map(evs, &(%{correlation_id: &1.correlation_id, data: &1.data})) end
+
+      assert {:ok, 5} == @event_store.append_to_stream("astream", 0, ev_batch1)
+
+      {:ok, result } = @event_store.read_stream_forward("astream", 1, 10)
+      assert coerce.(ev_batch1) == coerce.(result)
+
+      @event_store.delete_stream("astream")
+      assert {:ok, 10} == @event_store.append_to_stream("astream", :any_version, ev_batch2)
+
+      {:ok, result } = @event_store.read_stream_forward("astream", 1, 7)
+      assert length(ev_batch2) == length(result)
+      assert coerce.(ev_batch2) == coerce.(result)
     end
   end
 end

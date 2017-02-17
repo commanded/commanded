@@ -119,12 +119,20 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   def delete_snapshot(source_uuid) do
     stream = snapshot_stream(source_uuid)
 
-    case Extreme.execute @server, delete_stream(stream, false) do
+    case Extreme.execute @server, delete_stream_msg(stream, false) do
       {:ok, _} -> :ok
       err -> err
     end
   end
 
+  def delete_stream(source_uuid) do
+    stream = stream_name(source_uuid)
+
+    case Extreme.execute @server, delete_stream_msg(stream, false) do
+      {:ok, _} -> :ok
+      err -> err
+    end
+  end
 
   def handle_call({:unsubscribe_all, subscription_name}, _from, state) do
     {subscription_pid, subscriptions} = Map.pop(state.subscriptions, subscription_name)
@@ -196,7 +204,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     end
   end
 
-  defp delete_stream(stream, hard_delete) do
+  defp delete_stream_msg(stream, hard_delete) do
     ExMsg.DeleteStream.new(
       event_stream_id: stream,
       expected_version: -2,
@@ -220,11 +228,13 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
     end
   end
   
-  defp execute_read(stream, start_version, count, direction) do
+  defp execute_read(stream, start_version, count, direction, read_events \\ []) do
     case Extreme.execute(@server, read_events(stream, start_version, count, direction)) do
       {:ok, %ExMsg.ReadStreamEventsCompleted{is_end_of_stream: end_of_stream?, events: events}=result} ->
-	if end_of_stream? || length(events) == count do
-	  {:ok, Enum.map(events, &to_recorded_event/1), end_of_stream?}
+	read_events = read_events ++ events
+
+	if end_of_stream? || length(read_events) == count do
+	  {:ok, Enum.map(read_events, &to_recorded_event/1), end_of_stream?}
 	else
           # can occur with soft deleted streams
 	  start_version =
@@ -232,7 +242,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
 	      :forward -> result.next_event_number
 	      :backward -> result.last_event_number
 	    end
-	  execute_read(stream, start_version, count, direction)
+	  execute_read(stream, start_version, count, direction, read_events)
 	end
       {:error, :NoStream, _} -> {:error, :stream_not_found}
       err -> err
