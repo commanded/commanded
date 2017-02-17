@@ -13,7 +13,7 @@ defmodule Commanded.EventStore.Adapters.ExtremeEventStore do
   alias Extreme.Messages, as: ExMsg
 
   @server Commanded.ExtremeEventStore
-  @stream_prefix Keyword.get(Application.get_env(:commanded, :extreme), :streams_prefix)
+  @stream_prefix Commanded.Config.get(:commanded, :extreme, :streams_prefix)
 
   def start_link() do
     state = %{subscriptions: %{}}

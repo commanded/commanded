@@ -8,7 +8,7 @@ defmodule Commanded.EventStore.Supervisor do
   end
 
   def init(_) do
-    extreme_settings = Application.get_env :commanded, :extreme
+    extreme_settings = Commanded.Config.get :commanded, :extreme
 
     children = [worker(Commanded.Aggregates.Registry, [])] ++
       case @event_store do

@@ -1,12 +1,10 @@
 defmodule Commanded.EventStore.Serializer do
 
+  alias Commanded.Config
+
   defmacro __using__(_) do
     quote do
-      @serializer Keyword.get(
-	Application.get_env(:commanded, :extreme),
-	:serializer,
-	Commanded.Serialization.JsonSerializer
-      )
+      @serializer Config.get(:commanded, :extreme, :serializer) || Commanded.Serialization.JsonSerializer
     end
   end
   

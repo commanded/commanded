@@ -29,7 +29,7 @@ defmodule Commanded.StorageCase do
   end
 
   defp reset_event_store_storage do
-    storage_config = Application.get_env(:eventstore, EventStore.Storage)
+    storage_config = Commanded.Config.get(:eventstore, EventStore.Storage)
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 
