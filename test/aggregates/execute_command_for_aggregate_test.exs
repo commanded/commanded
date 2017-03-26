@@ -2,7 +2,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   use Commanded.StorageCase
   doctest Commanded.Aggregates.Aggregate
 
-  alias Commanded.Aggregates.{Registry,Aggregate}
+  alias Commanded.Aggregates.Aggregate
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler,DepositMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
@@ -11,14 +11,14 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, BankAccount, :open_account)
 
     Helpers.Process.shutdown(aggregate)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     assert Aggregate.aggregate_uuid(aggregate) == account_number
     assert Aggregate.aggregate_version(aggregate) == 1
@@ -28,14 +28,14 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   test "execute command via a command handler" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
 
     Helpers.Process.shutdown(aggregate)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     assert Aggregate.aggregate_uuid(aggregate) == account_number
     assert Aggregate.aggregate_version(aggregate) == 1
@@ -45,7 +45,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   test "aggregate raising an exception should not persist pending events or state" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
 
@@ -55,14 +55,14 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
       Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler, :handle)
     end)
 
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
     assert state_before == Aggregate.aggregate_state(aggregate)
   end
 
   test "executing a command against an aggregate with concurrency error should terminate aggregate process" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Registry.open_aggregate(BankAccount, account_number)
+    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
     {:ok, stream} = EventStore.Streams.open_stream(account_number)
 
     # block until aggregate has loaded its initial (empty) state
@@ -81,13 +81,13 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     end)
   end
 
-  def assert_process_exit(process, fun) do
+  def assert_process_exit(aggregate_uuid, fun) do
     Process.flag(:trap_exit, true)
 
     spawn_link(fun)
 
     # process should exit
     assert_receive({:EXIT, _from, _reason})
-    assert Process.alive?(process) == false
+    assert Registry.lookup(:aggregate_registry, aggregate_uuid) == []
   end
 end

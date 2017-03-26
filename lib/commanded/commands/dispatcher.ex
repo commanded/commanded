@@ -57,9 +57,9 @@ defmodule Commanded.Commands.Dispatcher do
     %Pipeline{command: command} = pipeline,
     aggregate_uuid)
   do
-    {:ok, aggregate} = open_aggregate(payload, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(payload.aggregate_module, aggregate_uuid)
 
-    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate, command, handler_module, handler_function, timeout])
+    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
 
     result = case task_result do
@@ -82,10 +82,6 @@ defmodule Commanded.Commands.Dispatcher do
         after_failure(pipeline, error, reason, payload)
         {:error, error}
      end
-  end
-
-  defp open_aggregate(%Payload{aggregate_module: aggregate_module}, aggregate_uuid) do
-    Aggregates.Registry.open_aggregate(aggregate_module, aggregate_uuid)
   end
 
   defp extract_aggregate_uuid(%Payload{command: command, identity: identity}), do: Map.get(command, identity)

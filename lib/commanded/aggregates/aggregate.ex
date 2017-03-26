@@ -10,6 +10,7 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Event.Mapper
 
+  @aggregate_registry_name :aggregate_registry
   @read_event_batch_size 100
 
   defstruct [
@@ -20,10 +21,16 @@ defmodule Commanded.Aggregates.Aggregate do
   ]
 
   def start_link(aggregate_module, aggregate_uuid) do
+    name = via_tuple(aggregate_uuid)
     GenServer.start_link(__MODULE__, %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid
-    })
+    },
+    name: name)
+  end
+
+  defp via_tuple(aggregate_uuid) do
+    {:via, Registry, {@aggregate_registry_name, aggregate_uuid}}
   end
 
   def init(%Aggregate{} = state) do
@@ -40,25 +47,25 @@ defmodule Commanded.Aggregates.Aggregate do
 
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
-  def execute(server, command, handler, function \\ :execute, timeout \\ 5_000) do
-    GenServer.call(server, {:execute_command, handler, function, command}, timeout)
+  def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000) do
+    GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command}, timeout)
   end
 
   @doc """
   Access the aggregate's state
   """
-  def aggregate_state(server), do: GenServer.call(server, {:aggregate_state})
-  def aggregate_state(server, timeout), do: GenServer.call(server, {:aggregate_state}, timeout)
+  def aggregate_state(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_state})
+  def aggregate_state(aggregate_uuid, timeout), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_state}, timeout)
 
   @doc """
   Access the aggregate's UUID
   """
-  def aggregate_uuid(server), do: GenServer.call(server, {:aggregate_uuid})
+  def aggregate_uuid(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_uuid})
 
   @doc """
   Access the aggregate's version
   """
-  def aggregate_version(server), do: GenServer.call(server, {:aggregate_version})
+  def aggregate_version(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_version})
 
   @doc """
   Load any existing events for the aggregate from storage and repopulate the state using those events
