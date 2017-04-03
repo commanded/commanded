@@ -1,15 +1,7 @@
 defmodule Commanded.EventStore.SnapshotData do
-    @moduledoc """
+  @moduledoc """
   Snapshot data
   """
-    
-  defstruct source_uuid: nil,
-            source_version: nil,
-            source_stream_id: nil,
-            source_type: nil,
-            data: nil,
-            metadata: nil,
-            created_at: nil
 
   @type t :: %Commanded.EventStore.SnapshotData{
     source_uuid: String.t,
@@ -18,6 +10,16 @@ defmodule Commanded.EventStore.SnapshotData do
     source_type: String.t,
     data: binary,
     metadata: binary,
-    created_at: NaiveDateTime.t
+    created_at: NaiveDateTime.t,
   }
+
+  defstruct [
+    source_uuid: nil,
+    source_version: nil,
+    source_stream_id: nil,
+    source_type: nil,
+    data: nil,
+    metadata: nil,
+    created_at: nil,
+  ]
 end

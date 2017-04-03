@@ -1,8 +1,11 @@
 defmodule Commanded.Event.Handler do
   use GenServer
+  use Commanded.EventStore
+
   require Logger
 
   alias Commanded.Event.Handler
+  alias Commanded.EventStore.RecordedEvent
 
   @type domain_event :: struct
   @type metadata :: struct
@@ -16,7 +19,7 @@ defmodule Commanded.Event.Handler do
   defstruct [
     handler_name: nil,
     handler_module: nil,
-    last_seen_event_id: nil,
+    last_seen_stream_version: nil,
     subscribe_from: nil,
   ]
 
@@ -34,7 +37,7 @@ defmodule Commanded.Event.Handler do
   end
 
   def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state) do
-    {:ok, _} = EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
+    {:ok, _} = @event_store.subscribe_to_all_streams(handler_name, self(), subscribe_from)
     {:noreply, state}
   end
 
@@ -42,12 +45,12 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> "event handler received events: #{inspect events}" end)
 
     state = Enum.reduce(events, state, fn (event, state) ->
-      event_id = extract_event_id(event)
+      stream_version = extract_stream_version(event)
       data = extract_data(event)
       metadata = extract_metadata(event)
 
-      case handle_event(event_id, data, metadata, state) do
-        :ok -> confirm_receipt(state, subscription, event_id)
+      case handle_event(stream_version, data, metadata, state) do
+        :ok -> confirm_receipt(state, subscription, event)
         {:error, :already_seen_event} -> state
       end
     end)
@@ -55,29 +58,35 @@ defmodule Commanded.Event.Handler do
     {:noreply, state}
   end
 
-  defp extract_event_id(%EventStore.RecordedEvent{event_id: event_id}), do: event_id
-  defp extract_data(%EventStore.RecordedEvent{data: data}), do: data
-  defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}) do
-    Map.merge(%{event_id: event_id, created_at: created_at}, metadata)
-  end
-
   # ignore already seen events
-  defp handle_event(event_id, _data, _metadata, %Handler{last_seen_event_id: last_seen_event_id}) when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id do
-    Logger.debug(fn -> "event handler has already seen event id: #{inspect event_id}" end)
+  defp handle_event(stream_version, _data, _metadata, %Handler{last_seen_stream_version: last_seen_stream_version})
+    when not is_nil(last_seen_stream_version) and stream_version <= last_seen_stream_version
+  do
+    Logger.debug(fn -> "event handler has already seen event: #{inspect stream_version}" end)
     {:error, :already_seen_event}
   end
 
   # delegate event to handler module
-  defp handle_event(_event_id, data, metadata, %Handler{handler_module: handler_module}) do
+  defp handle_event(_stream_version, data, metadata, %Handler{handler_module: handler_module}) do
     handler_module.handle(data, metadata)
   end
 
   # confirm receipt of event
-  defp confirm_receipt(state, subscription, event_id) do
-    Logger.debug(fn -> "event handler confirming receipt of event: #{event_id}" end)
+  defp confirm_receipt(state, subscription, %RecordedEvent{} = event) do
+    stream_version = extract_stream_version(event)
 
-    send(subscription, {:ack, event_id})
+    Logger.debug(fn -> "event handler confirming receipt of event: #{inspect stream_version}" end)
 
-    %Handler{state | last_seen_event_id: event_id}
+    @event_store.ack_event(subscription, event)
+
+    %Handler{state | last_seen_stream_version: stream_version}
+  end
+
+  defp extract_stream_version(%RecordedEvent{stream_version: stream_version}), do: stream_version
+
+  defp extract_data(%RecordedEvent{data: data}), do: data
+
+  defp extract_metadata(%RecordedEvent{event_id: event_id, stream_id: stream_id, stream_version: stream_version, metadata: metadata, created_at: created_at}) do
+    Map.merge(%{event_id: event_id, stream_id: stream_id, stream_version: stream_version, created_at: created_at}, metadata)
   end
 end

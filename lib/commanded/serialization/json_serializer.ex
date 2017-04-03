@@ -3,9 +3,10 @@ defmodule Commanded.Serialization.JsonSerializer do
   A serializer that uses the JSON format.
   """
 
-  @behaviour EventStore.Serializer
+  @behaviour Commanded.EventStore.Serializer
 
   alias Commanded.Serialization.JsonDecoder
+  alias Commanded.Serialization.JsonSerializer.EventNameMapper
 
   @doc """
   Serialize given term to JSON binary data.
@@ -15,16 +16,24 @@ defmodule Commanded.Serialization.JsonSerializer do
   end
 
   @doc """
-  Deserialize given JSON binary data to the expected type.
+  Deserialize given JSON binary data to the expected type.
   """
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type, nil) do
       nil -> nil
-      type -> type |> String.to_existing_atom |> struct
+      type -> to_event_type(type)
     end
 
     binary
-    |> Poison.decode!(as: type, keys: :atoms!)
-    |> JsonDecoder.decode
+    |> Poison.decode!(as: type)
+    |> JsonDecoder.decode()
+  end
+
+  def to_event_name(module) do
+    Atom.to_string(module)
+  end
+
+  defp to_event_type(type) do
+    type |> String.to_existing_atom() |> struct()
   end
 end

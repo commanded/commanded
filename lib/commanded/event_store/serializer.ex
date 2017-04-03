@@ -1,25 +1,19 @@
 defmodule Commanded.EventStore.Serializer do
-
-  alias Commanded.Config
-
-  defmacro __using__(_) do
-    quote do
-      @serializer Config.get(:commanded, :extreme, :serializer) || Commanded.Serialization.JsonSerializer
-    end
-  end
-  
   @moduledoc """
   Specification of a serializer to convert between an Elixir term and binary data.
   """
 
+  defmacro __using__(_) do
+    serializer = Application.get_env(:commanded, :serializer, Commanded.Serialization.JsonSerializer)
+
+    quote do
+      @serializer unquote serializer
+    end
+  end
+
   @type t :: module
 
   @type config :: Keyword.t
-
-  @doc """
-  Serialize given struct type to a binary representation
-  """
-  @callback to_event_name(module) :: binary
 
   @doc """
   Serialize the given term to a binary representation
@@ -31,4 +25,8 @@ defmodule Commanded.EventStore.Serializer do
   """
   @callback deserialize(binary, config) :: any
 
+  @doc """
+  Type of the event as a string
+  """
+  @callback to_event_name(module) :: String.t
 end

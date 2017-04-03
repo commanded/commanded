@@ -8,4 +8,5 @@ config :ex_unit,
   assert_receive_timeout: 200
 
 config :commanded,
-  event_store_adapter: Commanded.EventStore.Adapters.InMemory
+  event_store_adapter: Commanded.EventStore.Adapters.InMemory,
+  serializer: Commanded.Serialization.JsonSerializer

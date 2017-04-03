@@ -1,5 +1,5 @@
 defmodule Commanded.EventStore.RecordedEvent do
-    @moduledoc """
+  @moduledoc """
   RecordedEvent contains the persisted data and metadata for a single event.
 
   Events are immutable once recorded.

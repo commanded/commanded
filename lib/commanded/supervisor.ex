@@ -8,8 +8,8 @@ defmodule Commanded.Supervisor do
   def init(_) do
     children = [
       supervisor(Registry, [:unique, :aggregate_registry]),
-      supervisor(Commanded.Aggregates.Supervisor, []),
       supervisor(Task.Supervisor, [[name: Commanded.Commands.TaskDispatcher]]),
+      supervisor(Commanded.Aggregates.Supervisor, []),
     ]
 
     supervise(children, strategy: :one_for_one)
