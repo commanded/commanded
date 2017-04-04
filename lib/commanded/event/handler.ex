@@ -86,7 +86,7 @@ defmodule Commanded.Event.Handler do
 
   defp extract_data(%RecordedEvent{data: data}), do: data
 
-  defp extract_metadata(%RecordedEvent{event_id: event_id, stream_id: stream_id, stream_version: stream_version, metadata: metadata, created_at: created_at}) do
-    Map.merge(%{event_id: event_id, stream_id: stream_id, stream_version: stream_version, created_at: created_at}, metadata)
+  defp extract_metadata(%RecordedEvent{event_number: event_number, stream_id: stream_id, stream_version: stream_version, metadata: metadata, created_at: created_at}) do
+    Map.merge(%{event_number: event_number, stream_id: stream_id, stream_version: stream_version, created_at: created_at}, metadata)
   end
 end

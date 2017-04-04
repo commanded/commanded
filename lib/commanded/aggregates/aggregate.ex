@@ -5,8 +5,8 @@ defmodule Commanded.Aggregates.Aggregate do
   Allows execution of commands against an aggregate and handles persistence of events to the event store.
   """
 
-  use Commanded.EventStore
   use GenServer
+  use Commanded.EventStore
 
   require Logger
 

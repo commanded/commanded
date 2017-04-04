@@ -1,5 +1,6 @@
 defmodule Commanded.Entities.EventPersistenceTest do
   use Commanded.StorageCase
+  use Commanded.EventStore
 
   import Commanded.Enumerable, only: [pluck: 2]
 
@@ -53,7 +54,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     :ok = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, AppendItemsHandler, :handle)
 
-    {:ok, recorded_events} = EventStore.read_stream_forward(aggregate_uuid, 0)
+    {:ok, recorded_events} = @event_store.read_stream_forward(aggregate_uuid, 0)
 
     assert recorded_events |> pluck(:data) |> pluck(:index) == Enum.to_list(1..10)
   end

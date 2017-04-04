@@ -47,7 +47,11 @@ Command handling middleware for CQRS applications
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE*"],
+      files: [
+        "lib", "mix.exs", "README*", "LICENSE*",
+        "test/event_store_adapter", "test/event_store_adapter/support",
+        "test/example_domain/bank_account", "test/example_domain/money_transfer",
+      ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/slashdotdash/commanded",

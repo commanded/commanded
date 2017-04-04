@@ -11,6 +11,7 @@ defmodule Commanded.Helpers.Process do
     ref = Process.monitor(pid)
     assert_receive {:DOWN, ^ref, _, _, _}, 5_000
   end
+  
   def shutdown(aggregate_uuid) do
     [{pid, _}] = Registry.lookup(:aggregate_registry, aggregate_uuid)
     shutdown(pid)

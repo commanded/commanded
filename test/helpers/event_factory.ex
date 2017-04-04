@@ -4,8 +4,8 @@ defmodule Commanded.Helpers.EventFactory do
     |> Commanded.Event.Mapper.map_to_event_data(UUID.uuid4)
     |> Enum.with_index(1)
     |> Enum.map(fn {event, index} ->
-      %EventStore.RecordedEvent{
-        event_id: index,
+      %Commanded.EventStore.RecordedEvent{
+        event_number: index,
         stream_id: 1,
         stream_version: index,
         correlation_id: event.correlation_id,
