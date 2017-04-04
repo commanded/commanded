@@ -11,7 +11,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Is the process manager interested in the given command?
   """
-  @callback interested?(domain_event) :: {:start, process_uuid} | {:continue, process_uuid} | false
+  @callback interested?(domain_event) :: {:start, process_uuid} | {:continue, process_uuid} | {:stop, process_uuid} | false
 
   @doc """
   Process manager instance handles the domain event, returning commands to dispatch

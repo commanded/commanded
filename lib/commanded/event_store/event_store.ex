@@ -37,7 +37,7 @@ defmodule Commanded.EventStore do
   @doc """
   Subscriber will be notified of every event persisted to any stream.
   """
-  @callback subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) :: {:ok, subscription :: any}
+  @callback subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason}
 

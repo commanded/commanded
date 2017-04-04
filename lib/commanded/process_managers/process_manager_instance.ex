@@ -4,9 +4,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   """
 
   use GenServer
+  use Commanded.EventStore
+
   require Logger
 
-  alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
+  alias Commanded.ProcessManagers.{
+    ProcessRouter,
+    ProcessManagerInstance,
+  }
+  alias Commanded.EventStore.{
+    RecordedEvent,
+    SnapshotData,
+  }
 
   defstruct [
     command_dispatcher: nil,
@@ -14,7 +23,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     process_manager_module: nil,
     process_uuid: nil,
     process_state: nil,
-    last_seen_event_id: 0,
+    last_seen_event: nil,
   ]
 
   def start_link(command_dispatcher, process_manager_name, process_manager_module, process_uuid) do
@@ -35,7 +44,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Handle the given event by delegating to the process manager module
   """
-  def process_event(process_manager, %EventStore.RecordedEvent{} = event, process_router) do
+  def process_event(process_manager, %RecordedEvent{} = event, process_router) do
     GenServer.cast(process_manager, {:process_event, event, process_router})
   end
 
@@ -56,7 +65,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   def handle_call({:stop}, _from, %ProcessManagerInstance{} = state) do
-    delete_state(state)
+    :ok = delete_state(state)
 
     # stop the process with a normal reason
     {:stop, :normal, :ok, state}
@@ -70,15 +79,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   Attempt to fetch intial process state from snapshot storage
   """
   def handle_cast({:fetch_state}, %ProcessManagerInstance{} = state) do
-    state = case EventStore.read_snapshot(process_state_uuid(state)) do
+    state = case @event_store.read_snapshot(process_state_uuid(state)) do
       {:ok, snapshot} ->
         %ProcessManagerInstance{state |
           process_state: snapshot.data,
-          last_seen_event_id: snapshot.source_version,
+          last_seen_event: snapshot.source_version,
         }
 
-      {:error, :snapshot_not_found} ->
-        state
+      {:error, :snapshot_not_found} -> state
     end
 
     {:noreply, state}
@@ -87,20 +95,30 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Handle the given event, using the process manager module, against the current process state
   """
-  def handle_cast({:process_event, %EventStore.RecordedEvent{event_id: event_id} = event, process_router}, %ProcessManagerInstance{last_seen_event_id: last_seen_event_id} = state)
-    when not is_nil(last_seen_event_id) and event_id <= last_seen_event_id
-  do
-    # already seen event, so just ack
-    ack_event(event, process_router)
+  def handle_cast({:process_event, %RecordedEvent{} = event, process_router}, %ProcessManagerInstance{} = state) do
+    state = case event_already_seen?(event, state) do
+      true -> process_seen_event(event, process_router, state)
+      false -> process_unseen_event(event, process_router, state)
+    end
 
     {:noreply, state}
   end
 
-  def handle_cast({:process_event, %EventStore.RecordedEvent{event_id: event_id} = event, process_router}, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
+  defp event_already_seen?(%RecordedEvent{event_number: event_number}, %ProcessManagerInstance{last_seen_event: last_seen_event}) do
+    not is_nil(last_seen_event) and event_number <= last_seen_event
+  end
+
+  # already seen event, so just ack
+  defp process_seen_event(event = %RecordedEvent{}, process_router, state) do
+    :ok = ack_event(event, process_router)
+    state
+  end
+
+  defp process_unseen_event(%RecordedEvent{event_number: event_number} = event, process_router, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state, last_seen_event: last_seen_event} = state) do
     case handle_event(process_manager_module, process_state, event) do
       {:error, reason} ->
-        Logger.warn(fn -> "process manager instance failed to handle event id #{inspect event_id} due to: #{inspect reason}" end)
-        {:noreply, state}
+        Logger.warn(fn -> "process manager instance failed to handle event #{inspect event_number} due to: #{inspect reason}" end)
+	      state
 
       commands ->
         :ok = dispatch_commands(List.wrap(commands), command_dispatcher)
@@ -109,23 +127,23 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
         state = %ProcessManagerInstance{state |
           process_state: process_state,
-          last_seen_event_id: event_id,
+          last_seen_event: event_number,
         }
 
-        persist_state(state, event_id)
-        ack_event(event, process_router)
+        :ok = persist_state(state, event_number)
+        :ok = ack_event(event, process_router)
 
-        {:noreply, state}
+	      state
     end
   end
 
   # process instance is given the event and returns applicable commands (may be none, one or many)
-  defp handle_event(process_manager_module, process_state, %EventStore.RecordedEvent{data: data}) do
+  defp handle_event(process_manager_module, process_state, %RecordedEvent{data: data}) do
     process_manager_module.handle(process_state, data)
   end
 
   # update the process instance's state by applying the event
-  defp mutate_state(process_manager_module, process_state, %EventStore.RecordedEvent{data: data}) do
+  defp mutate_state(process_manager_module, process_state, %RecordedEvent{data: data}) do
     process_manager_module.apply(process_state, data)
   end
 
@@ -137,22 +155,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end)
   end
 
-  defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state, event_id) do
-    :ok = EventStore.record_snapshot(%EventStore.Snapshots.SnapshotData{
+  defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state, source_version) do
+    @event_store.record_snapshot(%SnapshotData{
       source_uuid: process_state_uuid(state),
-      source_version: event_id,
+      source_version: source_version,
       source_type: Atom.to_string(process_manager_module),
-      data: process_state
+      data: process_state,
     })
   end
 
-  defp delete_state(%ProcessManagerInstance{} = state) do
-    :ok = EventStore.delete_snapshot(process_state_uuid(state))
-  end
+  defp delete_state(%ProcessManagerInstance{} = state), do: @event_store.delete_snapshot(process_state_uuid(state))
 
-  defp ack_event(%EventStore.RecordedEvent{event_id: event_id}, process_router) do
-    :ok = ProcessRouter.ack_event(process_router, event_id)
-  end
+  defp ack_event(%RecordedEvent{} = event, process_router), do: ProcessRouter.ack_event(process_router, event)
 
   defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"
 end
