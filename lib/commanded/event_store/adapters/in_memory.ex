@@ -37,8 +37,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(__MODULE__, {:append_to_stream, stream_uuid, expected_version, events})
   end
 
-  def stream_forward(stream_uuid, start_version, read_batch_size) do
-    []
+  def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000)
+  def stream_forward(stream_uuid, start_version, _read_batch_size) do
+    GenServer.call(__MODULE__, {:stream_forward, stream_uuid, start_version})
   end
 
   def subscribe_to_all_streams(subscription_name, subscriber, start_from) do
@@ -79,11 +80,22 @@ defmodule Commanded.EventStore.Adapters.InMemory do
         {:reply, {:error, :wrong_expected_version}, state}
 
       persisted_events ->
+        stream_events = persisted_events ++ events
+
         state = %InMemory{state |
-          streams: Map.put(streams, stream_uuid, persisted_events ++ events),
+          streams: Map.put(streams, stream_uuid, stream_events),
         }
 
-        {:reply, {:ok, expected_version + length(events)}, state}
+        {:reply, {:ok, length(stream_events)}, state}
     end
+  end
+
+  def handle_call({:stream_forward, stream_uuid, start_version}, _from, %InMemory{streams: streams} = state) do
+    event_stream =
+      streams
+      |> Map.get(stream_uuid, [])
+      |> Stream.drop(max(0, start_version - 1))
+
+    {:reply, event_stream, state}
   end
 end
