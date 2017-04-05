@@ -57,15 +57,15 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def read_snapshot(source_uuid) do
-    {:ok, %SnapshotData{}}
+    GenServer.call(__MODULE__, {:read_snapshot, source_uuid})
   end
 
-  def record_snapshot(source_uuid) do
-    :ok
+  def record_snapshot(snapshot) do
+    GenServer.call(__MODULE__, {:record_snapshot, snapshot})
   end
 
   def delete_snapshot(source_uuid) do
-    :ok
+    GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %InMemory{streams: streams} = state) do
@@ -97,5 +97,39 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       |> Stream.drop(max(0, start_version - 1))
 
     {:reply, event_stream, state}
+  end
+
+  def handle_call({:read_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
+    reply = case Map.get(snapshots, source_uuid, nil) do
+      nil -> {:error, :snapshot_not_found}
+      snapshot -> {:ok, snapshot}
+    end
+
+    {:reply, reply, state}
+  end
+
+  def handle_call({:read_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
+    reply = case Map.get(snapshots, source_uuid, nil) do
+      nil -> {:error, :snapshot_not_found}
+      snapshot -> {:ok, snapshot}
+    end
+
+    {:reply, reply, state}
+  end
+
+  def handle_call({:record_snapshot, %SnapshotData{source_uuid: source_uuid} = snapshot}, _from, %InMemory{snapshots: snapshots} = state) do
+    state = %InMemory{state |
+      snapshots: Map.put(snapshots, source_uuid, snapshot),
+    }
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:delete_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
+    state = %InMemory{state |
+      snapshots: Map.delete(snapshots, source_uuid)
+    }
+
+    {:reply, :ok, state}
   end
 end

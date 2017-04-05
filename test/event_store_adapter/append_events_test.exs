@@ -2,13 +2,8 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
   use Commanded.StorageCase
   use Commanded.EventStore
 
-  alias Commanded.EventStore.{
-    EventData,
-    SnapshotData,
-  }
+  alias Commanded.EventStore.EventData
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-
-  require Logger
 
   describe "append events to a stream" do
     test "should append events" do
@@ -34,7 +29,7 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
     test "should read events" do
       events = build_events(4)
 
-      {:ok, 4} == @event_store.append_to_stream("astream", 0, events)
+      assert {:ok, 4} == @event_store.append_to_stream("astream", 0, events)
 
       read_events = @event_store.stream_forward("astream") |> Enum.to_list()
       assert length(read_events) == 4
@@ -48,8 +43,8 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
       events1 = build_events(2)
       events2 = build_events(4)
 
-      {:ok, 2} == @event_store.append_to_stream("astream", 0, events1)
-      {:ok, 4} == @event_store.append_to_stream("asecondstream", 0, events2)
+      assert {:ok, 2} == @event_store.append_to_stream("astream", 0, events1)
+      assert {:ok, 4} == @event_store.append_to_stream("asecondstream", 0, events2)
 
       read_events = @event_store.stream_forward("astream", 0) |> Enum.to_list()
       assert 2 == length(read_events)
