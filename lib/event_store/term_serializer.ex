@@ -13,9 +13,9 @@ defmodule EventStore.TermSerializer do
   end
 
   @doc """
-  Deserialize given binary data in Erlang's external term format.
+  Deserialize given binary data in Erlang's external term format.
   """
   def deserialize(binary, _type) do
-    :erlang.binary_to_term(binary, [:safe])
+    :erlang.binary_to_term(binary)
   end
 end
