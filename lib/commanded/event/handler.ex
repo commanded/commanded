@@ -57,6 +57,9 @@ defmodule Commanded.Event.Handler do
 
   defp extract_event_id(%EventStore.RecordedEvent{event_id: event_id}), do: event_id
   defp extract_data(%EventStore.RecordedEvent{data: data}), do: data
+  defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: nil, created_at: created_at}) do
+    %{event_id: event_id, created_at: created_at}
+  end
   defp extract_metadata(%EventStore.RecordedEvent{event_id: event_id, metadata: metadata, created_at: created_at}) do
     Map.merge(%{event_id: event_id, created_at: created_at}, metadata)
   end
