@@ -24,8 +24,9 @@ MIT License
 - [Commands](#commands)
   - [Command handlers](#command-handlers)
   - [Command dispatch and routing](#command-dispatch-and-routing)
-- [Middleware](#middleware)
-- [Event handlers](#event-handlers)
+  - [Middleware](#middleware)
+- [Events](#events)
+  - [Event handlers](#event-handlers)
 - [Process managers](#process-managers)
 - [Supervision](#supervision)
 - [Serialization](#serialization)
@@ -266,6 +267,18 @@ end
 ```
 
 Commanded provides a `Commanded.Middleware.Logger` middleware for logging the name of each dispatched command and its execution duration.
+
+### Events
+
+Domain events indicate that something of importance has occurred, within the context of an aggregate. They are named in the past tense: account registered; funds transferred; fraudulent activity detected. 
+
+Create a module per domain event and define the fields with `defstruct`. An event **should contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
+
+```elixir
+defmodule BankAccountOpened do
+  defstruct [:account_number, :initial_balance]
+end
+```
 
 ### Event handlers
 
