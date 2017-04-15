@@ -2,10 +2,7 @@ defmodule Commanded.EventStoreAdapter.SnapshotTest do
   use Commanded.StorageCase
   use Commanded.EventStore
 
-  alias Commanded.EventStore.{
-    EventData,
-    SnapshotData,
-  }
+  alias Commanded.EventStore.SnapshotData
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
   describe "record a snapshot" do

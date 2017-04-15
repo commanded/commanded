@@ -8,7 +8,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   use GenServer
 
   defstruct [
-    dispatcher: nil,
     streams: %{},
     subscriptions: %{},
     snapshots: %{},
@@ -31,12 +30,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def init(%InMemory{} = state) do
-    {:ok, registry} = Registry.start_link(:duplicate, InMemory.Dispatcher)
-
-    state = %InMemory{state |
-      dispatcher: registry,
-    }
-
     {:ok, state}
   end
 
@@ -60,7 +53,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def unsubscribe_from_all_streams(subscription_name) do
-    :ok
+    GenServer.call(__MODULE__, {:unsubscribe_from_all_streams, subscription_name})
   end
 
   def read_snapshot(source_uuid) do
@@ -79,19 +72,26 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     case Map.get(streams, stream_uuid) do
       nil ->
         case expected_version do
-          0 -> {:reply, {:ok, length(events)}, %InMemory{state | streams: Map.put(streams, stream_uuid, events)}}
+          0 ->
+            state = %InMemory{state | streams: Map.put(streams, stream_uuid, events)}
+
+            publish(events, state)
+
+            {:reply, {:ok, length(events)}, state}
           _ -> {:reply, {:error, :wrong_expected_version}, state}
         end
 
-      persisted_events when length(persisted_events) != expected_version ->
+      existing_events when length(existing_events) != expected_version ->
         {:reply, {:error, :wrong_expected_version}, state}
 
-      persisted_events ->
-        stream_events = persisted_events ++ events
+      existing_events ->
+        stream_events = existing_events ++ events
 
         state = %InMemory{state |
           streams: Map.put(streams, stream_uuid, stream_events),
         }
+
+        publish(events, state)
 
         {:reply, {:ok, length(stream_events)}, state}
     end
@@ -106,13 +106,26 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, event_stream, state}
   end
 
-  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from}}, _from, %InMemory{subscriptions: subscriptions} = state) do
+  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from} = subscription}, _from, %InMemory{subscriptions: subscriptions} = state) do
     {reply, state} = case Map.get(subscriptions, subscription_name) do
-      nil -> {{:ok, self()}, state}
+      nil ->
+        state = %InMemory{state |
+          subscriptions: Map.put(subscriptions, subscription_name, subscription),
+        }
+
+        {{:ok, self()}, state}
       subscription -> {{:error, :subscription_already_exists}, state}
     end
 
     {:reply, reply, state}
+  end
+
+  def handle_call({:unsubscribe_from_all_streams, subscription_name}, _from, %InMemory{subscriptions: subscriptions} = state) do
+    state = %InMemory{state |
+      subscriptions: Map.delete(subscriptions, subscription_name),
+    }
+
+    {:reply, :ok, state}
   end
 
   def handle_call({:read_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
@@ -147,5 +160,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
 
     {:reply, :ok, state}
+  end
+
+  # publish events to subscribers
+  defp publish(events, %InMemory{subscriptions: subscriptions}) do
+    for %Subscription{subscriber: subscriber} <- Map.values(subscriptions), do: send(subscriber, {:events, events})
   end
 end
