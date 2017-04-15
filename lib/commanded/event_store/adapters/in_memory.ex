@@ -8,6 +8,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   use GenServer
 
   defstruct [
+    dispatcher: nil,
     streams: %{},
     subscriptions: %{},
     snapshots: %{},
@@ -30,6 +31,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def init(%InMemory{} = state) do
+    {:ok, registry} = Registry.start_link(:duplicate, InMemory.Dispatcher)
+
+    state = %InMemory{state |
+      dispatcher: registry,
+    }
+
     {:ok, state}
   end
 
@@ -45,7 +52,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   def subscribe_to_all_streams(subscription_name, subscriber, start_from) do
     subscription = %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from}
 
-    {:ok, subscription}
+    GenServer.call(__MODULE__, {:subscribe_to_all_streams, subscription})
   end
 
   def ack_event(pid, event) do
@@ -97,6 +104,15 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       |> Stream.drop(max(0, start_version - 1))
 
     {:reply, event_stream, state}
+  end
+
+  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from}}, _from, %InMemory{subscriptions: subscriptions} = state) do
+    {reply, state} = case Map.get(subscriptions, subscription_name) do
+      nil -> {{:ok, self()}, state}
+      subscription -> {{:error, :subscription_already_exists}, state}
+    end
+
+    {:reply, reply, state}
   end
 
   def handle_call({:read_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
