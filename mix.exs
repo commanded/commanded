@@ -33,7 +33,7 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:eventstore, "~> 0.8"},
+      {:eventstore, github: "harukizaemon/eventstore", branch: "causation-ids"},
       {:ex_doc, "~> 0.14", only: :dev},
       {:markdown, github: "devinus/markdown", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
