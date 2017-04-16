@@ -2,16 +2,17 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
   use Commanded.StorageCase
   doctest Commanded.ProcessManagers.ProcessManagerInstance
 
-  alias Commanded.ProcessManagers.ProcessManagerInstance
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
+  alias Commanded.EventStore.RecordedEvent
+  alias Commanded.ProcessManagers.ProcessManagerInstance
 
   defmodule NullHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(aggregate, _command), do: {:ok, aggregate}
+    def handle(_aggregate, _command), do: []
   end
 
   defmodule Router do
@@ -27,7 +28,7 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
 
     {:ok, process_manager} = ProcessManagerInstance.start_link(Router, "TransferMoneyProcessManager", TransferMoneyProcessManager, transfer_uuid)
 
-    event = %Commanded.EventStore.RecordedEvent{
+    event = %RecordedEvent{
       event_number: 1,
       stream_id: "stream-id",
       stream_version: 1,

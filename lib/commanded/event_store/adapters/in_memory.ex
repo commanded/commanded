@@ -79,7 +79,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
-  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %State{persisted_events: persisted_events, streams: streams} = state) do
+  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %State{streams: streams} = state) do
     case Map.get(streams, stream_uuid) do
       nil ->
         case expected_version do
@@ -109,7 +109,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, event_stream, state}
   end
 
-  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from} = subscription}, _from, %State{subscriptions: subscriptions} = state) do
+  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber} = subscription}, _from, %State{subscriptions: subscriptions} = state) do
     {reply, state} = case Map.get(subscriptions, subscription_name) do
       nil ->
         state = subscribe(subscription, state)
@@ -133,15 +133,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
 
     {:reply, :ok, state}
-  end
-
-  def handle_call({:read_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
-    reply = case Map.get(snapshots, source_uuid, nil) do
-      nil -> {:error, :snapshot_not_found}
-      snapshot -> {:ok, snapshot}
-    end
-
-    {:reply, reply, state}
   end
 
   def handle_call({:read_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do

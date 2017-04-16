@@ -114,7 +114,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     state
   end
 
-  defp process_unseen_event(%RecordedEvent{event_number: event_number} = event, process_router, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state, last_seen_event: last_seen_event} = state) do
+  defp process_unseen_event(%RecordedEvent{event_number: event_number} = event, process_router, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
     case handle_event(process_manager_module, process_state, event) do
       {:error, reason} ->
         Logger.warn(fn -> "process manager instance failed to handle event #{inspect event_number} due to: #{inspect reason}" end)

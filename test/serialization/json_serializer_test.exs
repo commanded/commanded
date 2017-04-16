@@ -31,13 +31,13 @@ defmodule Commanded.Serialization.JsonSerializerTest do
     assert JsonSerializer.deserialize(@serialized_event_json, type: type) == account_opened
   end
 
-  test "should map to event name specified by 'use EventName'" do
-    assert "named-event" == JsonSerializer.to_event_name(NamedEvent)
-    assert "another-named-event" == JsonSerializer.to_event_name(AnotherNamedEvent)
+  test "should map module struct to event name" do
+    assert "Elixir.Commanded.Serialization.JsonSerializerTest.NamedEvent" == JsonSerializer.to_event_name(NamedEvent)
+    assert "Elixir.Commanded.Serialization.JsonSerializerTest.AnotherNamedEvent" == JsonSerializer.to_event_name(AnotherNamedEvent)
   end
 
-  test "should deserialize to event type which is specifying the event name by 'use EventName'" do
-    assert %NamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "named-event")
-    assert %AnotherNamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "another-named-event")
+  test "should deserialize to event type which is specifying the module name" do
+    assert %NamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "Elixir.Commanded.Serialization.JsonSerializerTest.NamedEvent")
+    assert %AnotherNamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "Elixir.Commanded.Serialization.JsonSerializerTest.AnotherNamedEvent")
   end
 end

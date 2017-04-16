@@ -1,15 +1,15 @@
 defmodule Commanded.Commands.Handler do
   @type aggregate :: struct()
   @type command :: struct()
+  @type domain_events :: list(struct())
   @type reason :: term()
 
   @doc """
   Apply the given command to the event-sourced aggregate root.
 
-  You must return `{:ok, aggregate}` with the updated aggregate root on success.
-  This is the struct containing the aggregate's uuid, pending events, and current version.
+  You must return a list containing the pending events, or `nil` / `[]` when no events produced.
 
   You should return `{:error, reason}` on failure.
   """
-  @callback handle(aggregate, command) :: {:ok, aggregate} | {:error, reason}
+  @callback handle(aggregate, command) :: domain_events | {:error, reason}
 end

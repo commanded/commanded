@@ -6,7 +6,6 @@ defmodule Commanded.Serialization.JsonSerializer do
   @behaviour Commanded.EventStore.Serializer
 
   alias Commanded.Serialization.JsonDecoder
-  alias Commanded.Serialization.JsonSerializer.EventNameMapper
 
   @doc """
   Serialize given term to JSON binary data.
