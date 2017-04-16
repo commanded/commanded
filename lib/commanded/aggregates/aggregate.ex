@@ -142,7 +142,29 @@ defmodule Commanded.Aggregates.Aggregate do
 
         updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        :ok = persist_events(pending_events, aggregate_uuid, expected_version)
+        # TODO: Not sure how to do this given I don't have a good feeling for
+        #       the framework principles.
+        #
+        # Correlation ID:
+        #   Typically, a ProcessManager would copy the Correlation ID from the
+        #   event.  This allows the Correlation ID to propagate and makes it
+        #   easy to isolate a chain of events.  In the case of a user-driven
+        #   command such as via a UI the Correlation ID would be synthesized as
+        #   now.
+        #
+        # Causation ID:
+        #   Typically, a ProcessManager would use the Event ID as the Causation
+        #   ID.  This allos the Causation ID to propagate and makes it esy to
+        #   isolate specific cause-effect relationships.  In the case of a
+        #   user-driven comand uch as via a UI the Causation ID would either be
+        #   left null, or in some frameworks assigned the Command ID if there
+        #   is one.  However, as it stands, Event IDs are integer, rather than
+        #   UUIDs making this difficult.
+
+        correlation_id = UUID.uuid4
+        causation_id = nil
+
+        :ok = persist_events(pending_events, aggregate_uuid, expected_version, correlation_id, causation_id)
 
         state = %Aggregate{state |
           aggregate_state: updated_state,
@@ -157,10 +179,9 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events([], _aggregate_uuid, _expected_version), do: :ok
-  defp persist_events(pending_events, aggregate_uuid, expected_version) do
-    correlation_id = UUID.uuid4
-    event_data = Mapper.map_to_event_data(pending_events, correlation_id)
+  defp persist_events([], _aggregate_uuid, _expected_version, _correlation_id, _causation_id), do: :ok
+  defp persist_events(pending_events, aggregate_uuid, expected_version, correlation_id, causation_id) do
+    event_data = Mapper.map_to_event_data(pending_events, correlation_id, causation_id)
 
     :ok = EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
   end
