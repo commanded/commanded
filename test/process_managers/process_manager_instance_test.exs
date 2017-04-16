@@ -4,14 +4,14 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
 
   alias Commanded.ProcessManagers.ProcessManagerInstance
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
 
   defmodule NullHandler do
     @behaviour Commanded.Commands.Handler
 
-    def handle(_aggregate, _command), do: []
+    def handle(aggregate, _command), do: {:ok, aggregate}
   end
 
   defmodule Router do
@@ -35,7 +35,7 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
         transfer_uuid: transfer_uuid,
         debit_account: account1_uuid,
         credit_account: account2_uuid,
-        amount: 100
+        amount: 100,
       },
     }
 

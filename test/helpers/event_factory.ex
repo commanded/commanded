@@ -1,10 +1,12 @@
 defmodule Commanded.Helpers.EventFactory do
+  alias Commanded.EventStore.RecordedEvent
+
   def map_to_recorded_events(events) do
     events
     |> Commanded.Event.Mapper.map_to_event_data(UUID.uuid4)
     |> Enum.with_index(1)
     |> Enum.map(fn {event, index} ->
-      %Commanded.EventStore.RecordedEvent{
+      %RecordedEvent{
         event_number: index,
         stream_id: 1,
         stream_version: index,
@@ -17,5 +19,5 @@ defmodule Commanded.Helpers.EventFactory do
     end)
   end
 
-  defp now, do: DateTime.utc_now |> DateTime.to_naive
+  defp now, do: DateTime.utc_now() |> DateTime.to_naive()
 end

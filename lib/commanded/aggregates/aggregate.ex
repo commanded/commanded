@@ -125,6 +125,10 @@ defmodule Commanded.Aggregates.Aggregate do
         end)
         |> Stream.take(-1)
         |> Enum.at(0)
+        |> case do
+          nil -> state
+          state -> state
+        end
     end
   end
 

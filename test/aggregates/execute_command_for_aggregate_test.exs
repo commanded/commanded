@@ -13,55 +13,52 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, BankAccount, :open_account)
+    :ok = Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1_000}, BankAccount, :open_account)
 
-    Helpers.Process.shutdown(aggregate)
+    Helpers.Process.shutdown(account_number)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
     {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    assert Aggregate.aggregate_uuid(aggregate) == account_number
-    assert Aggregate.aggregate_version(aggregate) == 1
-    assert Aggregate.aggregate_state(aggregate) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
+    assert Aggregate.aggregate_version(account_number) == 1
+    assert Aggregate.aggregate_state(account_number) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
   end
 
   test "execute command via a command handler" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
+    :ok = Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
 
-    Helpers.Process.shutdown(aggregate)
+    Helpers.Process.shutdown(account_number)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    assert Aggregate.aggregate_uuid(aggregate) == account_number
-    assert Aggregate.aggregate_version(aggregate) == 1
-    assert Aggregate.aggregate_state(aggregate) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
+    assert Aggregate.aggregate_version(account_number) == 1
+    assert Aggregate.aggregate_state(account_number) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
   end
 
   test "aggregate raising an exception should not persist pending events or state" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    :ok = Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
+    :ok = Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
 
-    state_before = Aggregate.aggregate_state(aggregate)
+    state_before = Aggregate.aggregate_state(account_number)
 
-    assert_process_exit(aggregate, fn ->
-      Aggregate.execute(aggregate, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler, :handle)
+    assert_process_exit(account_number, fn ->
+      Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler, :handle)
     end)
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
-    assert state_before == Aggregate.aggregate_state(aggregate)
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    assert state_before == Aggregate.aggregate_state(account_number)
   end
 
-  @tag :wip
   test "executing a command against an aggregate with concurrency error should terminate aggregate process" do
     account_number = UUID.uuid4
 
