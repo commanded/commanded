@@ -21,6 +21,7 @@ defmodule Commanded.Event.Handler do
     handler_module: nil,
     last_seen_event: nil,
     subscribe_from: nil,
+    subscription: nil,
   ]
 
   def start_link(handler_name, handler_module, opts \\ []) do
@@ -37,11 +38,16 @@ defmodule Commanded.Event.Handler do
   end
 
   def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state) do
-    {:ok, _} = @event_store.subscribe_to_all_streams(handler_name, self(), subscribe_from)
+    {:ok, subscription} = @event_store.subscribe_to_all_streams(handler_name, self(), subscribe_from)
+
+    state = %Handler{state |
+      subscription: subscription,
+    }
+
     {:noreply, state}
   end
 
-  def handle_info({:events, events, subscription}, state) do
+  def handle_info({:events, events}, state) do
     Logger.debug(fn -> "event handler received events: #{inspect events}" end)
 
     state = Enum.reduce(events, state, fn (event, state) ->
@@ -50,7 +56,7 @@ defmodule Commanded.Event.Handler do
       metadata = extract_metadata(event)
 
       case handle_event(event_number, data, metadata, state) do
-        :ok -> confirm_receipt(state, subscription, event)
+        :ok -> confirm_receipt(event, state)
         {:error, :already_seen_event} -> state
       end
     end)
@@ -60,7 +66,7 @@ defmodule Commanded.Event.Handler do
 
   # ignore already seen events
   defp handle_event(event_number, _data, _metadata, %Handler{last_seen_event: last_seen_event})
-    when not is_nil(event_number) and event_number <= last_seen_event
+    when not is_nil(last_seen_event) and event_number <= last_seen_event
   do
     Logger.debug(fn -> "event handler has already seen event: #{inspect event_number}" end)
     {:error, :already_seen_event}
@@ -72,7 +78,7 @@ defmodule Commanded.Event.Handler do
   end
 
   # confirm receipt of event
-  defp confirm_receipt(state, subscription, %RecordedEvent{event_number: event_number} = event) do
+  defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %Handler{subscription: subscription} = state) do
     Logger.debug(fn -> "event handler confirming receipt of event: #{inspect event_number}" end)
 
     @event_store.ack_event(subscription, event)

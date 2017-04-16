@@ -50,11 +50,11 @@ defmodule Commanded.Entities.EventPersistenceTest do
   test "should persist pending events in order applied" do
     aggregate_uuid = UUID.uuid4
 
-    {:ok, _aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     :ok = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, AppendItemsHandler, :handle)
 
-    {:ok, recorded_events} = @event_store.read_stream_forward(aggregate_uuid, 0)
+    recorded_events = @event_store.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
 
     assert recorded_events |> pluck(:data) |> pluck(:index) == Enum.to_list(1..10)
   end
@@ -62,18 +62,17 @@ defmodule Commanded.Entities.EventPersistenceTest do
   test "should reload persisted events when restarting aggregate process" do
     aggregate_uuid = UUID.uuid4
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     :ok = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, AppendItemsHandler, :handle)
 
-    Commanded.Helpers.Process.shutdown(aggregate)
+    Commanded.Helpers.Process.shutdown(aggregate_uuid)
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    assert Aggregate.aggregate_uuid(aggregate) == aggregate_uuid
-    assert Aggregate.aggregate_version(aggregate) == 10
-    assert Aggregate.aggregate_state(aggregate) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
-      items: 1..10 |> Enum.to_list,
+    assert Aggregate.aggregate_version(aggregate_uuid) == 10
+    assert Aggregate.aggregate_state(aggregate_uuid) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
+      items: 1..10 |> Enum.to_list(),
       last_index: 10,
     }
   end
@@ -81,21 +80,18 @@ defmodule Commanded.Entities.EventPersistenceTest do
   test "should reload persisted events in batches when restarting aggregate process" do
     aggregate_uuid = UUID.uuid4
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     :ok = Aggregate.execute(aggregate_uuid, %AppendItems{count: 100}, AppendItemsHandler, :handle)
     :ok = Aggregate.execute(aggregate_uuid, %AppendItems{count: 100}, AppendItemsHandler, :handle)
     :ok = Aggregate.execute(aggregate_uuid, %AppendItems{count: 1}, AppendItemsHandler, :handle)
 
-    Commanded.Helpers.Process.shutdown(aggregate)
+    Commanded.Helpers.Process.shutdown(aggregate_uuid)
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    aggregate_state = Aggregate.aggregate_state(aggregate)
-
-    assert Aggregate.aggregate_uuid(aggregate) == aggregate_uuid
-    assert Aggregate.aggregate_version(aggregate) == 201
-    assert aggregate_state == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
+    assert Aggregate.aggregate_version(aggregate_uuid) == 201
+    assert Aggregate.aggregate_state(aggregate_uuid) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
       items: 1..201 |> Enum.to_list,
       last_index: 201,
     }

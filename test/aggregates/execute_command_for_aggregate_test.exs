@@ -20,7 +20,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     Helpers.Process.shutdown(account_number)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     assert Aggregate.aggregate_version(account_number) == 1
     assert Aggregate.aggregate_state(account_number) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
