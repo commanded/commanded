@@ -81,6 +81,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
       expected_events = EventFactory.deserialize_events(recorded_events)
 
       assert pluck(received_events, :correlation_id) == pluck(expected_events, :correlation_id)
+      assert pluck(received_events, :causation_id) == pluck(expected_events, :causation_id)
       assert pluck(received_events, :data) == pluck(expected_events, :data)
     end
 
@@ -131,6 +132,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
     assert_receive {:events, received_events, ^self}
 
     assert pluck(received_events, :correlation_id) == pluck(events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(events, :causation_id)
     assert pluck(received_events, :data) == pluck(events, :data)
   end
 
@@ -268,6 +270,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
     assert length(received_events) == 3
     assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(initial_events, :causation_id)
     assert pluck(received_events, :data) == pluck(initial_events, :data)
 
     subscription =
@@ -283,6 +286,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
    assert length(received_events) == 3
    assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
+   assert pluck(received_events, :causation_id) == pluck(remaining_events, :causation_id)
    assert pluck(received_events, :data) == pluck(remaining_events, :data)
   end
 
