@@ -2,6 +2,8 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
   use Commanded.StorageCase
   use Commanded.EventStore
 
+  import Commanded.Enumerable, only: [pluck: 2]
+
   alias Commanded.EventStore.EventData
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
@@ -29,28 +31,31 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
     test "should read events" do
       events = build_events(4)
 
-      assert {:ok, 4} == @event_store.append_to_stream("astream", 0, events)
+      assert {:ok, 4} == @event_store.append_to_stream("stream", 0, events)
 
-      read_events = @event_store.stream_forward("astream") |> Enum.to_list()
+      read_events = @event_store.stream_forward("stream") |> Enum.to_list()
       assert length(read_events) == 4
       assert coerce(events) == coerce(read_events)
 
-      read_events = @event_store.stream_forward("astream", 3) |> Enum.to_list()
+      assert pluck(read_events, :stream_version) == [1, 2, 3, 4]
+
+      read_events = @event_store.stream_forward("stream", 3) |> Enum.to_list()
       assert coerce(Enum.slice(events, 2, 2)) == coerce(read_events)
+      assert pluck(read_events, :stream_version) == [3, 4]
     end
 
     test "should read from single stream" do
       events1 = build_events(2)
       events2 = build_events(4)
 
-      assert {:ok, 2} == @event_store.append_to_stream("astream", 0, events1)
-      assert {:ok, 4} == @event_store.append_to_stream("asecondstream", 0, events2)
+      assert {:ok, 2} == @event_store.append_to_stream("stream", 0, events1)
+      assert {:ok, 4} == @event_store.append_to_stream("secondstream", 0, events2)
 
-      read_events = @event_store.stream_forward("astream", 0) |> Enum.to_list()
+      read_events = @event_store.stream_forward("stream", 0) |> Enum.to_list()
       assert 2 == length(read_events)
       assert coerce(events1) == coerce(read_events)
 
-      read_events = @event_store.stream_forward("asecondstream", 0) |> Enum.to_list()
+      read_events = @event_store.stream_forward("secondstream", 0) |> Enum.to_list()
       assert 4 == length(read_events)
       assert coerce(events2) == coerce(read_events)
     end
@@ -61,7 +66,7 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
       correlation_id: UUID.uuid4,
       event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
-      metadata: nil
+      metadata: %{"metadata" => "value"},
     }
   end
 
@@ -69,5 +74,5 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
     for account_number <- 1..count, do: build_event(account_number)
   end
 
-  defp coerce(events), do: Enum.map(events, &(%{correlation_id: &1.correlation_id, data: &1.data}))
+  defp coerce(events), do: Enum.map(events, &(%{correlation_id: &1.correlation_id, data: &1.data, metadata: &1.metadata}))
 end

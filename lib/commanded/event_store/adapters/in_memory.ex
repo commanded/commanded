@@ -7,14 +7,13 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   use GenServer
 
-  require Logger
-
   defmodule State do
     defstruct [
       persisted_events: [],
       streams: %{},
       subscriptions: %{},
       snapshots: %{},
+      next_event_number: 1
     ]
   end
 
@@ -23,6 +22,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       name: nil,
       subscriber: nil,
       start_from: nil,
+      last_seen_event_number: 0,
     ]
   end
 
@@ -30,7 +30,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     State,
     Subscription,
   }
-  alias Commanded.EventStore.SnapshotData
+  alias Commanded.EventStore.{
+    EventData,
+    RecordedEvent,
+    SnapshotData,
+  }
 
   def start_link do
     GenServer.start_link(__MODULE__, %State{}, name: __MODULE__)
@@ -56,7 +60,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def ack_event(pid, event) do
-    :ok
+    GenServer.cast(__MODULE__, {:ack_event, event, pid})
   end
 
   def unsubscribe_from_all_streams(subscription_name) do
@@ -80,14 +84,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       nil ->
         case expected_version do
           0 ->
-            state = %State{state |
-              streams: Map.put(streams, stream_uuid, events),
-              persisted_events: [events | persisted_events],
-            }
+            {reply, state} = persist_events(stream_uuid, [], events, state)
 
-            publish(events, state)
-
-            {:reply, {:ok, length(events)}, state}
+            {:reply, reply, state}
           _ -> {:reply, {:error, :wrong_expected_version}, state}
         end
 
@@ -95,16 +94,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
         {:reply, {:error, :wrong_expected_version}, state}
 
       existing_events ->
-        stream_events = existing_events ++ events
+        {reply, state} = persist_events(stream_uuid, existing_events, events, state)
 
-        state = %State{state |
-          streams: Map.put(streams, stream_uuid, stream_events),
-          persisted_events: [events | persisted_events],
-        }
-
-        publish(events, state)
-
-        {:reply, {:ok, length(stream_events)}, state}
+        {:reply, reply, state}
     end
   end
 
@@ -120,16 +112,16 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from} = subscription}, _from, %State{subscriptions: subscriptions} = state) do
     {reply, state} = case Map.get(subscriptions, subscription_name) do
       nil ->
-        state = %State{state |
-          subscriptions: Map.put(subscriptions, subscription_name, subscription),
-        }
+        state = subscribe(subscription, state)
 
-        Process.monitor(subscriber)
+        {{:ok, subscriber}, state}
 
-        catch_up(subscription, state)
+      %Subscription{subscriber: nil} = subscription ->
+        state = subscribe(%Subscription{subscription | subscriber: subscriber}, state)
 
-        {{:ok, self()}, state}
-      subscription -> {{:error, :subscription_already_exists}, state}
+        {{:ok, subscriber}, state}
+
+      _subscription -> {{:error, :subscription_already_exists}, state}
     end
 
     {:reply, reply, state}
@@ -177,35 +169,97 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, :ok, state}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, _reason}, %State{subscriptions: subscriptions} = state) do
+  def handle_cast({:ack_event, event, subscriber}, %State{subscriptions: subscriptions} = state) do
     state = %State{state |
-      subscriptions: remove_subscription_by_pid(subscriptions, pid),
+      subscriptions: ack_subscription_by_pid(subscriptions, event, subscriber),
     }
 
     {:noreply, state}
   end
 
-  defp remove_subscription_by_pid(subscriptions, pid) do
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, %State{subscriptions: subscriptions} = state) do
+    state = %State{state |
+      subscriptions: remove_subscriber_by_pid(subscriptions, pid),
+    }
+
+    {:noreply, state}
+  end
+
+  defp persist_events(stream_uuid, existing_events, new_events, %State{persisted_events: persisted_events, streams: streams, next_event_number: next_event_number} = state) do
+    initial_stream_version = length(existing_events) + 1
+    now = DateTime.utc_now() |> DateTime.to_naive()
+
+    new_events =
+      new_events
+      |> Enum.with_index(0)
+      |> Enum.map(fn {recorded_event, index} ->
+        map_to_recorded_event(next_event_number + index, stream_uuid, initial_stream_version + index, now, recorded_event)
+      end)
+
+    stream_events = Enum.concat(existing_events, new_events)
+    next_event_number = List.last(new_events).event_number + 1
+
+    state = %State{state |
+      streams: Map.put(streams, stream_uuid, stream_events),
+      persisted_events: [new_events | persisted_events],
+      next_event_number: next_event_number,
+    }
+
+    publish(new_events, state)
+
+    {{:ok, length(stream_events)}, state}
+  end
+
+  defp map_to_recorded_event(event_number, stream_uuid, stream_version, now, %EventData{correlation_id: correlation_id, event_type: event_type, data: data, metadata: metadata}) do
+    %RecordedEvent{
+      event_number: event_number,
+      stream_id: stream_uuid,
+      stream_version: stream_version,
+      correlation_id: correlation_id,
+      event_type: event_type,
+      data: data,
+      metadata: metadata,
+      created_at: now,
+    }
+  end
+
+  defp subscribe(%Subscription{name: subscription_name, subscriber: subscriber} = subscription, %State{subscriptions: subscriptions, persisted_events: persisted_events} = state) do
+    Process.monitor(subscriber)
+
+    catch_up(subscription, persisted_events)
+
+    %State{state |
+      subscriptions: Map.put(subscriptions, subscription_name, subscription),
+    }
+  end
+
+  defp remove_subscriber_by_pid(subscriptions, pid) do
     Enum.reduce(subscriptions, subscriptions, fn
-      ({name, %Subscription{subscriber: subscriber}}, acc) when subscriber == pid -> Map.delete(acc, name)
+      ({name, %Subscription{subscriber: subscriber} = subscription}, acc) when subscriber == pid -> Map.put(acc, name, %Subscription{subscription | subscriber: nil})
       (_, acc) -> acc
     end)
   end
 
-  defp catch_up(%Subscription{start_from: :current}, _state), do: :ok
+  defp ack_subscription_by_pid(subscriptions, %RecordedEvent{event_number: event_number}, pid) do
+    Enum.reduce(subscriptions, subscriptions, fn
+      ({name, %Subscription{subscriber: subscriber} = subscription}, acc) when subscriber == pid -> Map.put(acc, name, %Subscription{subscription | last_seen_event_number: event_number})
+      (_, acc) -> acc
+    end)
+  end
 
-  defp catch_up(%Subscription{subscriber: subscriber, start_from: :origin}, %State{persisted_events: persisted_events}) do
-    for events <- Enum.reverse(persisted_events), do: send(subscriber, {:events, events})
+  defp catch_up(%Subscription{start_from: :current}, _persisted_events), do: :ok
+
+  defp catch_up(%Subscription{subscriber: subscriber, start_from: :origin, last_seen_event_number: last_seen_event_number}, persisted_events) do
+    unseen_events =
+      persisted_events
+      |> Enum.reverse()
+      |> Enum.drop(last_seen_event_number)
+
+    for events <- unseen_events, do: send(subscriber, {:events, events})
   end
 
   # publish events to subscribers
   defp publish(events, %State{subscriptions: subscriptions}) do
-    subscribers =
-      subscriptions
-      |> Map.values()
-      |> Enum.map(fn %Subscription{subscriber: subscriber} -> subscriber end)
-      |> Enum.reject(fn subscriber -> subscriber == nil end)
-
-    for subscriber <- subscribers, do: send(subscriber, {:events, events})
+    for %Subscription{subscriber: subscriber} <- Map.values(subscriptions), do: send(subscriber, {:events, events})
   end
 end

@@ -71,7 +71,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   def handle_cast({:ack_event, event}, %State{} = state) do
-    state = confirm_receipt(state, event)
+    state = confirm_receipt(event, state)
 
     # continue processing any pending events
     GenServer.cast(self(), {:process_pending_events})
@@ -85,7 +85,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
     {:ok, subscription} = @event_store.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
 
-    state = %State{
+    state = %State{state |
       subscription: subscription,
     }
 
@@ -135,7 +135,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     not is_nil(last_seen_event) and event_number <= last_seen_event
   end
 
-  defp handle_event(%RecordedEvent{data: data, stream_id: stream_id, stream_version: stream_version} = event, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, process_managers: process_managers} = state) do
+  defp handle_event(%RecordedEvent{event_number: event_number, data: data, stream_id: stream_id, stream_version: stream_version} = event, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, process_managers: process_managers} = state) do
     {process_uuid, process_manager} = case process_manager_module.interested?(data) do
       {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
       {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
@@ -145,17 +145,17 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     case process_uuid do
       nil ->
-        Logger.debug(fn -> "process router \"#{process_manager_name}\" is not interested in event id: #{stream_id}|#{stream_version}" end)
+        Logger.debug(fn -> "process router \"#{process_manager_name}\" is not interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
 
-        ack_and_continue(state, event)
+        ack_and_continue(event, state)
 
       :stopped ->
-        Logger.debug(fn -> "process manager instance \"#{process_manager_name}\" has been stopped by event id: #{stream_id}|#{stream_version}" end)
+        Logger.debug(fn -> "process manager instance \"#{process_manager_name}\" has been stopped by event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
 
-        ack_and_continue(state, event)
+        ack_and_continue(event, state)
 
       _ ->
-        Logger.debug(fn -> "process router \"#{process_manager_name}\" is interested in event id: #{stream_id}|#{stream_version}" end)
+        Logger.debug(fn -> "process router \"#{process_manager_name}\" is interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
 
         # delegate event to process instance who will ack event processing on success
         :ok = delegate_event(process_manager, event)
@@ -165,14 +165,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   # continue processing any pending events and confirm receipt of the given event id
-  defp ack_and_continue(%State{} = state, %RecordedEvent{} = event) do
+  defp ack_and_continue(%RecordedEvent{} = event, %State{} = state) do
     GenServer.cast(self(), {:process_pending_events})
 
-    confirm_receipt(state, event)
+    confirm_receipt(event, state)
   end
 
   # confirm receipt of given event
-  defp confirm_receipt(%State{process_manager_name: process_manager_name, subscription: subscription, last_seen_event: last_seen_evens} = state, %RecordedEvent{event_number: event_number} = event) do
+  defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %State{process_manager_name: process_manager_name, subscription: subscription} = state) do
     Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event: #{inspect event_number}" end)
 
     @event_store.ack_event(subscription, event)

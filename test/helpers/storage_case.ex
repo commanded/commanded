@@ -2,8 +2,6 @@ defmodule Commanded.StorageCase do
   use ExUnit.CaseTemplate
   use Commanded.EventStore
 
-  alias Commanded.Helpers
-
   require Logger
 
   setup do
