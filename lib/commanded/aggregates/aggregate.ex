@@ -132,7 +132,7 @@ defmodule Commanded.Aggregates.Aggregate do
     case Kernel.apply(handler, function, [aggregate_state, command]) do
       {:error, _reason} = reply -> {reply, state}
       nil -> {:ok, state}
-      []  -> {:ok, state}
+      [] -> {:ok, state}
       events ->
         pending_events = List.wrap(events)
 

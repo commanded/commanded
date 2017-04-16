@@ -61,25 +61,25 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     assert state_before == Aggregate.aggregate_state(aggregate)
   end
 
+  @tag :wip
   test "executing a command against an aggregate with concurrency error should terminate aggregate process" do
     account_number = UUID.uuid4
 
-    {:ok, aggregate} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
-    stream = account_number
+    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
     # block until aggregate has loaded its initial (empty) state
-    Aggregate.aggregate_state(aggregate)
+    Aggregate.aggregate_state(account_number)
 
     # write an event to the aggregate's stream, bypassing the aggregate process (simulate concurrency error)
-    {:ok, _} = @event_store.append_to_stream(stream, 0, [
+    {:ok, _} = @event_store.append_to_stream(account_number, 0, [
       %Commanded.EventStore.EventData{
         event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
         data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000}
       }
     ])
 
-    assert_process_exit(aggregate, fn ->
-      Aggregate.execute(aggregate, %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler, :handle)
+    assert_process_exit(account_number, fn ->
+      Aggregate.execute(account_number, %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler, :handle)
     end)
   end
 

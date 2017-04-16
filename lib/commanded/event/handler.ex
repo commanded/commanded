@@ -19,7 +19,7 @@ defmodule Commanded.Event.Handler do
   defstruct [
     handler_name: nil,
     handler_module: nil,
-    last_seen_stream_version: nil,
+    last_seen_event: nil,
     subscribe_from: nil,
   ]
 
@@ -45,11 +45,11 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> "event handler received events: #{inspect events}" end)
 
     state = Enum.reduce(events, state, fn (event, state) ->
-      stream_version = extract_stream_version(event)
+      event_number = extract_event_number(event)
       data = extract_data(event)
       metadata = extract_metadata(event)
 
-      case handle_event(stream_version, data, metadata, state) do
+      case handle_event(event_number, data, metadata, state) do
         :ok -> confirm_receipt(state, subscription, event)
         {:error, :already_seen_event} -> state
       end
@@ -59,30 +59,28 @@ defmodule Commanded.Event.Handler do
   end
 
   # ignore already seen events
-  defp handle_event(stream_version, _data, _metadata, %Handler{last_seen_stream_version: last_seen_stream_version})
-    when not is_nil(last_seen_stream_version) and stream_version <= last_seen_stream_version
+  defp handle_event(event_number, _data, _metadata, %Handler{last_seen_event: last_seen_event})
+    when not is_nil(event_number) and event_number <= last_seen_event
   do
-    Logger.debug(fn -> "event handler has already seen event: #{inspect stream_version}" end)
+    Logger.debug(fn -> "event handler has already seen event: #{inspect event_number}" end)
     {:error, :already_seen_event}
   end
 
   # delegate event to handler module
-  defp handle_event(_stream_version, data, metadata, %Handler{handler_module: handler_module}) do
+  defp handle_event(_event_number, data, metadata, %Handler{handler_module: handler_module}) do
     handler_module.handle(data, metadata)
   end
 
   # confirm receipt of event
-  defp confirm_receipt(state, subscription, %RecordedEvent{} = event) do
-    stream_version = extract_stream_version(event)
-
-    Logger.debug(fn -> "event handler confirming receipt of event: #{inspect stream_version}" end)
+  defp confirm_receipt(state, subscription, %RecordedEvent{event_number: event_number} = event) do
+    Logger.debug(fn -> "event handler confirming receipt of event: #{inspect event_number}" end)
 
     @event_store.ack_event(subscription, event)
 
-    %Handler{state | last_seen_stream_version: stream_version}
+    %Handler{state | last_seen_event: event_number}
   end
 
-  defp extract_stream_version(%RecordedEvent{stream_version: stream_version}), do: stream_version
+  defp extract_event_number(%RecordedEvent{event_number: event_number}), do: event_number
 
   defp extract_data(%RecordedEvent{data: data}), do: data
 
