@@ -76,14 +76,89 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     end
   end
 
+  defmodule Subscriber do
+    use GenServer
+    use Commanded.EventStore
+
+    defmodule State do
+      defstruct [
+        received_events: [],
+        subscription: nil,
+      ]
+    end
+
+    alias Subscriber.State
+
+    def start_link do
+      GenServer.start_link(__MODULE__, %State{})
+    end
+
+    def init(%State{} = state) do
+      {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
+
+      state = %State{state |
+        subscription: subscription,
+      }
+
+      {:ok, state}
+    end
+
+    def received_events(subscriber) do
+      GenServer.call(subscriber, :received_events)
+    end
+
+    def handle_call(:received_events, _from, %State{received_events: received_events} = state) do
+      {:reply, received_events, state}
+    end
+
+    def handle_info({:events, events}, %State{received_events: received_events, subscription: subscription} = state) do
+      state = %State{state |
+        received_events: Enum.concat(received_events, events),
+      }
+
+      @event_store.ack_event(subscription, List.last(events))
+
+      {:noreply, state}
+    end
+  end
+
+  describe "resume subscription" do
+    @tag :wip
+    test "should remember last seen event number when subscription resumes" do
+      {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
+      {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
+
+      {:ok, subscriber} = Subscriber.start_link()
+
+      received_events = Subscriber.received_events(subscriber)
+      assert length(received_events) == 3
+
+      Commanded.Helpers.Process.shutdown(subscriber)
+
+      {:ok, subscriber} = Subscriber.start_link()
+
+      received_events = Subscriber.received_events(subscriber)
+      assert length(received_events) == 0
+
+      # {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
+
+      # assert_receive_events(subscription, 1)
+      # assert_receive_events(subscription, 2)
+
+      # {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
+      #
+      # assert_receive_events(subscription, 3)
+      #
+      # refute_receive({:events, _events})
+    end
+  end
+
   def assert_receive_events(subscription, expected_count) do
     assert_receive {:events, received_events}
     assert length(received_events) == expected_count
 
     @event_store.ack_event(subscription, List.last(received_events))
   end
-
-  # test "should remember last seen event number when subscription resumes"
 
   defp build_event(account_number) do
     %EventData{

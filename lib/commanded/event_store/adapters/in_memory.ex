@@ -187,7 +187,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp remove_subscription_by_pid(subscriptions, pid) do
     Enum.reduce(subscriptions, subscriptions, fn
-      (%Subscription{name: name, subscriber: subscriber}, acc) when subscriber == pid -> Map.delete(acc, name)
+      ({name, %Subscription{subscriber: subscriber}}, acc) when subscriber == pid -> Map.delete(acc, name)
       (_, acc) -> acc
     end)
   end
@@ -200,6 +200,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   # publish events to subscribers
   defp publish(events, %State{subscriptions: subscriptions}) do
-    for %Subscription{subscriber: subscriber} <- Map.values(subscriptions), do: send(subscriber, {:events, events})
+    subscribers =
+      subscriptions
+      |> Map.values()
+      |> Enum.map(fn %Subscription{subscriber: subscriber} -> subscriber end)
+      |> Enum.reject(fn subscriber -> subscriber == nil end)
+
+    for subscriber <- subscribers, do: send(subscriber, {:events, events})
   end
 end
