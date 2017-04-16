@@ -121,9 +121,10 @@ defmodule EventStore.Streams.Stream do
     end)
   end
 
-  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, event_type: event_type, data: data, metadata: metadata}, serializer) do
+  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, causation_id: causation_id, event_type: event_type, data: data, metadata: metadata}, serializer) do
     %RecordedEvent{
       correlation_id: correlation_id,
+      causation_id: causation_id,
       event_type: event_type,
       data: serializer.serialize(data),
       metadata: serializer.serialize(metadata),

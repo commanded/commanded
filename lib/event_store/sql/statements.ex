@@ -49,6 +49,7 @@ CREATE TABLE events
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
     correlation_id text,
+    causation_id text,
     data bytea NOT NULL,
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
@@ -111,12 +112,12 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = ["INSERT INTO events (event_id, stream_id, stream_version, correlation_id, event_type, data, metadata, created_at) VALUES"]
+    insert = ["INSERT INTO events (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) VALUES"]
 
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
-        index = (event_number - 1) * 8
+        index = (event_number - 1) * 9
         event_params = [
           "($",
           Integer.to_string(index + 1), ", $",
@@ -126,7 +127,8 @@ RETURNING stream_id;
           Integer.to_string(index + 5), ", $",
           Integer.to_string(index + 6), ", $",
           Integer.to_string(index + 7), ", $",
-          Integer.to_string(index + 8), ")"
+          Integer.to_string(index + 8), ", $",
+          Integer.to_string(index + 9), ")"
         ]
 
         if event_number == number_of_events do
@@ -248,6 +250,7 @@ SELECT
   stream_version,
   event_type,
   correlation_id,
+  causation_id,
   data,
   metadata,
   created_at
@@ -266,6 +269,7 @@ SELECT
   stream_version,
   event_type,
   correlation_id,
+  causation_id,
   data,
   metadata,
   created_at

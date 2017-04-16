@@ -36,6 +36,7 @@ defmodule EventStore.Storage.Appender do
         event.stream_id,
         event.stream_version,
         event.correlation_id,
+        event.causation_id,
         event.event_type,
         event.data,
         event.metadata,

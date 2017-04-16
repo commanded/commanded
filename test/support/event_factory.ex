@@ -7,11 +7,13 @@ defmodule EventStore.EventFactory do
 
   def create_events(number_of_events, initial_event_number \\ 1) when number_of_events > 0 do
     correlation_id = UUID.uuid4
+    causation_id = UUID.uuid4
 
     1..number_of_events
     |> Enum.map(fn number ->
       %EventData{
         correlation_id: correlation_id,
+        causation_id: causation_id,
         event_type: "Elixir.EventStore.EventFactory.Event",
         data: %EventStore.EventFactory.Event{event: (initial_event_number + number - 1)},
         metadata: %{"user" => "user@example.com"}
@@ -21,6 +23,7 @@ defmodule EventStore.EventFactory do
 
   def create_recorded_events(number_of_events, stream_id, initial_event_id \\ 1, initial_stream_version \\ 1) when number_of_events > 0 do
     correlation_id = UUID.uuid4
+    causation_id = UUID.uuid4
 
     1..number_of_events
     |> Enum.map(fn number ->
@@ -32,6 +35,7 @@ defmodule EventStore.EventFactory do
         stream_id: stream_id,
         stream_version: stream_version,
         correlation_id: correlation_id,
+        causation_id: causation_id,
         event_type: "Elixir.EventStore.EventFactory.Event",
         data: serialize(%EventStore.EventFactory.Event{event: event_id}),
         metadata: serialize(%{"user" => "user@example.com"}),

@@ -74,6 +74,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     expected_events = EventFactory.deserialize_events(recorded_events)
 
     assert pluck(received_events, :correlation_id) == pluck(expected_events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(expected_events, :causation_id)
     assert pluck(received_events, :data) == pluck(expected_events, :data)
   end
 
@@ -91,6 +92,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert_receive {:events, received_events, nil}
 
     assert pluck(received_events, :correlation_id) == pluck(events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(events, :causation_id)
     assert pluck(received_events, :data) == pluck(events, :data)
   end
 
@@ -192,6 +194,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     assert length(received_events) == 3
     assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(initial_events, :causation_id)
     assert pluck(received_events, :data) == pluck(initial_events, :data)
 
     # don't receive remaining events until ack received for all initial events
@@ -209,6 +212,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     assert length(received_events) == 3
     assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(remaining_events, :causation_id)
     assert pluck(received_events, :data) == pluck(remaining_events, :data)
   end
 
@@ -232,6 +236,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
+      assert pluck(received_events, :causation_id) == pluck(initial_events, :causation_id)
       assert pluck(received_events, :data) == pluck(initial_events, :data)
 
       subscription = StreamSubscription.ack(subscription, 3)
@@ -243,6 +248,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
+      assert pluck(received_events, :causation_id) == pluck(remaining_events, :causation_id)
       assert pluck(received_events, :data) == pluck(remaining_events, :data)
     end
 
@@ -282,6 +288,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
+      assert pluck(received_events, :causation_id) == pluck(remaining_events, :causation_id)
       assert pluck(received_events, :data) == pluck(remaining_events, :data)
     end
   end
