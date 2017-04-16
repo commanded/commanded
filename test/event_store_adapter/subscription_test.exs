@@ -5,8 +5,6 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
   alias Commanded.EventStore.EventData
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
-  require Logger
-
   describe "subscribe to all streams" do
     test "should receive events appended to any stream" do
       {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
@@ -22,9 +20,42 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       refute_receive({:events, _events})
     end
 
+    test "should skip existing events when subscribing from current position" do
+      {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
+      {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
+
+      {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :current)
+
+      refute_receive({:events, _events})
+
+      {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
+
+      assert_receive_events(subscription, 3)
+
+      refute_receive({:events, _events})
+    end
+
     test "should prevent duplicate subscriptions" do
       {:ok, _subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
       assert {:error, :subscription_already_exists} == @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
+    end
+  end
+
+  describe "catch-up subscription" do
+    test "should receive any existing events" do
+      {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
+      {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
+
+      {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
+
+      assert_receive_events(subscription, 1)
+      assert_receive_events(subscription, 2)
+
+      {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
+
+      assert_receive_events(subscription, 3)
+
+      refute_receive({:events, _events})
     end
   end
 
@@ -52,7 +83,6 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     @event_store.ack_event(subscription, List.last(received_events))
   end
 
-  # test "should catch-up from existing events"
   # test "should remember last seen event number when subscription resumes"
 
   defp build_event(account_number) do

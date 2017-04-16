@@ -7,11 +7,16 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   use GenServer
 
-  defstruct [
-    streams: %{},
-    subscriptions: %{},
-    snapshots: %{},
-  ]
+  require Logger
+
+  defmodule State do
+    defstruct [
+      persisted_events: [],
+      streams: %{},
+      subscriptions: %{},
+      snapshots: %{},
+    ]
+  end
 
   defmodule Subscription do
     defstruct [
@@ -21,15 +26,17 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     ]
   end
 
-  alias Commanded.EventStore.Adapters.InMemory
-  alias Commanded.EventStore.Adapters.InMemory.Subscription
+  alias Commanded.EventStore.Adapters.InMemory.{
+    State,
+    Subscription,
+  }
   alias Commanded.EventStore.SnapshotData
 
   def start_link do
-    GenServer.start_link(__MODULE__, %InMemory{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %State{}, name: __MODULE__)
   end
 
-  def init(%InMemory{} = state) do
+  def init(%State{} = state) do
     {:ok, state}
   end
 
@@ -68,12 +75,15 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
-  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %InMemory{streams: streams} = state) do
+  def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %State{persisted_events: persisted_events, streams: streams} = state) do
     case Map.get(streams, stream_uuid) do
       nil ->
         case expected_version do
           0 ->
-            state = %InMemory{state | streams: Map.put(streams, stream_uuid, events)}
+            state = %State{state |
+              streams: Map.put(streams, stream_uuid, events),
+              persisted_events: [events | persisted_events],
+            }
 
             publish(events, state)
 
@@ -87,8 +97,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       existing_events ->
         stream_events = existing_events ++ events
 
-        state = %InMemory{state |
+        state = %State{state |
           streams: Map.put(streams, stream_uuid, stream_events),
+          persisted_events: [events | persisted_events],
         }
 
         publish(events, state)
@@ -97,7 +108,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end
   end
 
-  def handle_call({:stream_forward, stream_uuid, start_version}, _from, %InMemory{streams: streams} = state) do
+  def handle_call({:stream_forward, stream_uuid, start_version}, _from, %State{streams: streams} = state) do
     event_stream =
       streams
       |> Map.get(stream_uuid, [])
@@ -106,12 +117,16 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, event_stream, state}
   end
 
-  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from} = subscription}, _from, %InMemory{subscriptions: subscriptions} = state) do
+  def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from} = subscription}, _from, %State{subscriptions: subscriptions} = state) do
     {reply, state} = case Map.get(subscriptions, subscription_name) do
       nil ->
-        state = %InMemory{state |
+        state = %State{state |
           subscriptions: Map.put(subscriptions, subscription_name, subscription),
         }
+
+        Process.monitor(subscriber)
+
+        catch_up(subscription, state)
 
         {{:ok, self()}, state}
       subscription -> {{:error, :subscription_already_exists}, state}
@@ -120,15 +135,15 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, reply, state}
   end
 
-  def handle_call({:unsubscribe_from_all_streams, subscription_name}, _from, %InMemory{subscriptions: subscriptions} = state) do
-    state = %InMemory{state |
+  def handle_call({:unsubscribe_from_all_streams, subscription_name}, _from, %State{subscriptions: subscriptions} = state) do
+    state = %State{state |
       subscriptions: Map.delete(subscriptions, subscription_name),
     }
 
     {:reply, :ok, state}
   end
 
-  def handle_call({:read_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
+  def handle_call({:read_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
     reply = case Map.get(snapshots, source_uuid, nil) do
       nil -> {:error, :snapshot_not_found}
       snapshot -> {:ok, snapshot}
@@ -137,7 +152,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, reply, state}
   end
 
-  def handle_call({:read_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
+  def handle_call({:read_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
     reply = case Map.get(snapshots, source_uuid, nil) do
       nil -> {:error, :snapshot_not_found}
       snapshot -> {:ok, snapshot}
@@ -146,24 +161,45 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, reply, state}
   end
 
-  def handle_call({:record_snapshot, %SnapshotData{source_uuid: source_uuid} = snapshot}, _from, %InMemory{snapshots: snapshots} = state) do
-    state = %InMemory{state |
+  def handle_call({:record_snapshot, %SnapshotData{source_uuid: source_uuid} = snapshot}, _from, %State{snapshots: snapshots} = state) do
+    state = %State{state |
       snapshots: Map.put(snapshots, source_uuid, snapshot),
     }
 
     {:reply, :ok, state}
   end
 
-  def handle_call({:delete_snapshot, source_uuid}, _from, %InMemory{snapshots: snapshots} = state) do
-    state = %InMemory{state |
+  def handle_call({:delete_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
+    state = %State{state |
       snapshots: Map.delete(snapshots, source_uuid)
     }
 
     {:reply, :ok, state}
   end
 
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, %State{subscriptions: subscriptions} = state) do
+    state = %State{state |
+      subscriptions: remove_subscription_by_pid(subscriptions, pid),
+    }
+
+    {:noreply, state}
+  end
+
+  defp remove_subscription_by_pid(subscriptions, pid) do
+    Enum.reduce(subscriptions, subscriptions, fn
+      (%Subscription{name: name, subscriber: subscriber}, acc) when subscriber == pid -> Map.delete(acc, name)
+      (_, acc) -> acc
+    end)
+  end
+
+  defp catch_up(%Subscription{start_from: :current}, _state), do: :ok
+
+  defp catch_up(%Subscription{subscriber: subscriber, start_from: :origin}, %State{persisted_events: persisted_events}) do
+    for events <- Enum.reverse(persisted_events), do: send(subscriber, {:events, events})
+  end
+
   # publish events to subscribers
-  defp publish(events, %InMemory{subscriptions: subscriptions}) do
+  defp publish(events, %State{subscriptions: subscriptions}) do
     for %Subscription{subscriber: subscriber} <- Map.values(subscriptions), do: send(subscriber, {:events, events})
   end
 end
