@@ -4,18 +4,6 @@ defmodule Commanded.Serialization.JsonSerializerTest do
   alias Commanded.Serialization.JsonSerializer
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
-  defmodule NamedEvent do
-    defstruct [
-      data: nil,
-    ]
-  end
-
-  defmodule AnotherNamedEvent do
-    defstruct [
-      data: nil,
-    ]
-  end
-
   @serialized_event_json "{\"initial_balance\":1000,\"account_number\":\"ACC123\"}"
 
 	test "should serialize event to JSON" do
@@ -31,10 +19,8 @@ defmodule Commanded.Serialization.JsonSerializerTest do
     assert JsonSerializer.deserialize(@serialized_event_json, type: type) == account_opened
   end
 
-  test "should map module struct to event name" do
-    assert "Elixir.Commanded.Serialization.JsonSerializerTest.NamedEvent" == JsonSerializer.to_event_name(NamedEvent)
-    assert "Elixir.Commanded.Serialization.JsonSerializerTest.AnotherNamedEvent" == JsonSerializer.to_event_name(AnotherNamedEvent)
-  end
+  defmodule NamedEvent, do: defstruct [data: nil]
+  defmodule AnotherNamedEvent, do: defstruct [data: nil]
 
   test "should deserialize to event type which is specifying the module name" do
     assert %NamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "Elixir.Commanded.Serialization.JsonSerializerTest.NamedEvent")

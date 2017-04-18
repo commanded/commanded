@@ -5,6 +5,8 @@ defmodule Commanded.Serialization.JsonSerializer do
 
   @behaviour Commanded.EventStore.Serializer
 
+  use Commanded.EventStore.TypeProvider
+
   alias Commanded.Serialization.JsonDecoder
 
   @doc """
@@ -20,19 +22,11 @@ defmodule Commanded.Serialization.JsonSerializer do
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type, nil) do
       nil -> nil
-      type -> to_event_type(type)
+      type -> @type_provider.to_struct(type)
     end
 
     binary
     |> Poison.decode!(as: type)
     |> JsonDecoder.decode()
-  end
-
-  def to_event_name(module) do
-    Atom.to_string(module)
-  end
-
-  defp to_event_type(type) do
-    type |> String.to_existing_atom() |> struct()
   end
 end

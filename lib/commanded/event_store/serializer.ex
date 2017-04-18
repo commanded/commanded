@@ -24,9 +24,4 @@ defmodule Commanded.EventStore.Serializer do
   Deserialize the given binary data to the corresponding term
   """
   @callback deserialize(binary, config) :: any
-
-  @doc """
-  Type of the event as a string
-  """
-  @callback to_event_name(module) :: String.t
 end

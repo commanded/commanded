@@ -9,4 +9,4 @@ config :ex_unit,
 
 config :commanded,
   event_store_adapter: Commanded.EventStore.Adapters.InMemory,
-  serializer: Commanded.Serialization.JsonSerializer
+  type_provider: Commanded.Serialization.ModuleNameTypeProvider
