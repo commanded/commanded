@@ -1,6 +1,6 @@
 defmodule Commanded.EventStore.RecordedEvent do
   @moduledoc """
-  Contains the persisted data and metadata for a single event.
+  Contains the persisted stream identity, type, data, and metadata for a single event.
 
   Events are immutable once recorded.
   """
@@ -10,6 +10,7 @@ defmodule Commanded.EventStore.RecordedEvent do
     stream_id: non_neg_integer,
     stream_version: non_neg_integer,
     correlation_id: String.t,
+    causation_id: String.t,
     event_type: String.t,
     data: binary,
     metadata: binary,
@@ -21,6 +22,7 @@ defmodule Commanded.EventStore.RecordedEvent do
     stream_id: nil,
     stream_version: nil,
     correlation_id: nil,
+    causation_id: nil,
     event_type: nil ,
     data: nil,
     metadata: nil,

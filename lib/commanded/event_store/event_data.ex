@@ -5,6 +5,7 @@ defmodule Commanded.EventStore.EventData do
 
   @type t :: %Commanded.EventStore.EventData{
     correlation_id: String.t,
+    causation_id: String.t,
     event_type: String.t,
     data: binary,
     metadata: binary,
@@ -12,6 +13,7 @@ defmodule Commanded.EventStore.EventData do
 
   defstruct [
     correlation_id: nil,
+    causation_id: nil,
     event_type: nil ,
     data: nil,
     metadata: nil,
