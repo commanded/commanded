@@ -9,14 +9,14 @@ defmodule EventStoreTest do
   @subscription_name "test_subscription"
 
   test "append single event to event store" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
   end
 
   test "append multiple event to event store" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(3)
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
@@ -29,7 +29,7 @@ defmodule EventStoreTest do
   end
 
   test "read stream forward from event store" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
@@ -45,7 +45,7 @@ defmodule EventStoreTest do
   end
 
   test "stream forward from event store" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
@@ -61,7 +61,7 @@ defmodule EventStoreTest do
   end
 
   test "stream all forward from event store" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
@@ -77,38 +77,36 @@ defmodule EventStoreTest do
   end
 
   test "notify subscribers after event persisted" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(1)
 
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self())
+    {:ok, _subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self())
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
 
-    assert_receive {:events, received_events, ^subscription}
+    assert_receive {:events, received_events}
 
     assert length(received_events) == 1
     assert hd(received_events).data == hd(events).data
   end
 
   test "subscribe to all streams from current position" do
-    stream_uuid = UUID.uuid4
+    stream_uuid = UUID.uuid4()
     initial_events = EventFactory.create_events(1)
     new_events = EventFactory.create_events(1, 2)
 
     :ok = EventStore.append_to_stream(stream_uuid, 0, initial_events)
 
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self(), :current)
+    {:ok, _subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self(), start_from: :current)
 
     :ok = EventStore.append_to_stream(stream_uuid, 1, new_events)
 
-    assert_receive {:events, received_events, ^subscription}
+    assert_receive {:events, received_events}
 
     assert length(received_events) == 1
     assert hd(received_events).data == hd(new_events).data
   end
 
-  defmodule ExampleData do
-    defstruct [:data]
-  end
+  defmodule ExampleData, do: defstruct [:data]
 
   test "record snapshot" do
     assert record_snapshot() != nil
@@ -130,7 +128,7 @@ defmodule EventStoreTest do
 
     :ok = EventStore.delete_snapshot(snapshot.source_uuid)
 
-    {:error, :snapshot_not_found} = EventStore.read_snapshot(snapshot.source_uuid)
+    assert {:error, :snapshot_not_found} == EventStore.read_snapshot(snapshot.source_uuid)
   end
 
   defp record_snapshot do

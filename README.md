@@ -120,7 +120,7 @@ Read all events from all streams.
 Stream all events from all streams.
 
 ```elixir
-events = EventStore.stream_all_forward() |> Enum.to_list
+events = EventStore.stream_all_forward() |> Enum.to_list()
 ```
 
 ### Subscribe to streams
@@ -131,7 +131,7 @@ Events are received in batches after being persisted to storage. Each batch cont
 
 Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
 
-By default subscriptions are created from the single stream, or all stream, origin. So it will receive all events from the single stream, or all streams. You can optionally specify a given start position.
+By default subscriptions are created from the single stream, or all stream, origin. So it will receive all events from the single stream, or all streams. You can optionally specify a given start position:
 
 - `:origin` - subscribe to events from the start of the stream (identical to using 0). This is the current behaviour and will remain the default.
 - `:current` - subscribe to events from the current version.
@@ -141,9 +141,27 @@ By default subscriptions are created from the single stream, or all stream, orig
 
 Receipt of each event by the subscriber must be acknowledged. This allows the subscription to resume on failure without missing an event.
 
-The subscriber receives an `{:events, events, subscription}` tuple containing the published events and the subscription to send the `ack` to. This is achieved by sending an `{:ack, last_seen_event_id}` tuple to the `subscription` process. A subscriber can confirm receipt of each event in a batch by sending multiple acks, one per event. Or just confirm receipt of the last event in the batch.
+The subscriber receives an `{:events, events}` tuple containing the published events. The subscription returned when subscribing to the stream should be used to send the `ack` to. This is achieved by sending an `{:ack, last_seen_event_id}` tuple to the `subscription` process. A subscriber can confirm receipt of each event in a batch by sending multiple acks, one per event. The subscriber may confirm receipt of the last event in the batch in a single ack.
 
 A subscriber will not receive further published events until it has confirmed receipt of all received events. This provides back pressure to the subscription to prevent the subscriber from being overwhelmed with messages if it cannot keep up. The subscription will buffer events until the subscriber is ready to receive, or an overflow occurs. At which point it will move into a catch-up mode and query events and replay them from storage until caught up.
+
+Subscribe to events appended to all streams.
+
+```elixir
+{:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self())
+
+receive do
+  {:events, events} ->
+    IO.inspect(events)
+    EventStore.ack(subscription, events)
+end
+```
+
+Unsubscribe from a stream.
+
+```elixir
+:ok = EventStore.unsubscribe_from_all_streams("example_subscription")
+```
 
 #### Example subscriber
 
@@ -156,19 +174,22 @@ defmodule Subscriber do
     GenServer.start_link(__MODULE__, [])
   end
 
-  def received_events(server) do
-    GenServer.call(server, :received_events)
+  def received_events(subscriber) do
+    GenServer.call(subscriber, :received_events)
   end
 
   def init(events) do
-    {:ok, %{events: events}}
+    # subscribe to events from all streams
+    {:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self())
+
+    {:ok, %{events: events, subscription: subscription}}
   end
 
-  def handle_info({:events, events, subscription}, state) do
+  def handle_info({:events, events}, %{events: existing_events, subscription: subscription} = state) do
     # confirm receipt of received events
-    send(subscription, {:ack, List.last(events).event_id})
+    EventStore.ack(subscription, events)
 
-    {:noreply, %{state | events: state.events ++ events}}
+    {:noreply, %{state | events: existing_events ++ events}}
   end
 
   def handle_call(:received_events, _from, %{events: events} = state) do
@@ -177,29 +198,17 @@ defmodule Subscriber do
 end
 ```
 
-Create your subscriber.
+Start your subscriber process, which subscribes to all streams in the event store.
 
 ```elixir
-{:ok, subscriber} = Subscriber.start_link
-```
-
-Subscribe to events appended to all streams.
-
-```elixir
-{:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", subscriber)
-```
-
-Unsubscribe from a stream.
-
-```elixir
-:ok = EventStore.unsubscribe_from_all_streams("example_subscription")
+{:ok, subscriber} = Subscriber.start_link()
 ```
 
 ## Event serialization
 
-The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for deployment.
+The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for production usage.
 
-You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data to JSON using the [Poison](https://github.com/devinus/poison) library.
+You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data and metadata to JSON using the [Poison](https://github.com/devinus/poison) library.
 
 ```elixir
 defmodule JsonSerializer do
@@ -281,5 +290,7 @@ You should include unit tests to cover any changes.
 
 - [Andrey Akulov](https://github.com/astery)
 - [Craig Savolainen](https://github.com/maedhr)
+- [David Soff](https://github.com/Davidsoff)
 - [Paul Iannazzo](https://github.com/boxxxie)
+- [Simon Harris](https://github.com/harukizaemon)
 - [Stuart Corbishley](https://github.com/stuartc)

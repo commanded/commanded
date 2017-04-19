@@ -24,8 +24,8 @@ defmodule EventStore.Streams.AllStream do
     GenServer.call(__MODULE__, {:stream_forward, start_event_id, read_batch_size})
   end
 
-  def subscribe_to_stream(subscription_name, subscriber, start_from) do
-    GenServer.call(__MODULE__, {:subscribe_to_stream, subscription_name, subscriber, start_from})
+  def subscribe_to_stream(subscription_name, subscriber, opts) do
+    GenServer.call(__MODULE__, {:subscribe_to_stream, subscription_name, subscriber, opts})
   end
 
   def init(%AllStream{} = state) do
@@ -44,15 +44,19 @@ defmodule EventStore.Streams.AllStream do
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe_to_stream, subscription_name, subscriber, start_from}, _from, %AllStream{} = state) do
-    reply = Subscriptions.subscribe_to_all_streams(self(), subscription_name, subscriber, start_from_event_id(start_from))
+  def handle_call({:subscribe_to_stream, subscription_name, subscriber, opts}, _from, %AllStream{} = state) do
+    {start_from, opts} = Keyword.pop(opts, :start_from, :origin)
+
+    opts = Keyword.merge([start_from_event_id: start_from_event_id(start_from)], opts)
+
+    reply = Subscriptions.subscribe_to_all_streams(self(), subscription_name, subscriber, opts)
 
     {:reply, reply, state}
   end
 
   defp start_from_event_id(:origin), do: 0
   defp start_from_event_id(:current) do
-    {:ok, event_id} = Storage.latest_event_id
+    {:ok, event_id} = Storage.latest_event_id()
     event_id
   end
   defp start_from_event_id(start_from) when is_integer(start_from), do: start_from

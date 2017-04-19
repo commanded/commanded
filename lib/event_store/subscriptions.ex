@@ -17,12 +17,14 @@ defmodule EventStore.Subscriptions do
     GenServer.start_link(__MODULE__, %Subscriptions{serializer: serializer}, name: __MODULE__)
   end
 
-  def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber, start_from_stream_version \\ nil) do
-    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber, [start_from_stream_version: start_from_stream_version]})
+  def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber, opts \\ [])
+  def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber, opts) do
+    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber, opts})
   end
 
-  def subscribe_to_all_streams(all_stream, subscription_name, subscriber, start_from_event_id \\ nil) do
-    GenServer.call(__MODULE__, {:subscribe_to_stream, @all_stream, all_stream, subscription_name, subscriber, [start_from_event_id: start_from_event_id]})
+  def subscribe_to_all_streams(all_stream, subscription_name, subscriber, opts \\ [])
+  def subscribe_to_all_streams(all_stream, subscription_name, subscriber, opts) do
+    GenServer.call(__MODULE__, {:subscribe_to_stream, @all_stream, all_stream, subscription_name, subscriber, opts})
   end
 
   def unsubscribe_from_stream(stream_uuid, subscription_name) do

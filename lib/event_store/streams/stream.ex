@@ -34,8 +34,8 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(stream, {:stream_forward, start_version, read_batch_size})
   end
 
-  def subscribe_to_stream(stream, subscription_name, subscriber, start_from) do
-    GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber, start_from})
+  def subscribe_to_stream(stream, subscription_name, subscriber, opts) do
+    GenServer.call(stream, {:subscribe_to_stream, subscription_name, subscriber, opts})
   end
 
   def stream_version(stream) do
@@ -76,8 +76,12 @@ defmodule EventStore.Streams.Stream do
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe_to_stream, subscription_name, subscriber, start_from}, _from, %Stream{stream_uuid: stream_uuid} = state) do
-    reply = Subscriptions.subscribe_to_stream(stream_uuid, self(), subscription_name, subscriber, start_from_stream_version(state, start_from))
+  def handle_call({:subscribe_to_stream, subscription_name, subscriber, opts}, _from, %Stream{stream_uuid: stream_uuid} = state) do
+    {start_from, opts} = Keyword.pop(opts, :start_from, :origin)
+
+    opts = Keyword.merge([start_from_stream_version: start_from_stream_version(state, start_from)], opts)
+
+    reply = Subscriptions.subscribe_to_stream(stream_uuid, self(), subscription_name, subscriber, opts)
 
     {:reply, reply, state}
   end
@@ -86,9 +90,9 @@ defmodule EventStore.Streams.Stream do
     {:reply, {:ok, stream_version}, state}
   end
 
-  defp start_from_stream_version(%Stream{} = _stream, :origin), do: 0
+  defp start_from_stream_version(%Stream{}, :origin), do: 0
   defp start_from_stream_version(%Stream{stream_version: stream_version}, :current), do: stream_version
-  defp start_from_stream_version(%Stream{} = _stream, start_from) when is_integer(start_from), do: start_from
+  defp start_from_stream_version(%Stream{}, start_from) when is_integer(start_from), do: start_from
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     {:ok, stream_id} = Storage.create_stream(stream_uuid)

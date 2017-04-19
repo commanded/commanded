@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.0
+
+### Enhancements
+
+- Adds `causation_id` alongside `correlation_id` for events ([#48](https://github.com/slashdotdash/eventstore/pull/48)).
+
+  To migrate an existing event store database execute SQL statement:
+
+  ```sql
+  ALTER TABLE events ADD causation_id text;
+  ```
+
+- Allow single stream, and all streams, subscriptions to provide a mapper function that maps every received event before sending to the subscriber.
+
+  ```elixir
+  EventStore.subscribe_to_stream(stream_uuid, "subscription", subscriber, mapper: fn event -> event.data end)
+  ```
+
+- Subscribers now receive an `{:events, events}` tuple and should acknowledge receipt by: `EventStore.ack(subscription, events)`
+
 ## v0.8.1
 
 ### Enhancements
