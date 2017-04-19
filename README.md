@@ -206,9 +206,9 @@ Start your subscriber process, which subscribes to all streams in the event stor
 
 ## Event serialization
 
-The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for deployment.
+The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for production usage.
 
-You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data to JSON using the [Poison](https://github.com/devinus/poison) library.
+You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data and metadata to JSON using the [Poison](https://github.com/devinus/poison) library.
 
 ```elixir
 defmodule JsonSerializer do
@@ -290,5 +290,7 @@ You should include unit tests to cover any changes.
 
 - [Andrey Akulov](https://github.com/astery)
 - [Craig Savolainen](https://github.com/maedhr)
+- [David Soff](https://github.com/Davidsoff)
 - [Paul Iannazzo](https://github.com/boxxxie)
+- [Simon Harris](https://github.com/harukizaemon)
 - [Stuart Corbishley](https://github.com/stuartc)

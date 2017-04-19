@@ -272,8 +272,13 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defp notify_subscriber(%SubscriptionState{}, []), do: nil
-  defp notify_subscriber(%SubscriptionState{subscriber: subscriber, mapper: mapper}, events) do
-    send(subscriber, {:events, Enum.map(events, mapper)})
+  defp notify_subscriber(%SubscriptionState{subscriber: subscriber, mapper: mapper}, events) when is_function(mapper) do
+    send_to_subscriber(subscriber, Enum.map(events, mapper))
+  end
+  defp notify_subscriber(%SubscriptionState{subscriber: subscriber}, events), do: send_to_subscriber(subscriber, events)
+
+  defp send_to_subscriber(subscriber, events) do
+    send(subscriber, {:events, events})
   end
 
   defp ack_events(%SubscriptionState{stream_uuid: stream_uuid, subscription_name: subscription_name} = data, ack) do

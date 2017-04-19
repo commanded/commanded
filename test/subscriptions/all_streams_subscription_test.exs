@@ -15,24 +15,26 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     {:ok, %{conn: conn}}
   end
 
-  test "create subscription to all streams" do
-    subscription = create_subscription()
+  describe "subscribe to all streams" do
+    test "create subscription to all streams" do
+      subscription = create_subscription()
 
-    assert subscription.state == :request_catch_up
-    assert subscription.data.subscription_name == @subscription_name
-    assert subscription.data.subscriber == self()
-    assert subscription.data.last_seen == 0
-    assert subscription.data.last_ack == 0
-  end
+      assert subscription.state == :request_catch_up
+      assert subscription.data.subscription_name == @subscription_name
+      assert subscription.data.subscriber == self()
+      assert subscription.data.last_seen == 0
+      assert subscription.data.last_ack == 0
+    end
 
-  test "create subscription to all streams from starting event id" do
-    subscription = create_subscription(start_from_event_id: 2)
+    test "create subscription to all streams from starting event id" do
+      subscription = create_subscription(start_from_event_id: 2)
 
-    assert subscription.state == :request_catch_up
-    assert subscription.data.subscription_name == @subscription_name
-    assert subscription.data.subscriber == self()
-    assert subscription.data.last_seen == 2
-    assert subscription.data.last_ack == 2
+      assert subscription.state == :request_catch_up
+      assert subscription.data.subscription_name == @subscription_name
+      assert subscription.data.subscriber == self()
+      assert subscription.data.last_seen == 2
+      assert subscription.data.last_ack == 2
+    end
   end
 
   test "catch-up subscription, no persisted events" do
@@ -70,7 +72,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.state == :subscribed
     assert subscription.data.last_seen == 3
 
-    assert_receive {:events, received_events, nil}
+    assert_receive {:events, received_events}
     expected_events = EventFactory.deserialize_events(recorded_events)
 
     assert pluck(received_events, :correlation_id) == pluck(expected_events, :correlation_id)
@@ -89,7 +91,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     assert subscription.state == :subscribed
 
-    assert_receive {:events, received_events, nil}
+    assert_receive {:events, received_events}
 
     assert pluck(received_events, :correlation_id) == pluck(events, :correlation_id)
     assert pluck(received_events, :causation_id) == pluck(events, :causation_id)
@@ -114,7 +116,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert_receive {:caught_up, 3}
 
       # should not receive already seen events
-      refute_receive {:events, _received_events, nil}
+      refute_receive {:events, _received_events}
 
       subscription = StreamSubscription.caught_up(subscription, 3)
 
@@ -130,7 +132,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
         |> StreamSubscription.catch_up(fn last_seen -> send(self, {:caught_up, last_seen}) end)
 
       # should receive already seen events
-      assert_receive {:events, received_events, nil}
+      assert_receive {:events, received_events}
       assert length(received_events) == 3
 
       assert_receive {:caught_up, 3}
@@ -159,7 +161,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       assert subscription.state == :catching_up
 
-      assert_receive {:events, received_events, nil}
+      assert_receive {:events, received_events}
       assert length(received_events) == 3
 
       assert_receive {:caught_up, 3}
@@ -189,8 +191,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.state == :subscribed
 
     # only receive initial events
-    assert_receive {:events, received_events, nil}
-    refute_receive {:events, _received_events, nil}
+    assert_receive {:events, received_events}
+    refute_receive {:events, _received_events}
 
     assert length(received_events) == 3
     assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
@@ -208,7 +210,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.state == :subscribed
 
     # now receive all remaining events
-    assert_receive {:events, received_events, nil}
+    assert_receive {:events, received_events}
 
     assert length(received_events) == 3
     assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
@@ -231,8 +233,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       assert subscription.state == :max_capacity
 
-      assert_receive {:events, received_events, nil}
-      refute_receive {:events, _received_events, nil}
+      assert_receive {:events, received_events}
+      refute_receive {:events, _received_events}
 
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(initial_events, :correlation_id)
@@ -244,7 +246,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert subscription.state == :request_catch_up
 
       # now receive all remaining events
-      assert_receive {:events, received_events, nil}
+      assert_receive {:events, received_events}
 
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
@@ -270,8 +272,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       assert subscription.state == :max_capacity
 
-      assert_receive {:events, received_events, nil}
-      refute_receive {:events, _received_events, nil}
+      assert_receive {:events, received_events}
+      refute_receive {:events, _received_events}
 
       assert length(received_events) == 3
 
@@ -284,7 +286,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       assert subscription.state == :request_catch_up
 
       # now receive all remaining events
-      assert_receive {:events, received_events, nil}
+      assert_receive {:events, received_events}
 
       assert length(received_events) == 3
       assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
@@ -295,7 +297,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
   defp create_subscription(opts \\ []) do
     StreamSubscription.new
-    |> StreamSubscription.subscribe(@all_stream, nil, @subscription_name, nil, self(), opts)
+    |> StreamSubscription.subscribe(@all_stream, nil, @subscription_name, self(), opts)
   end
 
   defp ack_refute_receive(subscription, ack) do
@@ -306,7 +308,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     assert subscription.data.last_ack == ack
 
     # don't receive remaining events until ack received for all initial events
-    refute_receive {:events, _received_events, nil}
+    refute_receive {:events, _received_events}
 
     subscription
   end
