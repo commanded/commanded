@@ -124,7 +124,7 @@ defmodule EventStore do
 
   Returns `{:ok, subscription}` when subscription succeeds.
   """
-  @spec subscribe_to_stream(String.t, String.t, pid, map) :: {:ok, subscription :: pid}
+  @spec subscribe_to_stream(String.t, String.t, pid, keyword) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts \\ [])
@@ -150,7 +150,7 @@ defmodule EventStore do
 
   Returns `{:ok, subscription}` when subscription succeeds.
   """
-  @spec subscribe_to_all_streams(String.t, pid, map) :: {:ok, subscription :: pid}
+  @spec subscribe_to_all_streams(String.t, pid, keyword) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
   def subscribe_to_all_streams(subscription_name, subscriber, opts \\ [])
