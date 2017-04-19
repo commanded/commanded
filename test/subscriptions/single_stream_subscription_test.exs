@@ -15,30 +15,42 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
     {:ok, %{conn: conn}}
   end
 
-  test "create subscription to a single stream" do
-    stream_uuid = UUID.uuid4
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+  describe "subscribe to stream" do
+    test "create subscription to a single stream" do
+      stream_uuid = UUID.uuid4
+      {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    subscription = create_subscription(stream_uuid, stream)
+      subscription = create_subscription(stream_uuid, stream)
 
-    assert subscription.state == :request_catch_up
-    assert subscription.data.subscription_name == @subscription_name
-    assert subscription.data.subscriber == self()
-    assert subscription.data.last_seen == 0
-    assert subscription.data.last_ack == 0
-  end
+      assert subscription.state == :request_catch_up
+      assert subscription.data.subscription_name == @subscription_name
+      assert subscription.data.subscriber == self()
+      assert subscription.data.last_seen == 0
+      assert subscription.data.last_ack == 0
+    end
 
-  test "create subscription to a single stream from starting stream version" do
-    stream_uuid = UUID.uuid4
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+    test "create subscription to a single stream from starting stream version" do
+      stream_uuid = UUID.uuid4
+      {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    subscription = create_subscription(stream_uuid, stream, start_from_stream_version: 2)
+      subscription = create_subscription(stream_uuid, stream, start_from_stream_version: 2)
 
-    assert subscription.state == :request_catch_up
-    assert subscription.data.subscription_name == @subscription_name
-    assert subscription.data.subscriber == self()
-    assert subscription.data.last_seen == 2
-    assert subscription.data.last_ack == 2
+      assert subscription.state == :request_catch_up
+      assert subscription.data.subscription_name == @subscription_name
+      assert subscription.data.subscriber == self()
+      assert subscription.data.last_seen == 2
+      assert subscription.data.last_ack == 2
+    end
+
+    test "create subscription to a single stream with event mapping function" do
+      stream_uuid = UUID.uuid4
+      {:ok, stream} = Streams.open_stream(stream_uuid)
+
+      mapper = fn event -> event.event_id end
+      subscription = create_subscription(stream_uuid, stream, mapper: mapper)
+
+      assert subscription.data.mapper == mapper
+    end
   end
 
   describe "catch-up subscription" do

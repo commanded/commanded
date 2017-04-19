@@ -18,6 +18,7 @@ defmodule EventStore do
 
   alias EventStore.Snapshots.{SnapshotData,Snapshotter}
   alias EventStore.{EventData,RecordedEvent,Streams,Subscriptions}
+  alias EventStore.Subscriptions.Subscription
   alias EventStore.Streams.{AllStream,Stream}
 
   @all_stream "$all"
@@ -114,15 +115,23 @@ defmodule EventStore do
 
     - `subscriber` is a process that will be sent `{:events, events, subscription}` notification messages.
 
+    - `opts` is an optional map providing additional subscription configuration:
+      - `start_from` is a pointer to the first event to receive. It must be one of:
+          - `:origin` for all events from the start of the stream (default).
+          - `:current` for any new events appended to the stream after the subscription has been created.
+          - any positive integer for a stream version to receive events after.
+      - `mapper` to define a function to map each recorded event before sending to the subscriber.
+
   Returns `{:ok, subscription}` when subscription succeeds.
   """
-  @spec subscribe_to_stream(String.t, String.t, pid, start_from) :: {:ok, subscription :: pid}
+  @spec subscribe_to_stream(String.t, String.t, pid, map) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
-  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, start_from \\ :origin) do
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts \\ [])
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
     {:ok, stream} = Streams.open_stream(stream_uuid)
 
-    Stream.subscribe_to_stream(stream, subscription_name, subscriber, start_from)
+    Stream.subscribe_to_stream(stream, subscription_name, subscriber, opts)
   end
 
   @doc """
@@ -132,13 +141,29 @@ defmodule EventStore do
 
     - `subscriber` is a process that will be sent `{:events, events, subscription}` notification messages.
 
+    - `opts` is an optional map providing additional subscription configuration:
+      - `start_from` is a pointer to the first event to receive. It must be one of:
+          - `:origin` for all events from the start of the stream (default).
+          - `:current` for any new events appended to the stream after the subscription has been created.
+          - any positive integer for an event id to receive events after that exact event.
+      - `mapper` to define a function to map each recorded event before sending to the subscriber.
+
   Returns `{:ok, subscription}` when subscription succeeds.
   """
-  @spec subscribe_to_all_streams(String.t, pid, start_from) :: {:ok, subscription :: pid}
+  @spec subscribe_to_all_streams(String.t, pid, map) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason :: term}
-  def subscribe_to_all_streams(subscription_name, subscriber, start_from \\ :origin) do
-    AllStream.subscribe_to_stream(subscription_name, subscriber, start_from)
+  def subscribe_to_all_streams(subscription_name, subscriber, opts \\ [])
+  def subscribe_to_all_streams(subscription_name, subscriber, opts) do
+    AllStream.subscribe_to_stream(subscription_name, subscriber, opts)
+  end
+
+  @doc """
+  Acknowledge receipt of the given events received from a single stream, or all streams, subscription.
+  """
+  @spec ack(pid, RecordedEvent.t | list(RecordedEvent.t)) :: :ok | {:error, reason :: term}
+  def ack(subscription, events) do
+    Subscription.ack(subscription, events)
   end
 
   @doc """

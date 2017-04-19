@@ -1,10 +1,10 @@
 language: elixir
 
 elixir:
-  - 1.4.0
+  - 1.4.2
 
 otp_release:
-  - 19.2
+  - 19.3
 
 services:
   - postgresql
