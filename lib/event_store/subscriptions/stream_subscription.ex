@@ -233,7 +233,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
         spawn_link(fn ->
           last_event =
             unseen_event_stream
-            |> Stream.chunk_by(&(&1.correlation_id))
+            |> Stream.chunk_by(&(&1.stream_id))
             |> Stream.each(&notify_subscriber(data, &1))
             |> Stream.map(&Enum.at(&1, -1))
             |> Enum.at(-1)
@@ -258,7 +258,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       ^next_ack ->
         # subscriber has ack'd last received event, so send pending
         pending_events
-        |> Enum.chunk_by(&(&1.correlation_id))
+        |> Enum.chunk_by(&(&1.stream_id))
         |> Enum.each(&notify_subscriber(data, &1))
 
         %SubscriptionState{data|
