@@ -43,6 +43,10 @@ defmodule EventStore.Subscriptions.Subscription do
     Subscription.ack(subscription, List.last(events))
   end
 
+  def ack(subscription, event_id) when is_integer(event_id) do
+    GenServer.cast(subscription, {:ack, event_id})
+  end
+
   def ack(subscription, %RecordedEvent{event_id: event_id}) do
     GenServer.cast(subscription, {:ack, event_id})
   end

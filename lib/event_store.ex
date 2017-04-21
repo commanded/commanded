@@ -161,7 +161,7 @@ defmodule EventStore do
   @doc """
   Acknowledge receipt of the given events received from a single stream, or all streams, subscription.
   """
-  @spec ack(pid, RecordedEvent.t | list(RecordedEvent.t)) :: :ok | {:error, reason :: term}
+  @spec ack(pid, RecordedEvent.t | list(RecordedEvent.t) | non_neg_integer) :: :ok | {:error, reason :: term}
   def ack(subscription, events) do
     Subscription.ack(subscription, events)
   end
