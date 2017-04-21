@@ -3,7 +3,9 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
   use Commanded.EventStore
 
   alias Commanded.EventStore.EventData
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.Helpers.Wait
+
+  defmodule BankAccountOpened, do: defstruct [:account_number, :initial_balance]
 
   defmodule Subscriber do
     use GenServer
@@ -129,11 +131,15 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, subscriber} = Subscriber.start_link()
 
-      received_events = Subscriber.received_events(subscriber)
-      assert length(received_events) == 3
+      Wait.until(fn ->
+        received_events = Subscriber.received_events(subscriber)
+        assert length(received_events) == 3
+      end)
+
+      # wait for last `ack`
+      :timer.sleep(200)
 
       Commanded.Helpers.Process.shutdown(subscriber)
-
       {:ok, subscriber} = Subscriber.start_link()
 
       received_events = Subscriber.received_events(subscriber)
@@ -141,8 +147,10 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, 1} = @event_store.append_to_stream("stream3", 0, build_events(1))
 
-      received_events = Subscriber.received_events(subscriber)
-      assert length(received_events) == 1
+      Wait.until(fn ->
+        received_events = Subscriber.received_events(subscriber)
+        assert length(received_events) == 1
+      end)
     end
   end
 
@@ -156,7 +164,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
   defp build_event(account_number) do
     %EventData{
       correlation_id: UUID.uuid4,
-      event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
+      event_type: "Elixir.Commanded.EventStore.Adapter.SubscriptionTest.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
       metadata: %{}
     }

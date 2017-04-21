@@ -5,7 +5,8 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
   import Commanded.Enumerable, only: [pluck: 2]
 
   alias Commanded.EventStore.EventData
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+
+  defmodule BankAccountOpened, do: defstruct [:account_number, :initial_balance]
 
   describe "append events to a stream" do
     test "should append events" do
@@ -64,7 +65,7 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
   defp build_event(account_number) do
     %EventData{
       correlation_id: UUID.uuid4,
-      event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
+      event_type: "Elixir.Commanded.EventStore.Adapter.AppendEventsTest.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
       metadata: %{"metadata" => "value"},
     }

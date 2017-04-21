@@ -27,8 +27,7 @@ defmodule Commanded.Mixfile do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/example_domain", "test/helpers"]
-  defp elixirc_paths(_), do: ["lib"]
+  defp elixirc_paths(_), do: ["lib", "test/helpers"]
 
   defp deps do
     [
@@ -49,7 +48,8 @@ Command handling middleware for CQRS applications
     [
       files: [
         "lib", "mix.exs", "README*", "LICENSE*",
-        "test/event_store_adapter", "test/event_store_adapter/support",
+        "test/helpers",
+        "test/event_store_adapter",
         "test/example_domain/bank_account", "test/example_domain/money_transfer",
       ],
       maintainers: ["Ben Smith"],

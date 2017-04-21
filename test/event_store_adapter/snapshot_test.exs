@@ -1,9 +1,10 @@
-defmodule Commanded.EventStoreAdapter.SnapshotTest do
+defmodule Commanded.EventStore.Adapter.SnapshotTest do
   use Commanded.StorageCase
   use Commanded.EventStore
 
   alias Commanded.EventStore.SnapshotData
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+
+  defmodule BankAccountOpened, do: defstruct [:account_number, :initial_balance]
 
   describe "record a snapshot" do
     test "should record the snapshot" do
@@ -49,7 +50,7 @@ defmodule Commanded.EventStoreAdapter.SnapshotTest do
     %SnapshotData{
       source_uuid: UUID.uuid4,
       source_version: account_number,
-      source_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
+      source_type: "Elixir.Commanded.EventStore.Adapter.SnapshotTest.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
       metadata: nil,
       created_at: DateTime.to_naive(DateTime.utc_now())

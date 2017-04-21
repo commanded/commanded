@@ -5,7 +5,7 @@
   "docker": {:git, "https://github.com/bearice/elixir-docker.git", "03809fc594b9706c106fc28b7ef03c2dbde2fe93", []},
   "earmark": {:hex, :earmark, "1.2.0", "bf1ce17aea43ab62f6943b97bd6e3dc032ce45d4f787504e3adf738e54b42f3a", [:mix], []},
   "eventstore": {:hex, :eventstore, "0.8.0", "677c8897d97b263b4358370bea3be4220df814f483fcd281a45e4db19fb3dee0", [:mix], [{:fsm, "~> 0.3", [hex: :fsm, optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, optional: false]}, {:postgrex, "~> 0.13", [hex: :postgrex, optional: false]}]},
-  "ex_doc": {:hex, :ex_doc, "0.15.0", "e73333785eef3488cf9144a6e847d3d647e67d02bd6fdac500687854dd5c599f", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, optional: false]}]},
+  "ex_doc": {:hex, :ex_doc, "0.15.1", "d5f9d588fd802152516fccfdb96d6073753f77314fcfee892b15b6724ca0d596", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, optional: false]}]},
   "exjsx": {:hex, :exjsx, "3.2.1", "1bc5bf1e4fd249104178f0885030bcd75a4526f4d2a1e976f4b428d347614f0f", [], [{:jsx, "~> 2.8.0", [hex: :jsx, optional: false]}]},
   "exprotobuf": {:hex, :exprotobuf, "1.0.2", "71056a3547eb37e53d64d892d4bc7a5d8d6355f48070e646357c6ed64571bfea", [], [{:gpb, "~> 3.23.2", [hex: :gpb, optional: false]}]},
   "extreme": {:hex, :extreme, "0.7.1", "bb7bd7de4a15e2fdd022bf03bf1106818c608b9d0b08df183e3d49615169c140", [], [{:exprotobuf, "~> 1.0.0", [hex: :exprotobuf, optional: false]}, {:httpoison, "~> 0.8.0", [hex: :httpoison, optional: false]}, {:poison, "~> 1.4 or ~> 2.2", [hex: :poison, optional: false]}, {:uuid, "~> 1.1.4", [hex: :uuid, optional: false]}]},
