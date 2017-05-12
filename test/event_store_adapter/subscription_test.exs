@@ -57,6 +57,8 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     test "should receive events appended to any stream" do
       {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
 
+      wait_for_event_store()
+
       {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
       {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
       {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
@@ -72,11 +74,17 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
       {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
 
+      wait_for_event_store()
+
       {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :current)
+
+      wait_for_event_store()
 
       refute_receive({:events, _events})
 
       {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
+
+      wait_for_event_store()
 
       assert_receive_events(subscription, 3)
 
@@ -156,9 +164,14 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
   def assert_receive_events(subscription, expected_count) do
     assert_receive {:events, received_events}
-    assert length(received_events) == expected_count
 
     @event_store.ack_event(subscription, List.last(received_events))
+
+    case expected_count - length(received_events) do
+      0 -> :ok
+      remaining when remaining > 0 -> assert_receive_events(subscription, remaining)
+      remaining when remaining < 0 -> flunk("Received #{remaining} more event(s) than expected")
+    end
   end
 
   defp build_event(account_number) do
@@ -172,5 +185,12 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
   defp build_events(count) do
     for account_number <- 1..count, do: build_event(account_number)
+  end
+
+  defp wait_for_event_store do
+    case Application.get_env(:commanded, :event_store_wait) do
+      nil -> :ok
+      wait -> :timer.sleep(wait)
+    end
   end
 end
