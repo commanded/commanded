@@ -123,9 +123,13 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
 
+      wait_for_event_store()
+
       assert_receive_events(subscription, 1, from: 1)
 
       :ok = @event_store.unsubscribe_from_all_streams("subscriber")
+
+      wait_for_event_store()
 
       {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
       {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
@@ -141,15 +145,17 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, subscriber} = Subscriber.start_link()
 
-      Wait.until(fn ->
+      wait_until(fn ->
         received_events = Subscriber.received_events(subscriber)
         assert length(received_events) == 3
       end)
 
       # wait for last `ack`
-      :timer.sleep(200)
+      :timer.sleep(event_store_wait(200))
 
       Commanded.Helpers.Process.shutdown(subscriber)
+      wait_for_event_store()
+
       {:ok, subscriber} = Subscriber.start_link()
 
       received_events = Subscriber.received_events(subscriber)
@@ -157,15 +163,19 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, 1} = @event_store.append_to_stream("stream3", 0, build_events(1))
 
-      Wait.until(fn ->
+      wait_until(fn ->
         received_events = Subscriber.received_events(subscriber)
         assert length(received_events) == 1
       end)
     end
   end
 
-  def assert_receive_events(subscription, expected_count, opts \\ [])
-  def assert_receive_events(subscription, expected_count, opts) do
+  defp wait_until(assertion) do
+    Wait.until(event_store_wait(1_000), assertion)
+  end
+
+  defp assert_receive_events(subscription, expected_count, opts \\ [])
+  defp assert_receive_events(subscription, expected_count, opts) do
     from_event_number = Keyword.get(opts, :from, 1)
 
     assert_receive {:events, received_events}
@@ -199,9 +209,11 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
   end
 
   defp wait_for_event_store do
-    case Application.get_env(:commanded, :event_store_wait) do
+    case event_store_wait() do
       nil -> :ok
       wait -> :timer.sleep(wait)
     end
   end
+
+  defp event_store_wait(default \\ nil), do: Application.get_env(:commanded, :event_store_wait, default)
 end
