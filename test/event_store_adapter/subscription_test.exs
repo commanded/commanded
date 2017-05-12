@@ -63,9 +63,9 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       {:ok, 2} = @event_store.append_to_stream("stream2", 0, build_events(2))
       {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
 
-      assert_receive_events(subscription, 1)
-      assert_receive_events(subscription, 2)
-      assert_receive_events(subscription, 3)
+      assert_receive_events(subscription, 1, from: 1)
+      assert_receive_events(subscription, 2, from: 2)
+      assert_receive_events(subscription, 3, from: 4)
 
       refute_receive({:events, _events})
     end
@@ -86,7 +86,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       wait_for_event_store()
 
-      assert_receive_events(subscription, 3)
+      assert_receive_events(subscription, 3, from: 4)
 
       refute_receive({:events, _events})
     end
@@ -104,24 +104,26 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
 
-      assert_receive_events(subscription, 1)
-      assert_receive_events(subscription, 2)
+      wait_for_event_store()
+
+      assert_receive_events(subscription, 1, from: 1)
+      assert_receive_events(subscription, 2, from: 2)
 
       {:ok, 3} = @event_store.append_to_stream("stream3", 0, build_events(3))
 
-      assert_receive_events(subscription, 3)
+      assert_receive_events(subscription, 3, from: 4)
 
       refute_receive({:events, _events})
     end
   end
 
-  describe "ubsubscribe from all streams" do
+  describe "unsubscribe from all streams" do
     test "should not receive further events appended to any stream" do
       {:ok, subscription} = @event_store.subscribe_to_all_streams("subscriber", self(), :origin)
 
       {:ok, 1} = @event_store.append_to_stream("stream1", 0, build_events(1))
 
-      assert_receive_events(subscription, 1)
+      assert_receive_events(subscription, 1, from: 1)
 
       :ok = @event_store.unsubscribe_from_all_streams("subscriber")
 
@@ -162,14 +164,23 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     end
   end
 
-  def assert_receive_events(subscription, expected_count) do
+  def assert_receive_events(subscription, expected_count, opts \\ [])
+  def assert_receive_events(subscription, expected_count, opts) do
+    from_event_number = Keyword.get(opts, :from, 1)
+
     assert_receive {:events, received_events}
+
+    received_events
+    |> Enum.with_index(from_event_number)
+    |> Enum.each(fn {received_event, expected_event_number} ->
+      assert received_event.event_number == expected_event_number
+    end)
 
     @event_store.ack_event(subscription, List.last(received_events))
 
     case expected_count - length(received_events) do
       0 -> :ok
-      remaining when remaining > 0 -> assert_receive_events(subscription, remaining)
+      remaining when remaining > 0 -> assert_receive_events(subscription, remaining, from: from_event_number + length(received_events))
       remaining when remaining < 0 -> flunk("Received #{remaining} more event(s) than expected")
     end
   end
