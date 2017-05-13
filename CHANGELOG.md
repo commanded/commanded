@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.10.0
+
+### Enhancements
+
+- Extract event store integration to a behaviour (`Commanded.EventStore`). This defines the contract to be implemented by an event store adapter. It allows additional event store databases to be used with Commanded.
+
+  By default, a `GenServer` in-memory event store adapter is used. This should **only be used for testing** as there is no persistence.
+
+  The existing PostgreSQL-based [eventstore](https://github.com/slashdotdash/eventstore) integration has been extracted as a separate package ([commanded_eventstore_adapter](https://github.com/slashdotdash/commanded-eventstore-adapter)). There is also a new adapter for Greg Young's Event Store using the Extreme library ([commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter)).
+
+  You must install the required event store adapter package and update your environment configuration to specify the `:event_store_adapter` module. See the [README](https://github.com/slashdotdash/commanded/blob/master/README.md) for details.
+
 ## v0.9.0
 
 ### Enhancements

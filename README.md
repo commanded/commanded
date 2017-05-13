@@ -37,39 +37,98 @@ MIT License
 
 The package can be installed from hex as follows.
 
-  1. Add commanded to your list of dependencies in `mix.exs`:
+  1. Add `commanded` to your list of dependencies in `mix.exs`:
 
-```elixir
-def deps do
-  [{:commanded, "~> 0.9"}]
-end
-```
+    ```elixir
+    def deps do
+      [{:commanded, "~> 0.10"}]
+    end
+    ```
 
-  2. Ensure commanded is started before your application:
+## Choosing an event store
 
-```elixir
-def application do
-  [applications: [:commanded]]
-end
-```
+You must decide which event store database to use with Commanded:
 
-  3. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev.exs`), specifying usage of the included JSON serializer:
+- PostgreSQL-based [EventStore](https://github.com/slashdotdash/eventstore) using the [commanded_eventstore_adapter](https://github.com/slashdotdash/commanded-eventstore-adapter) package.
 
-```elixir
-config :eventstore, EventStore.Storage,
-  serializer: Commanded.Serialization.JsonSerializer,
-  username: "postgres",
-  password: "postgres",
-  database: "eventstore_dev",
-  hostname: "localhost",
-  pool_size: 10
-```
+- Greg Young's [Event Store](https://geteventstore.com/) using the [commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter) package.
 
-  4. Create the `eventstore` database and tables using the `mix` task.
+### PostgreSQL-based EventStore
 
-```
-mix event_store.create
-```
+1. Add `commanded_eventstore_adapter` to your list of dependencies in `mix.exs`:
+
+    ```elixir
+    def deps do
+      [{:commanded_eventstore_adapter, "~> 0.1"}]
+    end
+    ```
+
+2. Configure Commanded to use the event store adapter:
+
+    ```elixir
+    config :commanded,
+      event_store_adapter: Commanded.EventStore.Adapters.EventStore
+    ```
+
+3. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev.exs`), specifying usage of the included JSON serializer:
+
+    ```elixir
+    config :eventstore, EventStore.Storage,
+      serializer: Commanded.Serialization.JsonSerializer,
+      username: "postgres",
+      password: "postgres",
+      database: "eventstore_dev",
+      hostname: "localhost",
+      pool_size: 10
+    ```
+
+4. Create the `eventstore` database and tables using the `mix` task.
+
+    ```
+    mix event_store.create
+    ```
+
+### Greg Young's Event store
+
+This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir TCP client to connect to the Event Store. 
+
+1. Add `commanded_extreme_adapter` to your list of dependencies in `mix.exs`:
+
+    ```elixir
+    def deps do
+      [{:commanded_extreme_adapter, "~> 0.1"}]
+    end
+    ```
+
+2. Configure Commanded to use the event store adapter:
+
+    ```elixir
+    config :commanded,
+      event_store_adapter: Commanded.EventStore.Adapters.Extreme
+    ```
+
+3. Configure the `extreme` library connection with your event store details:
+
+    ```elixir
+    config :extreme, :event_store,
+      db_type: :node,
+      host: "localhost",
+      port: 1113,
+      username: "admin",
+      password: "changeit",
+      reconnect_delay: 2_000,
+      max_attempts: :infinity
+    ```
+
+4. Configure the `commanded_extreme_adapter` to use the JSON serializer and specify a stream prefix to be used by all Commanded event streams:
+
+    ```elixir
+    config :commanded_extreme_adapter,
+      serializer: Commanded.Serialization.JsonSerializer,
+      stream_prefix: "commandeddev"
+    ```
+
+You **must** run the Event Store with all projections enabled and standard projections started. Use the `--run-projections=all --start-standard-projections=true` flags when running the Event Store executable.
 
 ## Sample usage
 
@@ -270,7 +329,7 @@ Commanded provides a `Commanded.Middleware.Logger` middleware for logging the na
 
 ### Events
 
-Domain events indicate that something of importance has occurred, within the context of an aggregate. They are named in the past tense: account registered; funds transferred; fraudulent activity detected. 
+Domain events indicate that something of importance has occurred, within the context of an aggregate. They are named in the past tense: account registered; funds transferred; fraudulent activity detected.
 
 Create a module per domain event and define the fields with `defstruct`. An event **should contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
