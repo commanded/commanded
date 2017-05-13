@@ -20,16 +20,20 @@ MIT License
 ### Overview
 
 - [Getting started](#getting-started)
-- [Aggregate roots](#aggregate-roots)
-- [Commands](#commands)
-  - [Command handlers](#command-handlers)
-  - [Command dispatch and routing](#command-dispatch-and-routing)
-  - [Middleware](#middleware)
-- [Events](#events)
-  - [Event handlers](#event-handlers)
-- [Process managers](#process-managers)
-- [Supervision](#supervision)
-- [Serialization](#serialization)
+- [Choosing an event store](#choosing-an-event-store)
+  - [PostgreSQL-based EventStore](#postgresql-based-eventstore)
+  - [Greg Young's Event Store](#greg-youngs-event-store)
+- [Sample usage](#sample-usage)
+  - [Aggregate roots](#aggregate-roots)
+  - [Commands](#commands)
+    - [Command handlers](#command-handlers)
+    - [Command dispatch and routing](#command-dispatch-and-routing)
+    - [Middleware](#middleware)
+  - [Events](#events)
+    - [Event handlers](#event-handlers)
+  - [Process managers](#process-managers)
+  - [Supervision](#supervision)
+  - [Serialization](#serialization)
 - [Used in production?](#used-in-production)
 - [Contributing](#contributing)
 
@@ -37,7 +41,7 @@ MIT License
 
 The package can be installed from hex as follows.
 
-  1. Add `commanded` to your list of dependencies in `mix.exs`:
+1. Add `commanded` to your list of dependencies in `mix.exs`:
 
     ```elixir
     def deps do
@@ -88,9 +92,9 @@ You must decide which event store database to use with Commanded:
     mix event_store.create
     ```
 
-### Greg Young's Event store
+### Greg Young's Event Store
 
-This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir TCP client to connect to the Event Store. 
+This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir TCP client to connect to the Event Store.
 
 1. Add `commanded_extreme_adapter` to your list of dependencies in `mix.exs`:
 
