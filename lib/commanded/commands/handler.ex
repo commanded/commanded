@@ -11,5 +11,5 @@ defmodule Commanded.Commands.Handler do
 
   You should return `{:error, reason}` on failure.
   """
-  @callback handle(aggregate, command) :: domain_events | {:error, reason}
+  @callback handle(aggregate, command) :: domain_events | nil | {:error, reason}
 end
