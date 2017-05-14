@@ -2,6 +2,8 @@
 
 CQRS event store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) (v9.5 or later) as the underlying storage engine.
 
+[Changelog](CHANGELOG.md)
+
 MIT License
 
 [![Build Status](https://travis-ci.org/slashdotdash/eventstore.svg?branch=master)](https://travis-ci.org/slashdotdash/eventstore)
@@ -33,36 +35,36 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
   1. Add eventstore to your list of dependencies in `mix.exs`:
 
-```elixir    
-def deps do
-  [{:eventstore, "~> 0.8.1"}]
-end
-```
+    ```elixir    
+    def deps do
+      [{:eventstore, "~> 0.8.1"}]
+    end
+    ```
 
   2. Ensure `eventstore` is started before your application:
 
-```elixir
-def application do
-  [applications: [:eventstore]]
-end
-```
+    ```elixir
+    def application do
+      [applications: [:eventstore]]
+    end
+    ```
 
   3. Add an `eventstore` config entry containing the PostgreSQL connection details to each environment's mix config file (e.g. `config/dev.exs`).
 
-```elixir
-config :eventstore, EventStore.Storage,
-  username: "postgres",
-  password: "postgres",
-  database: "eventstore_dev",
-  hostname: "localhost",
-  pool_size: 10
-```
+    ```elixir
+    config :eventstore, EventStore.Storage,
+      username: "postgres",
+      password: "postgres",
+      database: "eventstore_dev",
+      hostname: "localhost",
+      pool_size: 10
+    ```
 
   4. Create the EventStore database and tables using the `mix` task
 
-```
-mix event_store.create
-```
+    ```
+    mix event_store.create
+    ```
 
 ## Using the EventStore
 
@@ -71,7 +73,7 @@ mix event_store.create
 Create a unique identity for each stream. It **must** be a string. This example uses the [uuid](https://hex.pm/packages/uuid) package.
 
 ```elixir
-stream_uuid = UUID.uuid4
+stream_uuid = UUID.uuid4()
 ```
 
 Set the expected version of the stream. This is used for optimistic concurrency. A new stream will be created when the expected version is zero.
