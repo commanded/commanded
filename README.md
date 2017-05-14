@@ -9,7 +9,12 @@ Provides support for:
 - Event handling.
 - Long running process managers.
 
-Uses [eventstore](https://github.com/slashdotdash/eventstore) for event data persistence to a PostgreSQL database.
+Use with one of the following event stores for persistence:
+
+- [EventStore](https://github.com/slashdotdash/eventstore) Elixir library, using PostgreSQL for persistence
+- Greg Young's [Event Store](https://geteventstore.com/).
+
+---
 
 [Changelog](CHANGELOG.md)
 
