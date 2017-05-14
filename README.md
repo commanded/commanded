@@ -35,6 +35,7 @@ MIT License
   - [Supervision](#supervision)
   - [Serialization](#serialization)
 - [Used in production?](#used-in-production)
+- [Event store provider](#event-store-provider)
 - [Contributing](#contributing)
 
 ## Getting started
@@ -51,13 +52,17 @@ The package can be installed from hex as follows.
 
 ## Choosing an event store
 
-You must decide which event store database to use with Commanded:
+You must decide which event store to use with Commanded. You have a choice between two existing event store adapters:
 
 - PostgreSQL-based [EventStore](https://github.com/slashdotdash/eventstore) using the [commanded_eventstore_adapter](https://github.com/slashdotdash/commanded-eventstore-adapter) package.
 
 - Greg Young's [Event Store](https://geteventstore.com/) using the [commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter) package.
 
+[Want to use a different event store?](#event-store-provider)
+
 ### PostgreSQL-based EventStore
+
+[EventStore](https://github.com/slashdotdash/eventstore) is an open-source event store using PostgreSQL for persistence, implemented in Elixir.
 
 1. Add `commanded_eventstore_adapter` to your list of dependencies in `mix.exs`:
 
@@ -94,6 +99,8 @@ You must decide which event store database to use with Commanded:
 
 ### Greg Young's Event Store
 
+Greg's [Event Store](https://geteventstore.com/) is an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
+
 This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir TCP client to connect to the Event Store.
 
 1. Add `commanded_extreme_adapter` to your list of dependencies in `mix.exs`:
@@ -111,7 +118,7 @@ This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir
       event_store_adapter: Commanded.EventStore.Adapters.Extreme
     ```
 
-3. Configure the `extreme` library connection with your event store details:
+3. Configure the `extreme` library connection with your event store connection details:
 
     ```elixir
     config :extreme, :event_store,
@@ -561,6 +568,12 @@ You can implement the `EventStore.Serializer` behaviour to use an alternative se
 Yes, Commanded is being used in production.
 
 - Case Study: [Building a CQRS/ES web application in Elixir using Phoenix](https://10consulting.com/2017/01/04/building-a-cqrs-web-application-in-elixir-using-phoenix/)
+
+## Event store provider
+
+To use an alternative event store with Commanded you will need to implement the `Commanded.EventStore` behaviour. This defines the contract to be implemented by an adapter module to allow an event store to be used with Commanded. Tests to verify an adapter conforms to the behaviour are provided in `test/event_store_adapter`.
+
+You can use one of the existing adapters ([commanded_eventstore_adapter](https://github.com/slashdotdash/commanded-eventstore-adapter) or [commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter)) to understand what is required.
 
 ## Contributing
 
