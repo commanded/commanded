@@ -3,12 +3,13 @@ use Mix.Config
 # Print only warnings and errors during test
 config :logger, :console, level: :warn, format: "[$level] $message\n"
 
-config :ex_unit, capture_log: true
+config :ex_unit,
+  capture_log: true,
+  assert_receive_timeout: 200
 
-config :eventstore, EventStore.Storage,
-  serializer: Commanded.Serialization.JsonSerializer,
-  username: "postgres",
-  password: "postgres",
-  database: "commanded_test",
-  hostname: "localhost",
-  pool_size: 1
+config :commanded,
+  event_store_adapter: Commanded.EventStore.Adapters.InMemory,
+  type_provider: Commanded.Serialization.ModuleNameTypeProvider,
+  reset_storage: fn ->
+    {:ok, _event_store} = Commanded.EventStore.Adapters.InMemory.start_link()
+  end

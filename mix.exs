@@ -4,7 +4,7 @@ defmodule Commanded.Mixfile do
   def project do
     [
       app: :commanded,
-      version: "0.9.0",
+      version: "0.10.0",
       elixir: "~> 1.4",
       elixirc_paths: elixirc_paths(Mix.env),
       description: description(),
@@ -20,25 +20,22 @@ defmodule Commanded.Mixfile do
     [
       applications: [
         :logger,
-        :eventstore,
         :poison,
-        :uuid
+        :uuid,
       ],
       mod: {Commanded.Application, []}
     ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/example_domain", "test/helpers"]
-  defp elixirc_paths(_), do: ["lib"]
+  defp elixirc_paths(_), do: ["lib", "test/helpers"]
 
   defp deps do
     [
-      {:eventstore, "~> 0.8"},
-      {:ex_doc, "~> 0.14", only: :dev},
-      {:markdown, github: "devinus/markdown", only: :dev},
+      {:ex_doc, "~> 0.15", only: :dev},
       {:mix_test_watch, "~> 0.2", only: :dev},
-      {:poison, "~> 3.0"},
-      {:uuid, "~> 1.1"}
+      {:poison, "~> 3.1"},
+      {:uuid, "~> 1.1"},
     ]
   end
 
@@ -50,7 +47,12 @@ Command handling middleware for CQRS applications
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE*"],
+      files: [
+        "lib", "mix.exs", "README*", "LICENSE*",
+        "test/helpers",
+        "test/event_store_adapter",
+        "test/example_domain/bank_account", "test/example_domain/money_transfer",
+      ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/slashdotdash/commanded",

@@ -1,12 +1,11 @@
 defmodule Commanded.Serialization.JsonSerializerTest do
 	use ExUnit.Case
-	doctest Commanded.Serialization.JsonSerializer
 
   alias Commanded.Serialization.JsonSerializer
-  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened}
+  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
   @serialized_event_json "{\"initial_balance\":1000,\"account_number\":\"ACC123\"}"
-  
+
 	test "should serialize event to JSON" do
     account_opened = %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}
 
@@ -18,5 +17,13 @@ defmodule Commanded.Serialization.JsonSerializerTest do
     type = Atom.to_string(account_opened.__struct__)
 
     assert JsonSerializer.deserialize(@serialized_event_json, type: type) == account_opened
+  end
+
+  defmodule NamedEvent, do: defstruct [data: nil]
+  defmodule AnotherNamedEvent, do: defstruct [data: nil]
+
+  test "should deserialize to event type which is specifying the module name" do
+    assert %NamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "Elixir.Commanded.Serialization.JsonSerializerTest.NamedEvent")
+    assert %AnotherNamedEvent{data: "data"} == JsonSerializer.deserialize("{\"data\": \"data\"}", type: "Elixir.Commanded.Serialization.JsonSerializerTest.AnotherNamedEvent")
   end
 end

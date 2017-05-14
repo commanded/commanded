@@ -1,17 +1,19 @@
 defmodule Commanded.Event.HandleEventTest do
-	use Commanded.StorageCase
+  use Commanded.StorageCase
+  use Commanded.EventStore
 
   import Commanded.Enumerable, only: [pluck: 2]
   import Commanded.Assertions.EventAssertions
 
   alias Commanded.Event.AppendingEventHandler
   alias Commanded.Helpers.EventFactory
+  alias Commanded.Helpers.Wait
   alias Commanded.ExampleDomain.AccountBalanceHandler
-	alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
+  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
 
-	test "should be notified of events" do
-    {:ok, _} = AccountBalanceHandler.start_link
-		{:ok, handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+  test "should be notified of events" do
+    {:ok, _} = AccountBalanceHandler.start_link()
+    {:ok, handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
 
     events = [
       %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},
@@ -19,14 +21,12 @@ defmodule Commanded.Event.HandleEventTest do
     ]
     recorded_events = EventFactory.map_to_recorded_events(events)
 
-    send(handler, {:events, recorded_events, self()})
+    send(handler, {:events, recorded_events})
 
-    assert_receive({:ack, 1})
-    assert_receive({:ack, 2})
-    refute_receive({:ack, _event_id})
-
-    assert AccountBalanceHandler.current_balance == 1_050
-	end
+    Wait.until(fn ->
+      assert AccountBalanceHandler.current_balance == 1_050
+    end)
+  end
 
   defmodule UninterestingEvent, do: defstruct [field: nil]
 
@@ -44,55 +44,55 @@ defmodule Commanded.Event.HandleEventTest do
     ]
     recorded_events = EventFactory.map_to_recorded_events(events)
 
-    send(handler, {:events, recorded_events, self()})
+    send(handler, {:events, recorded_events})
 
-    # handler ack's each received event
-    assert_receive({:ack, 1})
-    assert_receive({:ack, 2})
-    assert_receive({:ack, 3})
-    assert_receive({:ack, 4})
-    assert_receive({:ack, 5})
-    refute_receive({:ack, _event_id})
-
-    assert AccountBalanceHandler.current_balance == 1_050
+    Wait.until(fn ->
+      assert AccountBalanceHandler.current_balance == 1_050
+    end)
   end
 
   test "should ignore events created before the event handler's subscription when starting from `current`" do
-    {:ok, _} = AppendingEventHandler.start_link
+    {:ok, _} = AppendingEventHandler.start_link()
 
     stream_uuid = UUID.uuid4
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
-    :ok = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+    {:ok, 1} = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+
+    wait_for_event BankAccountOpened
 
     {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :current)
 
-    :ok = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+    {:ok, 2} = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
 
     wait_for_event MoneyDeposited
 
-    assert AppendingEventHandler.received_events == new_events
-    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [2]
+    Wait.until(fn ->
+      assert AppendingEventHandler.received_events == new_events
+      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [2]
+    end)
 	end
 
   test "should receive events created before the event handler's subscription when starting from `origin`" do
-    {:ok, _} = AppendingEventHandler.start_link
+    {:ok, _} = AppendingEventHandler.start_link()
 
     stream_uuid = UUID.uuid4
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
-    :ok = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+    {:ok, 1} = @event_store.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
 
     {:ok, _handler} = Commanded.Event.Handler.start_link("test_event_handler", AppendingEventHandler, start_from: :origin)
 
-    :ok = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+    {:ok, 2} = @event_store.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
 
     wait_for_event MoneyDeposited
 
-    assert AppendingEventHandler.received_events == initial_events ++ new_events
-    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
+    Wait.until(fn ->
+      assert AppendingEventHandler.received_events == initial_events ++ new_events
+      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
+    end)
 	end
 
 	test "should ignore already seen events" do
@@ -107,16 +107,13 @@ defmodule Commanded.Event.HandleEventTest do
 
     # send each event twice to simulate duplicate receives
     Enum.each(recorded_events, fn recorded_event ->
-      send(handler, {:events, [recorded_event], self()})
-      send(handler, {:events, [recorded_event], self()})
+      send(handler, {:events, [recorded_event]})
+      send(handler, {:events, [recorded_event]})
     end)
 
-    # handler ack's both events
-    assert_receive({:ack, 1})
-    assert_receive({:ack, 2})
-    refute_receive({:ack, _event_id})
-
-    assert AppendingEventHandler.received_events == events
-    assert pluck(AppendingEventHandler.received_metadata, :event_id) == [1, 2]
+    Wait.until(fn ->
+      assert AppendingEventHandler.received_events == events
+      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
+    end)
 	end
 end

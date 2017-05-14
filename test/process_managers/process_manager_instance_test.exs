@@ -2,11 +2,12 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
   use Commanded.StorageCase
   doctest Commanded.ProcessManagers.ProcessManagerInstance
 
-  alias Commanded.ProcessManagers.ProcessManagerInstance
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
+  alias Commanded.EventStore.RecordedEvent
+  alias Commanded.ProcessManagers.ProcessManagerInstance
 
   defmodule NullHandler do
     @behaviour Commanded.Commands.Handler
@@ -27,19 +28,21 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
 
     {:ok, process_manager} = ProcessManagerInstance.start_link(Router, "TransferMoneyProcessManager", TransferMoneyProcessManager, transfer_uuid)
 
-    event = %EventStore.RecordedEvent{
-      event_id: 1,
+    event = %RecordedEvent{
+      event_number: 1,
+      stream_id: "stream-id",
+      stream_version: 1,
       data: %MoneyTransferRequested{
         transfer_uuid: transfer_uuid,
         debit_account: account1_uuid,
         credit_account: account2_uuid,
-        amount: 100
+        amount: 100,
       },
     }
 
     :ok = ProcessManagerInstance.process_event(process_manager, event, self())
 
     # should send ack to process router after processing event
-    assert_receive({:"$gen_call", _, {:ack_event, 1}}, 1_000)
+    assert_receive({:"$gen_cast", {:ack_event, ^event}}, 1_000)
   end
 end

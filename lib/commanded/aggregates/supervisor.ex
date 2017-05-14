@@ -15,7 +15,7 @@ defmodule Commanded.Aggregates.Supervisor do
          is_atom(aggregate_uuid) or
          is_bitstring(aggregate_uuid) do
 
-    Logger.debug(fn -> "starting aggregate process for `#{aggregate_module}` with id #{aggregate_uuid}" end)
+    Logger.debug(fn -> "starting aggregate process for `#{inspect aggregate_module}` with UUID #{inspect aggregate_uuid}" end)
 
     case Supervisor.start_child(__MODULE__, [aggregate_module, aggregate_uuid]) do
       {:ok, _pid} -> {:ok, aggregate_uuid}
