@@ -5,6 +5,3 @@ elixir:
 
 otp_release:
   - 19.3
-
-sudo: required
-dist: trusty
