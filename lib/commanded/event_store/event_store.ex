@@ -42,6 +42,9 @@ defmodule Commanded.EventStore do
     | {:error, :subscription_already_exists}
     | {:error, reason}
 
+  @doc """
+  Acknowledge receipt and successful processing of the given event received from a subscription to an event stream.
+  """
   @callback ack_event(pid, RecordedEvent.t) :: any
 
   @doc """
