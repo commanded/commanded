@@ -28,7 +28,13 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
     end
   end
 
-  describe "stream events from a stream" do
+  describe "stream events from an unknown stream" do
+    test "should return stream not found error" do
+      assert {:error, :stream_not_found} == @event_store.stream_forward("unknownstream")
+    end
+  end
+
+  describe "stream events from an existing stream" do
     test "should read events" do
       events = build_events(4)
 
@@ -59,6 +65,18 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
       read_events = @event_store.stream_forward("secondstream", 0) |> Enum.to_list()
       assert 4 == length(read_events)
       assert coerce(events2) == coerce(read_events)
+    end
+
+    test "should read events in batches" do
+      events = build_events(10)
+
+      assert {:ok, 10} == @event_store.append_to_stream("stream", 0, events)
+
+      read_events = @event_store.stream_forward("stream", 0, 2) |> Enum.to_list()
+      assert length(read_events) == 10
+      assert coerce(events) == coerce(read_events)
+
+      assert pluck(read_events, :stream_version) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     end
   end
 

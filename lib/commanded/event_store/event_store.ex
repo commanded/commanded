@@ -33,7 +33,7 @@ defmodule Commanded.EventStore do
   @doc """
   Streams events from the given stream, in the order in which they were originally written.
   """
-  @callback stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, reason}
+  @callback stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, :stream_not_found} | {:error, reason}
 
   @doc """
   Subscriber will be notified of every event persisted to any stream.
