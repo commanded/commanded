@@ -174,7 +174,6 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     Wait.until(event_store_wait(1_000), assertion)
   end
 
-  defp assert_receive_events(subscription, expected_count, opts \\ [])
   defp assert_receive_events(subscription, expected_count, opts) do
     from_event_number = Keyword.get(opts, :from, 1)
 

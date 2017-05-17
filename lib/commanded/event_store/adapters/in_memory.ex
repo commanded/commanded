@@ -101,12 +101,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def handle_call({:stream_forward, stream_uuid, start_version}, _from, %State{streams: streams} = state) do
-    event_stream =
-      streams
-      |> Map.get(stream_uuid, [])
-      |> Stream.drop(max(0, start_version - 1))
+    reply = case Map.get(streams, stream_uuid) do
+      nil -> {:error, :stream_not_found}
+      events -> Stream.drop(events, max(0, start_version - 1))
+    end
 
-    {:reply, event_stream, state}
+    {:reply, reply, state}
   end
 
   def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber} = subscription}, _from, %State{subscriptions: subscriptions} = state) do
