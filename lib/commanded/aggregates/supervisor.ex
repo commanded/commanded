@@ -5,6 +5,7 @@ defmodule Commanded.Aggregates.Supervisor do
 
   use Supervisor
   require Logger
+  @aggregate_registry_name :aggregate_registry
 
   def start_link do
     Supervisor.start_link(__MODULE__, [], name: __MODULE__)
@@ -17,11 +18,33 @@ defmodule Commanded.Aggregates.Supervisor do
 
     Logger.debug(fn -> "Locating aggregate process for `#{inspect aggregate_module}` with UUID #{inspect aggregate_uuid}" end)
 
-    case Supervisor.start_child(__MODULE__, [aggregate_module, aggregate_uuid]) do
-      {:ok, _pid} -> {:ok, aggregate_uuid}
-      {:error, {:already_started, _pid}} -> {:ok, aggregate_uuid}
-      other -> {:error, other}
+    case Swarm.whereis_name(aggregate_uuid) do
+      :undefined ->
+        register(aggregate_module, aggregate_uuid)
+      pid ->
+        case :rpc.pinfo(pid, :status) do
+          :undefined ->
+            register(aggregate_module, aggregate_uuid)
+          _ -> {:ok, aggregate_uuid}
+        end
     end
+  end
+
+  def register(aggregate_module, aggregate_uuid) do
+    case Swarm.register_name(aggregate_uuid, Commanded.Aggregates.Supervisor,
+        :start_aggregate, [aggregate_module, aggregate_uuid]) do
+      {:ok, pid} -> 
+        Swarm.join(@aggregate_registry_name, pid)
+        {:ok, aggregate_uuid}
+      {:error, desc} ->
+        {:error, desc}
+      _ ->
+        {:error, :registration_error}
+      end
+  end
+
+  def start_aggregate(aggregate_module, aggregate_uuid) do
+    Supervisor.start_child(__MODULE__, [aggregate_module, aggregate_uuid])
   end
 
   def init(_) do

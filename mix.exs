@@ -22,6 +22,7 @@ defmodule Commanded.Mixfile do
         :logger,
         :poison,
         :uuid,
+        :swarm,
       ],
       mod: {Commanded.Application, []}
     ]
@@ -36,6 +37,7 @@ defmodule Commanded.Mixfile do
       {:mix_test_watch, "~> 0.2", only: :dev},
       {:poison, "~> 3.1"},
       {:uuid, "~> 1.1"},
+      {:swarm, "~> 3.0"}
     ]
   end
 
