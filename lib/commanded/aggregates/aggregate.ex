@@ -23,6 +23,12 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_version: 0,
   ]
 
+  defmodule DefaultLifespan do
+    @behaviour Commanded.Aggregates.AggregateLifespan
+
+    def after_command(_), do: :infinity
+  end
+
   def start_link(aggregate_module, aggregate_uuid) do
     name = via_tuple(aggregate_uuid)
     GenServer.start_link(__MODULE__, %Aggregate{
@@ -50,8 +56,8 @@ defmodule Commanded.Aggregates.Aggregate do
 
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
-  def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000) do
-    GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command}, timeout)
+  def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000, lifespan \\ DefaultLifespan) do
+    GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command, lifespan}, timeout)
   end
 
   @doc """
@@ -77,10 +83,10 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Execute the given command, using the provided handler, against the current aggregate state
   """
-  def handle_call({:execute_command, handler, function, command}, _from, %Aggregate{} = state) do
+  def handle_call({:execute_command, handler, function, command, lifespan}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(handler, function, command, state)
 
-    {:reply, reply, state}
+    {:reply, reply, state, lifespan.after_command(command)}
   end
 
   def handle_call({:aggregate_state}, _from, %Aggregate{aggregate_state: aggregate_state} = state) do
@@ -89,6 +95,10 @@ defmodule Commanded.Aggregates.Aggregate do
 
   def handle_call({:aggregate_version}, _from, %Aggregate{aggregate_version: aggregate_version} = state) do
     {:reply, aggregate_version, state}
+  end
+
+  def handle_info(:timeout, %Aggregate{} = state) do
+    {:stop, :normal, state}
   end
 
   defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do

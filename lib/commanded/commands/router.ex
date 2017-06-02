@@ -36,6 +36,7 @@ defmodule Commanded.Commands.Router do
       @registered_commands []
       @registered_middleware []
       @default_dispatch_timeout 5_000
+      @default_lifespan Commanded.Aggregates.Aggregate.DefaultLifespan
     end
   end
 
@@ -64,33 +65,16 @@ defmodule Commanded.Commands.Router do
     end)
   end
 
-  # dispatch directly to the aggregate root
-  defmacro dispatch(command_module, to: aggregate, identity: identity) do
+  defmacro dispatch(command_module, opts) do
+    opts = parse_opts(opts, [])
     quote do
-      register(unquote(command_module), to: unquote(aggregate), function: :execute, aggregate: unquote(aggregate), identity: unquote(identity), timeout: @default_dispatch_timeout)
+      register(unquote(command_module), unquote(opts))
     end
   end
 
-  # dispatch directly to the aggregate root
-  defmacro dispatch(command_module, to: aggregate, identity: identity, timeout: timeout) do
-    quote do
-      register(unquote(command_module), to: unquote(aggregate), function: :execute, aggregate: unquote(aggregate), identity: unquote(identity), timeout: unquote(timeout))
-    end
-  end
+  @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan]
 
-  defmacro dispatch(command_module, to: handler, aggregate: aggregate, identity: identity) do
-    quote do
-      register(unquote(command_module), to: unquote(handler), function: :handle, aggregate: unquote(aggregate), identity: unquote(identity), timeout: @default_dispatch_timeout)
-    end
-  end
-
-  defmacro dispatch(command_module, to: handler, aggregate: aggregate, identity: identity, timeout: timeout) do
-    quote do
-      register(unquote(command_module), to: unquote(handler), function: :handle, aggregate: unquote(aggregate), identity: unquote(identity), timeout: unquote(timeout))
-    end
-  end
-
-  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout) do
+  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan) do
     quote do
       if Enum.member?(@registered_commands, unquote(command_module)) do
         raise "duplicate command registration for: #{inspect unquote(command_module)}"
@@ -111,7 +95,7 @@ defmodule Commanded.Commands.Router do
       @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command) do
-        do_dispatch(command, unquote(timeout))
+        do_dispatch(command, unquote(timeout) || @default_dispatch_timeout)
       end
 
       @doc """
@@ -136,6 +120,7 @@ defmodule Commanded.Commands.Router do
           aggregate_module: unquote(aggregate),
           identity: unquote(identity),
           timeout: timeout,
+          lifespan: unquote(lifespan) || @default_lifespan,
           middleware: @registered_middleware,
         })
       end
@@ -150,5 +135,32 @@ defmodule Commanded.Commands.Router do
         {:error, :unregistered_command}
       end
     end
+  end
+
+  defp parse_opts([{:to, aggregate_or_handler} | opts], result) do
+    case Keyword.pop(opts, :aggregate) do
+      {nil, opts} ->
+        aggregate = aggregate_or_handler
+        parse_opts(opts, [function: :execute, to: aggregate, aggregate: aggregate] ++ result)
+      {aggregate, opts} ->
+        handler = aggregate_or_handler
+        parse_opts(opts, [function: :handle, to: handler, aggregate: aggregate] ++ result)
+    end
+  end
+
+  defp parse_opts([{param, value} | opts], result) when param in @register_params do
+    parse_opts(opts, [{param, value} | result])
+  end
+
+  defp parse_opts([{param, _value} | _opts], _result) do
+    raise """
+    unexpected dispatch parameter "#{param}"
+    available params are: #{@register_params |> Enum.map(&to_string/1) |> Enum.join(", ")}
+    """
+  end
+
+  defp parse_opts([], result) do
+    @register_params
+    |> Enum.map(fn key -> {key, Keyword.get(result, key)} end)
   end
 end
