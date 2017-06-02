@@ -93,6 +93,25 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  test "should show a help note when bad argument given to a `dispatch/2` function" do
+    assert_raise RuntimeError, """
+    unexpected dispatch parameter "id"
+    available params are: to, function, aggregate, identity, timeout
+    """,
+    fn ->
+      Code.eval_string """
+        alias Commanded.ExampleDomain.BankAccount
+        alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+
+        defmodule InvalidRouter do
+          use Commanded.Commands.Router
+
+          dispatch OpenAccount, to: InvalidHandler, aggregate: BankAccount, id: :account_number
+        end
+      """
+    end
+  end
+
   defmodule MultiCommandRouter do
     use Commanded.Commands.Router
 
