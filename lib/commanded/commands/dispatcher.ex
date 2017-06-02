@@ -13,6 +13,7 @@ defmodule Commanded.Commands.Dispatcher do
       aggregate_module: nil,
       identity: nil,
       timeout: nil,
+      lifespan: nil,
       middleware: [],
     ]
   end
@@ -53,14 +54,15 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp execute(
-    %Payload{handler_module: handler_module, handler_function: handler_function, timeout: timeout} = payload,
+    %Payload{handler_module: handler_module, handler_function: handler_function, timeout: timeout, lifespan: lifespan} = payload,
     %Pipeline{command: command} = pipeline,
     aggregate_uuid)
   do
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(payload.aggregate_module, aggregate_uuid)
 
-    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout])
+    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout, lifespan])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
+#    task_result |> IO.inspect
 
     result = case task_result do
       {:ok, reply} -> reply

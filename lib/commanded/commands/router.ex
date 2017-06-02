@@ -36,6 +36,7 @@ defmodule Commanded.Commands.Router do
       @registered_commands []
       @registered_middleware []
       @default_dispatch_timeout 5_000
+      @default_lifespan Commanded.Aggregates.Aggregate.DefaultLifespan
     end
   end
 
@@ -71,9 +72,9 @@ defmodule Commanded.Commands.Router do
     end
   end
 
-  @register_params [:to, :function, :aggregate, :identity, :timeout]
+  @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan]
 
-  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout) do
+  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan) do
     quote do
       if Enum.member?(@registered_commands, unquote(command_module)) do
         raise "duplicate command registration for: #{inspect unquote(command_module)}"
@@ -119,6 +120,7 @@ defmodule Commanded.Commands.Router do
           aggregate_module: unquote(aggregate),
           identity: unquote(identity),
           timeout: timeout,
+          lifespan: unquote(lifespan) || @default_lifespan,
           middleware: @registered_middleware,
         })
       end
