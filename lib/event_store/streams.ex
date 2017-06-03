@@ -18,6 +18,10 @@ defmodule EventStore.Streams do
     GenServer.call(__MODULE__, {:open_stream, stream_uuid})
   end
 
+  def close_stream(stream_uuid) do
+    GenServer.call(__MODULE__, {:close_stream, stream_uuid})
+  end
+
   def init(%Streams{serializer: serializer} = state) do
     {:ok, supervisor} = Streams.Supervisor.start_link(serializer)
 
@@ -34,6 +38,14 @@ defmodule EventStore.Streams do
 
     state = %Streams{state | streams: Map.put(streams, stream_uuid, stream)}
     {:reply, {:ok, stream}, state}
+  end
+
+  def handle_call({:close_stream, stream_uuid}, _from, %Streams{streams: streams, supervisor: supervisor} = state) do
+    case Map.get(streams, stream_uuid) do
+      nil -> {:reply, {:error, :not_found}, state}
+      stream ->
+        {:reply, Streams.Supervisor.stop_stream(supervisor, stream), state}
+    end
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %Streams{streams: streams} = state) do
