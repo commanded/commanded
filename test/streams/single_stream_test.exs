@@ -11,11 +11,9 @@ defmodule EventStore.Streams.StreamTest do
   @subscription_name "test_subscription"
 
   describe "open a single stream" do
-    test "should open stream" do
-      stream_uuid = UUID.uuid4()
+    setup [:open_a_single_stream]
 
-      {:ok, stream} = Streams.open_stream(stream_uuid)
-
+    test "should open stream", %{stream: stream} do
       assert stream != nil
     end
 
@@ -30,15 +28,19 @@ defmodule EventStore.Streams.StreamTest do
       assert stream1 == stream2
     end
 
-    test "stream crash should allow restarting stream process" do
-      stream_uuid = UUID.uuid4()
-
-      {:ok, stream} = Streams.open_stream(stream_uuid)
-
+    test "stream crash should allow restarting stream process", %{stream: stream, stream_uuid: stream_uuid} do
       ProcessHelper.shutdown(stream)
 
       {:ok, stream} = Streams.open_stream(stream_uuid)
       assert stream != nil
+    end
+
+    test "should stop process when closed", %{stream: stream, stream_uuid: stream_uuid} do
+      ref = Process.monitor(stream)
+
+      :ok = Streams.close_stream(stream_uuid)
+
+      assert_receive {:DOWN, ^ref, :process, ^stream, :shutdown}
     end
   end
 
@@ -181,6 +183,14 @@ defmodule EventStore.Streams.StreamTest do
 
     {:ok, stream} = Streams.open_stream(stream_uuid)
     {:ok, 3} = Stream.stream_version(stream)
+  end
+
+  defp open_a_single_stream(_context) do
+    stream_uuid = UUID.uuid4()
+
+    {:ok, stream} = Streams.open_stream(stream_uuid)
+
+    [stream_uuid: stream_uuid, stream: stream]
   end
 
   defp append_events_to_stream(_context) do

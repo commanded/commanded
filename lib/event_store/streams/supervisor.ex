@@ -13,6 +13,10 @@ defmodule EventStore.Streams.Supervisor do
     Supervisor.start_child(supervisor, [stream_uuid])
   end
 
+  def stop_stream(supervisor, stream) do
+    Supervisor.terminate_child(supervisor, stream)
+  end
+
   def init(serializer) do
     children = [
       worker(EventStore.Streams.Stream, [serializer], restart: :temporary),
