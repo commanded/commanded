@@ -62,7 +62,6 @@ defmodule Commanded.Commands.Dispatcher do
 
     task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout, lifespan])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
-#    task_result |> IO.inspect
 
     result = case task_result do
       {:ok, reply} -> reply
