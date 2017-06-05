@@ -53,7 +53,7 @@ The package can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.10"}]
+      [{:commanded, "~> 0.11"}]
     end
     ```
 
@@ -247,7 +247,7 @@ defmodule BankRouter do
 end
 ```
 
-It is also possible to route a command directly to an aggregate root. Without requiring an intermediate command handler.
+It is also possible to route a command directly to an aggregate root, without requiring an intermediate command handler.
 
 ```elixir
 defmodule BankRouter do
@@ -296,6 +296,31 @@ defmodule BankRouter do
   dispatch [OpenAccount,CloseAccount], to: BankAccountHandler, aggregate: BankAccount, identity: :account_number
 end
 ```
+
+#### Aggregate lifespan
+
+By default an aggregate instance process will run indefinitely once started. You can control this by implementing the `Commanded.Aggregates.AggregateLifespan` behaviour in a module.
+
+```elixir
+defmodule BankAccountLifespan do
+  @behaviour Commanded.Aggregates.AggregateLifespan
+
+  def after_command(%OpenAccount{}), do: :infinity
+  def after_command(%CloseAccount{}), do: 0
+end
+```
+
+Then specify the module as the `lifespan` option when registering the command in the router.
+
+```elixir
+defmodule BankRouter do
+  use Commanded.Commands.Router
+
+  dispatch [OpenAccount,CloseAccount], to: BankAccountHandler, aggregate: BankAccount, lifespan: BankAccountLifespan, identity: :account_number
+end
+```
+
+The timeout is specified in milliseconds, after which time the aggregate process will be stopped if no other messages are received. You can also return `:hibernate` and the process is hibernated, it will continue its loop once a message is in its message queue. Hibernating an aggregate causes garbage collection and minimises the memory used by the process. Hibernating should not be used aggressively as too much time could be spent garbage collecting.
 
 ### Middleware
 

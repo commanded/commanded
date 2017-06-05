@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.0
+
+### Enhancements
+
+- Shutdown idle aggregate processes ([#43](https://github.com/slashdotdash/commanded/issues/43)).
+
 ## v0.10.0
 
 ### Enhancements
