@@ -35,6 +35,7 @@ MIT License
   - [Commands](#commands)
     - [Command handlers](#command-handlers)
     - [Command dispatch and routing](#command-dispatch-and-routing)
+    - [Aggregate lifespan](#aggregate-lifespan)
     - [Middleware](#middleware)
   - [Events](#events)
     - [Event handlers](#event-handlers)
