@@ -80,14 +80,44 @@ You must decide which event store to use with Commanded. You have a choice betwe
     end
     ```
 
-2. Configure Commanded to use the event store adapter:
+2. Include `:eventstore` in the list of applications to start. 
+
+    For **Elixir 1.4**, add `:eventstore` to the extra applications list in `mix.exs`:
+
+    ```elixir
+    def application do
+      [
+        extra_applications: [
+          :logger,
+          :eventstore,
+        ],
+        # ...
+      ]
+    end
+    ```
+    
+    For **Elixir 1.3** and before, add `:eventstore` to the applications list in `mix.exs`:
+
+    ```elixir
+    def application do
+      [
+        applications: [
+          :logger,
+          :eventstore,
+        ],
+        # ...
+      ]
+    end
+    ```
+    
+3. Configure Commanded to use the event store adapter:
 
     ```elixir
     config :commanded,
       event_store_adapter: Commanded.EventStore.Adapters.EventStore
     ```
 
-3. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev.exs`), specifying usage of the included JSON serializer:
+4. Configure the `eventstore` in each environment's mix config file (e.g. `config/dev.exs`), specifying usage of the included JSON serializer:
 
     ```elixir
     config :eventstore, EventStore.Storage,
@@ -99,7 +129,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
       pool_size: 10
     ```
 
-4. Create the `eventstore` database and tables using the `mix` task.
+5. Create the `eventstore` database and tables using the `mix` task.
 
     ```
     mix event_store.create
