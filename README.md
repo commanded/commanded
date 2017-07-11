@@ -42,6 +42,7 @@ MIT License
   - [Process managers](#process-managers)
   - [Supervision](#supervision)
   - [Serialization](#serialization)
+- [Read model projections](#read-model-projections)
 - [Used in production?](#used-in-production)
 - [Event store provider](#event-store-provider)
 - [Contributing](#contributing)
@@ -625,6 +626,12 @@ end
 ```
 
 You can implement the `EventStore.Serializer` behaviour to use an alternative serialization format if preferred.
+
+## Read model projections
+
+Your read model can be built using a Commanded event handler and whatever storage provider you prefer. 
+
+I typically use Ecto, and a PostgreSQL database, for read model projections. You can use the `project` macro from the [Commanded Ecto projections](https://github.com/slashdotdash/commanded-ecto-projections) library to build projectors, and have the at-least-once event delivery taken care of for you.
 
 ## Used in production?
 
