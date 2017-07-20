@@ -95,14 +95,10 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     def interested?(%Started{aggregate_uuid: aggregate_uuid}), do: {:start, aggregate_uuid}
     def interested?(%Interested{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
     def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:stop, aggregate_uuid}
-    def interested?(_event), do: false
 
     def handle(%ExampleProcessManager{}, %Interested{index: 10, aggregate_uuid: aggregate_uuid}) do
       %Stop{aggregate_uuid: aggregate_uuid}
     end
-
-    # ignore other events
-    def handle(_process_manager, _event), do: []
 
     ## state mutators
 

@@ -23,6 +23,10 @@ defmodule Commanded.Event.EventHandlerMacroTest do
     end
   end
 
+  defmodule IgnoredEvent do
+    defstruct [name: nil]
+  end
+
   alias Commanded.Helpers.EventFactory
   alias Commanded.Helpers.Wait
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
@@ -34,7 +38,8 @@ defmodule Commanded.Event.EventHandlerMacroTest do
     recorded_events =
       [
         %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},
-        %MoneyDeposited{amount: 50, balance: 1_050}
+        %MoneyDeposited{amount: 50, balance: 1_050},
+        %IgnoredEvent{name: "ignored"},
       ]
       |> EventFactory.map_to_recorded_events()
 

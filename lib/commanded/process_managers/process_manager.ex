@@ -49,6 +49,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   """
   defmacro __using__(opts) do
     quote location: :keep do
+      @before_compile unquote(__MODULE__)
+
       @behaviour Commanded.ProcessManagers.ProcessManager
 
       @opts unquote(opts) || []
@@ -63,12 +65,15 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
         Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)
       end
+    end
+  end
 
+  # include default fallback functions at end, with lowest precedence
+  defmacro __before_compile__(_env) do
+    quote do
       def interested?(_event), do: false
       def handle(_process_manager, _event), do: []
       def apply(process_manager, _event), do: process_manager
-
-      defoverridable [interested?: 1, handle: 2, apply: 2]
     end
   end
 end

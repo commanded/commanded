@@ -34,6 +34,8 @@ defmodule Commanded.Event.Handler do
   """
   defmacro __using__(opts) do
     quote location: :keep do
+      @before_compile unquote(__MODULE__)
+
       @behaviour Commanded.Event.Handler
 
       @opts unquote(opts) || []
@@ -47,10 +49,13 @@ defmodule Commanded.Event.Handler do
 
         Commanded.Event.Handler.start_link(@name, __MODULE__, opts)
       end
+    end
+  end
 
+  # include default fallback function at end, with lowest precedence
+  defmacro __before_compile__(_env) do
+    quote do
       def handle(_event, _metadata), do: :ok
-
-      defoverridable [handle: 2]
     end
   end
 

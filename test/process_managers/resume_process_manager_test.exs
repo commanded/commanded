@@ -74,7 +74,6 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}
     def interested?(%ProcessResumed{process_uuid: process_uuid}), do: {:continue, process_uuid}
-    def interested?(_event), do: false
 
     def handle(%ExampleProcessManager{}, %ProcessStarted{}), do: []
     def handle(%ExampleProcessManager{}, %ProcessResumed{}), do: []
