@@ -540,7 +540,7 @@ defmodule TransferMoneyProcessManager do
 end
 ```
 
-Register the process manager router with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
+The name given to the process manager *must* be unique. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
 
 ```elixir
 {:ok, _} = TransferMoneyProcessManager.start_link(start_from: :current)
