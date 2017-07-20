@@ -62,7 +62,9 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   end
 
   defmodule ExampleProcessManager do
-    @behaviour Commanded.ProcessManagers.ProcessManager
+    use Commanded.ProcessManagers.ProcessManager,
+      name: "example-process-manager",
+      router: ExampleRouter
 
     defstruct [
       status_history: []
@@ -95,7 +97,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   test "should resume a process manager with same state when process restarts" do
     process_uuid = UUID.uuid4
 
-    {:ok, process_router} = ProcessRouter.start_link("ExampleProcessManager", ExampleProcessManager, ExampleRouter)
+    {:ok, process_router} = ExampleProcessManager.start_link()
 
     # transfer funds between account 1 and account 2
     :ok = ExampleRouter.dispatch(%StartProcess{process_uuid: process_uuid, status: "start"})
@@ -118,7 +120,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
     # wait for subscription to receive DOWN notification and remove subscription's PID
     :timer.sleep(1_000)
 
-    {:ok, process_router} = ProcessRouter.start_link("ExampleProcessManager", ExampleProcessManager, ExampleRouter)
+    {:ok, process_router} = ExampleProcessManager.start_link()
 
     :ok = ExampleRouter.dispatch(%ResumeProcess{process_uuid: process_uuid, status: "resume"})
 
