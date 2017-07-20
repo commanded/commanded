@@ -445,10 +445,10 @@ The name given to the event handler **must be** unique and remain unchanged betw
 {:ok, _handler} = AccountBalanceHandler.start_link()
 ```
 
-You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so your handler will receive all events.
+You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so your handler will receive all events.
 
 ```elixir
-# start from :origin, :current, or an explicit event id (e.g. 1234)
+# start from :origin, :current, or an explicit event number (e.g. 1234)
 defmodule AccountBalanceHandler do
   use Commanded.Event.Handler, name: "account_balance", start_from: :origin
 
@@ -546,7 +546,7 @@ Register the process manager router with a uniquely identified name. This is use
 {:ok, _} = TransferMoneyProcessManager.start_link(start_from: :current)
 ```
 
-You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
+You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
 
 Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
 
