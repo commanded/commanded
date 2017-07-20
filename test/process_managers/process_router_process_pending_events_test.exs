@@ -76,8 +76,16 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     def handle(%ExampleAggregate{} = aggregate, %Stop{}), do: ExampleAggregate.stop(aggregate)
   end
 
+  defmodule Router do
+    use Commanded.Commands.Router
+
+    dispatch [Start,Publish,Stop], to: ExampleCommandHandler, aggregate: ExampleAggregate, identity: :aggregate_uuid
+  end
+
   defmodule ExampleProcessManager do
-    @behaviour Commanded.ProcessManagers.ProcessManager
+    use Commanded.ProcessManagers.ProcessManager,
+      name: "example_process_manager",
+      router: Router
 
     defstruct [
       status: nil,
@@ -111,16 +119,10 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     end
   end
 
-  defmodule Router do
-    use Commanded.Commands.Router
-
-    dispatch [Start,Publish,Stop], to: ExampleCommandHandler, aggregate: ExampleAggregate, identity: :aggregate_uuid
-  end
-
   test "should start process manager instance and successfully dispatch command" do
     aggregate_uuid = UUID.uuid4
 
-    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router)
+    {:ok, process_router} = ExampleProcessManager.start_link()
 
     :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
 

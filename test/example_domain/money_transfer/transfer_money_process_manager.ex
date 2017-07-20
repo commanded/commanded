@@ -1,5 +1,7 @@
 defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
-  @behaviour Commanded.ProcessManagers.ProcessManager
+  use Commanded.ProcessManagers.ProcessManager,
+    name: "transfer_money_process_manager",
+    router: Commanded.ExampleDomain.BankRouter
 
   defstruct [
     transfer_uuid: nil,

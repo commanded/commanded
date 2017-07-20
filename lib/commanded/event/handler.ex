@@ -13,8 +13,46 @@ defmodule Commanded.Event.Handler do
 
   @doc """
   Event handler behaviour to handle a domain event and its metadata
+
+  Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the event, or `{:error, reason}` on failure.
   """
   @callback handle(domain_event, metadata) :: :ok | {:error, reason :: atom}
+
+  @doc """
+  Macro as a convenience for defining an event handler
+
+    defmodule ExampleHandler do
+      use Commanded.Event.Handler, name: "example_handler"
+
+      def handle(%AnEvent{...}, _metadata) do
+        # ...
+      end
+    end
+
+    # start event handler process (or configure as a worker inside a supervisor)
+    {:ok, handler} = ExampleHandler.start_link()
+  """
+  defmacro __using__(opts) do
+    quote location: :keep do
+      @behaviour Commanded.Event.Handler
+
+      @opts unquote(opts) || []
+      @name @opts[:name] || raise "#{__MODULE__} expects :name to be given"
+
+      def start_link(opts \\ []) do
+        opts =
+          @opts
+          |> Keyword.take([:start_from])
+          |> Keyword.merge(opts)
+
+        Commanded.Event.Handler.start_link(@name, __MODULE__, opts)
+      end
+
+      def handle(_event, _metadata), do: :ok
+
+      defoverridable [handle: 2]
+    end
+  end
 
   defstruct [
     handler_name: nil,

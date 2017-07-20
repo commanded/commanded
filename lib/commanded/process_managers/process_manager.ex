@@ -22,4 +22,53 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   Mutate the process manager's state by applying the domain event
   """
   @callback apply(process_manager, domain_event) :: process_manager
+
+  @doc """
+  Macro as a convenience for defining a process manager
+
+    defmodule ExampleProcessManager do
+      use Commanded.ProcessManagers.ProcessManager,
+        name: "example_process_manager",
+        router: BankRouter
+
+      def interested?(%AnEvent{...}) do
+        # ...
+      end
+
+      def handle(%ExampleProcessManager{...}, %AnEvent{...}) do
+        # ...
+      end
+
+      def apply(%ExampleProcessManager{...}, %AnEvent{...}) do
+        # ...
+      end
+    end
+
+    # start process manager (or configure as a worker inside a supervisor)
+    {:ok, process_manager} = ExampleProcessManager.start_link()
+  """
+  defmacro __using__(opts) do
+    quote location: :keep do
+      @behaviour Commanded.ProcessManagers.ProcessManager
+
+      @opts unquote(opts) || []
+      @name @opts[:name] || raise "#{__MODULE__} expects :name to be given"
+      @router @opts[:router] || raise "#{__MODULE__} expects :router to be given"
+
+      def start_link(opts \\ []) do
+        opts =
+          @opts
+          |> Keyword.take([:start_from])
+          |> Keyword.merge(opts)
+
+        Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)
+      end
+
+      def interested?(_event), do: false
+      def handle(_process_manager, _event), do: []
+      def apply(process_manager, _event), do: process_manager
+
+      defoverridable [interested?: 1, handle: 2, apply: 2]
+    end
+  end
 end

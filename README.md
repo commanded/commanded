@@ -81,7 +81,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
     end
     ```
 
-2. Include `:eventstore` in the list of applications to start. 
+2. Include `:eventstore` in the list of applications to start.
 
     For **Elixir 1.4**, add `:eventstore` to the extra applications list in `mix.exs`:
 
@@ -96,7 +96,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
       ]
     end
     ```
-    
+
     For **Elixir 1.3** and before, add `:eventstore` to the applications list in `mix.exs`:
 
     ```elixir
@@ -110,7 +110,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
       ]
     end
     ```
-    
+
 3. Configure Commanded to use the event store adapter:
 
     ```elixir
@@ -416,62 +416,57 @@ end
 
 ### Event handlers
 
-Create an event handler module which implements the `Commanded.Event.Handler` behaviour.
+Use the `Commanded.Event.Handler` macro within your event handler module to implement the defined behaviour. This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique event number. It should return `:ok` on success or `{:error, :reason}` on failure. You can return `{:error, :already_seen_event}` to skip events that have already been handled, due to the at-least-once event delivery of the supported event stores.
 
-This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique id. It should return `:ok` on success or `{:error, :reason}` on failure.
-
-Use pattern matching to match on each type of event you are interested in. Add a catch-all `handle/2` function for all other events to be ignored.
+Use pattern matching to match on each type of event you are interested in. A catch-all `handle/2` function is included, so all other events will be ignored by default.
 
 ```elixir
 defmodule AccountBalanceHandler do
-  @behaviour Commanded.Event.Handler
-
-  def start_link do
-    Agent.start_link(fn -> 0 end, name: __MODULE__)
-  end
+  use Commanded.Event.Handler, name: "account_balance"
 
   def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
-    Agent.update(__MODULE__, fn _ -> initial_balance end)
+    Agent.update(AccountBalance, fn _ -> initial_balance end)
   end
 
   def handle(%MoneyDeposited{balance: balance}, _metadata) do
-    Agent.update(__MODULE__, fn _ -> balance end)
+    Agent.update(AccountBalance, fn _ -> balance end)
   end
 
-  # ignore all other events
-  def handle(_event, _metadata), do: :ok
-
   def current_balance do
-    Agent.get(__MODULE__, fn balance -> balance end)
+    Agent.get(AccountBalance, fn balance -> balance end)
   end
 end
 ```
 
-Register the event handler with a given name. This is used when subscribing to the event store to track which events the handler has seen during restarts.
+The name given to the event handler **must be** unique and remain unchanged between releases. It is used when subscribing to the event store to track which events the handler has seen during restarts.
 
 ```elixir
-{:ok, _balance} = AccountBalanceHandler.start_link
-{:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler)
+{:ok, _balance} = Agent.start_link(fn -> 0 end, name: AccountBalance)
+{:ok, _handler} = AccountBalanceHandler.start_link()
 ```
 
-You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so your handler will receive all events.
+You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so your handler will receive all events.
 
 ```elixir
-# start from :origin, :current, or an explicit event id
-{:ok, _handler} = Commanded.Event.Handler.start_link("account_balance", AccountBalanceHandler, start_from: :origin)
+# start from :origin, :current, or an explicit event number (e.g. 1234)
+defmodule AccountBalanceHandler do
+  use Commanded.Event.Handler, name: "account_balance", start_from: :origin
+
+  # ...
+end
+
+{:ok, _handler} = AccountBalanceHandler.start_link(start_from: :current)
 ```
 
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
-You should use a [supervisor](#supervision) to start your event handlers to ensure they are restarted on error.
+You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
 
 ### Process managers
 
-A process manager is responsible for coordinating one or more aggregate roots.
+A process manager is responsible for coordinating one or more aggregate roots. It handles events and dispatches commands in response. Process managers have state that can be used to track which aggregate roots are being orchestrated.
 
-It handles events and may dispatch commands in response. Process managers have state that can be used to track which aggregate roots are being orchestrated.
-
-A process manager must implement the `Commanded.ProcessManagers.ProcessManager` behaviour. It defines three callback functions: `interested?/1`, `handle/2`, and `apply/2`.
+Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the three callback functions defined in the behaviour: `interested?/1`, `handle/2`, and `apply/2`.
 
 #### `interested?/1`
 
@@ -492,7 +487,9 @@ The `apply/2` function is used to mutate the process manager's state. It receive
 
 ```elixir
 defmodule TransferMoneyProcessManager do
-  @behaviour Commanded.ProcessManagers.ProcessManager
+  use Commanded.ProcessManagers.ProcessManager,
+    name: "transfer_money_process_manager",
+    router: BankRouter
 
   defstruct [
     transfer_uuid: nil,
@@ -543,13 +540,13 @@ defmodule TransferMoneyProcessManager do
 end
 ```
 
-Register the process manager router with a uniquely identified name. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
+The name given to the process manager *must* be unique. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
 
 ```elixir
-{:ok, _} = Commanded.ProcessManagers.Router.start_link("transfer_money_process_manager", TransferMoneyProcessManager, start_from: :current)
+{:ok, _} = TransferMoneyProcessManager.start_link(start_from: :current)
 ```
 
-You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event id using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
+You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
 
 Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
 
@@ -570,10 +567,10 @@ defmodule Bank.Supervisor do
       supervisor(Commanded.Supervisor, []),
 
       # process manager
-      worker(Commanded.ProcessManagers.ProcessRouter, ["TransferMoneyProcessManager", TransferMoneyProcessManager, BankRouter, [start_from: :current]], id: :transfer_money_process_manager),
+      worker(TransferMoneyProcessManager, [start_from: :current], id: :transfer_money_process_manager),
 
       # event handler
-      worker(Commanded.Event.Handler, ["AccountBalanceHandler", AccountBalanceHandler, [start_from: :origin]], id: :account_balance_handler)
+      worker(AccountBalanceHandler, [start_from: :origin], id: :account_balance_handler)
     ]
 
     supervise(children, strategy: :one_for_one)
@@ -629,7 +626,7 @@ You can implement the `EventStore.Serializer` behaviour to use an alternative se
 
 ## Read model projections
 
-Your read model can be built using a Commanded event handler and whatever storage provider you prefer. 
+Your read model can be built using a Commanded event handler and whatever storage provider you prefer.
 
 I typically use Ecto, and a PostgreSQL database, for read model projections. You can use the `project` macro from the [Commanded Ecto projections](https://github.com/slashdotdash/commanded-ecto-projections) library to build projectors, and have the at-least-once event delivery taken care of for you.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.0
+
+### Enhancements
+
+- `Commanded.Event.Handler` and `Commanded.ProcessManagers.ProcessManager` macros to simplify defining, and starting, event handlers and process managers. Note the previous approach to defining and starting may still be used, so this is *not* a breaking change.
+
 ## v0.11.0
 
 ### Enhancements
