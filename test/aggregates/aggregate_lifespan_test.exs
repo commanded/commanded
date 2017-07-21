@@ -36,7 +36,8 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, aggregate_uuid)
 
-      [{pid, _}] = Registry.lookup(:aggregate_registry, aggregate_uuid)
+      #[{pid, _}] = Registry.lookup(:aggregate_registry, aggregate_uuid)
+      pid = Swarm.whereis_name(aggregate_uuid)
       ref = Process.monitor(pid)
 
       %{aggregate_uuid: aggregate_uuid, ref: ref}

@@ -12,8 +12,8 @@ defmodule Commanded.Aggregates.Aggregate do
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Event.Mapper
+  alias Commanded.Aggregates.DistributedAggregate
 
-  @aggregate_registry_name :aggregate_registry
   @read_event_batch_size 100
 
   defstruct [
@@ -22,7 +22,6 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_state: nil,
     aggregate_version: 0,
   ]
-
   defmodule DefaultLifespan do
     @behaviour Commanded.Aggregates.AggregateLifespan
 
@@ -30,22 +29,17 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   def start_link(aggregate_module, aggregate_uuid) do
-    name = via_tuple(aggregate_uuid)
     GenServer.start_link(__MODULE__, %Aggregate{
       aggregate_module: aggregate_module,
-      aggregate_uuid: aggregate_uuid
-    },
-    name: name)
+      aggregate_uuid: aggregate_uuid})
   end
 
-  defp via_tuple(aggregate_uuid) do
-    {:via, Registry, {@aggregate_registry_name, aggregate_uuid}}
+  defp get_pid(aggregate_uuid) do
+    Swarm.whereis_name(aggregate_uuid)
   end
 
-  def init(%Aggregate{} = state) do
-    # initial aggregate state is populated by loading events from event store
+  def init(%Aggregate{aggregate_uuid: aggregate_uuid} = state) do
     GenServer.cast(self(), {:populate_aggregate_state})
-
     {:ok, state}
   end
 
@@ -57,19 +51,19 @@ defmodule Commanded.Aggregates.Aggregate do
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
   def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000, lifespan \\ DefaultLifespan) do
-    GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command, lifespan}, timeout)
+    GenServer.call(get_pid(aggregate_uuid), {:execute_command, handler, function, command, lifespan}, timeout)
   end
 
   @doc """
   Access the aggregate's state
   """
-  def aggregate_state(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_state})
-  def aggregate_state(aggregate_uuid, timeout), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_state}, timeout)
+  def aggregate_state(aggregate_uuid), do: GenServer.call(get_pid(aggregate_uuid), {:aggregate_state})
+  def aggregate_state(aggregate_uuid, timeout), do: GenServer.call(get_pid(aggregate_uuid), {:aggregate_state}, timeout)
 
   @doc """
   Access the aggregate's version
   """
-  def aggregate_version(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_version})
+  def aggregate_version(aggregate_uuid), do: GenServer.call(get_pid(aggregate_uuid), {:aggregate_version})
 
   @doc """
   Load any existing events for the aggregate from storage and repopulate the state using those events
@@ -78,6 +72,20 @@ defmodule Commanded.Aggregates.Aggregate do
     state = populate_aggregate_state(state)
 
     {:noreply, state}
+  end
+
+  @doc """
+  handle aggregate state from another process after cluster topology change
+  """
+  def handle_cast({:swarm, :end_handoff, handoff_state}, %Aggregate{aggregate_state: aggregate_state} = state) do
+    {:noreply, %{state | aggregate_state: DistributedAggregate.end_handoff(aggregate_state, handoff_state)}}
+  end
+
+  @doc """
+  handle aggregate state handoff resulting from resolving a netsplit
+  """
+  def handle_cast({:swarm, :resolve_conflict, conflicting_state}, %Aggregate{aggregate_state: aggregate_state} = state) do
+    {:noreply, %{state | aggregate_state: DistributedAggregate.resolve_conflict(aggregate_state, conflicting_state)}}
   end
 
   @doc """
@@ -97,8 +105,22 @@ defmodule Commanded.Aggregates.Aggregate do
     {:reply, aggregate_version, state}
   end
 
+  @doc """
+  handle initiating process handoff when cluster topology changes.
+  """
+  def handle_call({:swarm, :begin_handoff}, _from, %Aggregate{aggregate_state: aggregate_state} = state) do
+    {:reply, DistributedAggregate.begin_handoff(aggregate_state), state}
+  end
+
   def handle_info(:timeout, %Aggregate{} = state) do
     {:stop, :normal, state}
+  end
+
+  @doc """
+  handle process shutdown after Swarm has moved it.
+  """
+  def handle_info({:swarm, :die}, state) do
+    DistributedAggregate.cleanup(state)
   end
 
   defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do

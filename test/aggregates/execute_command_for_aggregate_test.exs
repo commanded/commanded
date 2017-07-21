@@ -87,6 +87,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     # process should exit
     assert_receive({:EXIT, _from, _reason})
-    assert Registry.lookup(:aggregate_registry, aggregate_uuid) == []
+    Swarm.unregister_name(aggregate_uuid)
+    assert Swarm.whereis_name(aggregate_uuid) == :undefined
   end
 end
