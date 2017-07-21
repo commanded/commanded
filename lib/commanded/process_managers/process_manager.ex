@@ -54,8 +54,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @behaviour Commanded.ProcessManagers.ProcessManager
 
       @opts unquote(opts) || []
-      @name @opts[:name] || raise "#{__MODULE__} expects :name to be given"
-      @router @opts[:router] || raise "#{__MODULE__} expects :router to be given"
+      @name @opts[:name] || raise "#{inspect __MODULE__} expects :name to be given"
+      @router @opts[:router] || raise "#{inspect __MODULE__} expects :router to be given"
 
       def start_link(opts \\ []) do
         opts =

@@ -39,7 +39,7 @@ defmodule Commanded.Event.Handler do
       @behaviour Commanded.Event.Handler
 
       @opts unquote(opts) || []
-      @name @opts[:name] || raise "#{__MODULE__} expects :name to be given"
+      @name @opts[:name] || raise "#{inspect __MODULE__} expects :name to be given"
 
       def start_link(opts \\ []) do
         opts =

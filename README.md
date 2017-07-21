@@ -55,7 +55,7 @@ The package can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.11"}]
+      [{:commanded, "~> 0.12"}]
     end
     ```
 
