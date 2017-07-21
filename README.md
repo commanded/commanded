@@ -455,6 +455,7 @@ defmodule AccountBalanceHandler do
   # ...
 end
 
+# You can optionally override :start_from by passing it as param
 {:ok, _handler} = AccountBalanceHandler.start_link(start_from: :current)
 ```
 
