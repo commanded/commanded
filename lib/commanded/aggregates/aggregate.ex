@@ -13,6 +13,7 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Event.Mapper
 
+  @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
   @aggregate_registry_name :aggregate_registry
   @read_event_batch_size 100
 
@@ -39,7 +40,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp via_tuple(aggregate_uuid) do
-    {:via, Registry, {@aggregate_registry_name, aggregate_uuid}}
+    {:via, @registry_provider, {@aggregate_registry_name, aggregate_uuid}}
   end
 
   def init(%Aggregate{} = state) do

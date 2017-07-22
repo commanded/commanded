@@ -15,6 +15,8 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
     WithdrawMoneyHandler,
   }
 
+  @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
+
   defmodule BankAccountLifespan do
     @behaviour Commanded.Aggregates.AggregateLifespan
 
@@ -36,7 +38,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, aggregate_uuid)
 
-      [{pid, _}] = Registry.lookup(:aggregate_registry, aggregate_uuid)
+      pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, aggregate_uuid}])
       ref = Process.monitor(pid)
 
       %{aggregate_uuid: aggregate_uuid, ref: ref}
