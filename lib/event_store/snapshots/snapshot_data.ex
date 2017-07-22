@@ -2,7 +2,9 @@ defmodule EventStore.Snapshots.SnapshotData do
   @moduledoc """
   Snapshot data
   """
-    
+
+  use EventStore.Serializer
+
   alias EventStore.Snapshots.SnapshotData
 
   defstruct source_uuid: nil,
@@ -20,4 +22,18 @@ defmodule EventStore.Snapshots.SnapshotData do
     metadata: binary,
     created_at: NaiveDateTime.t
   }
+
+  def serialize(%SnapshotData{data: data, metadata: metadata} = snapshot) do
+    %SnapshotData{snapshot |
+      data: @serializer.serialize(data),
+      metadata: @serializer.serialize(metadata)
+    }
+  end
+
+  def deserialize(%SnapshotData{source_type: source_type, data: data, metadata: metadata} = snapshot) do
+    %SnapshotData{snapshot |
+      data: @serializer.deserialize(data, type: source_type),
+      metadata: @serializer.deserialize(metadata, [])
+    }
+  end
 end

@@ -4,27 +4,34 @@ defmodule EventStore.Subscriptions do
   """
 
   use GenServer
+  use EventStore.Serializer
+
   require Logger
 
   alias EventStore.{RecordedEvent,Subscriptions}
   alias EventStore.Subscriptions.{Subscription}
 
-  defstruct all_stream: %{}, single_stream: %{}, subscription_pids: %{}, supervisor: nil, serializer: nil
+  defstruct [
+    all_stream: %{},
+    single_stream: %{},
+    subscription_pids: %{},
+    supervisor: nil,
+  ]
 
   @all_stream "$all"
 
-  def start_link(serializer) do
-    GenServer.start_link(__MODULE__, %Subscriptions{serializer: serializer}, name: __MODULE__)
+  def start_link do
+    GenServer.start_link(__MODULE__, %Subscriptions{}, name: __MODULE__)
   end
 
-  def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber, opts \\ [])
-  def subscribe_to_stream(stream_uuid, stream, subscription_name, subscriber, opts) do
-    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber, opts})
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts \\ [])
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
+    GenServer.call(__MODULE__, {:subscribe_to_stream, stream_uuid, subscription_name, subscriber, opts})
   end
 
-  def subscribe_to_all_streams(all_stream, subscription_name, subscriber, opts \\ [])
-  def subscribe_to_all_streams(all_stream, subscription_name, subscriber, opts) do
-    GenServer.call(__MODULE__, {:subscribe_to_stream, @all_stream, all_stream, subscription_name, subscriber, opts})
+  def subscribe_to_all_streams(subscription_name, subscriber, opts \\ [])
+  def subscribe_to_all_streams(subscription_name, subscriber, opts) do
+    GenServer.call(__MODULE__, {:subscribe_to_stream, @all_stream, subscription_name, subscriber, opts})
   end
 
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
@@ -47,9 +54,9 @@ defmodule EventStore.Subscriptions do
     {:ok, subscriptions}
   end
 
-  def handle_call({:subscribe_to_stream, stream_uuid, stream, subscription_name, subscriber, opts}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
+  def handle_call({:subscribe_to_stream, stream_uuid, subscription_name, subscriber, opts}, _from, %Subscriptions{supervisor: supervisor} = subscriptions) do
     reply = case get_subscription(stream_uuid, subscription_name, subscriptions) do
-      nil -> create_subscription(supervisor, stream_uuid, stream, subscription_name, subscriber, opts)
+      nil -> create_subscription(supervisor, stream_uuid, subscription_name, subscriber, opts)
       _subscription -> {:error, :subscription_already_exists}
     end
 
@@ -72,10 +79,10 @@ defmodule EventStore.Subscriptions do
     {:reply, :ok, subscriptions}
   end
 
-  def handle_cast({:notify_events, stream_uuid, recorded_events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream, serializer: serializer} = subscriptions) do
+  def handle_cast({:notify_events, stream_uuid, recorded_events}, %Subscriptions{all_stream: all_stream, single_stream: single_stream} = subscriptions) do
     interested_subscriptions = Map.values(all_stream) ++ Map.values(Map.get(single_stream, stream_uuid, %{}))
 
-    notify_subscribers(interested_subscriptions, recorded_events, serializer)
+    notify_subscribers(interested_subscriptions, recorded_events)
 
     {:noreply, subscriptions}
   end
@@ -102,10 +109,10 @@ defmodule EventStore.Subscriptions do
     end
   end
 
-  defp create_subscription(supervisor, stream_uuid, stream, subscription_name, subscriber, opts) do
+  defp create_subscription(supervisor, stream_uuid, subscription_name, subscriber, opts) do
     _ = Logger.debug(fn -> "creating subscription process on stream #{inspect stream_uuid} named: #{inspect subscription_name}" end)
 
-    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, stream, subscription_name, subscriber, opts)
+    {:ok, subscription} = Subscriptions.Supervisor.subscribe_to_stream(supervisor, stream_uuid, subscription_name, subscriber, opts)
 
     Process.monitor(subscription)
 
@@ -134,20 +141,13 @@ defmodule EventStore.Subscriptions do
     %Subscriptions{subscriptions | single_stream: single_stream, subscription_pids: subscription_pids}
   end
 
-  defp notify_subscribers([], _recorded_events, _serializer), do: nil
-  defp notify_subscribers(_subscriptions, [], _serializer), do: nil
-  defp notify_subscribers(subscriptions, recorded_events, serializer) do
-    events = Enum.map(recorded_events, fn event -> deserialize_recorded_event(event, serializer) end)
+  defp notify_subscribers([], _recorded_events), do: nil
+  defp notify_subscribers(_subscriptions, []), do: nil
+  defp notify_subscribers(subscriptions, recorded_events) do
+    events = Enum.map(recorded_events, &RecordedEvent.deserialize/1)
 
     subscriptions
     |> Enum.each(&Subscription.notify_events(&1, events))
-  end
-
-  defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do
-    %RecordedEvent{recorded_event |
-      data: serializer.deserialize(data, type: event_type),
-      metadata: serializer.deserialize(metadata, [])
-    }
   end
 
   defp remove_subscription(%Subscriptions{} = subscriptions, stream_uuid, subscription_name, subscription) do

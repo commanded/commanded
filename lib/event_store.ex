@@ -17,7 +17,7 @@ defmodule EventStore do
   @type start_from :: :origin | :current | integer
 
   alias EventStore.Snapshots.{SnapshotData,Snapshotter}
-  alias EventStore.{EventData,RecordedEvent,Streams,Subscriptions}
+  alias EventStore.{EventData,RecordedEvent,Subscriptions}
   alias EventStore.Subscriptions.Subscription
   alias EventStore.Streams.{AllStream,Stream}
 
@@ -38,9 +38,9 @@ defmodule EventStore do
   def append_to_stream(stream_uuid, expected_version, events)
   def append_to_stream(@all_stream, _expected_version, _events), do: {:error, :cannot_append_to_all_stream}
   def append_to_stream(stream_uuid, expected_version, events) do
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid)
 
-    Stream.append_to_stream(stream, expected_version, events)
+    Stream.append_to_stream(stream_uuid, expected_version, events)
   end
 
   @doc """
@@ -56,9 +56,9 @@ defmodule EventStore do
   """
   @spec read_stream_forward(String.t, non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_stream_forward(stream_uuid, start_version \\ 0, count \\ 1_000) do
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid)
 
-    Stream.read_stream_forward(stream, start_version, count)
+    Stream.read_stream_forward(stream_uuid, start_version, count)
   end
 
   @doc """
@@ -72,9 +72,9 @@ defmodule EventStore do
   """
   @spec stream_forward(String.t, non_neg_integer, non_neg_integer) :: Enumerable.t | {:error, reason :: term}
   def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid)
 
-    Stream.stream_forward(stream, start_version, read_batch_size)
+    Stream.stream_forward(stream_uuid, start_version, read_batch_size)
   end
 
   @doc """
@@ -129,9 +129,9 @@ defmodule EventStore do
     | {:error, reason :: term}
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts \\ [])
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
-    {:ok, stream} = Streams.open_stream(stream_uuid)
+    {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid)
 
-    Stream.subscribe_to_stream(stream, subscription_name, subscriber, opts)
+    Stream.subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts)
   end
 
   @doc """
@@ -210,18 +210,6 @@ defmodule EventStore do
   @spec record_snapshot(SnapshotData.t) :: :ok | {:error, reason :: term}
   def record_snapshot(%SnapshotData{} = snapshot) do
     Snapshotter.record_snapshot(snapshot)
-  end
-
-  @doc """
-  Record a snapshot of the data and metadata for a given source
-
-  - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely. The default value is 5000. If no reply is received within the specified time, the function call fails and the caller exits.
-
-  Returns `:ok` on success
-  """
-  @spec record_snapshot(SnapshotData.t, timeout :: integer) :: :ok | {:error, reason :: term}
-  def record_snapshot(%SnapshotData{} = snapshot, timeout) do
-    Snapshotter.record_snapshot(snapshot, timeout)
   end
 
   @doc """

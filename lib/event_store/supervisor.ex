@@ -1,23 +1,16 @@
 defmodule EventStore.Supervisor do
   use Supervisor
 
-  @default_serializer EventStore.TermSerializer
-
   def start_link do
-    config = Application.get_env(:eventstore, EventStore.Storage)
-
-    Supervisor.start_link(__MODULE__, config)
+    Supervisor.start_link(__MODULE__, nil)
   end
 
-  def init(config) do
-    serializer = config[:serializer] || @default_serializer
-
+  def init(_) do
     children = [
+      supervisor(Registry, [:unique, EventStore.Streams]),
       supervisor(EventStore.Storage.PoolSupervisor, []),
-      worker(EventStore.Streams, [serializer]),
-      worker(EventStore.Streams.AllStream, [serializer]),
-      worker(EventStore.Snapshots.Snapshotter, [serializer]),
-      worker(EventStore.Subscriptions, [serializer]),
+      worker(EventStore.Streams.Supervisor, []),
+      worker(EventStore.Subscriptions, []),
       worker(EventStore.Writer, [])
     ]
 

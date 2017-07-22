@@ -5,7 +5,6 @@ defmodule EventStore.Subscriptions.StreamSubscriptionProvider do
 
   @type event :: EventStore.RecordedEvent.t
   @type subscription :: EventStore.Storage.Subscription.t
-  @type stream :: pid()
   @type stream_uuid :: String.t
   @type subscription_name :: String.t
   @type last_seen :: non_neg_integer()
@@ -24,7 +23,7 @@ defmodule EventStore.Subscriptions.StreamSubscriptionProvider do
   @doc """
   Get a stream of events since the last seen, fetched in batches limited to given size
   """
-  @callback unseen_event_stream(stream, last_seen, read_batch_size) :: Enumerable.t
+  @callback unseen_event_stream(stream_uuid, last_seen, read_batch_size) :: Enumerable.t
 
   @doc """
   Acknowledge receipt of the last seen event for the stream and subscription

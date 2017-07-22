@@ -56,7 +56,7 @@ defmodule EventStore.Streams.AllStreamTest do
       refute_receive {:events, _received_events}
 
       events = EventFactory.create_events(1, 4)
-      :ok = Stream.append_to_stream(context[:stream1], 3, events)
+      :ok = Stream.append_to_stream(context[:stream1_uuid], 3, events)
 
       assert_receive {:events, received_events}
       assert length(received_events) == 1
@@ -89,8 +89,8 @@ defmodule EventStore.Streams.AllStreamTest do
     stream_uuid = UUID.uuid4
     events = EventFactory.create_events(3)
 
-    {:ok, stream} = Streams.open_stream(stream_uuid)
-    :ok = Stream.append_to_stream(stream, 0, events)
+    {:ok, stream} = Streams.Supervisor.open_stream(stream_uuid)
+    :ok = Stream.append_to_stream(stream_uuid, 0, events)
 
     {stream_uuid, stream, events}
   end

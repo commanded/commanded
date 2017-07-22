@@ -14,7 +14,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscription do
     last_seen_event_id
   end
 
-  def unseen_event_stream(_stream, last_seen, read_batch_size) do
+  def unseen_event_stream(@all_stream, last_seen, read_batch_size) do
     AllStream.stream_forward(last_seen + 1, read_batch_size)
   end
 
