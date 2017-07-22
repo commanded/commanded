@@ -24,13 +24,15 @@ defmodule EventStore.Subscriptions.Subscription do
   ]
 
   def start_link(stream_uuid, subscription_name, subscriber, opts) do
+    name = {:via, Registry, {EventStore.Subscriptions, {stream_uuid, subscription_name}}}
+
     GenServer.start_link(__MODULE__, %Subscription{
       stream_uuid: stream_uuid,
       subscription_name: subscription_name,
       subscriber: subscriber,
       subscription: StreamSubscription.new(),
       subscription_opts: opts,
-    })
+    }, name: name)
   end
 
   def notify_events(subscription, events) when is_list(events) do
@@ -53,7 +55,7 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.call(subscription, {:unsubscribe})
   end
 
-  def init(%Subscription{subscriber: subscriber} = state) do
+  def init(%Subscription{stream_uuid: stream_uuid, subscriber: subscriber} = state) do
     Process.link(subscriber)
 
     GenServer.cast(self(), {:subscribe_to_stream})
@@ -67,6 +69,8 @@ defmodule EventStore.Subscriptions.Subscription do
     state = %Subscription{state | subscription: subscription}
 
     :ok = handle_subscription_state(state)
+
+    {:ok, _} = Registry.register(EventStore.Subscriptions.PubSub, stream_uuid, {Subscription, :notify_events})
 
     {:noreply, state}
   end

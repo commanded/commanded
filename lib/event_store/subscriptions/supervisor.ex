@@ -6,15 +6,15 @@ defmodule EventStore.Subscriptions.Supervisor do
   use Supervisor
 
   def start_link do
-    Supervisor.start_link(__MODULE__, nil)
+    Supervisor.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
-  def subscribe_to_stream(supervisor, stream_uuid, subscription_name, subscriber, opts) do
-    Supervisor.start_child(supervisor, [stream_uuid, subscription_name, subscriber, opts])
+  def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
+    Supervisor.start_child(__MODULE__, [stream_uuid, subscription_name, subscriber, opts])
   end
 
-  def unsubscribe_from_stream(supervisor, subscription) do
-    Supervisor.terminate_child(supervisor, subscription)
+  def unsubscribe_from_stream(subscription) do
+    Supervisor.terminate_child(__MODULE__, subscription)
   end
 
   def init(_) do
