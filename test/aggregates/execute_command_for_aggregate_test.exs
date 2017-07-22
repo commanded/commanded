@@ -10,6 +10,8 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.Helpers
 
+  @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
+
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
 
@@ -87,6 +89,6 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     # process should exit
     assert_receive({:EXIT, _from, _reason})
-    assert Registry.lookup(:aggregate_registry, aggregate_uuid) == []
+    assert apply(@registry_provider, :whereis_name, [{:aggregate_registry, aggregate_uuid}]) == :undefined
   end
 end

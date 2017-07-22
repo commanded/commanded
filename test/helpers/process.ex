@@ -1,6 +1,8 @@
 defmodule Commanded.Helpers.Process do
   import ExUnit.Assertions
 
+  @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
+
   @doc """
   Stop the given process with a non-normal exit reason
   """
@@ -13,7 +15,7 @@ defmodule Commanded.Helpers.Process do
   end
   
   def shutdown(aggregate_uuid) do
-    [{pid, _}] = Registry.lookup(:aggregate_registry, aggregate_uuid)
+    pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, aggregate_uuid}])
     shutdown(pid)
   end
 end
