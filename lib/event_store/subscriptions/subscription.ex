@@ -55,7 +55,7 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.call(subscription, {:unsubscribe})
   end
 
-  def init(%Subscription{stream_uuid: stream_uuid, subscriber: subscriber} = state) do
+  def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
     GenServer.cast(self(), {:subscribe_to_stream})

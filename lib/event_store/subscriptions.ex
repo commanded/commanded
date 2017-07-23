@@ -31,8 +31,10 @@ defmodule EventStore.Subscriptions do
   def notify_events(stream_uuid, events) do
     events = Enum.map(events, &RecordedEvent.deserialize/1)
 
-    notify_subscribers(stream_uuid, events)
-    notify_subscribers(@all_stream, events)
+    Enum.each([
+      Task.async(fn -> notify_subscribers(stream_uuid, events) end),
+      Task.async(fn -> notify_subscribers(@all_stream, events) end),
+    ], &Task.await(&1))
   end
 
   defp do_subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
@@ -40,7 +42,7 @@ defmodule EventStore.Subscriptions do
 
     case EventStore.Subscriptions.Supervisor.subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
       {:ok, subscription} -> {:ok, subscription}
-      {:error, {:already_started, subscription}} -> {:error, :subscription_already_exists}
+      {:error, {:already_started, _subscription}} -> {:error, :subscription_already_exists}
     end
   end
 
