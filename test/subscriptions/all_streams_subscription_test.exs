@@ -297,7 +297,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
   defp create_subscription(opts \\ []) do
     StreamSubscription.new
-    |> StreamSubscription.subscribe(@all_stream, nil, @subscription_name, self(), opts)
+    |> StreamSubscription.subscribe(@all_stream, @subscription_name, self(), opts)
   end
 
   defp ack_refute_receive(subscription, ack) do

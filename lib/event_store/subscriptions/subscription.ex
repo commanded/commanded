@@ -17,22 +17,22 @@ defmodule EventStore.Subscriptions.Subscription do
 
   defstruct [
     stream_uuid: nil,
-    stream: nil,
     subscription_name: nil,
     subscriber: nil,
     subscription: nil,
     subscription_opts: [],
   ]
 
-  def start_link(stream_uuid, stream, subscription_name, subscriber, opts) do
+  def start_link(stream_uuid, subscription_name, subscriber, opts) do
+    name = {:via, Registry, {EventStore.Subscriptions, {stream_uuid, subscription_name}}}
+
     GenServer.start_link(__MODULE__, %Subscription{
       stream_uuid: stream_uuid,
-      stream: stream,
       subscription_name: subscription_name,
       subscriber: subscriber,
       subscription: StreamSubscription.new(),
       subscription_opts: opts,
-    })
+    }, name: name)
   end
 
   def notify_events(subscription, events) when is_list(events) do
@@ -63,12 +63,14 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
-  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, stream: stream, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
-    subscription = StreamSubscription.subscribe(subscription, stream_uuid, stream, subscription_name, subscriber, opts)
+  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
+    subscription = StreamSubscription.subscribe(subscription, stream_uuid, subscription_name, subscriber, opts)
 
     state = %Subscription{state | subscription: subscription}
 
     :ok = handle_subscription_state(state)
+
+    {:ok, _} = Registry.register(EventStore.Subscriptions.PubSub, stream_uuid, {Subscription, :notify_events})
 
     {:noreply, state}
   end

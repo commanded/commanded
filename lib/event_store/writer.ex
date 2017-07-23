@@ -9,16 +9,17 @@ defmodule EventStore.Writer do
   alias EventStore.{Subscriptions,RecordedEvent,Writer}
   alias EventStore.Storage.{Appender,QueryLatestEventId}
 
-  defstruct conn: nil, next_event_id: 1
+  defstruct [
+    conn: nil,
+    next_event_id: 1,
+  ]
 
   def start_link do
     GenServer.start_link(__MODULE__, %Writer{}, name: __MODULE__)
   end
 
   def init(%Writer{} = state) do
-    storage_config =
-      Application.get_env(:eventstore, EventStore.Storage)
-      |> EventStore.Config.parse()
+    storage_config = Application.get_env(:eventstore, EventStore.Storage) |> EventStore.Config.parse()
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 

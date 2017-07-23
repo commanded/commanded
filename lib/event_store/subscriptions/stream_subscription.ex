@@ -15,14 +15,13 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   @max_buffer_size 1_000
 
   defstate initial do
-    defevent subscribe(stream_uuid, stream, subscription_name, subscriber, opts), data: %SubscriptionState{} = data do
+    defevent subscribe(stream_uuid, subscription_name, subscriber, opts), data: %SubscriptionState{} = data do
       case subscribe_to_stream(stream_uuid, subscription_name, opts[:start_from_event_id], opts[:start_from_stream_version]) do
         {:ok, subscription} ->
           last_ack = subscription_provider(stream_uuid).last_ack(subscription) || 0
 
           data = %SubscriptionState{data |
             stream_uuid: stream_uuid,
-            stream: stream,
             subscription_name: subscription_name,
             subscriber: subscriber,
             mapper: opts[:mapper],
@@ -225,8 +224,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   # fetch unseen events from the stream
   # transition to `subscribed` state when no events are found or count of events is less than max buffer size so no further unseen events
-  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, stream: stream, last_seen: last_seen} = data, notification_callback) do
-    case subscription_provider(stream_uuid).unseen_event_stream(stream, last_seen, @max_buffer_size) do
+  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, last_seen: last_seen} = data, notification_callback) do
+    case subscription_provider(stream_uuid).unseen_event_stream(stream_uuid, last_seen, @max_buffer_size) do
       {:error, :stream_not_found} -> notification_callback.(last_seen)
       unseen_event_stream ->
         # stream through unseen events in a separate process

@@ -1,7 +1,6 @@
 defmodule EventStore.Subscriptions.SubscriptionState do
   defstruct [
     stream_uuid: nil,
-    stream: nil,
     subscription_name: nil,
     subscriber: nil,
     mapper: nil,

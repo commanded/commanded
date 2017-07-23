@@ -4,6 +4,7 @@ use Mix.Config
 config :logger, backends: []
 
 config :eventstore, EventStore.Storage,
+  serializer: EventStore.TermSerializer,
   username: "postgres",
   password: "postgres",
   database: "eventstore_bench",

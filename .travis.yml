@@ -1,16 +1,16 @@
 language: elixir
 
 elixir:
-  - 1.4.2
+  - 1.4.5
 
 otp_release:
-  - 19.3
+  - 20.0
 
 services:
   - postgresql
 
 before_script:
-  - mix event_store.create
+  - MIX_ENV=test mix event_store.create
 
 sudo: required
 dist: trusty
