@@ -2,13 +2,12 @@ defmodule AppendEventsBench do
   use Benchfella
 
   alias EventStore.EventFactory
-  alias EventStore.Storage
 
-  setup_all do
-    Application.ensure_all_started(:eventstore)
-  end
+  @await_timeout_ms 100_000
 
-  before_each_bench(store) do
+  before_each_bench(_) do
+    EventStore.StorageInitializer.reset_storage!()
+
     {:ok, EventFactory.create_events(100)}
   end
 
@@ -25,8 +24,6 @@ defmodule AppendEventsBench do
   end
 
   defp append_events(events, concurrency) do
-    await_timeout_ms = 100_000
-
     tasks = Enum.map 1..concurrency, fn (_) ->
       stream_uuid = UUID.uuid4
 
@@ -35,6 +32,6 @@ defmodule AppendEventsBench do
       end
     end
 
-    Enum.each(tasks, &Task.await(&1, await_timeout_ms))
+    Enum.each(tasks, &Task.await(&1, @await_timeout_ms))
   end
 end

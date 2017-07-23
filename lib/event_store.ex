@@ -113,7 +113,7 @@ defmodule EventStore do
 
     - `subscription_name` is used to uniquely identify the subscription.
 
-    - `subscriber` is a process that will be sent `{:events, events, subscription}` notification messages.
+    - `subscriber` is a process that will be sent `{:events, events}` notification messages.
 
     - `opts` is an optional map providing additional subscription configuration:
       - `start_from` is a pointer to the first event to receive. It must be one of:
@@ -139,7 +139,7 @@ defmodule EventStore do
 
     - `subscription_name` is used to uniquely identify the subscription.
 
-    - `subscriber` is a process that will be sent `{:events, events, subscription}` notification messages.
+    - `subscriber` is a process that will be sent `{:events, events}` notification messages.
 
     - `opts` is an optional map providing additional subscription configuration:
       - `start_from` is a pointer to the first event to receive. It must be one of:
