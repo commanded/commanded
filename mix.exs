@@ -20,11 +20,8 @@ defmodule EventStore.Mixfile do
 
   def application do
     [
-      applications: [
-        :fsm,
+      extra_applications: [
         :logger,
-        :poolboy,
-        :postgrex
       ],
       mod: {EventStore.Application, []}
     ]
@@ -70,7 +67,7 @@ EventStore using PostgreSQL for persistence.
     [
       "es.setup": ["event_store.create"],
       "es.reset": ["event_store.drop", "event_store.create"],
-      "benchmark": ["es.reset", "app.start", "bench"],
+      "benchmark": ["app.start", "bench"],
     ]
   end
 end
