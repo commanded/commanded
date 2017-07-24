@@ -34,12 +34,12 @@ defmodule EventStore.Mixfile do
   defp deps do
     [
       {:benchfella, "~> 0.3", only: :bench},
-      {:credo, "~> 0.5", only: [:dev, :test]},
+      {:credo, "~> 0.7", only: [:dev, :test]},
       {:dialyxir, "~> 0.4", only: :dev},
-      {:ex_doc, "~> 0.14", only: :dev},
+      {:ex_doc, "~> 0.16", only: :dev},
       {:fsm, "~> 0.3"},
       {:markdown, github: "devinus/markdown", only: :dev},
-      {:mix_test_watch, "~> 0.2", only: :dev},
+      {:mix_test_watch, "~> 0.4", only: :dev},
       {:poison, "~> 3.0", only: [:bench, :test]},
       {:poolboy, "~> 1.5"},
       {:postgrex, "~> 0.13"},
@@ -67,7 +67,7 @@ EventStore using PostgreSQL for persistence.
     [
       "es.setup": ["event_store.create"],
       "es.reset": ["event_store.drop", "event_store.create"],
-      "benchmark": ["app.start", "bench"],
+      "benchmark": ["es.reset", "app.start", "bench"],
     ]
   end
 end
