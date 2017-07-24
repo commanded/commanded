@@ -131,10 +131,9 @@ RETURNING stream_id;
           Integer.to_string(index + 9), ")"
         ]
 
-        if event_number == number_of_events do
-          event_params
-        else
-          [event_params, ","]
+        case event_number do
+          ^number_of_events -> event_params
+          _ -> [event_params, ","]
         end
       end)
 
