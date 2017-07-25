@@ -663,4 +663,4 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 
 Please [open an issue](https://github.com/slashdotdash/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the [Gitter chat room](https://gitter.im/commanded/Lobby) for Commanded.
 
-For commercial support, and consultancy, please contact [Ben Smith](ben@10consulting.com).
+For commercial support, and consultancy, please contact [Ben Smith](mailto:ben@10consulting.com).
