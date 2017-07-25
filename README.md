@@ -26,6 +26,7 @@ MIT License
 - [Used in production?](#used-in-production)
 - [Contributing](#contributing)
   - [Contributors](#contributors)
+- [Need help?](#need-help)
 
 ---
 
@@ -296,3 +297,9 @@ You should include unit tests to cover any changes.
 - [Paul Iannazzo](https://github.com/boxxxie)
 - [Simon Harris](https://github.com/harukizaemon)
 - [Stuart Corbishley](https://github.com/stuartc)
+
+## Need help?
+
+Please [open an issue](https://github.com/slashdotdash/eventstore/issues) if you encounter a problem, or need assistance.
+
+For commercial support, and consultancy, please contact [Ben Smith](mailto:ben@10consulting.com).
