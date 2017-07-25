@@ -46,6 +46,7 @@ MIT License
 - [Used in production?](#used-in-production)
 - [Event store provider](#event-store-provider)
 - [Contributing](#contributing)
+- [Need help?](#need-help)
 
 ## Getting started
 
@@ -657,3 +658,9 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Brenton Annan](https://github.com/brentonannan)
 - [Henry Hazan](https://github.com/henry-hz)
+
+## Need help?
+
+Please [open an issue](https://github.com/slashdotdash/commanded) if you encounter a problem, or need assistance. You can also seek help in the [Gitter chat room](https://gitter.im/commanded/Lobby) for Commanded.
+
+For commercial support, and consultancy, please contact [Ben Smith](ben@10consulting.com).
