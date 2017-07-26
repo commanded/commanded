@@ -2,7 +2,11 @@ defmodule EventStore.Subscriber do
   use GenServer
 
   def start_link(receiver) do
-    GenServer.start_link(__MODULE__, receiver, [])
+    GenServer.start_link(__MODULE__, receiver)
+  end
+
+  def start(receiver) do
+    GenServer.start(__MODULE__, receiver)
   end
 
   def received_events(server) do

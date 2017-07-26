@@ -152,14 +152,11 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
 
-      {:ok, subscriber1} = Subscriber.start_link(self())
+      {:ok, subscriber1} = Subscriber.start(self())
       {:ok, subscriber2} = Subscriber.start_link(self())
 
       {:ok, subscription1} = Subscriptions.subscribe_to_all_streams(subscription_name <> "1", subscriber1)
       {:ok, subscription2} = Subscriptions.subscribe_to_all_streams(subscription_name <> "2", subscriber2)
-
-      # unlink subscriber so we don't crash the test when it is terminated by the subscription shutdown
-      Process.unlink(subscriber1)
 
       ProcessHelper.shutdown(subscription1)
 
@@ -317,9 +314,14 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       events = EventFactory.create_events(1)
 
       {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, self())
+      {:ok, subscriber} = Subscriber.start(self())
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, subscriber)
 
       ProcessHelper.shutdown(subscription)
+
+      # should kill subscription and subscriber
+      assert Process.alive?(subscription) == false
+      assert Process.alive?(subscriber) == false
 
       :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
 
