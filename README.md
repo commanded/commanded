@@ -133,8 +133,14 @@ You must decide which event store to use with Commanded. You have a choice betwe
 
 5. Create the `eventstore` database and tables using the `mix` task.
 
+    ```console
+    $ mix event_store.create
     ```
-    mix event_store.create
+
+6. Force a (re)compile of the commanded dependency to include the adapter:
+
+    ```console
+    $ MIX_ENV=test mix deps.compile commanded --force
     ```
 
 ### Greg Young's Event Store
@@ -179,7 +185,24 @@ This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir
       stream_prefix: "commandeddev"
     ```
 
+    The stream prefix **must not** contain a dash character ("-"). This is used for category projections and event handler subscriptions.
+
+5. Force a (re)compile of the commanded dependency to include the adapter:
+
+    ```console
+    $ MIX_ENV=test mix deps.compile commanded --force
+    ```
+
 You **must** run the Event Store with all projections enabled and standard projections started. Use the `--run-projections=all --start-standard-projections=true` flags when running the Event Store executable.
+
+
+#### Changing event store adapters
+
+**Note** To switch between an event store adapter you *must* recompile the Commanded dependency:
+
+```console
+$ MIX_ENV=test mix deps.compile commanded --force
+```
 
 ## Sample usage
 
