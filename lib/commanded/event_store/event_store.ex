@@ -10,10 +10,10 @@ defmodule Commanded.EventStore do
   }
 
   defmacro __using__(_) do
-    adapter = Application.get_env(:commanded, :event_store_adapter, Commanded.EventStore.Adapters.InMemory)
+    adapter = Application.get_env(:commanded, :event_store_adapter) || raise ArgumentError, "Commanded expects :event_store_adapter to be configured in environment"
 
     quote do
-      @event_store unquote adapter
+      @event_store unquote(adapter)
     end
   end
 
