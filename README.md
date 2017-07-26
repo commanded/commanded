@@ -68,7 +68,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
 
 - Greg Young's [Event Store](https://geteventstore.com/) using the [commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter) package.
 
-[Want to use a different event store?](#event-store-provider)
+Want to use a different event store? Then you will need to write your own [event store provider](#event-store-provider).
 
 ### PostgreSQL-based EventStore
 
