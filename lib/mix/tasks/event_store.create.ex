@@ -23,7 +23,7 @@ defmodule Mix.Tasks.EventStore.Create do
   def run(args) do
     {:ok, _} = Application.ensure_all_started(:postgrex)
 
-    config = EventStore.Config.parse Application.get_env(:eventstore, Storage)
+    config = EventStore.configuration() |> EventStore.Config.parse()
     {opts, _, _} = OptionParser.parse(args, switches: [quiet: :boolean])
 
     create_database(config, opts)
@@ -37,16 +37,20 @@ defmodule Mix.Tasks.EventStore.Create do
         unless opts[:quiet] do
           Mix.shell.info "The EventStore database has been created."
         end
-        initialize_storage(config)
+        
+        initialize_storage!(config)
+
       {:error, :already_up} ->
         unless opts[:quiet] do
           Mix.shell.info "The EventStore database already exists."
         end
-      {:error, term} -> Mix.raise "The EventStore database couldn't be created, reason given: #{inspect term}."
+
+      {:error, term} ->
+        Mix.raise "The EventStore database couldn't be created, reason given: #{inspect term}."
     end
   end
 
-  defp initialize_storage(config) do
+  defp initialize_storage!(config) do
     {:ok, conn} = Postgrex.start_link(config)
 
     Storage.Initializer.run!(conn)

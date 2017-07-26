@@ -5,10 +5,8 @@ defmodule EventStore.RecordedEvent do
   Events are immutable once recorded.
   """
 
-  use EventStore.Serializer
-
   alias EventStore.RecordedEvent
-
+  
   @type t :: %RecordedEvent{
     event_id: non_neg_integer,
     stream_id: non_neg_integer,
@@ -33,10 +31,10 @@ defmodule EventStore.RecordedEvent do
     created_at: nil,
   ]
 
-  def deserialize(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event) do
+  def deserialize(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event, serializer) do
     %RecordedEvent{recorded_event |
-      data: @serializer.deserialize(data, type: event_type),
-      metadata: @serializer.deserialize(metadata, [])
+      data: serializer.deserialize(data, type: event_type),
+      metadata: serializer.deserialize(metadata, [])
     }
   end
 

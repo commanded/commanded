@@ -17,7 +17,7 @@ defmodule EventStore.Storage.PoolSupervisor do
   end
 
   def init(_) do
-    config = Config.parse Application.get_env(:eventstore, EventStore.Storage)
+    config = EventStore.configuration() |> Config.parse()
 
     children = [
       :poolboy.child_spec(@storage_pool_name, pool_opts(config), postgrex_opts(config))

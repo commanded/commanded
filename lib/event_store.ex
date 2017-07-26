@@ -199,7 +199,7 @@ defmodule EventStore do
   """
   @spec read_snapshot(String.t) :: {:ok, SnapshotData.t} | {:error, :snapshot_not_found}
   def read_snapshot(source_uuid) do
-    Snapshotter.read_snapshot(source_uuid)
+    Snapshotter.read_snapshot(source_uuid, configured_serializer())
   end
 
   @doc """
@@ -209,7 +209,7 @@ defmodule EventStore do
   """
   @spec record_snapshot(SnapshotData.t) :: :ok | {:error, reason :: term}
   def record_snapshot(%SnapshotData{} = snapshot) do
-    Snapshotter.record_snapshot(snapshot)
+    Snapshotter.record_snapshot(snapshot, configured_serializer())
   end
 
   @doc """
@@ -220,5 +220,19 @@ defmodule EventStore do
   @spec delete_snapshot(String.t) :: :ok | {:error, reason :: term}
   def delete_snapshot(source_uuid) do
     Snapshotter.delete_snapshot(source_uuid)
+  end
+
+  @doc """
+  Get the serializer configured for the environment
+  """
+  def configured_serializer do
+    configuration()[:serializer] || raise ArgumentError, "EventStore storage configuration expects :serializer to be configured in environment"
+  end
+
+  @doc """
+  Get the event store configuration for the environment
+  """
+  def configuration do
+    Application.get_env(:eventstore, EventStore.Storage) || raise ArgumentError, "EventStore storage configuration not specified in environment"
   end
 end

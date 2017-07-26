@@ -4,7 +4,6 @@ defmodule EventStore.Streams.Stream do
   """
 
   use GenServer
-  use EventStore.Serializer
 
   require Logger
 
@@ -12,15 +11,16 @@ defmodule EventStore.Streams.Stream do
   alias EventStore.Streams.Stream
 
   defstruct [
+    serializer: nil,
     stream_uuid: nil,
     stream_id: nil,
     stream_version: 0,
   ]
 
-  def start_link(stream_uuid) do
+  def start_link(serializer, stream_uuid) do
     name = via_tuple(stream_uuid)
 
-    GenServer.start_link(__MODULE__, %Stream{stream_uuid: stream_uuid}, name: name)
+    GenServer.start_link(__MODULE__, %Stream{serializer: serializer, stream_uuid: stream_uuid}, name: name)
   end
 
   @doc """
@@ -31,8 +31,6 @@ defmodule EventStore.Streams.Stream do
   Returns `:ok` on success.
   """
   def append_to_stream(stream_uuid, expected_version, events) do
-    events = Enum.map(events, &map_to_recorded_event/1)
-
     GenServer.call(via_tuple(stream_uuid), {:append_to_stream, expected_version, events})
   end
 
@@ -74,14 +72,14 @@ defmodule EventStore.Streams.Stream do
     {:reply, reply, state}
   end
 
-  def handle_call({:read_stream_forward, start_version, count}, _from, %Stream{stream_id: stream_id} = state) do
-    reply = read_storage_forward(stream_id, start_version, count)
+  def handle_call({:read_stream_forward, start_version, count}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do
+    reply = read_storage_forward(stream_id, start_version, count, serializer)
 
     {:reply, reply, state}
   end
 
-  def handle_call({:stream_forward, start_version, read_batch_size}, _from, %Stream{stream_id: stream_id} = state) do
-    reply = stream_storage_forward(stream_id, start_version, read_batch_size)
+  def handle_call({:stream_forward, start_version, read_batch_size}, _from, %Stream{stream_id: stream_id, serializer: serializer} = state) do
+    reply = stream_storage_forward(stream_id, start_version, read_batch_size, serializer)
 
     {:reply, reply, state}
   end
@@ -110,21 +108,24 @@ defmodule EventStore.Streams.Stream do
     append_to_storage(expected_version, events, %Stream{state | stream_id: stream_id})
   end
 
-  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when not is_nil(stream_id) and stream_version == expected_version do
+  defp append_to_storage(expected_version, events, %Stream{stream_id: stream_id, stream_version: stream_version} = stream)
+    when not is_nil(stream_id) and stream_version == expected_version
+  do
     reply =
       events
-      |> prepare_events(stream_id, stream_version)
-      |> write_to_stream(stream_id, stream_uuid)
+      |> prepare_events(stream)
+      |> write_to_stream(stream)
 
-    {reply, state}
+    {reply, stream}
   end
 
   defp append_to_storage(_expected_version, _events, _state), do: {:error, :wrong_expected_version}
 
-  defp prepare_events(events, stream_id, stream_version) do
+  defp prepare_events(events, %Stream{serializer: serializer, stream_id: stream_id, stream_version: stream_version}) do
     initial_stream_version = stream_version + 1
 
     events
+    |> Enum.map(&map_to_recorded_event(&1, serializer))
     |> Enum.with_index(0)
     |> Enum.map(fn {recorded_event, index} ->
       %RecordedEvent{recorded_event |
@@ -134,13 +135,13 @@ defmodule EventStore.Streams.Stream do
     end)
   end
 
-  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, causation_id: causation_id, event_type: event_type, data: data, metadata: metadata}) do
+  defp map_to_recorded_event(%EventData{correlation_id: correlation_id, causation_id: causation_id, event_type: event_type, data: data, metadata: metadata}, serializer) do
     %RecordedEvent{
       correlation_id: correlation_id,
       causation_id: causation_id,
       event_type: event_type,
-      data: @serializer.serialize(data),
-      metadata: @serializer.serialize(metadata),
+      data: serializer.serialize(data),
+      metadata: serializer.serialize(metadata),
       created_at: utc_now(),
     }
   end
@@ -150,24 +151,24 @@ defmodule EventStore.Streams.Stream do
     DateTime.utc_now |> DateTime.to_naive
   end
 
-  defp write_to_stream(prepared_events, stream_id, stream_uuid) do
+  defp write_to_stream(prepared_events, %Stream{stream_id: stream_id, stream_uuid: stream_uuid}) do
     Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
   end
 
-  defp read_storage_forward(stream_id, start_version, count) when not is_nil(stream_id) do
+  defp read_storage_forward(stream_id, start_version, count, serializer) when not is_nil(stream_id) do
     case Storage.read_stream_forward(stream_id, start_version, count) do
-      {:ok, recorded_events} -> {:ok, deserialize_recorded_events(recorded_events)}
+      {:ok, recorded_events} -> {:ok, deserialize_recorded_events(recorded_events, serializer)}
       {:error, _reason} = reply -> reply
     end
   end
-  defp read_storage_forward(_stream_id, _start_version, _count), do: {:error, :stream_not_found}
+  defp read_storage_forward(_stream_id, _start_version, _count, _serializer), do: {:error, :stream_not_found}
 
-  defp stream_storage_forward(stream_id, 0, read_batch_size), do: stream_storage_forward(stream_id, 1, read_batch_size)
-  defp stream_storage_forward(stream_id, start_version, read_batch_size) when not is_nil(stream_id) do
+  defp stream_storage_forward(stream_id, 0, read_batch_size, serializer), do: stream_storage_forward(stream_id, 1, read_batch_size, serializer)
+  defp stream_storage_forward(stream_id, start_version, read_batch_size, serializer) when not is_nil(stream_id) do
     Elixir.Stream.resource(
       fn -> start_version end,
       fn next_version ->
-        case read_storage_forward(stream_id, next_version, read_batch_size) do
+        case read_storage_forward(stream_id, next_version, read_batch_size, serializer) do
           {:ok, []} -> {:halt, next_version}
           {:ok, events} -> {events, next_version + length(events)}
         end
@@ -175,17 +176,10 @@ defmodule EventStore.Streams.Stream do
       fn _ -> :ok end
     )
   end
-  defp stream_storage_forward(_stream_id, _start_version, _read_batch_size), do: {:error, :stream_not_found}
+  defp stream_storage_forward(_stream_id, _start_version, _read_batch_size, _serializer), do: {:error, :stream_not_found}
 
-  defp deserialize_recorded_events(recorded_events) do
-    Enum.map(recorded_events, &deserialize_recorded_event/1)
-  end
-
-  defp deserialize_recorded_event(%RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event) do
-    %RecordedEvent{recorded_event |
-      data: @serializer.deserialize(data, type: event_type),
-      metadata: @serializer.deserialize(metadata, [])
-    }
+  defp deserialize_recorded_events(recorded_events, serializer) do
+    Enum.map(recorded_events, &RecordedEvent.deserialize(&1, serializer))
   end
 
   defp via_tuple(stream_uuid), do: {:via, Registry, {EventStore.Streams, stream_uuid}}

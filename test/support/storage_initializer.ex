@@ -4,9 +4,7 @@ defmodule EventStore.StorageInitializer do
   def reset_storage! do
     Application.stop(:eventstore)
 
-    storage_config = Application.get_env(:eventstore, EventStore.Storage)
-
-    {:ok, conn} = Postgrex.start_link(storage_config)
+    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
 
     Storage.Initializer.reset!(conn)
 

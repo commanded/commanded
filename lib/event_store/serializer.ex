@@ -16,16 +16,4 @@ defmodule EventStore.Serializer do
   Deserialize the given binary data to the corresponding term
   """
   @callback deserialize(binary, config) :: any
-
-  @doc """
-  Include the configured serializer as a module attribute
-  """
-  defmacro __using__(_) do
-    config = Application.get_env(:eventstore, EventStore.Storage, [])
-    serializer = config[:serializer] || raise "EventStore expects :serializer to be configured in environment"
-
-    quote do
-      @serializer unquote(serializer)
-    end
-  end
 end

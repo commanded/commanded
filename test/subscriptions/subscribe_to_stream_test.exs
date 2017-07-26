@@ -308,28 +308,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       refute_receive {:events, _received_events}
       assert Process.alive?(subscription) == false
     end
-
-    test "unsubscribe from a single stream subscription after subscription process is shutdown should stop subscriber from receiving events", %{subscription_name: subscription_name} do
-      stream_uuid = UUID.uuid4
-      events = EventFactory.create_events(1)
-
-      {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
-      {:ok, subscriber} = Subscriber.start(self())
-      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, subscriber)
-
-      ProcessHelper.shutdown(subscription)
-
-      # should kill subscription and subscriber
-      assert Process.alive?(subscription) == false
-      assert Process.alive?(subscriber) == false
-
-      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
-
-      :ok = Stream.append_to_stream(stream_uuid, 0, events)
-
-      refute_receive {:events, _received_events}
-      assert Process.alive?(subscription) == false
-    end
   end
 
   defp pluck(enumerable, field) do

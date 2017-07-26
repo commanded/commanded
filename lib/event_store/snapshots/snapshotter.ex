@@ -9,9 +9,9 @@ defmodule EventStore.Snapshots.Snapshotter do
   @doc """
   Read a snapshot, if available, for a given source
   """
-  def read_snapshot(source_uuid) do
+  def read_snapshot(source_uuid, serializer) do
     case Storage.read_snapshot(source_uuid) do
-      {:ok, snapshot} -> {:ok, SnapshotData.deserialize(snapshot)}
+      {:ok, snapshot} -> {:ok, SnapshotData.deserialize(snapshot, serializer)}
       reply -> reply
     end
   end
@@ -21,9 +21,9 @@ defmodule EventStore.Snapshots.Snapshotter do
 
   Returns `:ok` on success
   """
-  def record_snapshot(%SnapshotData{} = snapshot) do
+  def record_snapshot(%SnapshotData{} = snapshot, serializer) do
     snapshot
-    |> SnapshotData.serialize()
+    |> SnapshotData.serialize(serializer)
     |> Storage.record_snapshot()
   end
 

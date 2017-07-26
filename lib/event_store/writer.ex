@@ -12,14 +12,15 @@ defmodule EventStore.Writer do
   defstruct [
     conn: nil,
     next_event_id: 1,
+    serializer: nil,
   ]
 
-  def start_link do
-    GenServer.start_link(__MODULE__, %Writer{}, name: __MODULE__)
+  def start_link(serializer) do
+    GenServer.start_link(__MODULE__, %Writer{serializer: serializer}, name: __MODULE__)
   end
 
   def init(%Writer{} = state) do
-    storage_config = Application.get_env(:eventstore, EventStore.Storage) |> EventStore.Config.parse()
+    storage_config = EventStore.configuration() |> EventStore.Config.parse()
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 
@@ -37,12 +38,12 @@ defmodule EventStore.Writer do
     GenServer.call(__MODULE__, {:append_to_stream, events, stream_id, stream_uuid})
   end
 
-  def handle_call({:append_to_stream, events, stream_id, stream_uuid}, _from, %Writer{conn: conn, next_event_id: next_event_id} = state) do
+  def handle_call({:append_to_stream, events, stream_id, stream_uuid}, _from, %Writer{conn: conn, next_event_id: next_event_id, serializer: serializer} = state) do
     recorded_events = assign_event_id(events, next_event_id)
 
     {reply, state} = case append_events(conn, stream_id, recorded_events) do
       {:ok, count} ->
-        publish_events(stream_uuid, recorded_events)
+        publish_events(stream_uuid, recorded_events, serializer)
         {:ok, %Writer{state | next_event_id: next_event_id + count}}
       {:error, _reason} = reply -> {reply, state}
     end
@@ -70,7 +71,7 @@ defmodule EventStore.Writer do
     Appender.append(conn, stream_id, recorded_events)
   end
 
-  defp publish_events(stream_uuid, recorded_events) do
-    Subscriptions.notify_events(stream_uuid, recorded_events)
+  defp publish_events(stream_uuid, recorded_events, serializer) do
+    Subscriptions.notify_events(stream_uuid, recorded_events, serializer)
   end
 end

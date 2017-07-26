@@ -28,8 +28,8 @@ defmodule EventStore.Subscriptions do
     do_unsubscribe_from_stream(@all_stream, subscription_name)
   end
 
-  def notify_events(stream_uuid, events) do
-    events = Enum.map(events, &RecordedEvent.deserialize/1)
+  def notify_events(stream_uuid, events, serializer) do
+    events = Enum.map(events, &RecordedEvent.deserialize(&1, serializer))
 
     Enum.each([
       Task.async(fn -> notify_subscribers(stream_uuid, events) end),
