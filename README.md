@@ -140,7 +140,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
 6. Force a (re)compile of the commanded dependency to include the adapter:
 
     ```console
-    $ MIX_ENV=test mix deps.compile commanded --force
+    $ mix deps.compile commanded --force
     ```
 
 ### Greg Young's Event Store
@@ -190,7 +190,7 @@ This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir
 5. Force a (re)compile of the commanded dependency to include the adapter:
 
     ```console
-    $ MIX_ENV=test mix deps.compile commanded --force
+    $ mix deps.compile commanded --force
     ```
 
 You **must** run the Event Store with all projections enabled and standard projections started. Use the `--run-projections=all --start-standard-projections=true` flags when running the Event Store executable.
@@ -201,8 +201,10 @@ You **must** run the Event Store with all projections enabled and standard proje
 **Note** To switch between an event store adapter you *must* recompile the Commanded dependency:
 
 ```console
-$ MIX_ENV=test mix deps.compile commanded --force
+$ mix deps.compile commanded --force
 ```
+
+For the test environment use: `$ MIX_ENV=test mix deps.compile commanded --force`
 
 ## Sample usage
 
