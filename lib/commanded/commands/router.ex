@@ -27,6 +27,14 @@ defmodule Commanded.Commands.Router do
 
   The aggregate root must implement an `execute/2` function that receives the aggregate's state and the command to execute.
 
+  ### Aggregate version
+
+  You can optionally choose to include the aggregate's version as part of the dispatch result by setting `include_aggregate_version` true.
+
+      {:ok, aggregate_version} = BankRouter.dispatch(command, include_aggregate_version: true)
+
+  This is useful when you need to wait for an event handler (e.g. a read model projection) to be up-to-date before continuing or querying its data.
+
   """
   defmacro __using__(_) do
     quote do
@@ -37,6 +45,7 @@ defmodule Commanded.Commands.Router do
       @registered_middleware []
       @default_dispatch_timeout 5_000
       @default_lifespan Commanded.Aggregates.Aggregate.DefaultLifespan
+      @include_aggregate_version false
     end
   end
 
@@ -53,23 +62,18 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc """
-  Dispatch the given command to the corresponding handler for a given aggregate root uniquely identified
+  Dispatch the given command, or list of commands, to the corresponding handler for a given aggregate root
   """
-  defmacro dispatch(command_module, opts)
+  defmacro dispatch(command_module_or_modules, opts) do
+    opts = parse_opts(opts, [])
 
-  defmacro dispatch(command_modules, opts) when is_list(command_modules) do
-    Enum.map(command_modules, fn command_module ->
+    command_module_or_modules
+    |> List.wrap()
+    |> Enum.map(fn command_module ->
       quote do
-        dispatch(unquote(command_module), unquote(opts))
+        register(unquote(command_module), unquote(opts))
       end
     end)
-  end
-
-  defmacro dispatch(command_module, opts) do
-    opts = parse_opts(opts, [])
-    quote do
-      register(unquote(command_module), unquote(opts))
-    end
   end
 
   @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan]
@@ -94,31 +98,41 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
-      def dispatch(%unquote(command_module){} = command) do
-        do_dispatch(command, unquote(timeout) || @default_dispatch_timeout)
-      end
+      def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, [])
 
       @doc """
       Dispatch the given command to the registered handler providing a timeout.
 
-      - `timeout` is an integer greater than zero which specifies how many milliseconds to allow the command to be handled, or the atom :infinity to wait indefinitely.
-        The default value is 5000.
+      - `timeout_or_opts` is either an integer timeout or a keyword list of options.
+        The timeout must be an integer greater than zero which specifies how many milliseconds to allow the command to be handled, or the atom `:infinity` to wait indefinitely.
+        The default timeout value is 5000.
+        Alternatively, an options keyword list can be provided, it supports:
 
-      Returns `:ok` on success.
+        Options:
+
+          - `:timeout` as described above
+          - `:include_aggregate_version` set to true to include the aggregate stream version in the success response: `{:ok, aggregate_version}`
+            The default is false, to return just `:ok`
+
+      Returns `:ok` on success, unless `:include_aggregate_version` is enabled where it returns `{:ok, aggregate_version}`.
       """
-      @spec dispatch(command :: struct, timeout :: integer | :infinity) :: :ok | {:error, reason :: term}
-      def dispatch(command, timeout)
-      def dispatch(%unquote(command_module){} = command, timeout) do
-        do_dispatch(command, timeout)
-      end
+      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, reason :: term}
+      def dispatch(command, timeout_or_opts)
+      def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, timeout: :infinity)
+      def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, timeout: timeout)
+      def dispatch(%unquote(command_module){} = command, opts), do: do_dispatch(command, opts)
 
-      defp do_dispatch(%unquote(command_module){} = command, timeout) do
+      defp do_dispatch(%unquote(command_module){} = command, opts) do
+        timeout = Keyword.get(opts, :timeout, unquote(timeout) || @default_dispatch_timeout)
+        include_aggregate_version = Keyword.get(opts, :include_aggregate_version, @include_aggregate_version)
+
         Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
           handler_module: unquote(handler),
           handler_function: unquote(function),
           aggregate_module: unquote(aggregate),
           identity: unquote(identity),
+          include_aggregate_version: include_aggregate_version,
           timeout: timeout,
           lifespan: unquote(lifespan) || @default_lifespan,
           middleware: @registered_middleware,
@@ -129,8 +143,13 @@ defmodule Commanded.Commands.Router do
 
   defmacro __before_compile__(_env) do
     quote do
-      # return error if an unregistered command is dispatched
-      def dispatch(command) do
+      @doc """
+      Return an error if an unregistered command is dispatched
+      """
+      def dispatch(command), do: unregistered_command(command)
+      def dispatch(command, opts), do: unregistered_command(command)
+
+      defp unregistered_command(command) do
         Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)
         {:error, :unregistered_command}
       end

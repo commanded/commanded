@@ -119,8 +119,8 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should allow multiple module registrations for multiple commands in a single dispatch" do
-    :ok = MultiCommandRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
-    :ok = MultiCommandRouter.dispatch(%CloseAccount{account_number: "ACC123"})
+    assert :ok == MultiCommandRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    assert :ok == MultiCommandRouter.dispatch(%CloseAccount{account_number: "ACC123"})
   end
 
   defmodule MultiCommandHandlerRouter do
@@ -132,7 +132,14 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should allow multiple module registrations for different command handlers" do
-    :ok = MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
-    :ok = MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100})
+    assert :ok == MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+    assert :ok == MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100})
+  end
+
+  describe "include aggregate version" do
+    test "should return aggregate's updated stream version" do
+      assert {:ok, 1} == MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, include_aggregate_version: true)
+      assert {:ok, 2} == MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100}, include_aggregate_version: true)
+    end
   end
 end

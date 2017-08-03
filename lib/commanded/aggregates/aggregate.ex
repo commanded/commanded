@@ -55,7 +55,7 @@ defmodule Commanded.Aggregates.Aggregate do
   - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
     The default value is 5000.
 
-  Returns `:ok` on success, or `{:error, reason}` on failure
+  Returns `{:ok, aggregate_version}` on success, or `{:error, reason}` on failure
   """
   def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000, lifespan \\ DefaultLifespan) do
     GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command, lifespan}, timeout)
@@ -146,8 +146,6 @@ defmodule Commanded.Aggregates.Aggregate do
   defp execute_command(handler, function, command, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
     case Kernel.apply(handler, function, [aggregate_state, command]) do
       {:error, _reason} = reply -> {reply, state}
-      nil -> {:ok, state}
-      [] -> {:ok, state}
       events ->
         pending_events = List.wrap(events)
 
@@ -160,7 +158,7 @@ defmodule Commanded.Aggregates.Aggregate do
           aggregate_version: stream_version
         }
 
-        {:ok, state}
+        {{:ok, stream_version}, state}
     end
   end
 
