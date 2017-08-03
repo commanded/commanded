@@ -56,7 +56,7 @@ The package can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 0.12"}]
+      [{:commanded, "~> 0.13"}]
     end
     ```
 
@@ -340,7 +340,7 @@ end
 
 ```elixir
 # dispatch the open account command with a timeout of 2 seconds
-:ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, 2_000)
+:ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, timeout: 2_000)
 ```
 
 #### Multi-command registration
@@ -354,6 +354,16 @@ defmodule BankRouter do
   dispatch [OpenAccount,CloseAccount], to: BankAccountHandler, aggregate: BankAccount, identity: :account_number
 end
 ```
+
+#### Dispatch returning aggregate version
+
+You can optionally choose to include the aggregate's version as part of the dispatch result by setting the  `include_aggregate_version` option to true:
+
+```elixir
+{:ok, aggregate_version} = BankRouter.dispatch(command, include_aggregate_version: true)
+```
+
+This is useful when you need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
 
 #### Aggregate lifespan
 

@@ -11,6 +11,7 @@ defmodule Commanded.Commands.Dispatcher do
       handler_module: nil,
       handler_function: nil,
       aggregate_module: nil,
+      include_aggregate_version: nil,
       identity: nil,
       timeout: nil,
       lifespan: nil,
@@ -54,7 +55,7 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp execute(
-    %Payload{handler_module: handler_module, handler_function: handler_function, timeout: timeout, lifespan: lifespan} = payload,
+    %Payload{handler_module: handler_module, handler_function: handler_function, include_aggregate_version: include_aggregate_version, timeout: timeout, lifespan: lifespan} = payload,
     %Pipeline{command: command} = pipeline,
     aggregate_uuid)
   do
@@ -71,9 +72,13 @@ defmodule Commanded.Commands.Dispatcher do
     end
 
     case result do
-      :ok = reply ->
+      {:ok, aggregate_version} ->
         after_dispatch(pipeline, payload)
-        reply
+
+        case include_aggregate_version do
+          true -> {:ok, aggregate_version}
+          false -> :ok
+        end
 
       {:error, error} = reply ->
         after_failure(pipeline, error, payload)

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.13.0
+
+### Enhancements
+
+- Command dispatch optionally returns aggregate version, using `include_aggregate_version: true` during dispatch.
+
 ## v0.12.0
 
 ### Enhancements
