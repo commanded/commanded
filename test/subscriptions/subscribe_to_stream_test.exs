@@ -219,7 +219,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
     # test "resume subscription to stream should skip already seen events", %{subscription_name: subscription_name}
   end
 
-  describe "single stream subscription" do
+  describe "monitor single stream subscription" do
     test "should monitor subscription and terminate subscription and subscriber on error", %{subscription_name: subscription_name} do
       stream_uuid = UUID.uuid4
       events = EventFactory.create_events(1)
