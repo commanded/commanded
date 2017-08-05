@@ -5,7 +5,7 @@ defmodule EventStore.Mixfile do
     [
       app: :eventstore,
       version: "0.9.0",
-      elixir: "~> 1.4",
+      elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env),
       description: description(),
       package: package(),
