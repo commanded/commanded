@@ -7,22 +7,23 @@ defmodule SubscribeToStreamBench do
 
   before_each_bench(_) do
     EventStore.StorageInitializer.reset_storage!()
-    {:ok, nil}
+
+    {:ok, EventFactory.create_events(100)}
   end
 
   bench "subscribe to stream, 1 subscription" do
-    subscribe_to_stream(1)
+    subscribe_to_stream(bench_context, 1)
   end
 
   bench "subscribe to stream, 10 subscriptions" do
-    subscribe_to_stream(10)
+    subscribe_to_stream(bench_context, 10)
   end
 
   bench "subscribe to stream, 100 subscriptions" do
-    subscribe_to_stream(100)
+    subscribe_to_stream(bench_context, 100)
   end
 
-  defp subscribe_to_stream(concurrency) do
+  defp subscribe_to_stream(events, concurrency) do
     stream_uuid = UUID.uuid4()
     events = EventFactory.create_events(100)
 
