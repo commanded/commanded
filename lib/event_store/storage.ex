@@ -43,6 +43,13 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Append the given list of recorded events to storage
+  """
+  def append_to_stream(events) do
+    execute_using_storage_pool(&Appender.append(&1, events))
+  end
+
+  @doc """
   Read events for the given stream forward from the starting version, use zero for all events for the stream
   """
   def read_stream_forward(stream_id, start_version, count) do
