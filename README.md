@@ -16,7 +16,10 @@ Use with one of the following event stores for persistence:
 
 ---
 
-[Changelog](CHANGELOG.md)
+- [Changelog](CHANGELOG.md) 
+- [Wiki](/slashdotdash/commanded/wiki) 
+- [Frequently asked questions](/slashdotdash/commanded/wiki/FAQ)
+- [Getting help](/slashdotdash/commanded/wiki/Getting-help)
 
 MIT License
 
