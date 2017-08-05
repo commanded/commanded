@@ -29,10 +29,7 @@ defmodule EventStore.Streams.AllStream do
   end
 
   defp start_from_event_id(:origin), do: 0
-  defp start_from_event_id(:current) do
-    {:ok, event_id} = Storage.latest_event_id()
-    event_id
-  end
+  defp start_from_event_id(:current), do: -1
   defp start_from_event_id(start_from) when is_integer(start_from), do: start_from
 
   defp read_storage_forward(start_event_id, count, serializer) do

@@ -59,10 +59,10 @@ defmodule EventStore.Storage.ReadEventsTest do
       {:ok, stream1_id} = create_stream(conn)
       {:ok, stream2_id} = create_stream(conn)
 
-      {:ok, 1} = Appender.append(conn, stream1_id, EventFactory.create_recorded_events(1, stream1_id))
-      {:ok, 1} = Appender.append(conn, stream2_id, EventFactory.create_recorded_events(1, stream2_id, 2))
-      {:ok, 1} = Appender.append(conn, stream1_id, EventFactory.create_recorded_events(1, stream1_id, 3, 2))
-      {:ok, 1} = Appender.append(conn, stream2_id, EventFactory.create_recorded_events(1, stream2_id, 4, 2))
+      {:ok, [1]} = Appender.append(conn, EventFactory.create_recorded_events(1, stream1_id))
+      {:ok, [2]} = Appender.append(conn, EventFactory.create_recorded_events(1, stream2_id, 2))
+      {:ok, [3]} = Appender.append(conn, EventFactory.create_recorded_events(1, stream1_id, 3, 2))
+      {:ok, [4]} = Appender.append(conn, EventFactory.create_recorded_events(1, stream2_id, 4, 2))
 
       {:ok, events} = Storage.read_all_streams_forward(0, 1_000)
 
@@ -76,8 +76,8 @@ defmodule EventStore.Storage.ReadEventsTest do
       {:ok, stream1_id} = create_stream(conn)
       {:ok, stream2_id} = create_stream(conn)
 
-      {:ok, 1} = Appender.append(conn, stream1_id, EventFactory.create_recorded_events(1, stream1_id))
-      {:ok, 1} = Appender.append(conn, stream2_id, EventFactory.create_recorded_events(1, stream2_id, 2))
+      {:ok, [1]} = Appender.append(conn, EventFactory.create_recorded_events(1, stream1_id))
+      {:ok, [2]} = Appender.append(conn, EventFactory.create_recorded_events(1, stream2_id, 2))
 
       {:ok, events} = Storage.read_all_streams_forward(3, 1_000)
 
@@ -88,10 +88,10 @@ defmodule EventStore.Storage.ReadEventsTest do
       {:ok, stream1_id} = create_stream(conn)
       {:ok, stream2_id} = create_stream(conn)
 
-      {:ok, 5} = Appender.append(conn, stream1_id, EventFactory.create_recorded_events(5, stream1_id))
-      {:ok, 5} = Appender.append(conn, stream2_id, EventFactory.create_recorded_events(5, stream2_id, 6))
-      {:ok, 5} = Appender.append(conn, stream1_id, EventFactory.create_recorded_events(5, stream1_id, 11, 6))
-      {:ok, 5} = Appender.append(conn, stream2_id, EventFactory.create_recorded_events(5, stream2_id, 16, 6))
+      {:ok, [1, 2, 3, 4, 5]} = Appender.append(conn, EventFactory.create_recorded_events(5, stream1_id))
+      {:ok, [6, 7, 8, 9, 10]} = Appender.append(conn, EventFactory.create_recorded_events(5, stream2_id, 6))
+      {:ok, [11, 12, 13, 14, 15]} = Appender.append(conn, EventFactory.create_recorded_events(5, stream1_id, 11, 6))
+      {:ok, [16, 17, 18, 19, 20]} = Appender.append(conn, EventFactory.create_recorded_events(5, stream2_id, 16, 6))
 
       {:ok, events} = Storage.read_all_streams_forward(0, 10)
 
@@ -105,28 +105,12 @@ defmodule EventStore.Storage.ReadEventsTest do
     end
   end
 
-  describe "query latest event id" do
-    test "when no events" do
-      {:ok, latest_event_id} = Storage.latest_event_id
-
-      assert latest_event_id == 0
-    end
-
-    test "when events exist", %{conn: conn}do
-      {:ok, _stream_id} = create_stream_containing_events(conn, 3)
-
-      {:ok, latest_event_id} = Storage.latest_event_id
-
-      assert latest_event_id == 3
-    end
-  end
-
   defp create_stream(conn), do: Stream.create_stream(conn, UUID.uuid4)
 
   defp create_stream_containing_events(conn, event_count) do
     {:ok, stream_id} = create_stream(conn)
     recorded_events = EventFactory.create_recorded_events(event_count, stream_id)
-    {:ok, ^event_count} = Appender.append(conn, stream_id, recorded_events)
+    {:ok, _} = Appender.append(conn, recorded_events)
     {:ok, stream_id}
   end
 

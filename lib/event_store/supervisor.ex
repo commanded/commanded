@@ -15,7 +15,6 @@ defmodule EventStore.Supervisor do
       supervisor(Registry, [:duplicate, EventStore.Subscriptions.PubSub, [partitions: System.schedulers_online]], id: :subscriptions_pubsub_registry),
       supervisor(EventStore.Subscriptions.Supervisor, []),
       supervisor(EventStore.Streams.Supervisor, [serializer]),
-      worker(EventStore.Writer, [serializer, config]),
     ]
 
     supervise(children, strategy: :one_for_one)

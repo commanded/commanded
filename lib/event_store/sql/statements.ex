@@ -5,6 +5,10 @@ defmodule EventStore.Sql.Statements do
 
   def initializers do
     [
+      create_event_counter_table(),
+      seed_event_counter(),
+      # protect_event_counter(),
+      create_next_event_id_function(),
       create_streams_table(),
       create_stream_uuid_index(),
       create_events_table(),
@@ -16,10 +20,56 @@ defmodule EventStore.Sql.Statements do
     ]
   end
 
-  def truncate_tables do
+  def reset do
+    [
+      truncate_tables(),
+      seed_event_counter(),
+    ]
+  end
+
+  defp truncate_tables do
 """
-TRUNCATE TABLE snapshots, subscriptions, streams, events
+TRUNCATE TABLE snapshots, subscriptions, streams, event_counter, events
 RESTART IDENTITY;
+"""
+  end
+
+  defp create_event_counter_table do
+"""
+CREATE TABLE event_counter
+(
+    event_id bigint PRIMARY KEY NOT NULL
+);
+"""
+  end
+
+  defp seed_event_counter do
+"""
+INSERT INTO event_counter (event_id) VALUES (0);
+"""
+  end
+
+  # Disallow further insertions and deletions on event counter table
+  defp protect_event_counter do
+"""
+CREATE RULE no_insert_event_counter AS ON INSERT TO event_counter DO NOTHING;
+CREATE RULE no_delete_event_counter AS ON DELETE TO event_counter DO NOTHING;
+"""
+  end
+
+  # Get next available `event_id` value from `event_counter` table
+  defp create_next_event_id_function do
+"""
+CREATE OR REPLACE FUNCTION next_event_id() returns bigint AS
+$$
+DECLARE
+  next_event_id bigint;
+BEGIN
+  UPDATE event_counter SET event_id = event_id + 1;
+  SELECT INTO next_event_id event_id from event_counter;
+  RETURN next_event_id;
+END;
+$$ LANGUAGE 'plpgsql';
 """
   end
 
@@ -44,7 +94,7 @@ CREATE UNIQUE INDEX ix_streams_stream_uuid ON streams (stream_uuid);
 """
 CREATE TABLE events
 (
-    event_id bigint PRIMARY KEY NOT NULL,
+    event_id bigint PRIMARY KEY NOT NULL DEFAULT next_event_id(),
     stream_id bigint NOT NULL REFERENCES streams (stream_id),
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
@@ -54,6 +104,9 @@ CREATE TABLE events
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
+
+-- prevent deletion of events table
+--CREATE RULE no_delete_events AS ON DELETE TO events DO NOTHING;
 """
   end
 
@@ -112,12 +165,12 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = ["INSERT INTO events (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) VALUES"]
+    insert = ["INSERT INTO events (stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) VALUES"]
 
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
-        index = (event_number - 1) * 9
+        index = (event_number - 1) * 8
         event_params = [
           "($",
           Integer.to_string(index + 1), ", $",
@@ -127,8 +180,7 @@ RETURNING stream_id;
           Integer.to_string(index + 5), ", $",
           Integer.to_string(index + 6), ", $",
           Integer.to_string(index + 7), ", $",
-          Integer.to_string(index + 8), ", $",
-          Integer.to_string(index + 9), ")"
+          Integer.to_string(index + 8), ")"
         ]
 
         case event_number do
@@ -137,7 +189,7 @@ RETURNING stream_id;
         end
       end)
 
-    [insert, " ", params, ";"]
+    [insert, " ", params, " RETURNING event_id;"]
   end
 
   def create_subscription do
@@ -223,13 +275,6 @@ FROM events
 WHERE stream_id = $1
 ORDER BY stream_version DESC
 LIMIT 1;
-"""
-  end
-
-  def query_latest_event_id do
-"""
-SELECT COALESCE(MAX(event_id), 0)
-FROM events;
 """
   end
 

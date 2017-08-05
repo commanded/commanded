@@ -30,7 +30,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
             max_size: opts[:max_size] || @max_buffer_size,
           }
 
-          next_state(:request_catch_up, data)
+          case last_ack do
+            -1 -> next_state(:subscribed, data)
+            _  -> next_state(:request_catch_up, data)
+          end
 
         {:error, _reason} ->
           next_state(:failed, data)
@@ -99,6 +102,13 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate subscribed do
+    # immediately notify events for new subscriptions from `:current`
+    defevent notify_events(events), data: %SubscriptionState{stream_uuid: stream_uuid, last_seen: -1, last_ack: -1, pending_events: []} = data do
+      notify_subscriber(data, events)
+
+      next_state(:subscribed, data)
+    end
+
     # notify events for single stream subscription
     defevent notify_events(events), data: %SubscriptionState{stream_uuid: stream_uuid, last_seen: last_seen, last_ack: last_ack, pending_events: pending_events, max_size: max_size} = data do
       expected_event = last_seen + 1
