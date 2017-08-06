@@ -157,12 +157,12 @@ RETURNING stream_id;
           Integer.to_string(index + 1), "::bigint, $",  # index
           Integer.to_string(index + 2), "::bigint, $",  # stream_id
           Integer.to_string(index + 3), "::bigint, $",  # stream_version
-          Integer.to_string(index + 4), ", $",  # correlation_id
-          Integer.to_string(index + 5), ", $",  # causation_id
-          Integer.to_string(index + 6), ", $",  # event_type
-          Integer.to_string(index + 7), "::bytea, $",  # data
-          Integer.to_string(index + 8), "::bytea, $",  # metadata
-          Integer.to_string(index + 9), "::timestamp)"     # created_at
+          Integer.to_string(index + 4), ", $",          # correlation_id
+          Integer.to_string(index + 5), ", $",          # causation_id
+          Integer.to_string(index + 6), ", $",          # event_type
+          Integer.to_string(index + 7), "::bytea, $",   # data
+          Integer.to_string(index + 8), "::bytea, $",   # metadata
+          Integer.to_string(index + 9), "::timestamp)"  # created_at
         ]
 
         case event_number do
@@ -175,15 +175,18 @@ RETURNING stream_id;
       """
       WITH
         event_counter AS (
-          UPDATE event_counter SET event_id = event_id + $1::bigint RETURNING event_id - $1::bigint as event_id
+          UPDATE event_counter
+          SET event_id = event_id + $1::bigint
+          RETURNING event_id - $1::bigint as event_id
         ),
         event_data (index, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) AS (
           VALUES
       """,
       params,
       """
-      )
-      INSERT INTO events (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at)
+        )
+      INSERT INTO events
+        (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at)
       SELECT
         event_counter.event_id + event_data.index,
         event_data.stream_id,
