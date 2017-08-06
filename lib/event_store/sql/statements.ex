@@ -8,7 +8,6 @@ defmodule EventStore.Sql.Statements do
       create_event_counter_table(),
       seed_event_counter(),
       # protect_event_counter(),
-      create_next_event_id_function(),
       create_streams_table(),
       create_stream_uuid_index(),
       create_events_table(),
@@ -57,22 +56,6 @@ CREATE RULE no_delete_event_counter AS ON DELETE TO event_counter DO NOTHING;
 """
   end
 
-  # Get next available `event_id` value from `event_counter` table
-  defp create_next_event_id_function do
-"""
-CREATE OR REPLACE FUNCTION next_event_id() returns bigint AS
-$$
-DECLARE
-  next_event_id bigint;
-BEGIN
-  UPDATE event_counter SET event_id = event_id + 1;
-  SELECT INTO next_event_id event_id from event_counter;
-  RETURN next_event_id;
-END;
-$$ LANGUAGE 'plpgsql';
-"""
-  end
-
   defp create_streams_table do
 """
 CREATE TABLE streams
@@ -94,7 +77,7 @@ CREATE UNIQUE INDEX ix_streams_stream_uuid ON streams (stream_uuid);
 """
 CREATE TABLE events
 (
-    event_id bigint PRIMARY KEY NOT NULL DEFAULT next_event_id(),
+    event_id bigint PRIMARY KEY NOT NULL,
     stream_id bigint NOT NULL REFERENCES streams (stream_id),
     stream_version bigint NOT NULL,
     event_type text NOT NULL,
@@ -165,22 +148,21 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = ["INSERT INTO events (stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) VALUES"]
-
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
-        index = (event_number - 1) * 8
+        index = (event_number - 1) * 9 + 1
         event_params = [
           "($",
-          Integer.to_string(index + 1), ", $",
-          Integer.to_string(index + 2), ", $",
-          Integer.to_string(index + 3), ", $",
-          Integer.to_string(index + 4), ", $",
-          Integer.to_string(index + 5), ", $",
-          Integer.to_string(index + 6), ", $",
-          Integer.to_string(index + 7), ", $",
-          Integer.to_string(index + 8), ")"
+          Integer.to_string(index + 1), "::bigint, $",  # index
+          Integer.to_string(index + 2), "::bigint, $",  # stream_id
+          Integer.to_string(index + 3), "::bigint, $",  # stream_version
+          Integer.to_string(index + 4), ", $",  # correlation_id
+          Integer.to_string(index + 5), ", $",  # causation_id
+          Integer.to_string(index + 6), ", $",  # event_type
+          Integer.to_string(index + 7), "::bytea, $",  # data
+          Integer.to_string(index + 8), "::bytea, $",  # metadata
+          Integer.to_string(index + 9), "::timestamp)"     # created_at
         ]
 
         case event_number do
@@ -189,7 +171,33 @@ RETURNING stream_id;
         end
       end)
 
-    [insert, " ", params, " RETURNING event_id;"]
+    [
+      """
+      WITH
+        event_counter AS (
+          UPDATE event_counter SET event_id = event_id + $1::bigint RETURNING event_id - $1::bigint as event_id
+        ),
+        event_data (index, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) AS (
+          VALUES
+      """,
+      params,
+      """
+      )
+      INSERT INTO events (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at)
+      SELECT
+        event_counter.event_id + event_data.index,
+        event_data.stream_id,
+        event_data.stream_version,
+        event_data.correlation_id,
+        event_data.causation_id,
+        event_data.event_type,
+        event_data.data,
+        event_data.metadata,
+        event_data.created_at
+      FROM event_data, event_counter
+      RETURNING events.event_id;
+      """,
+    ]
   end
 
   def create_subscription do

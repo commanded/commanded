@@ -18,7 +18,7 @@ defmodule EventStore.Storage.Appender do
 
   defp execute_using_multirow_value_insert(conn, events) do
     statement = build_insert_statement(events)
-    parameters = build_insert_parameters(events)
+    parameters = [length(events) | build_insert_parameters(events)]
 
     conn
     |> Postgrex.query(statement, parameters, pool: DBConnection.Poolboy)
@@ -31,8 +31,10 @@ defmodule EventStore.Storage.Appender do
 
   defp build_insert_parameters(events) do
     events
-    |> Enum.flat_map(fn event ->
+    |> Enum.with_index(1)
+    |> Enum.flat_map(fn {event, index} ->
       [
+        index,
         event.stream_id,
         event.stream_version,
         event.correlation_id,
