@@ -7,11 +7,6 @@ defmodule EventStore.Supervisor do
     Supervisor.start_link(__MODULE__, [config, serializer])
   end
 
-  @default_config [
-    pool: DBConnection.Poolboy,
-    pool_size: 10,
-  ]
-
   def init([config, serializer]) do
     children = [
       worker(Postgrex, [postgrex_opts(config)]),
@@ -20,14 +15,14 @@ defmodule EventStore.Supervisor do
       supervisor(Registry, [:duplicate, EventStore.Subscriptions.PubSub, [partitions: System.schedulers_online]], id: :subscriptions_pubsub_registry),
       supervisor(EventStore.Subscriptions.Supervisor, []),
       supervisor(EventStore.Streams.Supervisor, [serializer]),
-      worker(EventStore.Writer, [serializer]),
+      worker(EventStore.Writer, [serializer, config]),
     ]
 
     supervise(children, strategy: :one_for_one)
   end
 
   defp postgrex_opts(config) do
-    @default_config
+    [pool_size: 10]
     |> Keyword.merge(config)
     |> Keyword.take([:username, :password, :database, :hostname, :port, :pool, :pool_size])
     |> Keyword.merge(name: :event_store)

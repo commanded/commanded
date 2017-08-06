@@ -9,5 +9,4 @@ config :eventstore, EventStore.Storage,
   password: "postgres",
   database: "eventstore_dev",
   hostname: "localhost",
-  pool: DBConnection.Poolboy,
   pool_size: 10

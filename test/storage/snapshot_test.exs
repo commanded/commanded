@@ -5,11 +5,6 @@ defmodule EventStore.Storage.SnapshotTest do
   alias EventStore.Snapshots.SnapshotData
   alias EventStore.Storage.Snapshot
 
-  setup do
-    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
-    {:ok, %{conn: conn}}
-  end
-
   describe "read snapshot" do
     test "should error when none exists", %{conn: conn} do
       source_uuid = UUID.uuid4
