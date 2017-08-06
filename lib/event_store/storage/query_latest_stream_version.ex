@@ -1,9 +1,9 @@
 defmodule EventStore.Storage.QueryLatestStreamVersion do
   alias EventStore.Sql.Statements
-  
+
   def execute(conn, stream_id) do
     conn
-    |> Postgrex.query(Statements.query_latest_version, [stream_id])
+    |> Postgrex.query(Statements.query_latest_version, [stream_id], pool: DBConnection.Poolboy)
     |> handle_response
   end
 

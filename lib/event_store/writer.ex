@@ -20,7 +20,7 @@ defmodule EventStore.Writer do
   end
 
   def init(%Writer{} = state) do
-    storage_config = EventStore.configuration() |> EventStore.Config.parse()
+    storage_config = EventStore.configuration() |> EventStore.Config.parse() |> Keyword.merge(pool: DBConnection.Poolboy)
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 

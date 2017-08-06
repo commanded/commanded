@@ -79,13 +79,13 @@ defmodule EventStore.Storage.Reader do
   defmodule Query do
     def read_events_forward(conn, stream_id, start_version, count) do
       conn
-      |> Postgrex.query(Statements.read_events_forward, [stream_id, start_version, count])
+      |> Postgrex.query(Statements.read_events_forward, [stream_id, start_version, count], pool: DBConnection.Poolboy)
       |> handle_response
     end
 
     def read_all_events_forward(conn, start_event_id, count) do
       conn
-      |> Postgrex.query(Statements.read_all_events_forward, [start_event_id, count])
+      |> Postgrex.query(Statements.read_all_events_forward, [start_event_id, count], pool: DBConnection.Poolboy)
       |> handle_response
     end
 

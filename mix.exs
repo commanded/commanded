@@ -22,6 +22,7 @@ defmodule EventStore.Mixfile do
     [
       extra_applications: [
         :logger,
+        :poolboy,
       ],
       mod: {EventStore.Application, []}
     ]

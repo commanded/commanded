@@ -12,7 +12,7 @@ defmodule EventStore.Storage.Stream do
     _ = Logger.debug(fn -> "attempting to create stream \"#{stream_uuid}\"" end)
 
     conn
-    |> Postgrex.query(Statements.create_stream, [stream_uuid])
+    |> Postgrex.query(Statements.create_stream, [stream_uuid], pool: DBConnection.Poolboy)
     |> handle_create_response(stream_uuid)
   end
 
@@ -64,7 +64,7 @@ defmodule EventStore.Storage.Stream do
 
   defp lookup_stream_id(conn, stream_uuid) do
     conn
-    |> Postgrex.query(Statements.query_stream_id, [stream_uuid])
+    |> Postgrex.query(Statements.query_stream_id, [stream_uuid], pool: DBConnection.Poolboy)
     |> handle_lookup_response(stream_uuid)
   end
 

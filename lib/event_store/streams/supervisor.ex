@@ -9,7 +9,7 @@ defmodule EventStore.Streams.Supervisor do
   alias EventStore.Streams.Stream
 
   def start_link(serializer) do
-    Supervisor.start_link(__MODULE__, serializer, name: __MODULE__)
+    Supervisor.start_link(__MODULE__, [serializer], name: __MODULE__)
   end
 
   def open_stream(stream_uuid) do
@@ -27,7 +27,7 @@ defmodule EventStore.Streams.Supervisor do
   end
 
   @doc false
-  def init(serializer) do
+  def init([serializer]) do
     children = [
       worker(Stream, [serializer], restart: :temporary)
     ]
