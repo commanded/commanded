@@ -289,6 +289,14 @@ LIMIT 1;
 """
   end
 
+  def query_latest_event_id do
+"""
+SELECT event_id
+FROM event_counter
+LIMIT 1;
+"""
+    end
+
   def query_get_snapshot do
 """
 SELECT source_uuid, source_version, source_type, data, metadata, created_at

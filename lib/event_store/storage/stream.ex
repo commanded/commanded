@@ -6,7 +6,7 @@ defmodule EventStore.Storage.Stream do
   require Logger
 
   alias EventStore.Sql.Statements
-  alias EventStore.Storage.{QueryLatestStreamVersion,QueryStreamInfo,Reader}
+  alias EventStore.Storage.{QueryLatestEventId,QueryLatestStreamVersion,QueryStreamInfo,Reader}
 
   def create_stream(conn, stream_uuid) do
     _ = Logger.debug(fn -> "attempting to create stream \"#{stream_uuid}\"" end)
@@ -26,9 +26,9 @@ defmodule EventStore.Storage.Stream do
     Reader.read_all_forward(conn, start_event_id, count)
   end
 
-  def stream_info(conn, stream_uuid) do
-    QueryStreamInfo.execute(conn, stream_uuid)
-  end
+  def latest_event_id(conn), do: QueryLatestEventId.execute(conn)
+
+  def stream_info(conn, stream_uuid), do: QueryStreamInfo.execute(conn, stream_uuid)
 
   def latest_stream_version(conn, stream_uuid) do
     execute_with_stream_id(conn, stream_uuid, fn stream_id ->
