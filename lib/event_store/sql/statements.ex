@@ -7,10 +7,13 @@ defmodule EventStore.Sql.Statements do
     [
       create_event_counter_table(),
       seed_event_counter(),
-      # protect_event_counter(),
+      prevent_event_counter_insert(),
+      prevent_event_counter_delete(),
       create_streams_table(),
       create_stream_uuid_index(),
       create_events_table(),
+      prevent_event_update(),
+      prevent_event_delete(),
       create_event_stream_id_index(),
       create_event_stream_id_and_version_index(),
       create_subscriptions_table(),
@@ -21,9 +24,21 @@ defmodule EventStore.Sql.Statements do
 
   def reset do
     [
+      drop_rule("no_insert_event_counter", "event_counter"),
+      drop_rule("no_delete_event_counter", "event_counter"),
+      drop_rule("no_update_events", "events"),
+      drop_rule("no_delete_events", "events"),  
       truncate_tables(),
       seed_event_counter(),
+      prevent_event_counter_insert(),
+      prevent_event_counter_delete(),
+      prevent_event_update(),
+      prevent_event_delete(),
     ]
+  end
+
+  defp drop_rule(name, table) do
+    "DROP RULE IF EXISTS #{name} ON #{table}"
   end
 
   defp truncate_tables do
@@ -48,11 +63,17 @@ INSERT INTO event_counter (event_id) VALUES (0);
 """
   end
 
-  # Disallow further insertions and deletions on event counter table
-  defp protect_event_counter do
+  # Disallow further insertions to event counter table
+  defp prevent_event_counter_insert do
 """
-CREATE RULE no_insert_event_counter AS ON INSERT TO event_counter DO NOTHING;
-CREATE RULE no_delete_event_counter AS ON DELETE TO event_counter DO NOTHING;
+CREATE RULE no_insert_event_counter AS ON INSERT TO event_counter DO INSTEAD NOTHING;
+"""
+  end
+
+  # Disallow deletions from event counter table
+  defp prevent_event_counter_delete do
+"""
+CREATE RULE no_delete_event_counter AS ON DELETE TO event_counter DO INSTEAD NOTHING;
 """
   end
 
@@ -87,9 +108,20 @@ CREATE TABLE events
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
+"""
+  end
 
--- prevent deletion of events table
---CREATE RULE no_delete_events AS ON DELETE TO events DO NOTHING;
+  # prevent updates to events table
+  defp prevent_event_update do
+"""
+CREATE RULE no_update_events AS ON UPDATE TO events DO INSTEAD NOTHING;
+"""
+  end
+
+  # prevent deletion from events table
+  defp prevent_event_delete do
+"""
+CREATE RULE no_delete_events AS ON DELETE TO events DO INSTEAD NOTHING;
 """
   end
 
