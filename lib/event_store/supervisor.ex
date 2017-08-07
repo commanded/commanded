@@ -24,7 +24,7 @@ defmodule EventStore.Supervisor do
   defp postgrex_opts(config) do
     [pool_size: 10, pool_overflow: 0]
     |> Keyword.merge(config)
-    |> Keyword.take([:username, :password, :database, :hostname, :port, :pool_size, :pool_overflow])
+    |> Keyword.take([:username, :password, :database, :hostname, :port, :pool, :pool_size, :pool_overflow])
     |> Keyword.merge(name: :event_store)
   end
 end
