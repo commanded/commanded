@@ -3,7 +3,7 @@ defmodule EventStore.Writer do
   Single process writer to assign a monotonically increasing id and persist events to the store
   """
 
-  alias EventStore.{Subscriptions,RecordedEvent}
+  alias EventStore.{Publisher,RecordedEvent}
   alias EventStore.Storage
 
   @doc """
@@ -11,15 +11,15 @@ defmodule EventStore.Writer do
 
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
-  @spec append_to_stream(list(RecordedEvent.t), String.t, EventStore.Serializer.t) :: :ok | {:error, reason :: any()}
-  def append_to_stream(events, stream_uuid, serializer)
-  def append_to_stream([], _stream_uuid, _serializer), do: :ok
-  def append_to_stream(events, stream_uuid, serializer) do
+  @spec append_to_stream(list(RecordedEvent.t), String.t) :: :ok | {:error, reason :: any()}
+  def append_to_stream(events, stream_uuid)
+  def append_to_stream([], _stream_uuid), do: :ok
+  def append_to_stream(events, stream_uuid) do
     case Storage.append_to_stream(events) do
       {:ok, assigned_event_ids} ->
         events
         |> assign_event_ids(assigned_event_ids)
-        |> publish_events(stream_uuid, serializer)
+        |> publish_events(stream_uuid)
 
         :ok
 
@@ -35,7 +35,5 @@ defmodule EventStore.Writer do
     end)
   end
 
-  defp publish_events(events, stream_uuid, serializer) do
-    Subscriptions.notify_events(stream_uuid, events, serializer)
-  end
+  defp publish_events(events, stream_uuid), do: Publisher.notify_events(stream_uuid, events)
 end

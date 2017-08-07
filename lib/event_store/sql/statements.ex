@@ -27,7 +27,7 @@ defmodule EventStore.Sql.Statements do
       drop_rule("no_insert_event_counter", "event_counter"),
       drop_rule("no_delete_event_counter", "event_counter"),
       drop_rule("no_update_events", "events"),
-      drop_rule("no_delete_events", "events"),  
+      drop_rule("no_delete_events", "events"),
       truncate_tables(),
       seed_event_counter(),
       prevent_event_counter_insert(),
@@ -38,7 +38,7 @@ defmodule EventStore.Sql.Statements do
   end
 
   defp drop_rule(name, table) do
-    "DROP RULE IF EXISTS #{name} ON #{table}"
+    "DROP RULE #{name} ON #{table}"
   end
 
   defp truncate_tables do
