@@ -12,14 +12,14 @@ defmodule EventStore.ConfigTest do
       pool: DBConnection.Poolboy,
     ]
 
-    config = Config.parse original
+    config = Config.parse(original)
     assert config == original
   end
 
   test "parse url" do
     original = [ url: "postgres://username:password@localhost/database" ]
 
-    config = Config.parse original
+    config = Config.parse(original)
     assert config == [
       username: "username",
       password: "password",

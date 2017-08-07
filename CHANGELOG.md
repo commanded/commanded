@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.0
+
+### Enhancements
+
+- Use [DBConnection](https://hexdocs.pm/db_connection/DBConnection.html)'s built in support for connection pools (using poolboy). 
+
 ## v0.9.0
 
 ### Enhancements
