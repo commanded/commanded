@@ -8,11 +8,6 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   @all_stream "$all"
   @subscription_name "test_subscription"
 
-  setup do
-    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
-    {:ok, %{conn: conn}}
-  end
-
   describe "subscribe to all streams" do
     test "create subscription to all streams" do
       subscription = create_subscription()

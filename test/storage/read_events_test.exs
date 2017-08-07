@@ -6,11 +6,6 @@ defmodule EventStore.Storage.ReadEventsTest do
   alias EventStore.Storage
   alias EventStore.Storage.{Appender,Stream}
 
-  setup do
-    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
-    {:ok, %{conn: conn}}
-  end
-
   describe "read stream forward" do
     test "when stream does not exist" do
       {:ok, []} = Storage.read_stream_forward(1, 0, 1_000)

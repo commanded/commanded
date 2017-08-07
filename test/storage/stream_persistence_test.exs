@@ -4,11 +4,6 @@ defmodule EventStore.Storage.StreamPersistenceTest do
   alias EventStore.EventFactory
   alias EventStore.Storage.{Appender,Stream}
 
-  setup do
-    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
-    {:ok, %{conn: conn}}
-  end
-
   test "create stream", %{conn: conn} do
     stream_uuid = UUID.uuid4
 

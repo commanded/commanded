@@ -20,7 +20,7 @@ defmodule EventStore.Storage.Appender do
     parameters = build_insert_parameters(events)
 
     conn
-    |> Postgrex.query(statement, parameters)
+    |> Postgrex.query(statement, parameters, pool: DBConnection.Poolboy)
     |> handle_response(stream_id)
   end
 

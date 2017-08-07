@@ -1,11 +1,13 @@
 defmodule EventStore.Config do
-
   @doc """
   Normalizes the application configuration.
   """
   def parse(config) do
     {url, config} = Keyword.pop(config, :url)
-    Keyword.merge(config, parse_url(url || ""))
+
+    config
+    |> Keyword.merge(parse_url(url || ""))
+    |> Keyword.merge(pool: DBConnection.Poolboy)
   end
 
   @doc """

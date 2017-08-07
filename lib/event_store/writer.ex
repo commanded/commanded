@@ -15,18 +15,18 @@ defmodule EventStore.Writer do
     serializer: nil,
   ]
 
-  def start_link(serializer) do
-    GenServer.start_link(__MODULE__, %Writer{serializer: serializer}, name: __MODULE__)
+  def start_link(serializer, config) do
+    GenServer.start_link(__MODULE__, [serializer, config], name: __MODULE__)
   end
 
-  def init(%Writer{} = state) do
-    storage_config = EventStore.configuration() |> EventStore.Config.parse()
+  def init([serializer, config]) do
+    storage_config = config |> Keyword.merge(pool: DBConnection.Poolboy, pool_size: 1, pool_overflow: 0)
 
     {:ok, conn} = Postgrex.start_link(storage_config)
 
     GenServer.cast(self(), {:latest_event_id})
 
-    {:ok, %Writer{state | conn: conn}}
+    {:ok, %Writer{conn: conn, serializer: serializer}}
   end
 
   @doc """

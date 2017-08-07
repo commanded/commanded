@@ -8,22 +8,24 @@ defmodule EventStore.ConfigTest do
       username: "postgres",
       password: "postgres",
       database: "eventstore_test",
-      hostname: "localhost"
+      hostname: "localhost",
+      pool: DBConnection.Poolboy,
     ]
 
-    config = Config.parse original
+    config = Config.parse(original)
     assert config == original
   end
 
   test "parse url" do
     original = [ url: "postgres://username:password@localhost/database" ]
 
-    config = Config.parse original
+    config = Config.parse(original)
     assert config == [
       username: "username",
       password: "password",
       database: "database",
-      hostname: "localhost"
+      hostname: "localhost",
+      pool: DBConnection.Poolboy,
     ]
   end
 
@@ -37,8 +39,8 @@ defmodule EventStore.ConfigTest do
       username: "username",
       password: "password",
       database: "database",
-      hostname: "localhost"
+      hostname: "localhost",
+      pool: DBConnection.Poolboy,
     ]
   end
-
 end

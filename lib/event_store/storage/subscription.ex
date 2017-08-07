@@ -16,7 +16,7 @@ defmodule EventStore.Storage.Subscription do
     last_seen_stream_version: nil | non_neg_integer(),
     created_at: NaiveDateTime.t,
   }
-  
+
   defstruct [
     subscription_id: nil,
     stream_uuid: nil,
@@ -51,7 +51,7 @@ defmodule EventStore.Storage.Subscription do
   defmodule All do
     def execute(conn) do
       conn
-      |> Postgrex.query(Statements.query_all_subscriptions, [])
+      |> Postgrex.query(Statements.query_all_subscriptions, [], pool: DBConnection.Poolboy)
       |> handle_response
     end
 
@@ -67,7 +67,7 @@ defmodule EventStore.Storage.Subscription do
   defmodule Query do
     def execute(conn, stream_uuid, subscription_name) do
       conn
-      |> Postgrex.query(Statements.query_get_subscription, [stream_uuid, subscription_name])
+      |> Postgrex.query(Statements.query_get_subscription, [stream_uuid, subscription_name], pool: DBConnection.Poolboy)
       |> handle_response
     end
 
@@ -85,7 +85,7 @@ defmodule EventStore.Storage.Subscription do
       _ = Logger.debug(fn -> "attempting to create subscription on stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
 
       conn
-      |> Postgrex.query(Statements.create_subscription, [stream_uuid, subscription_name, start_from_event_id, start_from_stream_version])
+      |> Postgrex.query(Statements.create_subscription, [stream_uuid, subscription_name, start_from_event_id, start_from_stream_version], pool: DBConnection.Poolboy)
       |> handle_response(stream_uuid, subscription_name)
     end
 
@@ -108,7 +108,7 @@ defmodule EventStore.Storage.Subscription do
   defmodule Ack do
     def execute(conn, stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version) do
       conn
-      |> Postgrex.query(Statements.ack_last_seen_event, [stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version])
+      |> Postgrex.query(Statements.ack_last_seen_event, [stream_uuid, subscription_name, last_seen_event_id, last_seen_stream_version], pool: DBConnection.Poolboy)
       |> handle_response(stream_uuid, subscription_name)
     end
 
@@ -127,7 +127,7 @@ defmodule EventStore.Storage.Subscription do
       _ = Logger.debug(fn -> "attempting to unsubscribe from stream \"#{stream_uuid}\" named \"#{subscription_name}\"" end)
 
       conn
-      |> Postgrex.query(Statements.delete_subscription, [stream_uuid, subscription_name])
+      |> Postgrex.query(Statements.delete_subscription, [stream_uuid, subscription_name], pool: DBConnection.Poolboy)
       |> handle_response(stream_uuid, subscription_name)
     end
 

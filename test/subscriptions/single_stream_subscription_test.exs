@@ -8,11 +8,6 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
   @subscription_name "test_subscription"
 
-  setup do
-    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
-    {:ok, %{conn: conn}}
-  end
-
   describe "subscribe to stream" do
     test "create subscription to a single stream" do
       stream_uuid = UUID.uuid4()

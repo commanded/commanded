@@ -5,11 +5,6 @@ defmodule EventStore.Storage.AppendEventsTest do
   alias EventStore.EventFactory
   alias EventStore.Storage.{Appender,Stream}
 
-  setup do
-    {:ok, conn} = EventStore.configuration() |> Postgrex.start_link()
-    {:ok, %{conn: conn}}
-  end
-
   test "append single event to new stream", %{conn: conn} do
     {:ok, stream_id} = Stream.create_stream(conn, UUID.uuid4)
     recorded_events = EventFactory.create_recorded_events(1, stream_id)
