@@ -47,9 +47,14 @@ defmodule EventStore.Storage.Appender do
     end)
   end
 
+  defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, []) do
+    _ = Logger.warn(fn -> "failed to append any events to stream" end)
+    {:ok, []}
+  end
+
   defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, events) do
     _ = Logger.warn(fn -> "failed to append any events to stream id #{stream_id(events)}" end)
-    {:ok, []}
+    {:error, :failed_to_append_events}
   end
 
   defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows, rows: rows}} = result, events) do

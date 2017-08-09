@@ -6,8 +6,7 @@ defmodule EventStore.Publisher do
   use GenServer
   require Logger
 
-  alias EventStore.{Publisher,PendingEvents}
-  alias EventStore.Subscriptions
+  alias EventStore.{Publisher,Subscriptions}
 
   defmodule PendingEvents do
     defstruct [
