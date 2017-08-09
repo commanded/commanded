@@ -4,6 +4,7 @@ defmodule EventStore.Streams.Stream do
   """
 
   use GenServer
+  use EventStore.Registration.LocalRegistry
 
   require Logger
 
@@ -17,9 +18,7 @@ defmodule EventStore.Streams.Stream do
     stream_version: 0,
   ]
 
-  def start_link(serializer, stream_uuid) do
-    name = via_tuple(stream_uuid)
-
+  def start_link(serializer, stream_uuid, name) do
     GenServer.start_link(__MODULE__, %Stream{serializer: serializer, stream_uuid: stream_uuid}, name: name)
   end
 
@@ -181,6 +180,4 @@ defmodule EventStore.Streams.Stream do
   defp deserialize_recorded_events(recorded_events, serializer) do
     Enum.map(recorded_events, &RecordedEvent.deserialize(&1, serializer))
   end
-
-  defp via_tuple(stream_uuid), do: {:via, Registry, {EventStore.Streams, stream_uuid}}
 end

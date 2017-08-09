@@ -89,7 +89,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   end
 
   describe "all stream subscription" do
-    @tag :wip
     test "subscribe to all streams should receive events from all streams", %{subscription_name: subscription_name} do
       stream1_uuid = UUID.uuid4
       stream2_uuid = UUID.uuid4

@@ -6,7 +6,6 @@ defmodule EventStore.Subscriptions do
   require Logger
 
   alias EventStore.{RecordedEvent,Subscriptions}
-  alias EventStore.Subscriptions.Subscription
 
   @all_stream "$all"
 
@@ -47,19 +46,7 @@ defmodule EventStore.Subscriptions do
   end
 
   defp do_unsubscribe_from_stream(stream_uuid, subscription_name) do
-    case get_subscription(stream_uuid, subscription_name) do
-      nil -> :ok
-      subscription ->
-        :ok = Subscription.unsubscribe(subscription)
-        :ok = Subscriptions.Supervisor.unsubscribe_from_stream(subscription)
-    end
-  end
-
-  defp get_subscription(stream_uuid, subscription_name) do
-    case Registry.lookup(EventStore.Subscriptions, {stream_uuid, subscription_name}) do
-      [] -> nil
-      [{subscription, _}] -> subscription
-    end
+    Subscriptions.Supervisor.unsubscribe_from_stream(stream_uuid, subscription_name)
   end
 
   defp notify_subscribers(stream_uuid, events) do

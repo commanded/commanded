@@ -8,21 +8,23 @@ defmodule EventStore.Streams.Supervisor do
 
   alias EventStore.Streams.Stream
 
+  @registry EventStore.Registration.LocalRegistry
+
   def start_link(serializer) do
     Supervisor.start_link(__MODULE__, [serializer], name: __MODULE__)
   end
 
   def open_stream(stream_uuid) do
-    case Supervisor.start_child(__MODULE__, [stream_uuid]) do
+    case @registry.register_name(stream_uuid, Supervisor, :start_child, [__MODULE__, [stream_uuid]]) do
       {:ok, stream} -> {:ok, stream}
       {:error, {:already_started, stream}} -> {:ok, stream}
     end
   end
 
   def close_stream(stream_uuid) do
-    case Registry.lookup(EventStore.Streams, stream_uuid) do
-      [] -> :ok
-      [{stream, _}] -> Supervisor.terminate_child(__MODULE__, stream)
+    case @registry.whereis_name(stream_uuid) do
+      :undefined -> :ok
+      stream -> Supervisor.terminate_child(__MODULE__, stream)
     end
   end
 
