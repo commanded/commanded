@@ -47,6 +47,7 @@ MIT License
   - [Serialization](#serialization)
 - [Read model projections](#read-model-projections)
 - [Used in production?](#used-in-production)
+- [Limitations](#limitations)
 - [Event store provider](#event-store-provider)
 - [Contributing](#contributing)
 - [Need help?](#need-help)
@@ -675,6 +676,10 @@ I typically use Ecto, and a PostgreSQL database, for read model projections. You
 Yes, Commanded is being used in production.
 
 - Case Study: [Building a CQRS/ES web application in Elixir using Phoenix](https://10consulting.com/2017/01/04/building-a-cqrs-web-application-in-elixir-using-phoenix/)
+
+## Limitations
+
+Commanded is currently limited to running on a single node. There is an issue raised to add support for running on a cluster of nodes ([#39](https://github.com/slashdotdash/commanded/issues/39)).
 
 ## Event store provider
 
