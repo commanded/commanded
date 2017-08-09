@@ -6,7 +6,7 @@ defmodule EventStore.Publisher do
   use GenServer
   require Logger
 
-  alias EventStore.{Publisher,Subscriptions}
+  alias EventStore.{Publisher,Storage,Subscriptions}
 
   defmodule PendingEvents do
     defstruct [
@@ -32,7 +32,14 @@ defmodule EventStore.Publisher do
   end
 
   def init(%Publisher{} = state) do
+    GenServer.cast(self(), {:set_last_published_event_id})
     {:ok, state}
+  end
+
+  def handle_cast({:set_last_published_event_id}, %Publisher{} = state) do
+    {:ok, latest_event_id} = Storage.latest_event_id()
+
+    {:noreply, %Publisher{state | last_published_event_id: latest_event_id}}
   end
 
   def handle_cast({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do

@@ -51,6 +51,10 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:ack, event_id})
   end
 
+  def caught_up(subscription, last_seen) do
+    GenServer.cast(subscription, {:caught_up, last_seen})
+  end
+
   def unsubscribe(subscription) do
     GenServer.call(subscription, {:unsubscribe})
   end
@@ -86,12 +90,7 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   def handle_cast({:catch_up}, %Subscription{subscription: subscription} = state) do
-    reply_to = self()
-
-    subscription = StreamSubscription.catch_up(subscription, fn last_seen ->
-      # notify subscription caught up to given last seen event
-      GenServer.cast(reply_to, {:caught_up, last_seen})
-    end)
+    subscription = StreamSubscription.catch_up(subscription)
 
     state = %Subscription{state | subscription: subscription}
 

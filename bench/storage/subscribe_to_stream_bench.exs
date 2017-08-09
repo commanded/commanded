@@ -25,7 +25,6 @@ defmodule SubscribeToStreamBench do
 
   defp subscribe_to_stream(events, concurrency) do
     stream_uuid = UUID.uuid4()
-    events = EventFactory.create_events(100)
 
     tasks = Enum.map(1..concurrency, fn index ->
       Task.async fn ->
