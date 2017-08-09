@@ -4,7 +4,6 @@ defmodule EventStore.PublishEventsTest do
   alias EventStore.{EventFactory,Publisher,Subscriptions,Subscriber,Wait}
   alias EventStore.ProcessHelper
   alias EventStore.Subscriptions.Subscription
-  alias EventStore.Streams.Stream
 
   @all_stream "$all"
   @subscription_name "test_subscription"
@@ -48,7 +47,7 @@ defmodule EventStore.PublishEventsTest do
 
     :ok = EventStore.append_to_stream(stream1_uuid, 0, stream1_events)
 
-    {:ok, subscriber, subscription} = subscribe_to_all_streams(start_from_event_id: 1)
+    {:ok, _subscriber, _subscription} = subscribe_to_all_streams(start_from_event_id: 1)
 
     restart_publisher()
 
