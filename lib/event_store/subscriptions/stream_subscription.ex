@@ -260,13 +260,24 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
   end
 
-  defp wait_for_ack(events) do
+  # wait until the subscriber ack's the last sent event
+  defp wait_for_ack(events) when is_list(events) do
     expected_event_id = List.last(events).event_id
 
-    # wait until the subscriber ack's the last sent event
+    wait_for_ack_event_id(expected_event_id)
+  end
+
+  # wait until the subscriber ack's the event id
+  defp wait_for_ack_event_id(event_id) do
     receive do
-      {:ack, ^expected_event_id} ->
+      {:ack, ^event_id} ->
         :ok
+
+      {:ack, ack_event_id} when ack_event_id < event_id ->
+        wait_for_ack_event_id(event_id)
+
+      message ->
+        raise RuntimeError, message: "Unexpected ack received: #{inspect message}"
     end
   end
 
