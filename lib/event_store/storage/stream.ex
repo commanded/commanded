@@ -26,13 +26,9 @@ defmodule EventStore.Storage.Stream do
     Reader.read_all_forward(conn, start_event_id, count)
   end
 
-  def latest_event_id(conn) do
-    QueryLatestEventId.execute(conn)
-  end
+  def latest_event_id(conn), do: QueryLatestEventId.execute(conn)
 
-  def stream_info(conn, stream_uuid) do
-    QueryStreamInfo.execute(conn, stream_uuid)
-  end
+  def stream_info(conn, stream_uuid), do: QueryStreamInfo.execute(conn, stream_uuid)
 
   def latest_stream_version(conn, stream_uuid) do
     execute_with_stream_id(conn, stream_uuid, fn stream_id ->

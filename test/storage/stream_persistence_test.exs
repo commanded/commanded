@@ -60,8 +60,9 @@ defmodule EventStore.Storage.StreamPersistenceTest do
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
 
     recorded_events = EventFactory.create_recorded_events(number_of_events, stream_id, initial_event_id)
+    expected_event_ids = Enum.map(recorded_events, fn event -> event.event_id end)
 
-    {:ok, ^number_of_events} = Appender.append(conn, stream_id, recorded_events)
+    {:ok, ^expected_event_ids} = Appender.append(conn, recorded_events)
 
     {:ok, stream_id}
   end

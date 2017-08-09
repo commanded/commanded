@@ -3,7 +3,7 @@ defmodule EventStore.Storage.QueryLatestEventId do
 
   def execute(conn) do
     conn
-    |> Postgrex.query(Statements.query_latest_event_id, [], pool: DBConnection.Poolboy)
+    |> Postgrex.query(Statements.query_latest_event_id(), [], pool: DBConnection.Poolboy)
     |> handle_response
   end
 

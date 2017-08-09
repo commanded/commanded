@@ -5,9 +5,15 @@ defmodule EventStore.Sql.Statements do
 
   def initializers do
     [
+      create_event_counter_table(),
+      seed_event_counter(),
+      prevent_event_counter_insert(),
+      prevent_event_counter_delete(),
       create_streams_table(),
       create_stream_uuid_index(),
       create_events_table(),
+      prevent_event_update(),
+      prevent_event_delete(),
       create_event_stream_id_index(),
       create_event_stream_id_and_version_index(),
       create_subscriptions_table(),
@@ -16,10 +22,58 @@ defmodule EventStore.Sql.Statements do
     ]
   end
 
-  def truncate_tables do
+  def reset do
+    [
+      drop_rule("no_insert_event_counter", "event_counter"),
+      drop_rule("no_delete_event_counter", "event_counter"),
+      drop_rule("no_update_events", "events"),
+      drop_rule("no_delete_events", "events"),
+      truncate_tables(),
+      seed_event_counter(),
+      prevent_event_counter_insert(),
+      prevent_event_counter_delete(),
+      prevent_event_update(),
+      prevent_event_delete(),
+    ]
+  end
+
+  defp drop_rule(name, table) do
+    "DROP RULE #{name} ON #{table}"
+  end
+
+  defp truncate_tables do
 """
-TRUNCATE TABLE snapshots, subscriptions, streams, events
+TRUNCATE TABLE snapshots, subscriptions, streams, event_counter, events
 RESTART IDENTITY;
+"""
+  end
+
+  defp create_event_counter_table do
+"""
+CREATE TABLE event_counter
+(
+    event_id bigint PRIMARY KEY NOT NULL
+);
+"""
+  end
+
+  defp seed_event_counter do
+"""
+INSERT INTO event_counter (event_id) VALUES (0);
+"""
+  end
+
+  # Disallow further insertions to event counter table
+  defp prevent_event_counter_insert do
+"""
+CREATE RULE no_insert_event_counter AS ON INSERT TO event_counter DO INSTEAD NOTHING;
+"""
+  end
+
+  # Disallow deletions from event counter table
+  defp prevent_event_counter_delete do
+"""
+CREATE RULE no_delete_event_counter AS ON DELETE TO event_counter DO INSTEAD NOTHING;
 """
   end
 
@@ -54,6 +108,20 @@ CREATE TABLE events
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
+"""
+  end
+
+  # prevent updates to events table
+  defp prevent_event_update do
+"""
+CREATE RULE no_update_events AS ON UPDATE TO events DO INSTEAD NOTHING;
+"""
+  end
+
+  # prevent deletion from events table
+  defp prevent_event_delete do
+"""
+CREATE RULE no_delete_events AS ON DELETE TO events DO INSTEAD NOTHING;
 """
   end
 
@@ -112,23 +180,21 @@ RETURNING stream_id;
   end
 
   def create_events(number_of_events \\ 1) do
-    insert = ["INSERT INTO events (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) VALUES"]
-
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
-        index = (event_number - 1) * 9
+        index = (event_number - 1) * 9 + 1
         event_params = [
           "($",
-          Integer.to_string(index + 1), ", $",
-          Integer.to_string(index + 2), ", $",
-          Integer.to_string(index + 3), ", $",
-          Integer.to_string(index + 4), ", $",
-          Integer.to_string(index + 5), ", $",
-          Integer.to_string(index + 6), ", $",
-          Integer.to_string(index + 7), ", $",
-          Integer.to_string(index + 8), ", $",
-          Integer.to_string(index + 9), ")"
+          Integer.to_string(index + 1), "::bigint, $",  # index
+          Integer.to_string(index + 2), "::bigint, $",  # stream_id
+          Integer.to_string(index + 3), "::bigint, $",  # stream_version
+          Integer.to_string(index + 4), ", $",          # correlation_id
+          Integer.to_string(index + 5), ", $",          # causation_id
+          Integer.to_string(index + 6), ", $",          # event_type
+          Integer.to_string(index + 7), "::bytea, $",   # data
+          Integer.to_string(index + 8), "::bytea, $",   # metadata
+          Integer.to_string(index + 9), "::timestamp)"  # created_at
         ]
 
         case event_number do
@@ -137,7 +203,36 @@ RETURNING stream_id;
         end
       end)
 
-    [insert, " ", params, ";"]
+    [
+      """
+      WITH
+        event_counter AS (
+          UPDATE event_counter
+          SET event_id = event_id + $1::bigint
+          RETURNING event_id - $1::bigint as event_id
+        ),
+        event_data (index, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at) AS (
+          VALUES
+      """,
+      params,
+      """
+        )
+      INSERT INTO events
+        (event_id, stream_id, stream_version, correlation_id, causation_id, event_type, data, metadata, created_at)
+      SELECT
+        event_counter.event_id + event_data.index,
+        event_data.stream_id,
+        event_data.stream_version,
+        event_data.correlation_id,
+        event_data.causation_id,
+        event_data.event_type,
+        event_data.data,
+        event_data.metadata,
+        event_data.created_at
+      FROM event_data, event_counter
+      RETURNING events.event_id;
+      """,
+    ]
   end
 
   def create_subscription do
@@ -228,10 +323,11 @@ LIMIT 1;
 
   def query_latest_event_id do
 """
-SELECT COALESCE(MAX(event_id), 0)
-FROM events;
+SELECT event_id
+FROM event_counter
+LIMIT 1;
 """
-  end
+    end
 
   def query_get_snapshot do
 """

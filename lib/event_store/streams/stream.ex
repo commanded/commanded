@@ -151,8 +151,8 @@ defmodule EventStore.Streams.Stream do
     DateTime.utc_now |> DateTime.to_naive
   end
 
-  defp write_to_stream(prepared_events, %Stream{stream_id: stream_id, stream_uuid: stream_uuid}) do
-    Writer.append_to_stream(prepared_events, stream_id, stream_uuid)
+  defp write_to_stream(prepared_events, %Stream{stream_uuid: stream_uuid}) do
+    Writer.append_to_stream(prepared_events, stream_uuid)
   end
 
   defp read_storage_forward(stream_id, start_version, count, serializer) when not is_nil(stream_id) do

@@ -1,12 +1,11 @@
 defmodule EventStore.Storage.Initializer do
   alias EventStore.Sql.Statements
 
-  def run!(conn) do
-    Statements.initializers
-    |> Enum.each(&(Postgrex.query!(conn, &1, [], pool: DBConnection.Poolboy)))
-  end
+  def run!(conn), do: execute(conn, Statements.initializers())
 
-  def reset!(conn) do
-    Postgrex.query!(conn, Statements.truncate_tables, [], pool: DBConnection.Poolboy)
+  def reset!(conn), do: execute(conn, Statements.reset())
+
+  defp execute(conn, statements) do
+    Enum.each(statements, &(Postgrex.query!(conn, &1, [], pool: DBConnection.Poolboy)))
   end
 end

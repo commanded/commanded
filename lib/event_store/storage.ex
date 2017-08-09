@@ -10,7 +10,7 @@ defmodule EventStore.Storage do
 
   alias EventStore.Snapshots.SnapshotData
   alias EventStore.Storage
-  alias EventStore.Storage.{Reader,Snapshot,Stream,Subscription}
+  alias EventStore.Storage.{Appender,Reader,Snapshot,Stream,Subscription}
 
   @event_store :event_store
 
@@ -36,6 +36,13 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Append the given list of recorded events to storage
+  """
+  def append_to_stream(events) do
+    Appender.append(@event_store, events)
+  end
+
+  @doc """
   Read events for the given stream forward from the starting version, use zero for all events for the stream
   """
   def read_stream_forward(stream_id, start_version, count) do
@@ -50,17 +57,17 @@ defmodule EventStore.Storage do
   end
 
   @doc """
-  Get the id of the last event persisted to storage
-  """
-  def latest_event_id do
-    Stream.latest_event_id(@event_store)
-  end
-
-  @doc """
   Get the id and version of the stream with the given uuid
   """
   def stream_info(stream_uuid) do
     Stream.stream_info(@event_store, stream_uuid)
+  end
+
+  @doc """
+  Get the id of the last event persisted to storage
+  """
+  def latest_event_id do
+    Stream.latest_event_id(@event_store)
   end
 
   @doc """
