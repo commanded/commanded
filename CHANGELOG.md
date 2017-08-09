@@ -6,7 +6,7 @@
 
 - Writer per event stream ([#55](https://github.com/slashdotdash/eventstore/issues/55)).
 
-  You **must** run the schema migration [v0.10.0.sql](scripts/updates/v0.10.0.sql) script against your event store database.
+  You **must** run the schema migration [v0.10.0.sql](scripts/upgrades/v0.10.0.sql) script against your event store database.
 
 - Use [DBConnection](https://hexdocs.pm/db_connection/DBConnection.html)'s built in support for connection pools (using poolboy).
 
@@ -16,7 +16,7 @@
 
 - Adds `causation_id` alongside `correlation_id` for events ([#48](https://github.com/slashdotdash/eventstore/pull/48)).
 
-  To migrate an existing event store database execute [v0.9.0.sql](scripts/updates/v0.9.0.sql) script.
+  To migrate an existing event store database execute [v0.9.0.sql](scripts/upgrades/v0.9.0.sql) script.
 
 - Allow single stream, and all streams, subscriptions to provide a mapper function that maps every received event before sending to the subscriber.
 
