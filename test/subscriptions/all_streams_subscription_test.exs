@@ -31,14 +31,12 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   end
 
   test "catch-up subscription, no persisted events" do
-    self = self()
-
     subscription =
       create_subscription()
-      |> StreamSubscription.catch_up(fn last_seen -> send(self, {:caught_up, last_seen}) end)
+      |> StreamSubscription.catch_up()
 
     assert subscription.state == :catching_up
-    assert_receive {:caught_up, 0}
+    assert_receive_caught_up(0)
 
     subscription = StreamSubscription.caught_up(subscription, 0)
 
@@ -47,7 +45,6 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   end
 
   test "catch-up subscription, unseen persisted events", %{conn: conn} do
-    self = self()
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
     recorded_events = EventFactory.create_recorded_events(3, stream_id)
@@ -55,17 +52,19 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       create_subscription()
-      |> StreamSubscription.catch_up(fn last_seen -> send(self, {:caught_up, last_seen}) end)
+      |> StreamSubscription.catch_up()
 
     assert subscription.state == :catching_up
-    assert_receive {:caught_up, 3}
+
+    assert_receive {:events, received_events}
+    subscription = StreamSubscription.ack(subscription, 3)
 
     subscription = StreamSubscription.caught_up(subscription, 3)
+    assert_receive_caught_up(3)
 
     assert subscription.state == :subscribed
     assert subscription.data.last_seen == 3
 
-    assert_receive {:events, received_events}
     expected_events = EventFactory.deserialize_events(recorded_events)
 
     assert pluck(received_events, :correlation_id) == pluck(expected_events, :correlation_id)
@@ -78,7 +77,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       create_subscription()
-      |> StreamSubscription.catch_up(fn last_seen -> last_seen end)
+      |> StreamSubscription.catch_up()
       |> StreamSubscription.caught_up(0)
       |> StreamSubscription.notify_events(events)
 
@@ -95,7 +94,6 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     setup [:append_events_to_stream, :create_caught_up_subscription]
 
     test "should skip events during catch up when acknowledged", %{subscription: subscription} do
-      self = self()
       subscription = StreamSubscription.ack(subscription, 3)
 
       assert subscription.state == :subscribed
@@ -104,9 +102,9 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       subscription =
         create_subscription()
-        |> StreamSubscription.catch_up(fn last_seen -> send(self, {:caught_up, last_seen}) end)
+        |> StreamSubscription.catch_up()
 
-      assert_receive {:caught_up, 3}
+      assert_receive_caught_up(3)
 
       # should not receive already seen events
       refute_receive {:events, _received_events}
@@ -119,22 +117,22 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     end
 
     test "should replay events when catching up and events had not been acknowledged" do
-      self = self()
       subscription =
         create_subscription()
-        |> StreamSubscription.catch_up(fn last_seen -> send(self, {:caught_up, last_seen}) end)
+        |> StreamSubscription.catch_up()
 
       # should receive already seen events
       assert_receive {:events, received_events}
       assert length(received_events) == 3
 
-      assert_receive {:caught_up, 3}
+      subscription = StreamSubscription.ack(subscription, 3)
+      assert_receive_caught_up(3)
 
       subscription = StreamSubscription.caught_up(subscription, 3)
 
       assert subscription.state == :subscribed
       assert subscription.data.last_seen == 3
-      assert subscription.data.last_ack == 0
+      assert subscription.data.last_ack == 3
     end
 
     def append_events_to_stream(%{conn: conn}) do
@@ -146,18 +144,14 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     end
 
     def create_caught_up_subscription(_context) do
-      self = self()
-
       subscription =
         create_subscription()
-        |> StreamSubscription.catch_up(fn last_seen -> send(self, {:caught_up, last_seen}) end)
+        |> StreamSubscription.catch_up()
 
       assert subscription.state == :catching_up
 
       assert_receive {:events, received_events}
       assert length(received_events) == 3
-
-      assert_receive {:caught_up, 3}
 
       subscription = StreamSubscription.caught_up(subscription, 3)
 
@@ -176,7 +170,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
     subscription =
       create_subscription()
-      |> StreamSubscription.catch_up(fn last_seen -> last_seen end)
+      |> StreamSubscription.catch_up()
       |> StreamSubscription.caught_up(0)
       |> StreamSubscription.notify_events(initial_events)
       |> StreamSubscription.notify_events(remaining_events)
@@ -219,7 +213,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       subscription =
         create_subscription(max_size: 3)
-        |> StreamSubscription.catch_up(fn last_seen -> last_seen end)
+        |> StreamSubscription.catch_up()
         |> StreamSubscription.caught_up(0)
         |> StreamSubscription.notify_events(initial_events)
         |> StreamSubscription.notify_events(remaining_events)
@@ -254,7 +248,7 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
       subscription =
         create_subscription(max_size: 3)
-        |> StreamSubscription.catch_up(fn last_seen -> last_seen end)
+        |> StreamSubscription.catch_up()
         |> StreamSubscription.caught_up(0)
         |> StreamSubscription.notify_events(initial_events)
         |> StreamSubscription.notify_events(remaining_events)
@@ -304,6 +298,10 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     refute_receive {:events, _received_events}
 
     subscription
+  end
+
+  defp assert_receive_caught_up(to) do
+    assert_receive {:"$gen_cast", {:caught_up, ^to}}
   end
 
   defp pluck(enumerable, field) do

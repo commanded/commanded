@@ -1,12 +1,12 @@
 defmodule EventStore.Subscriptions.StreamSubscription do
   require Logger
 
-
   alias EventStore.Storage
   alias EventStore.Subscriptions.{
     AllStreamsSubscription,
     SingleStreamSubscription,
     SubscriptionState,
+    Subscription,
   }
 
   use Fsm, initial_state: :initial, initial_data: %SubscriptionState{}
@@ -39,8 +39,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate request_catch_up do
-    defevent catch_up(notification_callback), data: %SubscriptionState{} = data do
-      catch_up_from_stream(data, notification_callback)
+    defevent catch_up, data: %SubscriptionState{} = data do
+      data = catch_up_from_stream(data)
 
       next_state(:catching_up, data)
     end
@@ -66,7 +66,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defstate catching_up do
-    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
+    defevent catch_up, data: %SubscriptionState{} = data do
       next_state(:catching_up, data)
     end
 
@@ -74,6 +74,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       data =
         data
         |> ack_events(ack)
+        |> ack_catch_up(ack)
         |> notify_pending_events()
 
       next_state(:catching_up, data)
@@ -82,6 +83,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     defevent caught_up(last_seen), data: %SubscriptionState{} = data do
       data = %SubscriptionState{data |
         last_seen: last_seen,
+        catch_up_pid: nil,
       }
 
       next_state(:subscribed, data)
@@ -144,7 +146,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       next_state(:subscribed, data)
     end
 
-    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
+    defevent catch_up, data: %SubscriptionState{} = data do
       next_state(:request_catch_up, data)
     end
 
@@ -177,7 +179,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       end
     end
 
-    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
+    defevent catch_up, data: %SubscriptionState{} = data do
       next_state(:max_capacity, data)
     end
 
@@ -196,7 +198,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       next_state(:unsubscribed, data)
     end
 
-    defevent catch_up(_notification_callback), data: %SubscriptionState{} = data do
+    defevent catch_up, data: %SubscriptionState{} = data do
       next_state(:unsubscribed, data)
     end
 
@@ -224,16 +226,24 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   # fetch unseen events from the stream
   # transition to `subscribed` state when no events are found or count of events is less than max buffer size so no further unseen events
-  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, last_seen: last_seen} = data, notification_callback) do
+  defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, last_seen: last_seen} = data) do
     case subscription_provider(stream_uuid).unseen_event_stream(stream_uuid, last_seen, @max_buffer_size) do
-      {:error, :stream_not_found} -> notification_callback.(last_seen)
+      {:error, :stream_not_found} ->
+        Subscription.caught_up(self(), last_seen)
+        data
+
       unseen_event_stream ->
-        # stream through unseen events in a separate process
-        spawn_link(fn ->
+        reply_to = self()
+
+        # stream unseen events to subscriber in a separate process
+        catch_up_pid = spawn_link(fn ->
           last_event =
             unseen_event_stream
             |> Stream.chunk_by(&(&1.stream_id))
-            |> Stream.each(&notify_subscriber(data, &1))
+            |> Stream.each(fn events ->
+              notify_subscriber(data, events)
+              wait_for_ack(events)
+            end)
             |> Stream.map(&Enum.at(&1, -1))
             |> Enum.at(-1)
 
@@ -243,9 +253,28 @@ defmodule EventStore.Subscriptions.StreamSubscription do
           end
 
           # notify subscription caught up to given last seen event
-          notification_callback.(last_seen)
+          Subscription.caught_up(reply_to, last_seen)
         end)
+
+      %SubscriptionState{data | catch_up_pid: catch_up_pid}
     end
+  end
+
+  defp wait_for_ack(events) do
+    expected_event_id = List.last(events).event_id
+
+    # wait until the subscriber ack's the last sent event
+    receive do
+      {:ack, ^expected_event_id} ->
+        :ok
+    end
+  end
+
+  # send the catch-up process an acknowledgement of receipt, allowing it to continue stream events to subscriber
+  defp ack_catch_up(%SubscriptionState{catch_up_pid: catch_up_pid} = data, ack) do
+    send(catch_up_pid, {:ack, ack})
+
+    data
   end
 
   # send pending events to subscriber if ready to receive them

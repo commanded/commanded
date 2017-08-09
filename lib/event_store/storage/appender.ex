@@ -57,7 +57,7 @@ defmodule EventStore.Storage.Appender do
     {:error, :failed_to_append_events}
   end
 
-  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows, rows: rows}} = result, events) do
+  defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows, rows: rows}}, events) do
     event_ids = List.flatten(rows)
 
     _ = Logger.info(fn -> "appended #{num_rows} event(s) to stream id #{stream_id(events)} (event ids: #{Enum.join(event_ids, ", ")})" end)
