@@ -108,7 +108,7 @@ Append the events to the stream.
 :ok = EventStore.append_to_stream(stream_uuid, expected_version, events)
 ```
 
-### Reading from a stream
+### Reading from a stream
 
 Read all events from the stream, starting at the stream's first event.
 
@@ -116,7 +116,7 @@ Read all events from the stream, starting at the stream's first event.
 {:ok, events} = EventStore.read_stream_forward(stream_uuid)
 ```
 
-### Reading from all streams
+### Reading from all streams
 
 Read all events from all streams.
 
@@ -125,7 +125,7 @@ Read all events from all streams.
 {:ok, events} = EventStore.read_all_streams_forward()
 ```
 
-### Stream from all streams
+### Stream from all streams
 
 Stream all events from all streams.
 
@@ -236,7 +236,7 @@ defmodule JsonSerializer do
   end
 
   @doc """
-  Deserialize given JSON binary data to the expected type.
+  Deserialize given JSON binary data to the expected type.
   """
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type, nil) do
