@@ -23,6 +23,7 @@ MIT License
     - [Example subscriber](#example-subscriber)
 - [Event serialization](#event-serialization)
 - [Benchmarking performance](#benchmarking-performance)
+- [Limitations](#limitations)
 - [Used in production?](#used-in-production)
 - [Contributing](#contributing)
   - [Contributors](#contributors)
@@ -275,6 +276,10 @@ read events, single reader                   1000   1578.10 µs/op
 read events, 10 concurrent readers            100   16799.80 µs/op
 read events, 100 concurrent readers            10   167397.30 µs/op
 ```
+
+## Limitations
+
+Event Store is currently limited to running on a single node. There is an issue raised to add support for running on a cluster of nodes ([#53](https://github.com/slashdotdash/eventstore/issues/53)).
 
 ## Used in production?
 
