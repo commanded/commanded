@@ -13,7 +13,7 @@ defmodule EventStore.Registration.LocalRegistry do
   def register_name(name, module, fun, [supervisor, args]) do
     name = {:via, Registry, {EventStore.Registration.LocalRegistry, name}}
 
-    apply(module, fun, [supervisor, args ++ [name]])
+    apply(module, fun, [supervisor, args ++ [[name: name]]])
   end
 
   @doc """

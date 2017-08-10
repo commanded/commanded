@@ -7,7 +7,7 @@ defmodule EventStore.Subscriptions.Subscription do
   """
 
   use GenServer
-  use EventStore.Registration.LocalRegistry
+  use EventStore.Registration
   require Logger
 
   alias EventStore.RecordedEvent
@@ -24,14 +24,14 @@ defmodule EventStore.Subscriptions.Subscription do
     subscription_opts: [],
   ]
 
-  def start_link(stream_uuid, subscription_name, subscriber, opts, name) do
+  def start_link(stream_uuid, subscription_name, subscriber, subscription_opts, opts \\ []) do
     GenServer.start_link(__MODULE__, %Subscription{
       stream_uuid: stream_uuid,
       subscription_name: subscription_name,
       subscriber: subscriber,
       subscription: StreamSubscription.new(),
-      subscription_opts: opts,
-    }, name: name)
+      subscription_opts: subscription_opts,
+    }, opts)
   end
 
   def notify_events(subscription, events) when is_list(events) do

@@ -4,7 +4,7 @@ defmodule EventStore.Streams.Stream do
   """
 
   use GenServer
-  use EventStore.Registration.LocalRegistry
+  use EventStore.Registration
 
   require Logger
 
@@ -18,8 +18,8 @@ defmodule EventStore.Streams.Stream do
     stream_version: 0,
   ]
 
-  def start_link(serializer, stream_uuid, name) do
-    GenServer.start_link(__MODULE__, %Stream{serializer: serializer, stream_uuid: stream_uuid}, name: name)
+  def start_link(serializer, stream_uuid, opts \\ []) do
+    GenServer.start_link(__MODULE__, %Stream{serializer: serializer, stream_uuid: stream_uuid}, opts)
   end
 
   @doc """

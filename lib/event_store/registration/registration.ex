@@ -8,6 +8,8 @@ defmodule EventStore.Registration do
 
     quote do
       @registry unquote(registry)
+
+      use unquote(registry)
     end
   end
 
@@ -22,8 +24,7 @@ defmodule EventStore.Registration do
   @callback whereis_name(term) :: pid | :undefined
 
   defp registry_provider do
-    EventStore.configuration()
-    |> Keyword.get(:registry, :local)
+    Application.get_env(:eventstore, :registry, :local)
     |> case do
       :local       -> EventStore.Registration.LocalRegistry
       :distributed -> EventStore.Registration.Distributed
