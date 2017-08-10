@@ -8,15 +8,27 @@ defmodule EventStore.Supervisor do
   end
 
   def init([config, serializer]) do
+    registry_provider = registry_provider(config)
+    registry_supervision = config |> registry_provider.child_spec() |> List.wrap()
+      
     children = [
-      worker(Postgrex, [postgrex_opts(config)]),
-      worker(EventStore.Publisher, [serializer]),
-      supervisor(EventStore.Registration.LocalRegistry, [config]),
-      supervisor(EventStore.Subscriptions.Supervisor, []),
-      supervisor(EventStore.Streams.Supervisor, [serializer]),
-    ]
+      {Postgrex, postgrex_opts(config)},
+      {EventStore.Publisher, serializer},
+      {EventStore.Subscriptions.Supervisor, []},
+      {EventStore.Streams.Supervisor, serializer}
+    ] ++ registry_supervision
 
-    supervise(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp registry_provider(config) do
+    config
+    |> Keyword.get(:registry, :local)
+    |> case do
+      :local       -> EventStore.Registration.LocalRegistry
+      :distributed -> EventStore.Registration.Distributed
+      unknown      -> raise ArgumentError, message: "Unknown :registry setting in config: #{inspect unknown}"
+    end
   end
 
   defp postgrex_opts(config) do

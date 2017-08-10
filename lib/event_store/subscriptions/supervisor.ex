@@ -9,7 +9,7 @@ defmodule EventStore.Subscriptions.Supervisor do
 
   @registry EventStore.Registration.LocalRegistry
 
-  def start_link do
+  def start_link(_) do
     Supervisor.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
@@ -28,7 +28,7 @@ defmodule EventStore.Subscriptions.Supervisor do
 
   def init(_) do
     children = [
-      worker(EventStore.Subscriptions.Subscription, [], restart: :temporary),
+      worker(Subscription, [], restart: :temporary),
     ]
 
     supervise(children, strategy: :simple_one_for_one)

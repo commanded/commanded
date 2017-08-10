@@ -7,17 +7,13 @@ defmodule EventStore.Registration.LocalRegistry do
 
   alias EventStore.Registration.LocalRegistry.Supervisor
 
-  def start_link(config) do
-    Supervisor.start_link(config)
-  end
+  def child_spec(config), do: Supervisor.child_spec(config)
 
   @spec register_name(name :: term, module :: atom, function :: atom, args :: [term]) :: {:ok, pid} | {:error, term}
   def register_name(name, module, fun, [supervisor, args]) do
     name = {:via, Registry, {EventStore.Registration.LocalRegistry, name}}
 
-    args = args ++ [name]
-
-    apply(module, fun, [supervisor, args])
+    apply(module, fun, [supervisor, args ++ [name]])
   end
 
   @doc """
