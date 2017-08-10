@@ -23,6 +23,16 @@ defmodule EventStore.Registration do
   """
   @callback whereis_name(term) :: pid | :undefined
 
+  @doc """
+  Joins the current process to a group
+  """
+  @callback join(group :: term) :: :ok
+
+  @doc """
+  Publishes a message to a group.
+  """
+  @callback publish(group :: term, msg :: term) :: :ok
+
   defp registry_provider do
     Application.get_env(:eventstore, :registry, :local)
     |> case do

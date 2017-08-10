@@ -3,6 +3,8 @@ defmodule EventStore.Subscriptions do
   Pub/sub for subscribers interested in events appended to either a single stream or all streams
   """
 
+  use EventStore.Registration
+
   require Logger
 
   alias EventStore.{RecordedEvent,Subscriptions}
@@ -31,8 +33,8 @@ defmodule EventStore.Subscriptions do
     events = Enum.map(events, &RecordedEvent.deserialize(&1, serializer))
 
     Enum.each([
-      Task.async(fn -> notify_subscribers(stream_uuid, events) end),
       Task.async(fn -> notify_subscribers(@all_stream, events) end),
+      Task.async(fn -> notify_subscribers(stream_uuid, events) end),
     ], &Task.await(&1))
   end
 
@@ -50,8 +52,6 @@ defmodule EventStore.Subscriptions do
   end
 
   defp notify_subscribers(stream_uuid, events) do
-    Registry.dispatch(EventStore.Subscriptions.PubSub, stream_uuid, fn subscribers ->
-      for {subscription, {module, function}} <- subscribers, do: apply(module, function, [subscription, events])
-    end)
+    @registry.publish({:events, stream_uuid}, {:notify_events, events})
   end
 end

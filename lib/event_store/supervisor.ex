@@ -9,14 +9,11 @@ defmodule EventStore.Supervisor do
   end
 
   def init([config, serializer]) do
-    registry_supervision = config |> @registry.child_spec() |> List.wrap()
-
     children = [
       {Postgrex, postgrex_opts(config)},
-      {EventStore.Publisher, serializer},
       {EventStore.Subscriptions.Supervisor, []},
-      {EventStore.Streams.Supervisor, serializer}
-    ] ++ registry_supervision
+      {EventStore.Streams.Supervisor, serializer},
+    ] ++ @registry.child_spec(config, serializer)
 
     Supervisor.init(children, strategy: :one_for_one)
   end

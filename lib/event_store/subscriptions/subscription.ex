@@ -8,6 +8,7 @@ defmodule EventStore.Subscriptions.Subscription do
 
   use GenServer
   use EventStore.Registration
+
   require Logger
 
   alias EventStore.RecordedEvent
@@ -66,6 +67,16 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
+  def handle_info({:notify_events, events}, %Subscription{subscription: subscription} = state) do
+    subscription = StreamSubscription.notify_events(subscription, events)
+
+    state = %Subscription{state | subscription: subscription}
+
+    :ok = handle_subscription_state(state)
+
+    {:noreply, state}
+  end
+
   def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
     subscription = StreamSubscription.subscribe(subscription, stream_uuid, subscription_name, subscriber, opts)
 
@@ -73,17 +84,7 @@ defmodule EventStore.Subscriptions.Subscription do
 
     :ok = handle_subscription_state(state)
 
-    {:ok, _} = Registry.register(EventStore.Subscriptions.PubSub, stream_uuid, {Subscription, :notify_events})
-
-    {:noreply, state}
-  end
-
-  def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do
-    subscription = StreamSubscription.notify_events(subscription, events)
-
-    state = %Subscription{state | subscription: subscription}
-
-    :ok = handle_subscription_state(state)
+    @registry.join({:events, stream_uuid})
 
     {:noreply, state}
   end

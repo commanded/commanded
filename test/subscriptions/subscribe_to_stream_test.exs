@@ -317,7 +317,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     def init(subscription_name) do
       {:ok, subscription} = Subscriptions.subscribe_to_all_streams(subscription_name, self())
-      
+
       {:ok, %{events: [], subscription: subscription}}
     end
 
@@ -352,7 +352,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       :ok = Stream.append_to_stream(stream1_uuid, 0, stream1_events)
       :ok = Stream.append_to_stream(stream2_uuid, 0, stream2_events)
 
-      :timer.sleep 5_000
+      :timer.sleep 1_000
 
       all_received_events =
         [subscriber1, subscriber2, subscriber3, subscriber4]

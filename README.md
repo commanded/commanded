@@ -162,7 +162,7 @@ Subscribe to events appended to all streams.
 
 receive do
   {:events, events} ->
-    IO.inspect(events)
+    # ... process events & ack receipt    
     EventStore.ack(subscription, events)
 end
 ```

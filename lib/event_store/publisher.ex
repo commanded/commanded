@@ -4,6 +4,8 @@ defmodule EventStore.Publisher do
   """
 
   use GenServer
+  use EventStore.Registration
+
   require Logger
 
   alias EventStore.{Publisher,Storage,Subscriptions}
@@ -23,12 +25,12 @@ defmodule EventStore.Publisher do
     serializer: nil,
   ]
 
-  def start_link(serializer) do
-    GenServer.start_link(__MODULE__, %Publisher{serializer: serializer}, name: __MODULE__)
+  def start_link(serializer, opts \\ []) do
+    GenServer.start_link(__MODULE__, %Publisher{serializer: serializer}, opts)
   end
 
   def notify_events(stream_uuid, events) do
-    GenServer.cast(__MODULE__, {:notify_events, stream_uuid, events})
+    GenServer.cast(via_tuple(__MODULE__), {:notify_events, stream_uuid, events})
   end
 
   def init(%Publisher{} = state) do
