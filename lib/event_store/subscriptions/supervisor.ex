@@ -4,10 +4,9 @@ defmodule EventStore.Subscriptions.Supervisor do
   """
 
   use Supervisor
+  use EventStore.Registration
 
   alias EventStore.Subscriptions.Subscription
-
-  @registry EventStore.Registration.LocalRegistry
 
   def start_link(_) do
     Supervisor.start_link(__MODULE__, nil, name: __MODULE__)

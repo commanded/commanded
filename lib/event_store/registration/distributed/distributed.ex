@@ -5,8 +5,6 @@ defmodule EventStore.Registration.Distributed do
 
   @behaviour EventStore.Registration
 
-  alias EventStore.Registration.Swarm.Supervisor
-
   def child_spec(_), do: []
 
   @spec register_name(name :: term, module :: atom, function :: atom, args :: [term]) :: {:ok, pid} | {:error, term}

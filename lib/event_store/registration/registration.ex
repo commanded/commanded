@@ -3,6 +3,14 @@ defmodule EventStore.Registration do
   Process registry specification
   """
 
+  defmacro __using__(_) do
+    registry = registry_provider()
+
+    quote do
+      @registry unquote(registry)
+    end
+  end
+
   @doc """
   Starts a process using the given module/function/args parameters, and registers the pid with the given name.
   """
@@ -12,4 +20,14 @@ defmodule EventStore.Registration do
   Get the pid of a registered name.
   """
   @callback whereis_name(term) :: pid | :undefined
+
+  defp registry_provider do
+    EventStore.configuration()
+    |> Keyword.get(:registry, :local)
+    |> case do
+      :local       -> EventStore.Registration.LocalRegistry
+      :distributed -> EventStore.Registration.Distributed
+      unknown      -> raise ArgumentError, message: "Unknown :registry setting in config: #{inspect unknown}"
+    end
+  end
 end

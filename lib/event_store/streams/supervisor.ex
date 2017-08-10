@@ -4,11 +4,11 @@ defmodule EventStore.Streams.Supervisor do
   """
 
   use Supervisor
+  use EventStore.Registration
+
   require Logger
 
   alias EventStore.Streams.Stream
-
-  @registry EventStore.Registration.LocalRegistry
 
   def start_link(serializer) do
     Supervisor.start_link(__MODULE__, [serializer], name: __MODULE__)

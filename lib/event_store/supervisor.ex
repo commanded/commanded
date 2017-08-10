@@ -1,5 +1,6 @@
 defmodule EventStore.Supervisor do
   use Supervisor
+  use EventStore.Registration
 
   def start_link(config) do
     serializer = EventStore.configured_serializer()
@@ -8,9 +9,8 @@ defmodule EventStore.Supervisor do
   end
 
   def init([config, serializer]) do
-    registry_provider = registry_provider(config)
-    registry_supervision = config |> registry_provider.child_spec() |> List.wrap()
-      
+    registry_supervision = config |> @registry.child_spec() |> List.wrap()
+
     children = [
       {Postgrex, postgrex_opts(config)},
       {EventStore.Publisher, serializer},
@@ -19,16 +19,6 @@ defmodule EventStore.Supervisor do
     ] ++ registry_supervision
 
     Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  defp registry_provider(config) do
-    config
-    |> Keyword.get(:registry, :local)
-    |> case do
-      :local       -> EventStore.Registration.LocalRegistry
-      :distributed -> EventStore.Registration.Distributed
-      unknown      -> raise ArgumentError, message: "Unknown :registry setting in config: #{inspect unknown}"
-    end
   end
 
   defp postgrex_opts(config) do
