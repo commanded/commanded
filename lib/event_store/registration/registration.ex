@@ -33,6 +33,11 @@ defmodule EventStore.Registration do
   """
   @callback publish(group :: term, msg :: term) :: :ok
 
+  @doc """
+  Gets all the members of a group. Returns a list of pids.
+  """
+  @callback members(group :: term) :: [pid]
+
   defp registry_provider do
     Application.get_env(:eventstore, :registry, :local)
     |> case do

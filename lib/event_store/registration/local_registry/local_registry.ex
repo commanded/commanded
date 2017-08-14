@@ -13,6 +13,9 @@ defmodule EventStore.Registration.LocalRegistry do
     ]
   end
 
+  @doc """
+  Starts a process using the given module/function/args parameters, and registers the pid with the given name.
+  """
   @spec register_name(name :: term, module :: atom, function :: atom, args :: [term]) :: {:ok, pid} | {:error, term}
   @impl EventStore.Registration
   def register_name(name, module, fun, [supervisor, args]) do
@@ -49,6 +52,15 @@ defmodule EventStore.Registration.LocalRegistry do
     Registry.dispatch(EventStore.Subscriptions.PubSub, group, fn entries ->
       for {pid, _} <- entries, do: send(pid, msg)
     end)
+  end
+
+  @doc """
+  Gets all the members of a group. Returns a list of pids.
+  """
+  @spec members(group :: term) :: [pid]
+  @impl EventStore.Registration
+  def members(group) do
+    for {pid, _} <- Registry.lookup(EventStore.Subscriptions.PubSub, group), do: pid
   end
 
   defmacro __using__(_opts) do

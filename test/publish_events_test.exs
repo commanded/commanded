@@ -1,5 +1,6 @@
 defmodule EventStore.PublishEventsTest do
   use EventStore.StorageCase
+  use EventStore.Registration
 
   alias EventStore.{EventFactory,Publisher,Subscriptions,Subscriber,Wait}
   alias EventStore.ProcessHelper
@@ -66,7 +67,7 @@ defmodule EventStore.PublishEventsTest do
     {:ok, subscription} = Subscriptions.subscribe_to_stream(@all_stream, @subscription_name, subscriber, opts)
 
     Wait.until(fn ->
-      assert Registry.lookup(EventStore.Subscriptions.PubSub, @all_stream) !== []
+      assert @registry.members({:events, @all_stream}) !== []
     end)
 
     {:ok, subscriber, subscription}
