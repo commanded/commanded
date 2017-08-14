@@ -72,6 +72,8 @@ You must decide which event store to use with Commanded. You have a choice betwe
 
 - Greg Young's [Event Store](https://geteventstore.com/) using the [commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter) package.
 
+There is also an [in-memory event store adapter](https://github.com/slashdotdash/commanded/wiki/In-memory-event-store) for *test use only*.
+
 Want to use a different event store? Then you will need to write your own [event store provider](#event-store-provider).
 
 ### PostgreSQL-based EventStore
@@ -212,12 +214,12 @@ For the test environment use: `$ MIX_ENV=test mix deps.compile commanded --force
 
 ## Sample usage
 
-Including `commanded` in the applications section of `mix.exs` will ensure it is started.
+For Elixir 1.4 and later the `commanded` application is automatically started for you. Elixir 1.3 and before only, including `commanded` in the applications section of `mix.exs` will ensure it is started.
 
-You may manually start the top level Supervisor process.
+Optionally, you can manually start the top level Supervisor process:
 
 ```elixir
-{:ok, _} = Commanded.Supervisor.start_link
+{:ok, _} = Commanded.Supervisor.start_link()
 ```
 
 ### Aggregate roots
