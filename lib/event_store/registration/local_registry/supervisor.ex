@@ -8,8 +8,6 @@ defmodule EventStore.Registration.LocalRegistry.Supervisor do
   def init(serializer) do
     children = [
       supervisor(Registry, [:unique, EventStore.Registration.LocalRegistry], id: :event_store_local_registry),
-      supervisor(Registry, [:duplicate, EventStore.Subscriptions.PubSub, [partitions: System.schedulers_online]], id: :subscriptions_pubsub_registry),
-      worker(EventStore.Publisher, [serializer, [name: EventStore.Publisher]]),
     ]
 
     supervise(children, strategy: :one_for_one)

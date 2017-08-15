@@ -38,6 +38,8 @@ defmodule EventStore.Registration.LocalRegistry do
   """
   @spec join(group :: term) :: :ok
   @impl EventStore.Registration
+  def join(group)
+  def join(EventStore.Publisher), do: :ok
   def join(group) do
     {:ok, _} = Registry.register(EventStore.Subscriptions.PubSub, group, [])
     :ok
@@ -48,6 +50,8 @@ defmodule EventStore.Registration.LocalRegistry do
   """
   @spec publish(group :: term, msg :: term) :: :ok
   @impl EventStore.Registration
+  def publish(group, msg)
+  def publish(EventStore.Publisher, msg), do: send(EventStore.Publisher, msg)
   def publish(group, msg) do
     Registry.dispatch(EventStore.Subscriptions.PubSub, group, fn entries ->
       for {pid, _} <- entries, do: send(pid, msg)

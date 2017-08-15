@@ -10,9 +10,12 @@ defmodule EventStore.Supervisor do
 
   def init([config, serializer]) do
     children = [
+      Supervisor.child_spec({Registry, [keys: :unique, name: EventStore.Subscriptions]}, id: :event_store_subscriptions),
+      Supervisor.child_spec({Registry, [keys: :duplicate, name: EventStore.Subscriptions.PubSub, partitions: System.schedulers_online]}, id: :event_store_pub_sub),
       {Postgrex, postgrex_opts(config)},
       {EventStore.Subscriptions.Supervisor, []},
       {EventStore.Streams.Supervisor, serializer},
+      {EventStore.Publisher, serializer},
     ] ++ @registry.child_spec(config, serializer)
 
     Supervisor.init(children, strategy: :one_for_one)

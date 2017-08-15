@@ -5,11 +5,7 @@ defmodule EventStore.Registration.Distributed do
 
   @behaviour EventStore.Registration
 
-  def child_spec(_config, serializer) do
-    [
-      publisher_spec(serializer),
-    ]
-  end
+  def child_spec(_config, _serializer), do: []
 
   @doc """
   Starts a process using the given module/function/args parameters, and registers the pid with the given name.
@@ -49,6 +45,15 @@ defmodule EventStore.Registration.Distributed do
   """
   @spec join(group :: term) :: :ok
   @impl EventStore.Registration
+  def join(group)
+
+  def join(EventStore.Publisher) do
+    # Swarm requires a process to be registered before it may join a group
+    with :yes <- Swarm.register_name("EventStore.Publisher.#{inspect self()}", self()) do
+      Swarm.join(EventStore.Publisher, self())
+    end
+  end
+
   def join(group), do: Swarm.join(group, self())
 
   @doc """
@@ -78,15 +83,5 @@ defmodule EventStore.Registration.Distributed do
     else
       reply -> reply
     end
-  end
-
-  defp publisher_spec(serializer) do
-    %{
-      id: EventStore.Publisher,
-      restart: :permanent,
-      shutdown: 5000,
-      start: {EventStore.Registration.Distributed, :register_name, [EventStore.Publisher, EventStore.Publisher, :start_link, [serializer]]},
-      type: :worker,
-    }
   end
 end
