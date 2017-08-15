@@ -20,10 +20,10 @@ defmodule EventStore.Registration.Distributed do
 
   # Don't distribute subscriptions (they should run on same node as subscriber).
   # Instead we just start the process and register the name
-  def register_name(name, EventStore.Subscriptions.Supervisor, fun, args) do
+  def register_name(name, module, fun, [EventStore.Subscriptions.Supervisor | _] = args) do
     case whereis_name(name) do
       :undefined ->
-        start_and_register(name, EventStore.Subscriptions.Supervisor, fun, args)
+        start_and_register(name, module, fun, args)
 
       pid ->
         {:error, {:already_started, pid}}
@@ -72,7 +72,7 @@ defmodule EventStore.Registration.Distributed do
   end
 
   defp start_and_register(name, module, fun, args) do
-    with {:ok, pid} <- apply(EventStore.Subscriptions.Supervisor, fun, args),
+    with {:ok, pid} <- apply(module, fun, args),
          :yes <- Swarm.register_name(name, pid) do
       {:ok, pid}
     else

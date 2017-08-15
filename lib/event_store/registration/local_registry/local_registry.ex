@@ -29,9 +29,9 @@ defmodule EventStore.Registration.LocalRegistry do
   """
   @spec whereis_name(name :: term) :: pid | :undefined
   @impl EventStore.Registration
-  def whereis_name(name) do
-    Registry.whereis_name({EventStore.Registration.LocalRegistry, name})
-  end
+  def whereis_name(name)
+  def whereis_name(EventStore.Publisher), do: Process.whereis(EventStore.Publisher)
+  def whereis_name(name), do: Registry.whereis_name({EventStore.Registration.LocalRegistry, name})
 
   @doc """
   Joins the current process to a group
@@ -66,7 +66,6 @@ defmodule EventStore.Registration.LocalRegistry do
   defmacro __using__(_opts) do
     quote location: :keep do
       def via_tuple(EventStore.Publisher), do: EventStore.Publisher
-
       def via_tuple(name), do: {:via, Registry, {EventStore.Registration.LocalRegistry, name}}
     end
   end

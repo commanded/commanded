@@ -9,7 +9,10 @@ defmodule EventStore.Cluster do
 
     nodes = Application.get_env(:swarm, :nodes, [])
 
-    # :ok = Application.load(:swarm)
+    case Application.load(:swarm) do
+      :ok -> :ok
+      {:error, {:already_loaded, :swarm}} -> :ok
+    end
 
     nodes
     |> Enum.map(&Task.async(fn -> spawn_node(&1) end))
@@ -42,7 +45,7 @@ defmodule EventStore.Cluster do
   end
 
   defp transfer_configuration(node) do
-    for {app_name, _, _} <- Application.loaded_applications do
+    for {app_name, _, _} <- Application.loaded_applications() do
       for {key, val} <- Application.get_all_env(app_name) do
         rpc(node, Application, :put_env, [app_name, key, val])
       end
@@ -52,7 +55,7 @@ defmodule EventStore.Cluster do
   defp ensure_applications_started(node) do
     rpc(node, Application, :ensure_all_started, [:mix])
     rpc(node, Mix, :env, [Mix.env()])
-    for {app_name, _, _} <- Application.loaded_applications do
+    for {app_name, _, _} <- Application.loaded_applications() do
       rpc(node, Application, :ensure_all_started, [app_name])
     end
   end

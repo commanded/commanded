@@ -42,6 +42,7 @@ defmodule EventStore.PublishEventsTest do
     assert Subscriber.received_events(subscriber) == EventFactory.deserialize_events(stream1_events ++ stream2_events ++ stream3_events)
   end
 
+  @tag :wip
   test "should resume publishing on restart" do
     stream1_uuid = UUID.uuid4()
     stream1_events = EventFactory.create_events(1)
@@ -74,10 +75,12 @@ defmodule EventStore.PublishEventsTest do
   end
 
   defp restart_publisher do
-    ProcessHelper.shutdown(Publisher)
+    publisher_pid() |> ProcessHelper.shutdown()
 
     Wait.until(fn ->
-      assert Process.whereis(Publisher) != nil
+      assert publisher_pid() != nil
     end)
   end
+
+  defp publisher_pid, do: @registry.whereis_name(Publisher)
 end
