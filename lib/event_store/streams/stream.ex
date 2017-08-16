@@ -49,6 +49,8 @@ defmodule EventStore.Streams.Stream do
     GenServer.call(via_tuple(stream_uuid), {:stream_version})
   end
 
+  def close(stream_uuid), do: GenServer.stop(via_tuple(stream_uuid), :shutdown)
+
   def init(%Stream{stream_uuid: stream_uuid} = state) do
     GenServer.cast(self(), {:open_stream, stream_uuid})
     {:ok, state}

@@ -41,6 +41,7 @@ defmodule EventStore.Streams.StreamTest do
       :ok = Streams.Supervisor.close_stream(stream_uuid)
 
       assert_receive {:DOWN, ^ref, :process, ^stream, :shutdown}
+      assert %{active: 0, specs: 1, supervisors: 0, workers: 0} == Supervisor.count_children(Streams.Supervisor)
     end
   end
 

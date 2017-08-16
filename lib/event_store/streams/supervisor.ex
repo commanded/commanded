@@ -21,12 +21,7 @@ defmodule EventStore.Streams.Supervisor do
     end
   end
 
-  def close_stream(stream_uuid) do
-    case @registry.whereis_name(stream_uuid) do
-      :undefined -> :ok
-      stream -> Supervisor.terminate_child(__MODULE__, stream)
-    end
-  end
+  def close_stream(stream_uuid), do: Stream.close(stream_uuid)
 
   @doc false
   def init(serializer) do
