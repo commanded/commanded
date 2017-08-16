@@ -74,12 +74,10 @@ defmodule EventStore.PublishEventsTest do
   end
 
   defp restart_publisher do
-    publisher_pid() |> ProcessHelper.shutdown()
+    ProcessHelper.shutdown(Publisher)
 
     Wait.until(fn ->
-      assert publisher_pid() != nil
+      assert Process.whereis(Publisher) != nil
     end)
   end
-
-  defp publisher_pid, do: @registry.whereis_name(Publisher)
 end

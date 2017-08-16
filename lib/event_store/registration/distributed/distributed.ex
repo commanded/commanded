@@ -35,7 +35,7 @@ defmodule EventStore.Registration.Distributed do
 
   def join(EventStore.Publisher) do
     # Swarm requires a process to be registered before it may join a group
-    with :yes <- Swarm.register_name("EventStore.Publisher.#{inspect self()}", self()) do
+    with :yes <- Swarm.register_name("EventStore.Publisher.#{UUID.uuid4()}", self()) do
       Swarm.join(EventStore.Publisher, self())
     end
   end

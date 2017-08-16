@@ -19,6 +19,18 @@ defmodule EventStore.Cluster do
     |> Enum.map(&Task.await(&1, 30_000))
   end
 
+  def stop do
+    IO.inspect nodes = Node.list(:connected)
+
+    nodes
+    |> Enum.map(&Task.async(fn -> stop_node(&1) end))
+    |> Enum.map(&Task.await(&1, 30_000))
+  end
+
+  defp stop_node(node) do
+    :ok = :slave.stop(node)
+  end
+
   defp spawn_node(node_host) do
     {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_name(node_host), inet_loader_args())
     add_code_paths(node)
