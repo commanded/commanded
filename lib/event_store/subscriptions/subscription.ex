@@ -66,7 +66,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:ok, state}
   end
 
-  def handle_info({:notify_events, events}, %Subscription{subscription: subscription} = state) do
+  def handle_cast({:notify_events, events}, %Subscription{subscription: subscription} = state) do
     subscription = StreamSubscription.notify_events(subscription, events)
 
     state = %Subscription{state | subscription: subscription}
@@ -83,7 +83,7 @@ defmodule EventStore.Subscriptions.Subscription do
 
     :ok = handle_subscription_state(state)
 
-    @registry.join({:events, stream_uuid})
+    subscribe_to_stream(stream_uuid)
 
     {:noreply, state}
   end
@@ -137,6 +137,10 @@ defmodule EventStore.Subscriptions.Subscription do
     :ok = handle_subscription_state(state)
 
     {:reply, :ok, state}
+  end
+
+  defp subscribe_to_stream(stream_uuid) do
+    {:ok, _} = Registry.register(EventStore.Subscriptions.PubSub, stream_uuid, {Subscription, :notify_events})
   end
 
   defp handle_subscription_state(%Subscription{subscription: %{state: :request_catch_up}}) do

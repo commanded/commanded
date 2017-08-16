@@ -5,7 +5,7 @@ defmodule EventStore.Cluster do
 
     # Allow spawned nodes to fetch all code from this node
     :erl_boot_server.start([])
-    allow_boot to_char_list("127.0.0.1")
+    allow_boot to_charlist("127.0.0.1")
 
     nodes = Application.get_env(:swarm, :nodes, [])
 
@@ -20,7 +20,7 @@ defmodule EventStore.Cluster do
   end
 
   defp spawn_node(node_host) do
-    {:ok, node} = :slave.start(to_char_list("127.0.0.1"), node_name(node_host), inet_loader_args())
+    {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_name(node_host), inet_loader_args())
     add_code_paths(node)
     transfer_configuration(node)
     ensure_applications_started(node)
@@ -32,7 +32,7 @@ defmodule EventStore.Cluster do
   end
 
   defp inet_loader_args do
-    to_char_list("-loader inet -hosts 127.0.0.1 -setcookie #{:erlang.get_cookie()}")
+    to_charlist("-loader inet -hosts 127.0.0.1 -setcookie #{:erlang.get_cookie()}")
   end
 
   defp allow_boot(host) do

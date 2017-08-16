@@ -1,11 +1,11 @@
 defmodule EventStore.Registration.LocalRegistry.Supervisor do
   use Supervisor
 
-  def start_link(serializer) do
-    Supervisor.start_link(__MODULE__, serializer, name: __MODULE__)
+  def start_link(_) do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def init(serializer) do
+  def init(_) do
     children = [
       supervisor(Registry, [:unique, EventStore.Registration.LocalRegistry], id: :event_store_local_registry),
     ]

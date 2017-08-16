@@ -42,7 +42,6 @@ defmodule EventStore.PublishEventsTest do
     assert Subscriber.received_events(subscriber) == EventFactory.deserialize_events(stream1_events ++ stream2_events ++ stream3_events)
   end
 
-  @tag :wip
   test "should resume publishing on restart" do
     stream1_uuid = UUID.uuid4()
     stream1_events = EventFactory.create_events(1)
@@ -68,7 +67,7 @@ defmodule EventStore.PublishEventsTest do
     {:ok, subscription} = Subscriptions.subscribe_to_stream(@all_stream, @subscription_name, subscriber, opts)
 
     Wait.until(fn ->
-      assert @registry.members({:events, @all_stream}) !== []
+      assert Registry.lookup(EventStore.Subscriptions.PubSub, @all_stream) !== []
     end)
 
     {:ok, subscriber, subscription}

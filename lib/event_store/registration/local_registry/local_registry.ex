@@ -7,9 +7,9 @@ defmodule EventStore.Registration.LocalRegistry do
 
   alias EventStore.Registration.LocalRegistry.Supervisor
 
-  def child_spec(_config, serializer) do
+  def child_spec do
     [
-      Supervisor.child_spec(serializer),
+      Supervisor.child_spec([]),
     ]
   end
 

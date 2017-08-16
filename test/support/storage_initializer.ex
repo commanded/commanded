@@ -3,6 +3,7 @@ defmodule EventStore.StorageInitializer do
 
   def reset_storage! do
     Application.stop(:eventstore)
+    Application.stop(:swarm)
 
     {:ok, conn} = EventStore.configuration() |> EventStore.Config.parse() |> Postgrex.start_link()
 

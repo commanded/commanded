@@ -5,27 +5,13 @@ defmodule EventStore.Registration.Distributed do
 
   @behaviour EventStore.Registration
 
-  def child_spec(_config, _serializer), do: []
+  def child_spec, do: []
 
   @doc """
   Starts a process using the given module/function/args parameters, and registers the pid with the given name.
   """
   @spec register_name(name :: term, module :: atom, function :: atom, args :: [term]) :: {:ok, pid} | {:error, term}
   @impl EventStore.Registration
-  def register_name(name, module, fun, args)
-
-  # Don't distribute subscriptions (they should run on same node as subscriber).
-  # Instead we just start the process and register the name
-  def register_name(name, module, fun, [EventStore.Subscriptions.Supervisor | _] = args) do
-    case whereis_name(name) do
-      :undefined ->
-        start_and_register(name, module, fun, args)
-
-      pid ->
-        {:error, {:already_started, pid}}
-    end
-  end
-
   def register_name(name, module, fun, args) do
     case Swarm.register_name(name, module, fun, args) do
       {:error, {:already_registered, pid}} -> {:error, {:already_started, pid}}
@@ -73,15 +59,6 @@ defmodule EventStore.Registration.Distributed do
   defmacro __using__(_opts) do
     quote location: :keep do
       def via_tuple(name), do: {:via, :swarm, name}
-    end
-  end
-
-  defp start_and_register(name, module, fun, args) do
-    with {:ok, pid} <- apply(module, fun, args),
-         :yes <- Swarm.register_name(name, pid) do
-      {:ok, pid}
-    else
-      reply -> reply
     end
   end
 end

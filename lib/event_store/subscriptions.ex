@@ -52,6 +52,8 @@ defmodule EventStore.Subscriptions do
   end
 
   defp notify_subscribers(stream_uuid, events) do
-    @registry.publish({:events, stream_uuid}, {:notify_events, events})
+    Registry.dispatch(EventStore.Subscriptions.PubSub, stream_uuid, fn subscribers ->
+      for {subscription, {module, function}} <- subscribers, do: apply(module, function, [subscription, events])
+    end)
   end
 end

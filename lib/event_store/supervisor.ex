@@ -16,7 +16,7 @@ defmodule EventStore.Supervisor do
       {EventStore.Subscriptions.Supervisor, []},
       {EventStore.Streams.Supervisor, serializer},
       {EventStore.Publisher, serializer},
-    ] ++ @registry.child_spec(config, serializer)
+    ] ++ @registry.child_spec()
 
     Supervisor.init(children, strategy: :one_for_one)
   end
