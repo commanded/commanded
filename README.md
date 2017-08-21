@@ -95,7 +95,7 @@ Build a list of events to persist. The data and metadata fields will be serializ
 ```elixir
 events = [
   %EventStore.EventData{
-    event_type: "ExampleEvent",
+    event_type: "Elixir.ExampleEvent",
     data: %ExampleEvent{key: "value"},
     metadata: %{user: "someuser@example.com"},
   }
@@ -254,6 +254,23 @@ Configure your serializer by setting the `serializer` option in the mix environm
 config :eventstore, EventStore.Storage,
   serializer: JsonSerializer,
   # ...
+```
+
+You must set the `event_type` field to a string representing the type of event being persisted when using this serializer:
+
+```elixir
+%EventStore.EventData{
+  event_type: "Elixir.ExampleEvent",
+  data: %ExampleEvent{key: "value"},
+  metadata: %{user: "someuser@example.com"},
+}
+```
+
+You can use `Atom.to_string/1` to get a string representation of a given event struct compatible with the example `JsonSerializer` module:
+
+```elixir
+event = %ExampleEvent{key: "value"}
+event_type = Atom.to_string(event.__struct__)  #=> "Elixir.ExampleEvent" 
 ```
 
 ## Benchmarking performance
