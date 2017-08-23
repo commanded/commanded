@@ -20,7 +20,7 @@ defmodule EventStore.Cluster do
   end
 
   def stop do
-    IO.inspect nodes = Node.list(:connected)
+    nodes = Node.list(:connected)
 
     nodes
     |> Enum.map(&Task.async(fn -> stop_node(&1) end))
