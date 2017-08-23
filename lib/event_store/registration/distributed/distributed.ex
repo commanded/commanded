@@ -59,6 +59,27 @@ defmodule EventStore.Registration.Distributed do
   defmacro __using__(_opts) do
     quote location: :keep do
       def via_tuple(name), do: {:via, :swarm, name}
+
+      # Shutdown the process when a cluster toplogy change indicates it is now running on the wrong host.
+      # This is to prevent a spike in process restarts as they are moved. Instead, allow the process to
+      # be started on request.
+      def handle_call({:swarm, :begin_handoff}, _from, state) do
+        {:stop, :shutdown, :ignore, state}
+      end
+
+      def handle_cast({:swarm, :end_handoff, _state}, state) do
+        {:noreply, state}
+      end
+
+      # Take the remote process state after net split has been resolved
+      def handle_cast({:swarm, :resolve_conflict, state}, _state) do
+        {:noreply, state}
+      end
+
+      # Stop the process as it is being moved to another node, or there are not currently enough nodes running
+      def handle_info({:swarm, :die}, state) do
+        {:stop, :shutdown, state}
+      end
     end
   end
 end

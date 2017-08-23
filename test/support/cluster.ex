@@ -7,19 +7,31 @@ defmodule EventStore.Cluster do
     :erl_boot_server.start([])
     allow_boot to_charlist("127.0.0.1")
 
-    nodes = Application.get_env(:swarm, :nodes, [])
-
     case Application.load(:swarm) do
       :ok -> :ok
       {:error, {:already_loaded, :swarm}} -> :ok
     end
+
+    spawn_nodes()
+  end
+
+  def spawn_nodes do
+    nodes = Application.get_env(:swarm, :nodes, [])
 
     nodes
     |> Enum.map(&Task.async(fn -> spawn_node(&1) end))
     |> Enum.map(&Task.await(&1, 30_000))
   end
 
-  def stop do
+  def spawn_node(node_host) do
+    {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_name(node_host), inet_loader_args())
+    add_code_paths(node)
+    transfer_configuration(node)
+    ensure_applications_started(node)
+    {:ok, node}
+  end
+
+  def stop_nodes do
     nodes = Node.list(:connected)
 
     nodes
@@ -27,16 +39,8 @@ defmodule EventStore.Cluster do
     |> Enum.map(&Task.await(&1, 30_000))
   end
 
-  defp stop_node(node) do
+  def stop_node(node) do
     :ok = :slave.stop(node)
-  end
-
-  defp spawn_node(node_host) do
-    {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_name(node_host), inet_loader_args())
-    add_code_paths(node)
-    transfer_configuration(node)
-    ensure_applications_started(node)
-    {:ok, node}
   end
 
   defp rpc(node, module, fun, args) do
