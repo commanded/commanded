@@ -47,6 +47,7 @@ MIT License
   - [Serialization](#serialization)
 - [Read model projections](#read-model-projections)
 - [Used in production?](#used-in-production)
+- [Example application](#example-application)
 - [Limitations](#limitations)
 - [Event store provider](#event-store-provider)
 - [Contributing](#contributing)
@@ -678,6 +679,10 @@ I typically use Ecto, and a PostgreSQL database, for read model projections. You
 Yes, Commanded is being used in production.
 
 - Case Study: [Building a CQRS/ES web application in Elixir using Phoenix](https://10consulting.com/2017/01/04/building-a-cqrs-web-application-in-elixir-using-phoenix/)
+
+## Example application
+
+[Conduit](https://github.com/slashdotdash/conduit) is an open source, example Phoenix 1.3 web application implementing the CQRS/ES pattern in Elixir. It was built to demonstrate the implementation of Commanded in an Elixir application for the [Building Conduit](https://leanpub.com/buildingconduit) book.
 
 ## Limitations
 
