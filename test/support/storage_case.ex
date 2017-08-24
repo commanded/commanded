@@ -21,6 +21,8 @@ defmodule EventStore.StorageCase do
   defp before_reset(EventStore.Registration.Distributed) do
     Application.stop(:swarm)
     Application.stop(:eventstore)
+
+    :timer.sleep 200
   end
 
   defp before_reset(_registry) do
@@ -32,11 +34,15 @@ defmodule EventStore.StorageCase do
     {:ok, _} = Application.ensure_all_started(:swarm)
     {:ok, _} = Application.ensure_all_started(:eventstore)
 
+    :timer.sleep 200
+
     expected_node_count = Application.get_env(:swarm, :nodes, []) |> length()
 
     Wait.until(5_000, fn ->
       assert length(@registry.members(EventStore.Publisher)) >= expected_node_count
     end)
+
+    :timer.sleep 200
   end
 
   defp after_reset(_registry) do

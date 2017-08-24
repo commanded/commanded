@@ -3,8 +3,6 @@ defmodule EventStore.Subscriptions do
   Pub/sub for subscribers interested in events appended to either a single stream or all streams
   """
 
-  use EventStore.Registration
-
   require Logger
 
   alias EventStore.{RecordedEvent,Subscriptions}
