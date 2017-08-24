@@ -29,7 +29,7 @@ defmodule EventStore.Mixfile do
     ]
   end
 
-  def registry_applications do
+  defp registry_applications do
     case Application.get_env(:eventstore, :registry) do
       :distributed -> [:swarm]
       _ -> []
@@ -101,11 +101,11 @@ EventStore using PostgreSQL for persistence.
   defp test_distributed(args), do: test_registry(:distributed, args)
   defp test_local(args), do: test_registry(:local, args)
   defp test_registry(registry, args) do
-    args = if IO.ANSI.enabled?, do: ["--color"|args], else: ["--no-color"|args]
+    test_args = if IO.ANSI.enabled?, do: ["--color"|args], else: ["--no-color"|args]
 
-    IO.puts "==> Running tests for MIX_ENV=#{registry} mix test"
+    IO.puts "==> Running tests for MIX_ENV=#{registry} mix test #{Enum.join(args, " ")}"
 
-    {_, res} = System.cmd "mix", ["test"|args],
+    {_, res} = System.cmd "mix", ["test"|test_args],
                           into: IO.binstream(:stdio, :line),
                           env: [{"MIX_ENV", to_string(registry)}]
 
