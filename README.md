@@ -608,8 +608,6 @@ defmodule Bank.Supervisor do
 
   def init(:ok) do
     children = [
-      supervisor(Commanded.Supervisor, []),
-
       # process manager
       worker(TransferMoneyProcessManager, [start_from: :current], id: :transfer_money_process_manager),
 
@@ -622,21 +620,14 @@ defmodule Bank.Supervisor do
 end
 ```
 
-Your application should include the supervisor as a worker.
+Your application should start the supervisor.
 
 ```elixir
 defmodule Bank do
   use Application
 
   def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
-    children = [
-      worker(Bank.Supervisor, [])
-    ]
-
-    opts = [strategy: :one_for_one, name: __MODULE__]
-    Supervisor.start_link(children, opts)
+    Bank.Supervisor.start_link()
   end
 end
 ```
