@@ -21,5 +21,6 @@ config :eventstore,
 
 config :swarm,
   nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1"],
+  node_blacklist: [~r/^primary@.+$/],
   sync_nodes_timeout: 0,
   debug: false
