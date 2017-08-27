@@ -24,19 +24,9 @@ defmodule EventStore.Registration do
   @callback whereis_name(term) :: pid | :undefined
 
   @doc """
-  Joins the current process to a group
+  Publish events
   """
-  @callback join(group :: term) :: :ok
-
-  @doc """
-  Publishes a message to a group.
-  """
-  @callback publish(group :: term, msg :: term) :: :ok
-
-  @doc """
-  Gets all the members of a group. Returns a list of pids.
-  """
-  @callback members(group :: term) :: [pid]
+  @callback publish_events(stream_uuid :: term, events :: list(EventStore.RecordedEvent.t)) :: :ok
 
   defp registry_provider do
     Application.get_env(:eventstore, :registry, :local)

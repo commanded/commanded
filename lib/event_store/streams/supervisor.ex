@@ -14,10 +14,22 @@ defmodule EventStore.Streams.Supervisor do
     Supervisor.start_link(__MODULE__, serializer, name: __MODULE__)
   end
 
+  @doc """
+  Open a stream, or return the pid of an already opened stream process
+  """
+  @spec open_stream(String.t) :: {:ok, pid} | {:error, term()}
   def open_stream(stream_uuid) do
-    case @registry.register_name(stream_uuid, Supervisor, :start_child, [__MODULE__, [stream_uuid]]) do
-      {:ok, stream} -> {:ok, stream}
-      {:error, {:already_started, stream}} -> {:ok, stream}
+    stream_name = Stream.name(stream_uuid)
+
+    case @registry.whereis_name(stream_name) do
+      :undefined ->
+        case @registry.register_name(stream_name, Supervisor, :start_child, [__MODULE__, [stream_uuid]]) do
+          {:ok, stream} -> {:ok, stream}
+          {:error, {:already_started, stream}} -> {:ok, stream}
+        end
+
+      stream ->
+        {:ok, stream}
     end
   end
 

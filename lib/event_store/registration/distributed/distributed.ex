@@ -27,34 +27,19 @@ defmodule EventStore.Registration.Distributed do
   def whereis_name(name), do: Swarm.whereis_name(name)
 
   @doc """
-  Joins the current process to a group
+  Publish events to the `EventStore.Publisher` running on each connected node
   """
-  @spec join(group :: term) :: :ok
+  @callback publish_events(stream_uuid :: term, events :: list(EventStore.RecordedEvent.t)) :: :ok
   @impl EventStore.Registration
-  def join(group)
-
-  def join(EventStore.Publisher) do
-    # Swarm requires a process to be registered before it may join a group
-    with :yes <- Swarm.register_name("EventStore.Publisher.#{UUID.uuid4()}", self()) do
-      Swarm.join(EventStore.Publisher, self())
-    end
+  def publish_events(stream_uuid, events) do
+    Node.list(:connected)
+    |> Enum.map(&Task.async(fn -> publish_events_to_node(&1, stream_uuid, events) end))
+    |> Enum.map(&Task.await(&1, 30_000))
   end
 
-  def join(group), do: Swarm.join(group, self())
-
-  @doc """
-  Publishes a message to a group.
-  """
-  @spec publish(group :: term, msg :: term) :: :ok
-  @impl EventStore.Registration
-  def publish(group, msg), do: Swarm.publish(group, msg)
-
-  @doc """
-  Gets all the members of a group. Returns a list of pids.
-  """
-  @spec members(group :: term) :: [pid]
-  @impl EventStore.Registration
-  def members(group), do: Swarm.members(group)
+  defp publish_events_to_node(node, stream_uuid, events) do
+    GenServer.cast({EventStore.Publisher, node}, {:notify_events, stream_uuid, events})
+  end
 
   defmacro __using__(_opts) do
     quote location: :keep do

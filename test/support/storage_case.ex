@@ -2,10 +2,6 @@ defmodule EventStore.StorageCase do
   use ExUnit.CaseTemplate
   use EventStore.Registration
 
-  import ExUnit.Assertions
-
-  alias EventStore.Wait
-
   setup do
     before_reset(@registry)
 
@@ -31,13 +27,6 @@ defmodule EventStore.StorageCase do
   defp after_reset(EventStore.Registration.Distributed) do
     {:ok, _} = Application.ensure_all_started(:swarm)
     {:ok, _} = Application.ensure_all_started(:eventstore)
-
-    nodes = Application.get_env(:swarm, :nodes, [])
-    expected_node_count = length(nodes)
-
-    Wait.until(5_000, fn ->
-      assert length(@registry.members(EventStore.Publisher)) >= expected_node_count
-    end)
   end
 
   defp after_reset(_registry) do

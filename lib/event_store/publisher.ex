@@ -4,7 +4,6 @@ defmodule EventStore.Publisher do
   """
 
   use GenServer
-  use EventStore.Registration
 
   require Logger
 
@@ -30,18 +29,16 @@ defmodule EventStore.Publisher do
   end
 
   def notify_events(stream_uuid, events) do
-    @registry.publish(EventStore.Publisher, {:notify_events, stream_uuid, events})
+    GenServer.cast(__MODULE__, {:notify_events, stream_uuid, events})
   end
 
   def init(%Publisher{} = state) do
-    GenServer.cast(self(), {:startup})
+    GenServer.cast(self(), {:fetch_latest_event_id})
     {:ok, state}
   end
 
-  def handle_cast({:startup}, %Publisher{} = state) do
+  def handle_cast({:fetch_latest_event_id}, %Publisher{} = state) do
     {:ok, latest_event_id} = Storage.latest_event_id()
-
-    :ok = @registry.join(EventStore.Publisher)
 
     {:noreply, %Publisher{state | last_published_event_id: latest_event_id}}
   end
@@ -65,7 +62,7 @@ defmodule EventStore.Publisher do
     {:noreply, state}
   end
 
-  def handle_info({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
+  def handle_cast({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
     expected_event_id = last_published_event_id + 1
     initial_event_id = first_event_id(events)
     last_event_id = last_event_id(events)

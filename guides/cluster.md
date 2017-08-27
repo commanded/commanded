@@ -61,3 +61,9 @@ Peek into the Swarm process registry:
 ```elixir
 Swarm.Registry.registered()
 ```
+
+Discover which node a stream process is running on:
+
+```elixir
+stream_uuid |> EventStore.Streams.Stream.name() |> Swarm.whereis_name() |> node()
+```
