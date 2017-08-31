@@ -609,7 +609,7 @@ defmodule Bank.Supervisor do
   def init(:ok) do
     children = [
       # process manager
-      worker(TransferMoneyProcessManager, [start_from: :current], id: :transfer_money_process_manager),
+      worker(TransferMoneyProcessManager, [[start_from: :current]], id: :transfer_money_process_manager),
 
       # event handler
       worker(AccountBalanceHandler, [start_from: :origin], id: :account_balance_handler)
