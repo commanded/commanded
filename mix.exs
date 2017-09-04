@@ -79,6 +79,7 @@ EventStore using PostgreSQL for persistence.
       extras: [
         "guides/Getting Started.md",
         "guides/Usage.md",
+        "guides/Subscriptions.md",
         "guides/Event Serialization.md",
         "guides/Cluster.md"
       ],

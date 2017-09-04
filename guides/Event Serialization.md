@@ -2,7 +2,11 @@
 
 The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for production usage.
 
-You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data and metadata to JSON using the [Poison](https://github.com/devinus/poison) library.
+You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format.
+
+## Example JSON serializer
+
+The example serializer below serializes event data and metadata to JSON using the [Poison](https://github.com/devinus/poison) library.
 
 ```elixir
 defmodule JsonSerializer do

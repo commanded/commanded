@@ -12,87 +12,33 @@ MIT License
 
 ### Overview
 
-- [Getting started](#getting-started)
-- [Using the EventStore](#using-the-eventstore)
-  - [Writing to a stream](#writing-to-a-stream)
-  - [Reading from a stream](#reading-from-a-stream)
-  - [Reading from all streams](#reading-from-all-streams)
-  - [Stream from all streams](#stream-from-all-streams)
-  - [Subscribe to streams](#subscribe-to-streams)
-    - [Ack received events](#ack-received-events)
-    - [Example subscriber](#example-subscriber)
-- [Event serialization](#event-serialization)
-- [Benchmarking performance](#benchmarking-performance)
-- [Limitations](#limitations)
+- [Getting started](guides/Getting%20Started.md)
+- [Using the EventStore](guides/Usage.md)
+  - [Writing to a stream](guides/Usage.md#writing-to-a-stream)
+  - [Reading from a stream](guides/Usage.md#reading-from-a-stream)
+  - [Reading from all streams](guides/Usage.md#reading-from-all-streams)
+  - [Stream from all streams](guides/Usage.md#stream-from-all-streams)
+  - [Subscribe to streams](guides/Subscriptions.md)
+    - [Ack received events](guides/Subscriptions.md#ack-received-events)
+    - [Example subscriber](guides/Subscriptions.md#example-subscriber)
+- [Event serialization](guides/Event%20Serialization.md)
+  - [Example JSON serializer](guides/Event%20Serialization.md#example-json-serializer)
 - [Used in production?](#used-in-production)
+- [Backup and administration](#backup-and-administration)
+- [Benchmarking performance](#benchmarking-performance)
 - [Contributing](#contributing)
   - [Contributors](#contributors)
 - [Need help?](#need-help)
 
 ---
 
-## Getting started
+## Example usage
 
-EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be installed as follows:
-
-  1. Add eventstore to your list of dependencies in `mix.exs`:
-
-      ```elixir    
-      def deps do
-        [{:eventstore, "~> 0.11"}]
-      end
-      ```
-
-  2. Ensure `eventstore` is started before your application:
-
-      ```elixir
-      def application do
-        [applications: [:eventstore]]
-      end
-      ```
-
-  3. Add an `eventstore` config entry containing the PostgreSQL connection details to each environment's mix config file (e.g. `config/dev.exs`).
-
-      ```elixir
-      config :eventstore, EventStore.Storage,
-        username: "postgres",
-        password: "postgres",
-        database: "eventstore_dev",
-        hostname: "localhost",
-        pool_size: 10,
-        pool_overflow: 5
-      ```
-
-  The database connection pool configuration options are:
-
-  - `:pool_size` - The number of connections (default: `10`).
-  - `:pool_overflow` - The maximum number of overflow connections to start if all connections are checked out (default: `0`).
-
-  4. Create the EventStore database and tables using the `mix` task
-
-      ```console
-      $ mix event_store.create
-      ```
-
-## Using the EventStore
-
-### Writing to a stream
-
-Create a unique identity for each stream. It **must** be a string. This example uses the [uuid](https://hex.pm/packages/uuid) package.
+Append events to a stream:
 
 ```elixir
 stream_uuid = UUID.uuid4()
-```
-
-Set the expected version of the stream. This is used for optimistic concurrency. A new stream will be created when the expected version is zero.
-
-```elixir
 expected_version = 0
-```
-
-Build a list of events to persist. The data and metadata fields will be serialized to binary data. This uses your own serializer, as defined in config, that implements the `EventStore.Serializer` behaviour.
-
-```elixir
 events = [
   %EventStore.EventData{
     event_type: "Elixir.ExampleEvent",
@@ -100,62 +46,19 @@ events = [
     metadata: %{user: "someuser@example.com"},
   }
 ]
-```
 
-Append the events to the stream.
-
-```elixir
 :ok = EventStore.append_to_stream(stream_uuid, expected_version, events)
 ```
 
-### Reading from a stream
-
-Read all events from the stream, starting at the stream's first event.
+Read all events from a single stream, starting at the stream's first event:
 
 ```elixir
 {:ok, events} = EventStore.read_stream_forward(stream_uuid)
 ```
 
-### Reading from all streams
+More: [Using the EventStore](guides/Usage.md)
 
-Read all events from all streams.
-
-```elixir
-# defaults to reading the first 1,000 events from all streams
-{:ok, events} = EventStore.read_all_streams_forward()
-```
-
-### Stream from all streams
-
-Stream all events from all streams.
-
-```elixir
-events = EventStore.stream_all_forward() |> Enum.to_list()
-```
-
-### Subscribe to streams
-
-Subscriptions to a stream will guarantee at least once delivery of every persisted event. Each subscription may be independently paused, then later resumed from where it stopped. A subscription can be created to receive events published from a single logical stream or from all streams.
-
-Events are received in batches after being persisted to storage. Each batch contains events from a single stream only and with the same correlation id.
-
-Subscriptions must be uniquely named and support a single subscriber. Attempting to connect two subscribers to the same subscription will return an error.
-
-By default subscriptions are created from the single stream, or all stream, origin. So it will receive all events from the single stream, or all streams. You can optionally specify a given start position:
-
-- `:origin` - subscribe to events from the start of the stream (identical to using 0). This is the current behaviour and will remain the default.
-- `:current` - subscribe to events from the current version.
-- `stream_version` or `event_id` (integer) - specify an exact stream version to subscribe from for a single stream subscription. You provide an event id for an all stream subscription.
-
-#### Ack received events
-
-Receipt of each event by the subscriber must be acknowledged. This allows the subscription to resume on failure without missing an event.
-
-The subscriber receives an `{:events, events}` tuple containing the published events. The subscription returned when subscribing to the stream should be used to send the `ack` to. This is achieved by sending an `{:ack, last_seen_event_id}` tuple to the `subscription` process. A subscriber can confirm receipt of each event in a batch by sending multiple acks, one per event. The subscriber may confirm receipt of the last event in the batch in a single ack.
-
-A subscriber will not receive further published events until it has confirmed receipt of all received events. This provides back pressure to the subscription to prevent the subscriber from being overwhelmed with messages if it cannot keep up. The subscription will buffer events until the subscriber is ready to receive, or an overflow occurs. At which point it will move into a catch-up mode and query events and replay them from storage until caught up.
-
-Subscribe to events appended to all streams.
+Subscribe to events appended to all streams:
 
 ```elixir
 {:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self())
@@ -167,118 +70,27 @@ receive do
 end
 ```
 
-Unsubscribe from a stream.
+More: [Subscribe to streams](guides/Subscriptions.md)
 
-```elixir
-:ok = EventStore.unsubscribe_from_all_streams("example_subscription")
-```
+## Used in production?
 
-#### Example subscriber
+Yes, this event store is being used in production.
 
-```elixir
-# An example subscriber
-defmodule Subscriber do
-  use GenServer
+PostgreSQL is used for the underlying storage. Providing guarantees to store data securely. It is ACID-compliant and transactional. PostgreSQL has a proven architecture. A strong reputation for reliability, data integrity, and correctness.
 
-  def start_link do
-    GenServer.start_link(__MODULE__, [])
-  end
+## Backup and administration
 
-  def received_events(subscriber) do
-    GenServer.call(subscriber, :received_events)
-  end
+You can use any standard PostgreSQL tool to manage the event store data:
 
-  def init(events) do
-    # subscribe to events from all streams
-    {:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self())
-
-    {:ok, %{events: events, subscription: subscription}}
-  end
-
-  def handle_info({:events, events}, %{events: existing_events, subscription: subscription} = state) do
-    # confirm receipt of received events
-    EventStore.ack(subscription, events)
-
-    {:noreply, %{state | events: existing_events ++ events}}
-  end
-
-  def handle_call(:received_events, _from, %{events: events} = state) do
-    {:reply, events, state}
-  end
-end
-```
-
-Start your subscriber process, which subscribes to all streams in the event store.
-
-```elixir
-{:ok, subscriber} = Subscriber.start_link()
-```
-
-## Event serialization
-
-The default serialization of event data and metadata uses Erlang's [external term format](http://erlang.org/doc/apps/erts/erl_ext_dist.html). This is not a recommended serialization format for production usage.
-
-You must implement the `EventStore.Serializer` behaviour to provide your preferred serialization format. The example serializer below serializes event data and metadata to JSON using the [Poison](https://github.com/devinus/poison) library.
-
-```elixir
-defmodule JsonSerializer do
-  @moduledoc """
-  A serializer that uses the JSON format.
-  """
-
-  @behaviour EventStore.Serializer
-
-  @doc """
-  Serialize given term to JSON binary data.
-  """
-  def serialize(term) do
-    Poison.encode!(term)
-  end
-
-  @doc """
-  Deserialize given JSON binary data to the expected type.
-  """
-  def deserialize(binary, config) do
-    type = case Keyword.get(config, :type, nil) do
-      nil -> []
-      type -> type |> String.to_existing_atom |> struct
-    end
-    Poison.decode!(binary, as: type)
-  end
-end
-```
-
-Configure your serializer by setting the `serializer` option in the mix environment configuration file (e.g. `config/dev.exs`).
-
-```elixir
-config :eventstore, EventStore.Storage,
-  serializer: JsonSerializer,
-  # ...
-```
-
-You must set the `event_type` field to a string representing the type of event being persisted when using this serializer:
-
-```elixir
-%EventStore.EventData{
-  event_type: "Elixir.ExampleEvent",
-  data: %ExampleEvent{key: "value"},
-  metadata: %{user: "someuser@example.com"},
-}
-```
-
-You can use `Atom.to_string/1` to get a string representation of a given event struct compatible with the example `JsonSerializer` module:
-
-```elixir
-event = %ExampleEvent{key: "value"}
-event_type = Atom.to_string(event.__struct__)  #=> "Elixir.ExampleEvent"
-```
+- [Backup and restore](https://www.postgresql.org/docs/current/static/backup-dump.html).
+- [Continuous archiving and Point-in-Time Recovery (PITR)](https://www.postgresql.org/docs/current/static/continuous-archiving.html).
 
 ## Benchmarking performance
 
 Run the benchmark suite using mix with the `bench` environment, as configured in `config/bench.exs`. Logging is disabled for benchmarking.
 
-```
-MIX_ENV=bench mix do es.reset, app.start, bench
+```console
+$ MIX_ENV=bench mix do es.reset, app.start, bench
 ```
 
 Example output:
@@ -293,21 +105,6 @@ read events, single reader                   1000   1578.10 µs/op
 read events, 10 concurrent readers            100   16799.80 µs/op
 read events, 100 concurrent readers            10   167397.30 µs/op
 ```
-
-## Limitations
-
-Event Store is currently limited to running on a single node. There is an issue raised to add support for running on a cluster of nodes ([#53](https://github.com/slashdotdash/eventstore/issues/53)).
-
-## Used in production?
-
-Yes, this event store is being used in production.
-
-PostgreSQL is used for the underlying storage. Providing guarantees to store data securely. It is ACID-compliant and transactional. PostgreSQL has a proven architecture. A strong reputation for reliability, data integrity, and correctness.
-
-You can use any standard PostgreSQL tool to manage the event store data:
-
-- [Backup and restore](https://www.postgresql.org/docs/current/static/backup-dump.html).
-- [Continuous archiving and Point-in-Time Recovery (PITR)](https://www.postgresql.org/docs/current/static/continuous-archiving.html).
 
 ## Contributing
 

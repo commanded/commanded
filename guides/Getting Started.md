@@ -10,15 +10,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
       end
       ```
 
-  2. Ensure `eventstore` is started before your application:
-
-      ```elixir
-      def application do
-        [applications: [:eventstore]]
-      end
-      ```
-
-  3. Add an `eventstore` config entry containing the PostgreSQL connection details to each environment's mix config file (e.g. `config/dev.exs`).
+  2. Add an `eventstore` config entry containing the PostgreSQL database connection details to each environment's mix config file (e.g. `config/dev.exs`):
 
       ```elixir
       config :eventstore, EventStore.Storage,
@@ -32,10 +24,10 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
   The database connection pool configuration options are:
 
-      - `:pool_size` - The number of connections (default: `10`).
-      - `:pool_overflow` - The maximum number of overflow connections to start if all connections are checked out (default: `0`).
+  - `:pool_size` - The number of connections (default: `10`).
+  - `:pool_overflow` - The maximum number of overflow connections to start if all connections are checked out (default: `0`).
 
-  4. Create the EventStore database and tables using the `mix` task
+  3. Create the EventStore database and tables using the `mix` task:
 
       ```console
       $ mix event_store.create
