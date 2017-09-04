@@ -5,7 +5,8 @@ config :logger, :console, level: :debug, format: "[$level] $message\n"
 
 config :ex_unit,
   capture_log: true,
-  assert_receive_timeout: 5_000
+  assert_receive_timeout: 5_000,
+  refute_receive_timeout: 2_000
 
 config :eventstore, EventStore.Storage,
   serializer: EventStore.JsonSerializer,

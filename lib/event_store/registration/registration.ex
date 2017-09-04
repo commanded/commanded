@@ -28,6 +28,7 @@ defmodule EventStore.Registration do
   """
   @callback publish_events(stream_uuid :: term, events :: list(EventStore.RecordedEvent.t)) :: :ok
 
+  # Get the configured registry provider, defaults to `:local` if not configured
   defp registry_provider do
     Application.get_env(:eventstore, :registry, :local)
     |> case do
