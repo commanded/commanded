@@ -25,6 +25,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       assert_receive {:events, received_events}
       assert pluck(received_events, :data) == pluck(events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
     end
 
     test "subscribe to single stream from given stream version should only receive later events", %{subscription_name: subscription_name} do
@@ -41,6 +43,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       assert_receive {:events, received_events}
       assert pluck(received_events, :data) == pluck(new_events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
     end
 
     test "subscribe to stream more than once using same subscription name should error", %{subscription_name: subscription_name} do
@@ -49,6 +53,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       {:ok, _subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, self())
       {:error, :subscription_already_exists} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, self())
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
     end
 
     test "subscribe to single stream should ignore events from another stream", %{subscription_name: subscription_name} do
@@ -69,6 +75,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       # received events should not include events from the other stream
       assert_receive {:events, received_events}
       assert pluck(received_events, :data) == pluck(interested_events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_stream(interested_stream_uuid, subscription_name)
     end
 
     test "subscribe to single stream with mapper function should receive all its mapped events", %{subscription_name: subscription_name} do
@@ -83,6 +91,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       assert_receive {:events, received_mapped_events}
       assert received_mapped_events == [1, 2, 3]
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
     end
   end
 
@@ -110,6 +120,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert pluck(stream1_received_events, :data) == pluck(stream1_events, :data)
       assert pluck(stream2_received_events, :data) == pluck(stream2_events, :data)
       assert stream1_received_events != stream2_received_events
+
+      :ok = Subscriptions.unsubscribe_from_all_streams(subscription_name)
     end
 
     test "subscribe to all streams from given stream id should only receive later events from all streams", %{subscription_name: subscription_name} do
@@ -140,6 +152,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert pluck(stream1_received_events, :data) == pluck(stream1_new_events, :data)
       assert pluck(stream2_received_events, :data) == pluck(stream2_new_events, :data)
       assert stream1_received_events != stream2_received_events
+
+      :ok = Subscriptions.unsubscribe_from_all_streams(subscription_name)
     end
 
     test "should monitor all stream subscription, terminate subscription and subscriber on error", %{subscription_name: subscription_name} do
@@ -176,6 +190,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       assert pluck(received_events, :data) == pluck(events, :data)
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_all_streams(subscription_name <> "1")
+      :ok = Subscriptions.unsubscribe_from_all_streams(subscription_name <> "1")
     end
 
     test "should ack received events", %{subscription_name: subscription_name} do
@@ -210,6 +227,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert_receive {:events, remaining_received_events}
       assert length(remaining_received_events) == 3
       assert pluck(remaining_received_events, :data) == pluck(remaining_events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_all_streams(subscription_name)
     end
   end
 
@@ -249,6 +268,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       assert pluck(received_events, :data) == pluck(events, :data)
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name <> "-1")
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name <> "-2")
     end
 
     test "should monitor subscriber and terminate subscription on error", %{subscription_name: subscription_name} do
@@ -286,6 +308,9 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       assert pluck(received_events, :data) == pluck(events, :data)
       assert pluck(Subscriber.received_events(subscriber2), :data) == pluck(events, :data)
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name <> "-1")
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name <> "-2")
     end
 
     test "unsubscribe from a single stream subscription should stop subscriber from receiving events", %{subscription_name: subscription_name} do
@@ -301,6 +326,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
       refute_receive {:events, _received_events}
       assert Process.alive?(subscription) == false
+
+      :ok = Subscriptions.unsubscribe_from_stream(stream_uuid, subscription_name)
     end
   end
 
@@ -315,14 +342,23 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       GenServer.call(subscriber, {:received_events})
     end
 
+    def unsubscribe(subscriber) do
+      GenServer.call(subscriber, {:unsubscribe})
+    end
+
     def init(subscription_name) do
       {:ok, subscription} = Subscriptions.subscribe_to_all_streams(subscription_name, self())
 
-      {:ok, %{events: [], subscription: subscription}}
+      {:ok, %{events: [], subscription: subscription, subscription_name: subscription_name}}
     end
 
     def handle_call({:received_events}, _from, %{events: events} = state) do
       {:reply, events, state}
+    end
+
+    def handle_call({:unsubscribe}, _from, %{subscription_name: subscription_name} = state) do
+      Subscriptions.unsubscribe_from_all_streams(subscription_name)
+      {:reply, :ok, state}
     end
 
     def handle_info({:events, received_events}, %{events: events, subscription: subscription} = state) do
@@ -360,6 +396,11 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
         end)
 
       assert length(all_received_events) == 4 * 6
+
+      CollectingSubscriber.unsubscribe(subscriber1)
+      CollectingSubscriber.unsubscribe(subscriber2)
+      CollectingSubscriber.unsubscribe(subscriber3)
+      CollectingSubscriber.unsubscribe(subscriber4)
     end
   end
 

@@ -87,6 +87,8 @@ defmodule EventStoreTest do
 
     assert length(received_events) == 1
     assert hd(received_events).data == hd(events).data
+
+    :ok = EventStore.unsubscribe_from_all_streams(@subscription_name)
   end
 
   test "subscribe to all streams from current position" do
@@ -104,6 +106,8 @@ defmodule EventStoreTest do
 
     assert length(received_events) == 1
     assert hd(received_events).data == hd(new_events).data
+
+    :ok = EventStore.unsubscribe_from_all_streams(@subscription_name)    
   end
 
   defmodule ExampleData, do: defstruct [:data]
