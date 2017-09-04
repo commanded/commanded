@@ -37,7 +37,9 @@ defmodule EventStore.Registration.LocalRegistry do
   """
   @callback publish_events(stream_uuid :: term, events :: list(EventStore.RecordedEvent.t)) :: :ok
   @impl EventStore.Registration
-  def publish_events(stream_uuid, events), do: EventStore.Publisher.notify_events(stream_uuid, events)
+  def publish_events(stream_uuid, events) do
+    send(EventStore.Publisher, {:notify_events, stream_uuid, events})
+  end
 
   defmacro __using__(_opts) do
     quote location: :keep do

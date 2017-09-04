@@ -28,10 +28,6 @@ defmodule EventStore.Publisher do
     GenServer.start_link(__MODULE__, %Publisher{serializer: serializer}, name: __MODULE__)
   end
 
-  def notify_events(stream_uuid, events) do
-    GenServer.cast(__MODULE__, {:notify_events, stream_uuid, events})
-  end
-
   def init(%Publisher{} = state) do
     GenServer.cast(self(), {:fetch_latest_event_id})
     {:ok, state}
@@ -62,7 +58,7 @@ defmodule EventStore.Publisher do
     {:noreply, state}
   end
 
-  def handle_cast({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
+  def handle_info({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
     expected_event_id = last_published_event_id + 1
     initial_event_id = first_event_id(events)
     last_event_id = last_event_id(events)

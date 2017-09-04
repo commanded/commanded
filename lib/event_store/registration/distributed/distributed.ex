@@ -38,7 +38,7 @@ defmodule EventStore.Registration.Distributed do
   end
 
   defp publish_events_to_node(node, stream_uuid, events) do
-    GenServer.cast({EventStore.Publisher, node}, {:notify_events, stream_uuid, events})
+    send({EventStore.Publisher, node}, {:notify_events, stream_uuid, events})
   end
 
   defmacro __using__(_opts) do
