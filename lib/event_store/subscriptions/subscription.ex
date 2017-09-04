@@ -7,7 +7,6 @@ defmodule EventStore.Subscriptions.Subscription do
   """
 
   use GenServer
-  use EventStore.Registration
   require Logger
 
   alias EventStore.RecordedEvent

@@ -23,12 +23,6 @@ defmodule EventStore.StorageCase do
     Application.stop(:eventstore)
   end
 
-  # wait until the publisher processes have registered themselves
-  defp after_reset(EventStore.Registration.Distributed) do
-    {:ok, _} = Application.ensure_all_started(:swarm)
-    {:ok, _} = Application.ensure_all_started(:eventstore)
-  end
-
   defp after_reset(_registry) do
     {:ok, _} = Application.ensure_all_started(:eventstore)
   end

@@ -1,7 +1,6 @@
 defmodule EventStore.PublishEventsTest do
   use EventStore.StorageCase
-  use EventStore.Registration
-
+  
   alias EventStore.{EventFactory,Publisher,Subscriptions,Subscriber,Wait}
   alias EventStore.ProcessHelper
   alias EventStore.Subscriptions.Subscription

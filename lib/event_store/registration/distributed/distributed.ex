@@ -32,7 +32,8 @@ defmodule EventStore.Registration.Distributed do
   @callback publish_events(stream_uuid :: term, events :: list(EventStore.RecordedEvent.t)) :: :ok
   @impl EventStore.Registration
   def publish_events(stream_uuid, events) do
-    Node.list(:connected)
+    # send to publisher on current node and all connected nodes
+    [Node.self() | Node.list(:connected)]
     |> Enum.map(&Task.async(fn -> publish_events_to_node(&1, stream_uuid, events) end))
     |> Enum.map(&Task.await(&1, 30_000))
   end
