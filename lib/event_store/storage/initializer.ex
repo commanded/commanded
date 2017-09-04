@@ -1,4 +1,5 @@
 defmodule EventStore.Storage.Initializer do
+  @moduledoc false
   alias EventStore.Sql.Statements
 
   def run!(conn), do: execute(conn, Statements.initializers())

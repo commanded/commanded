@@ -1,4 +1,5 @@
 defmodule EventStore.Subscriptions.StreamSubscription do
+  @moduledoc false
   require Logger
 
   alias EventStore.Storage

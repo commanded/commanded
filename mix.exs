@@ -1,21 +1,26 @@
 defmodule EventStore.Mixfile do
   use Mix.Project
 
+  @version "0.11.0"
+
   def project do
     [
       app: :eventstore,
-      version: "0.10.0",
-      elixir: "~> 1.5",
+      version: @version,
+      elixir: "~> 1.4",
       elixirc_paths: elixirc_paths(Mix.env),
+      deps: deps(),
       description: description(),
       package: package(),
+      docs: docs(),
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
       consolidate_protocols: Mix.env == :prod,
       aliases: aliases(),
       preferred_cli_env: preferred_cli_env(),
-      deps: deps(),
-      dialyzer: [plt_add_deps: :project]
+      dialyzer: [plt_add_deps: :project],
+      name: "EventStore",
+      source_url: "https://github.com/slashdotdash/eventstore",
     ]
   end
 
@@ -65,9 +70,24 @@ EventStore using PostgreSQL for persistence.
 """
   end
 
+  defp docs do
+    [
+      main: "EventStore",
+      canonical: "http://hexdocs.pm/eventstore",
+      source_ref: "v#{@version}",
+      source_url: "https://github.com/slashdotdash/eventstore",
+      extras: [
+        "guides/Getting Started.md",
+        "guides/Usage.md",
+        "guides/Event Serialization.md",
+        "guides/Cluster.md"
+      ],
+    ]
+  end
+
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE*"],
+      files: ["lib", "guides", "mix.exs", "README*", "LICENSE*"],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/slashdotdash/eventstore",

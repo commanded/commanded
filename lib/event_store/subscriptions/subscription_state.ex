@@ -1,4 +1,5 @@
 defmodule EventStore.Subscriptions.SubscriptionState do
+  @moduledoc false
   defstruct [
     catch_up_pid: nil,
     stream_uuid: nil,

@@ -1,17 +1,21 @@
 defmodule EventStore do
   @moduledoc """
-  EventStore client API to read & write events to a logical event stream and subscribe to event notifications
+  EventStore is CQRS event store implemented in Elixir.
+
+  It uses PostgreSQL (v9.5 or later) as the underlying storage engine.
+
+  The `EventStore` module provides the public API to read and write events to an event stream, and subscribe to event notifications.
+
+  Please check the [getting started](http://hexdocs.pm/eventstore/getting-started.html) and [usage](http://hexdocs.pm/eventstore/usage.html) guides to learn more.
 
   ## Example usage
-
-      # ensure the event store application has been started
-      Application.ensure_all_started(:eventstore)
 
       # append events to a stream
       :ok = EventStore.append_to_stream(stream_uuid, expected_version, events)
 
       # read all events from a stream, starting at the beginning
       {:ok, recorded_events} = EventStore.read_stream_forward(stream_uuid)
+
   """
 
   @type start_from :: :origin | :current | integer

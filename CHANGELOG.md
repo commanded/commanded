@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.0
+
+### Enhancements
+
+- Initial support for running on a cluster of nodes using [Swarm](https://hex.pm/packages/swarm) for process distribution.
+
 ## v0.10.0
 
 ### Enhancements

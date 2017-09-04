@@ -1,11 +1,4 @@
 defmodule Mix.Tasks.EventStore.Drop do
-  use Mix.Task
-
-  alias EventStore.Storage
-  alias EventStore.Storage.Database
-
-  @shortdoc "Drop the database for the EventStore"
-
   @moduledoc """
   Drop the database for the EventStore.
 
@@ -15,6 +8,13 @@ defmodule Mix.Tasks.EventStore.Drop do
 
   """
 
+  use Mix.Task
+
+  alias EventStore.Storage
+  alias EventStore.Storage.Database
+
+  @shortdoc "Drop the database for the EventStore"
+  
   @doc false
   def run(_args) do
     config = EventStore.Config.parse Application.get_env(:eventstore, Storage)

@@ -1,4 +1,5 @@
 defmodule EventStore.Supervisor do
+  @moduledoc false
   use Supervisor
   use EventStore.Registration
 

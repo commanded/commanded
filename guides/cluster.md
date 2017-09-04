@@ -1,6 +1,6 @@
 # Cluster
 
-### Starting a cluster
+## Starting a cluster
 
 1. Run an [Erlang Port Mapper Daemon](http://erlang.org/doc/man/epmd.html) (epmd):
 

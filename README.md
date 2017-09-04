@@ -37,31 +37,31 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
   1. Add eventstore to your list of dependencies in `mix.exs`:
 
-  ```elixir    
-  def deps do
-    [{:eventstore, "~> 0.9"}]
-  end
-  ```
+      ```elixir    
+      def deps do
+        [{:eventstore, "~> 0.11"}]
+      end
+      ```
 
   2. Ensure `eventstore` is started before your application:
 
-  ```elixir
-  def application do
-    [applications: [:eventstore]]
-  end
-  ```
+      ```elixir
+      def application do
+        [applications: [:eventstore]]
+      end
+      ```
 
   3. Add an `eventstore` config entry containing the PostgreSQL connection details to each environment's mix config file (e.g. `config/dev.exs`).
 
-  ```elixir
-  config :eventstore, EventStore.Storage,
-    username: "postgres",
-    password: "postgres",
-    database: "eventstore_dev",
-    hostname: "localhost",
-    pool_size: 10,
-    pool_overflow: 5
-  ```
+      ```elixir
+      config :eventstore, EventStore.Storage,
+        username: "postgres",
+        password: "postgres",
+        database: "eventstore_dev",
+        hostname: "localhost",
+        pool_size: 10,
+        pool_overflow: 5
+      ```
 
   The database connection pool configuration options are:
 
@@ -70,9 +70,9 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
   4. Create the EventStore database and tables using the `mix` task
 
-  ```console
-  $ mix event_store.create
-  ```
+      ```console
+      $ mix event_store.create
+      ```
 
 ## Using the EventStore
 
@@ -270,7 +270,7 @@ You can use `Atom.to_string/1` to get a string representation of a given event s
 
 ```elixir
 event = %ExampleEvent{key: "value"}
-event_type = Atom.to_string(event.__struct__)  #=> "Elixir.ExampleEvent" 
+event_type = Atom.to_string(event.__struct__)  #=> "Elixir.ExampleEvent"
 ```
 
 ## Benchmarking performance

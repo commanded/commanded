@@ -1,8 +1,5 @@
 defmodule EventStore.Writer do
-  @moduledoc """
-  Single process writer to assign a monotonically increasing id and persist events to the store
-  """
-
+  @moduledoc false
   use EventStore.Registration
 
   alias EventStore.RecordedEvent

@@ -1,4 +1,5 @@
 defmodule EventStore.Storage.QueryLatestStreamVersion do
+  @moduledoc false
   alias EventStore.Sql.Statements
 
   def execute(conn, stream_id) do

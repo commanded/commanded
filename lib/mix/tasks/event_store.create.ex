@@ -1,11 +1,4 @@
 defmodule Mix.Tasks.EventStore.Create do
-  use Mix.Task
-
-  alias EventStore.Storage
-  alias EventStore.Storage.Database
-
-  @shortdoc "Create the database for the EventStore"
-
   @moduledoc """
   Create the database for the EventStore.
 
@@ -18,6 +11,13 @@ defmodule Mix.Tasks.EventStore.Create do
     * `--quiet` - do not log output
 
   """
+
+  use Mix.Task
+
+  alias EventStore.Storage
+  alias EventStore.Storage.Database
+
+  @shortdoc "Create the database for the EventStore"
 
   @doc false
   def run(args) do
@@ -37,7 +37,7 @@ defmodule Mix.Tasks.EventStore.Create do
         unless opts[:quiet] do
           Mix.shell.info "The EventStore database has been created."
         end
-        
+
         initialize_storage!(config)
 
       {:error, :already_up} ->
