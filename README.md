@@ -2,6 +2,8 @@
 
 CQRS event store implemented in Elixir. Uses [PostgreSQL](http://www.postgresql.org/) (v9.5 or later) as the underlying storage engine.
 
+EventStore supports [running on a cluster of nodes]((guides/Cluster.md)) (since v0.11). Stream processes will be distributed amongst all available nodes, events are published to subscribers running on any node.
+
 [Changelog](CHANGELOG.md)
 
 MIT License
@@ -21,8 +23,10 @@ MIT License
   - [Subscribe to streams](guides/Subscriptions.md)
     - [Ack received events](guides/Subscriptions.md#ack-received-events)
     - [Example subscriber](guides/Subscriptions.md#example-subscriber)
+- [Running on a cluster](guides/Cluster.md)
 - [Event serialization](guides/Event%20Serialization.md)
   - [Example JSON serializer](guides/Event%20Serialization.md#example-json-serializer)
+- [Upgrading an EventStore](guides/Upgrades.md)
 - [Used in production?](#used-in-production)
 - [Backup and administration](#backup-and-administration)
 - [Benchmarking performance](#benchmarking-performance)

@@ -4,7 +4,7 @@
 
 ### Enhancements
 
-- Initial support for running on a cluster of nodes using [Swarm](https://hex.pm/packages/swarm) for process distribution.
+- Support for running on a cluster of nodes using [Swarm](https://hex.pm/packages/swarm) for process distribution.
 
 ## v0.10.0
 
