@@ -30,11 +30,10 @@ defmodule EventStore.Registration do
 
   # Get the configured registry provider, defaults to `:local` if not configured
   defp registry_provider do
-    Application.get_env(:eventstore, :registry, :local)
-    |> case do
+    case Application.get_env(:eventstore, :registry, :local) do
       :local       -> EventStore.Registration.LocalRegistry
       :distributed -> EventStore.Registration.Distributed
-      unknown      -> raise ArgumentError, message: "Unknown :registry setting in config: #{inspect unknown}"
+      unknown      -> raise ArgumentError, message: "Unknown `:registry` setting in config: #{inspect unknown}"
     end
   end
 end
