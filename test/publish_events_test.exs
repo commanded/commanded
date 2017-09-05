@@ -1,6 +1,6 @@
 defmodule EventStore.PublishEventsTest do
   use EventStore.StorageCase
-  
+
   alias EventStore.{EventFactory,Publisher,Subscriptions,Subscriber,Wait}
   alias EventStore.ProcessHelper
   alias EventStore.Subscriptions.Subscription
@@ -18,8 +18,6 @@ defmodule EventStore.PublishEventsTest do
     stream3_events = EventFactory.create_recorded_events(1, stream3_uuid, 3)
 
     {:ok, subscriber, subscription} = subscribe_to_all_streams(start_from_event_id: 0)
-
-    :timer.sleep 1_000
 
     # notify stream2 events before stream3 and stream1 (out of order)
     send(Publisher, {:notify_events, stream2_uuid, stream2_events})

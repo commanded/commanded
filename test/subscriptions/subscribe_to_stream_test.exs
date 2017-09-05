@@ -315,6 +315,10 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       GenServer.call(subscriber, {:received_events})
     end
 
+    def subscribed?(subscriber) do
+      GenServer.call(subscriber, {:subscribed?})
+    end
+
     def unsubscribe(subscriber) do
       GenServer.call(subscriber, {:unsubscribe})
     end
@@ -327,6 +331,11 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     def handle_call({:received_events}, _from, %{events: events} = state) do
       {:reply, events, state}
+    end
+
+    def handle_call({:subscribed?}, _from, %{subscription: subscription} = state) do
+      reply = Subscription.subscribed?(subscription)
+      {:reply, reply, state}
     end
 
     def handle_call({:unsubscribe}, _from, %{subscription_name: subscription_name} = state) do
@@ -354,21 +363,28 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       {:ok, subscriber3} = CollectingSubscriber.start_link(subscription_name <> "-3")
       {:ok, subscriber4} = CollectingSubscriber.start_link(subscription_name <> "-4")
 
+      Wait.until(fn ->
+        assert CollectingSubscriber.subscribed?(subscriber1)
+        assert CollectingSubscriber.subscribed?(subscriber2)
+        assert CollectingSubscriber.subscribed?(subscriber3)
+        assert CollectingSubscriber.subscribed?(subscriber4)
+      end)
+
       {:ok, _stream1} = Streams.Supervisor.open_stream(stream1_uuid)
       {:ok, _stream2} = Streams.Supervisor.open_stream(stream2_uuid)
 
       :ok = Stream.append_to_stream(stream1_uuid, 0, stream1_events)
       :ok = Stream.append_to_stream(stream2_uuid, 0, stream2_events)
 
-      :timer.sleep 2_000
+      Wait.until(fn ->
+        all_received_events =
+          [subscriber1, subscriber2, subscriber3, subscriber4]
+          |> Enum.reduce([], fn (subscriber, events) ->
+            events ++ CollectingSubscriber.received_events(subscriber)
+          end)
 
-      all_received_events =
-        [subscriber1, subscriber2, subscriber3, subscriber4]
-        |> Enum.reduce([], fn (subscriber, events) ->
-          events ++ CollectingSubscriber.received_events(subscriber)
-        end)
-
-      assert length(all_received_events) == 4 * 6
+        assert length(all_received_events) == 4 * 6
+      end)
 
       CollectingSubscriber.unsubscribe(subscriber1)
       CollectingSubscriber.unsubscribe(subscriber2)
