@@ -26,7 +26,7 @@ defmodule EventStore.Streams.Supervisor do
         case @registry.register_name(stream_name, Supervisor, :start_child, [__MODULE__, [stream_uuid]]) do
           {:ok, stream} -> {:ok, stream}
           {:error, {:already_started, stream}} -> {:ok, stream}
-          {:error, reason} = reply -> reply
+          {:error, _reason} = reply -> reply
         end
 
       stream ->
