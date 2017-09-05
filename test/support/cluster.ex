@@ -43,7 +43,7 @@ defmodule EventStore.Cluster do
     :ok = :slave.stop(node)
   end
 
-  defp rpc(node, module, fun, args) do
+  def rpc(node, module, fun, args) do
     :rpc.block_call(node, module, fun, args)
   end
 
