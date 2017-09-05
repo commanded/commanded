@@ -18,7 +18,8 @@ config :eventstore, EventStore.Storage,
   pool_overflow: 0
 
 config :eventstore,
-  registry: :distributed
+  registry: :distributed,
+  restart_stream_timeout: 1_000
 
 config :swarm,
   nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1"],
