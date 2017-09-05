@@ -2,30 +2,50 @@
 
 EventStore supports running on a cluster of nodes. It uses the [Swarm](https://hex.pm/packages/swarm) library for process distribution.
 
-## EventStore configuration
+## Running on a cluster
 
-You must configure the EventStore to use the `:distributed` registry in the environment config (e.g. `config/config.exs`):
+  1. Add `:swarm` as a dependency in your `mix.exs` file:
 
-```elixir
-config :eventstore,
-  registry: :distributed
-```
+      ```elixir
+      defp deps do
+        [
+          {:swarm, "~> 3.0"},
+        ]
+      end
+      ```
 
-## Swarm configuration
+  2. Fetch the dependencies:
 
-Swarm must be configured to use the `Swarm.Distribution.StaticQuorumRing` distribution strategy:
+      ```console
+      $ mix deps.get
+      ```
 
-```elixir
-config :swarm,
-  nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3@127.0.0.1"],
-  node_blacklist: [~r/^primary@.+$/],
-  distribution_strategy: Swarm.Distribution.StaticQuorumRing,
-  static_quorum_size: 3,
-  sync_nodes_timeout: 0,
-  debug: false
-```
+  3. Configure the EventStore to use the `:distributed` registry in the environment config (e.g. `config/config.exs`):
 
-This is to ensure consistency during a network partition. The `static_quorum_size` setting defines the minimum number of nodes that must be connected in the cluster to allow process registration and distribution. If there are fewer nodes currently available than the quorum size, any calls to the `EventStore` will block until enough nodes have started.
+      ```elixir
+      config :eventstore,
+        registry: :distributed
+      ```
+
+  4. Swarm must be configured to use the `Swarm.Distribution.StaticQuorumRing` distribution strategy:
+
+      ```elixir
+      config :swarm,
+        nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3@127.0.0.1"],
+        node_blacklist: [~r/^primary@.+$/],
+        distribution_strategy: Swarm.Distribution.StaticQuorumRing,
+        static_quorum_size: 3,
+        sync_nodes_timeout: 0,
+        debug: false
+      ```
+
+    This is to ensure consistency during a network partition. The `static_quorum_size` setting defines the minimum number of nodes that must be connected in the cluster to allow process registration and distribution. If there are fewer nodes currently available than the quorum size, any calls to the `EventStore` will block until enough nodes have started.
+
+  5. Compile the EventStore to include the code used for process distribution:
+
+      ```console
+      $ mix deps.compile eventstore --force
+      ```
 
 ## Cluster formation on node start
 
