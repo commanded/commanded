@@ -228,14 +228,14 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   # fetch unseen events from the stream
   # transition to `subscribed` state when no events are found or count of events is less than max buffer size so no further unseen events
   defp catch_up_from_stream(%SubscriptionState{stream_uuid: stream_uuid, last_seen: last_seen} = data) do
+    reply_to = self()
+
     case subscription_provider(stream_uuid).unseen_event_stream(stream_uuid, last_seen, @max_buffer_size) do
       {:error, :stream_not_found} ->
-        Subscription.caught_up(self(), last_seen)
+        Subscription.caught_up(reply_to, last_seen)
         data
 
       unseen_event_stream ->
-        reply_to = self()
-
         # stream unseen events to subscriber in a separate process
         catch_up_pid = spawn_link(fn ->
           last_event =
