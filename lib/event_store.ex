@@ -6,7 +6,7 @@ defmodule EventStore do
 
   The `EventStore` module provides the public API to read and write events to an event stream, and subscribe to event notifications.
 
-  Please check the [getting started](http://hexdocs.pm/eventstore/getting-started.html) and [usage](http://hexdocs.pm/eventstore/usage.html) guides to learn more.
+  Please check the [getting started](getting-started.html) and [usage](usage.html) guides to learn more.
 
   ## Example usage
 

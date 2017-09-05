@@ -88,3 +88,5 @@ Start your subscriber process, which subscribes to all streams in the event stor
 ```elixir
 {:ok, subscriber} = Subscriber.start_link()
 ```
+
+Next: [Cluster](cluster.html)

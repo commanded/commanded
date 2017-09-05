@@ -1,7 +1,7 @@
 defmodule EventStore.Mixfile do
   use Mix.Project
 
-  @version "0.11.0"
+  @version "0.11.0-rc.0"
 
   def project do
     [
@@ -75,7 +75,7 @@ EventStore using PostgreSQL for persistence.
       main: "EventStore",
       canonical: "http://hexdocs.pm/eventstore",
       source_ref: "v#{@version}",
-      source_url: "https://github.com/slashdotdash/eventstore",
+      extra_section: "GUIDES",
       extras: [
         "guides/Getting Started.md",
         "guides/Usage.md",

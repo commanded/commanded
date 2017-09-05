@@ -4,7 +4,7 @@
 
 ### Enhancements
 
-- Support for running on a cluster of nodes using [Swarm](https://hex.pm/packages/swarm) for process distribution.
+- Support for running on a cluster of nodes using [Swarm](https://hex.pm/packages/swarm) for process distribution ([#53](https://github.com/slashdotdash/eventstore/issues/53)).
 
 ## v0.10.0
 
