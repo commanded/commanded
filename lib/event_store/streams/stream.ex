@@ -30,26 +30,28 @@ defmodule EventStore.Streams.Stream do
   Returns `:ok` on success.
   """
   def append_to_stream(stream_uuid, expected_version, events) do
-    GenServer.call(via_tuple(name(stream_uuid)), {:append_to_stream, expected_version, events})
+    GenServer.call(via_name(stream_uuid), {:append_to_stream, expected_version, events})
   end
 
   def read_stream_forward(stream_uuid, start_version, count) do
-    GenServer.call(via_tuple(name(stream_uuid)), {:read_stream_forward, start_version, count})
+    GenServer.call(via_name(stream_uuid), {:read_stream_forward, start_version, count})
   end
 
   def stream_forward(stream_uuid, start_version, read_batch_size) do
-    GenServer.call(via_tuple(name(stream_uuid)), {:stream_forward, start_version, read_batch_size})
+    GenServer.call(via_name(stream_uuid), {:stream_forward, start_version, read_batch_size})
   end
 
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
-    GenServer.call(via_tuple(name(stream_uuid)), {:subscribe_to_stream, subscription_name, subscriber, opts})
+    GenServer.call(via_name(stream_uuid), {:subscribe_to_stream, subscription_name, subscriber, opts})
   end
 
   def stream_version(stream_uuid) do
-    GenServer.call(via_tuple(name(stream_uuid)), {:stream_version})
+    GenServer.call(via_name(stream_uuid), {:stream_version})
   end
 
-  def close(stream_uuid), do: GenServer.stop(via_tuple(name(stream_uuid)), :shutdown)
+  def close(stream_uuid) do
+    GenServer.stop(via_name(stream_uuid), :shutdown)
+  end
 
   def name(stream_uuid), do: {Stream, stream_uuid}
 
@@ -61,7 +63,10 @@ defmodule EventStore.Streams.Stream do
   def handle_cast({:open_stream, stream_uuid}, %Stream{} = state) do
     {:ok, stream_id, stream_version} = Storage.stream_info(stream_uuid)
 
-    state = %Stream{state | stream_id: stream_id, stream_version: stream_version}
+    state = %Stream{state |
+      stream_id: stream_id,
+      stream_version: stream_version,
+    }
 
     {:noreply, state}
   end
@@ -184,4 +189,6 @@ defmodule EventStore.Streams.Stream do
   defp deserialize_recorded_events(recorded_events, serializer) do
     Enum.map(recorded_events, &RecordedEvent.deserialize(&1, serializer))
   end
+
+  defp via_name(stream_uuid), do: stream_uuid |> name() |> via_tuple()
 end
