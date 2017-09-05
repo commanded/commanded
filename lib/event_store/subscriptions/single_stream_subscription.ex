@@ -1,4 +1,5 @@
 defmodule EventStore.Subscriptions.SingleStreamSubscription do
+  @moduledoc false
   @behaviour EventStore.Subscriptions.StreamSubscriptionProvider
 
   alias EventStore.Storage

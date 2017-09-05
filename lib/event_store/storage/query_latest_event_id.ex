@@ -1,4 +1,5 @@
 defmodule EventStore.Storage.QueryLatestEventId do
+  @moduledoc false
   alias EventStore.Sql.Statements
 
   def execute(conn) do

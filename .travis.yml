@@ -11,6 +11,10 @@ services:
 
 before_script:
   - MIX_ENV=test mix event_store.create
+  - epmd -daemon
+
+script:
+  - mix test.all
 
 sudo: required
 dist: trusty

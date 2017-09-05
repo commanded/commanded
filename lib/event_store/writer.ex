@@ -1,9 +1,8 @@
 defmodule EventStore.Writer do
-  @moduledoc """
-  Single process writer to assign a monotonically increasing id and persist events to the store
-  """
+  @moduledoc false
+  use EventStore.Registration
 
-  alias EventStore.{Publisher,RecordedEvent}
+  alias EventStore.RecordedEvent
   alias EventStore.Storage
 
   @doc """
@@ -35,5 +34,5 @@ defmodule EventStore.Writer do
     end)
   end
 
-  defp publish_events(events, stream_uuid), do: Publisher.notify_events(stream_uuid, events)
+  defp publish_events(events, stream_uuid), do: @registry.publish_events(stream_uuid, events)
 end

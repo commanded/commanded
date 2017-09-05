@@ -29,7 +29,7 @@ defmodule EventStore.Streams.StreamTest do
     end
 
     test "stream crash should allow restarting stream process", %{stream: stream, stream_uuid: stream_uuid} do
-      ProcessHelper.shutdown(stream)
+      shutdown_stream(stream)
 
       {:ok, stream} = Streams.Supervisor.open_stream(stream_uuid)
       assert stream != nil
@@ -41,6 +41,7 @@ defmodule EventStore.Streams.StreamTest do
       :ok = Streams.Supervisor.close_stream(stream_uuid)
 
       assert_receive {:DOWN, ^ref, :process, ^stream, :shutdown}
+      assert %{active: 0, specs: 1, supervisors: 0, workers: 0} == Supervisor.count_children(Streams.Supervisor)
     end
   end
 
@@ -179,7 +180,7 @@ defmodule EventStore.Streams.StreamTest do
     :ok = Stream.append_to_stream(stream_uuid, 0, events)
     {:ok, 3} = Stream.stream_version(stream_uuid)
 
-    ProcessHelper.shutdown(stream)
+    shutdown_stream(stream)
 
     {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
     {:ok, 3} = Stream.stream_version(stream_uuid)
@@ -201,6 +202,15 @@ defmodule EventStore.Streams.StreamTest do
     :ok = Stream.append_to_stream(stream_uuid, 0, events)
 
     [stream_uuid: stream_uuid, events: events, stream: stream]
+  end
+
+  defp shutdown_stream(stream) do
+    ProcessHelper.shutdown(stream)
+
+    case Application.get_env(:eventstore, :restart_stream_timeout) do
+      nil -> :ok
+      timeout -> :timer.sleep(timeout)
+    end
   end
 
   defp pluck(enumerable, field), do: Enum.map(enumerable, &Map.get(&1, field))

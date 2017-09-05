@@ -4,6 +4,7 @@ defmodule EventStore.Publisher do
   """
 
   use GenServer
+
   require Logger
 
   alias EventStore.{Publisher,Storage,Subscriptions}
@@ -27,22 +28,37 @@ defmodule EventStore.Publisher do
     GenServer.start_link(__MODULE__, %Publisher{serializer: serializer}, name: __MODULE__)
   end
 
-  def notify_events(stream_uuid, events) do
-    GenServer.cast(__MODULE__, {:notify_events, stream_uuid, events})
-  end
-
   def init(%Publisher{} = state) do
-    GenServer.cast(self(), {:set_last_published_event_id})
+    GenServer.cast(self(), {:fetch_latest_event_id})
     {:ok, state}
   end
 
-  def handle_cast({:set_last_published_event_id}, %Publisher{} = state) do
+  def handle_cast({:fetch_latest_event_id}, %Publisher{} = state) do
     {:ok, latest_event_id} = Storage.latest_event_id()
 
     {:noreply, %Publisher{state | last_published_event_id: latest_event_id}}
   end
 
-  def handle_cast({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
+  def handle_cast({:notify_pending_events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
+    next_event_id = last_published_event_id + 1
+
+    state = case Map.get(pending_events, next_event_id) do
+      %PendingEvents{stream_uuid: stream_uuid, events: events, last_event_id: last_event_id} ->
+        Subscriptions.notify_events(stream_uuid, events, serializer)
+
+        %Publisher{state |
+          last_published_event_id: last_event_id,
+          pending_events: Map.delete(pending_events, next_event_id),
+        }
+
+      nil ->
+        state
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info({:notify_events, stream_uuid, events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
     expected_event_id = last_published_event_id + 1
     initial_event_id = first_event_id(events)
     last_event_id = last_event_id(events)
@@ -71,25 +87,6 @@ defmodule EventStore.Publisher do
         %Publisher{state |
           pending_events: Map.put(pending_events, initial_event_id, pending)
         }
-    end
-
-    {:noreply, state}
-  end
-
-  def handle_cast({:notify_pending_events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
-    next_event_id = last_published_event_id + 1
-
-    state = case Map.get(pending_events, next_event_id) do
-      %PendingEvents{stream_uuid: stream_uuid, events: events, last_event_id: last_event_id} ->
-        Subscriptions.notify_events(stream_uuid, events, serializer)
-
-        %Publisher{state |
-          last_published_event_id: last_event_id,
-          pending_events: Map.delete(pending_events, next_event_id),
-        }
-
-      nil ->
-        state
     end
 
     {:noreply, state}
