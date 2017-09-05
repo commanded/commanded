@@ -5,9 +5,6 @@ defmodule EventStore.PublishEventsTest do
   alias EventStore.ProcessHelper
   alias EventStore.Subscriptions.Subscription
 
-  @all_stream "$all"
-  @subscription_name "test_subscription"
-
   test "should publish events ordered by event id" do
     stream1_uuid = UUID.uuid4()
     stream2_uuid = UUID.uuid4()
@@ -61,15 +58,20 @@ defmodule EventStore.PublishEventsTest do
     assert stream2_received_events == EventFactory.deserialize_events(stream2_events)
   end
 
+  # subscribe to all streams and wait for the subscription to be subscribed
   defp subscribe_to_all_streams(opts) do
-    {:ok, subscriber} = Subscriber.start_link(self())
-    {:ok, subscription} = Subscriptions.subscribe_to_stream(@all_stream, @subscription_name, subscriber, opts)
+    with {:ok, subscriber} <- Subscriber.start_link(self()),
+         {:ok, subscription} <- Subscriptions.subscribe_to_all_streams("test_subscription", subscriber, opts) do
+      wait_until_subscribed(subscription)
 
+      {:ok, subscriber, subscription}
+    end
+  end
+
+  defp wait_until_subscribed(subscription) do
     Wait.until(fn ->
-      assert Registry.lookup(EventStore.Subscriptions.PubSub, @all_stream) !== []
+      assert Subscription.subscribed?(subscription)
     end)
-
-    {:ok, subscriber, subscription}
   end
 
   defp restart_publisher do
