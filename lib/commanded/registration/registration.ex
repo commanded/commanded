@@ -13,11 +13,6 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Starts a child of a supervisor, and registers the pid with the given name.
-  """
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
-
-  @doc """
   Starts a `GenServer` process, and registers the pid with the given name.
   """
   @callback start_link(name :: term(), gen_server :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}

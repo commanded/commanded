@@ -12,28 +12,6 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc """
-  Starts a child of a supervisor, and registers the pid with the given name.
-  """
-  @spec start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
-  @impl Commanded.Registration
-  def start_child(name, supervisor, args) do
-    case whereis_name(name) do
-      :undefined ->
-        via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
-
-        case apply(Supervisor, :start_child, [supervisor, args ++ [[name: via_name]]]) do
-          {:ok, pid} -> {:ok, pid}
-          {:ok, pid, _info} -> {:ok, pid}
-          {:error, {:already_started, pid}} -> {:ok, pid}
-          {:error, _reason} = reply -> reply
-        end
-
-      pid ->
-        {:ok, pid}
-    end
-  end
-
-  @doc """
   Starts a `GenServer` process, and registers the pid with the given name.
   """
   @spec start_link(name :: term(), gen_server :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
