@@ -172,6 +172,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def start_link(handler_name, handler_module, opts \\ []) do
+    name = {Handler, handler_name}
     handler = %Handler{
       handler_name: handler_name,
       handler_module: handler_module,
@@ -179,7 +180,7 @@ defmodule Commanded.Event.Handler do
       subscribe_from: opts[:start_from] || :origin,
     }
 
-    @registry.start_link({Handler, handler_name}, __MODULE__, handler)
+    Registration.start_link(name, __MODULE__, handler)
   end
 
   def init(%Handler{handler_module: handler_module} = state) do

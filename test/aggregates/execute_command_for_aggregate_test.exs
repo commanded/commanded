@@ -1,6 +1,5 @@
 defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   use Commanded.StorageCase
-  use Commanded.Registration
 
   alias Commanded.Aggregates.{Aggregate,ExecutionContext}
   alias Commanded.EventStore
@@ -8,6 +7,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.Helpers
+  alias Commanded.Registration
 
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
@@ -105,6 +105,6 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     # process should exit
     assert_receive({:EXIT, _from, _reason})
-    assert @registry.whereis_name({Aggregate, aggregate_uuid}) == :undefined
+    assert Registration.whereis_name({Aggregate, aggregate_uuid}) == :undefined
   end
 end

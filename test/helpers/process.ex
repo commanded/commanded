@@ -2,9 +2,8 @@ defmodule Commanded.Helpers.Process do
   @moduledoc false
   import ExUnit.Assertions
 
-  use Commanded.Registration
-
   alias Commanded.Aggregates.Aggregate
+  alias Commanded.Registration
 
   @doc """
   Stop the given process with a non-normal exit reason
@@ -24,8 +23,6 @@ defmodule Commanded.Helpers.Process do
     end
   end
 
-  def shutdown(aggregate_module, aggregate_uuid) do
-    pid = @registry.whereis_name({aggregate_module, aggregate_uuid})
-    shutdown(pid)
-  end
+  def shutdown(module, uuid),
+    do: {module, uuid} |> Registration.whereis_name() |> shutdown()
 end

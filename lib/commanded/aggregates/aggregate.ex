@@ -39,7 +39,7 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_uuid: aggregate_uuid,
     }
 
-    @registry.start_link(name, __MODULE__, aggregate)
+    Registration.start_link(name, __MODULE__, aggregate)
   end
 
   def init(%Aggregate{} = state) do

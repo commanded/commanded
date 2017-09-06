@@ -1,6 +1,5 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
-  use Commanded.Registration
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.ExampleDomain.BankAccount
@@ -14,6 +13,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
     DepositMoneyHandler,
     WithdrawMoneyHandler,
   }
+  alias Commanded.Registration
 
   defmodule BankAccountLifespan do
     @behaviour Commanded.Aggregates.AggregateLifespan
@@ -36,7 +36,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, aggregate_uuid)
 
-      pid = @registry.whereis_name({BankAccount, aggregate_uuid})
+      pid = Registration.whereis_name({BankAccount, aggregate_uuid})
       ref = Process.monitor(pid)
 
       %{aggregate_uuid: aggregate_uuid, ref: ref}
