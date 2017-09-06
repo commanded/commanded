@@ -1,7 +1,7 @@
 BEGIN;
 
-  -- create new `schema_migrations` table
-  CREATE TABLE schema_migrations
+  -- create `schema_migrations` table
+  CREATE TABLE IF NOT EXISTS schema_migrations
   (
       major_version int NOT NULL,
       minor_version int NOT NULL,
