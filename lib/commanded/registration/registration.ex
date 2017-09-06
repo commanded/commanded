@@ -13,9 +13,11 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Starts a `GenServer` process, and registers the pid with the given name.
+  Starts a uniquely named `GenServer` process for the given module and args.
+
+  Registers the pid with the given name.
   """
-  @callback start_link(name :: term(), gen_server :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @callback start_link(name :: term(), module :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
 
   @doc """
   Get the pid of a registered name.

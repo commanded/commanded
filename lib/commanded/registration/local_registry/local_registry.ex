@@ -12,16 +12,18 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc """
-  Starts a `GenServer` process, and registers the pid with the given name.
+  Starts a uniquely named `GenServer` process for the given module and args.
+
+  Registers the pid with the given name.
   """
-  @spec start_link(name :: term(), gen_server :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @spec start_link(name :: term(), module :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
   @impl Commanded.Registration
-  def start_link(name, gen_server, args) do
+  def start_link(name, module, args) do
     case whereis_name(name) do
       :undefined ->
         via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
 
-        case apply(GenServer, :start_link, [gen_server, args, [name: via_name]]) do
+        case apply(GenServer, :start_link, [module, args, [name: via_name]]) do
           {:ok, pid} -> {:ok, pid}
           {:error, {:already_started, pid}} -> {:ok, pid}
           {:error, _reason} = reply -> reply
