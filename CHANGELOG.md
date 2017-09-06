@@ -6,6 +6,12 @@
 
 - Support for running on a cluster of nodes using [Swarm](https://hex.pm/packages/swarm) for process distribution ([#53](https://github.com/slashdotdash/eventstore/issues/53)).
 
+- Add `stream_version` column to `streams` table. It is used for stream info querying and optimistic concurrency checks, instead of querying the `events` table.
+
+### Upgrading
+
+Run the schema migration [v0.11.0.sql](scripts/upgrades/v0.11.0.sql) script against your event store database.
+
 ## v0.10.0
 
 ### Enhancements

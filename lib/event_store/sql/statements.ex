@@ -19,6 +19,7 @@ defmodule EventStore.Sql.Statements do
       create_subscriptions_table(),
       create_subscription_index(),
       create_snapshots_table(),
+      create_schema_migrations_table(),
     ]
   end
 
@@ -83,6 +84,7 @@ CREATE TABLE streams
 (
     stream_id bigserial PRIMARY KEY NOT NULL,
     stream_uuid text NOT NULL,
+    stream_version bigint default 0 NOT NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
 );
 """
@@ -151,13 +153,13 @@ CREATE TABLE subscriptions
 """
   end
 
-  def create_subscription_index do
+  defp create_subscription_index do
 """
 CREATE UNIQUE INDEX ix_subscriptions_stream_uuid_subscription_name ON subscriptions (stream_uuid, subscription_name);
 """
   end
 
-  def create_snapshots_table do
+  defp create_snapshots_table do
 """
 CREATE TABLE snapshots
 (
@@ -167,6 +169,20 @@ CREATE TABLE snapshots
     data bytea NOT NULL,
     metadata bytea NULL,
     created_at timestamp without time zone default (now() at time zone 'utc') NOT NULL
+);
+"""
+  end
+
+  # record execution of upgrade scripts
+  defp create_schema_migrations_table do
+"""
+CREATE TABLE schema_migrations
+(
+    major_version int NOT NULL,
+    minor_version int NOT NULL,
+    patch_version int NOT NULL,
+    migrated_at timestamp without time zone default (now() at time zone 'UTC') NOT NULL,
+    PRIMARY KEY(major_version, minor_version, patch_version)
 );
 """
   end
@@ -183,7 +199,7 @@ RETURNING stream_id;
     params =
       1..number_of_events
       |> Enum.map(fn event_number ->
-        index = (event_number - 1) * 9 + 1
+        index = (event_number - 1) * 9 + 3
         event_params = [
           "($",
           Integer.to_string(index + 1), "::bigint, $",  # index
@@ -206,6 +222,11 @@ RETURNING stream_id;
     [
       """
       WITH
+        stream AS (
+          UPDATE streams
+          SET stream_version = $2::bigint
+          WHERE stream_id = $3::bigint
+        ),
         event_counter AS (
           UPDATE event_counter
           SET event_id = event_id + $1::bigint
@@ -300,14 +321,9 @@ WHERE stream_uuid = $1;
 
   def query_stream_id_and_latest_version do
 """
-SELECT s.stream_id,
-  (SELECT COALESCE(e.stream_version, 0)
-   FROM events e
-   WHERE e.stream_id = s.stream_id
-   ORDER BY e.stream_version DESC
-   LIMIT 1) stream_version
-FROM streams s
-WHERE s.stream_uuid = $1;
+SELECT stream_id, stream_version
+FROM streams
+WHERE stream_uuid = $1;
 """
   end
 

@@ -16,17 +16,21 @@ defmodule EventStore.Storage.Appender do
     execute_using_multirow_value_insert(conn, events)
   end
 
-  defp execute_using_multirow_value_insert(conn, events) do
-    statement = build_insert_statement(events)
-    parameters = [length(events) | build_insert_parameters(events)]
+  defp execute_using_multirow_value_insert(conn, [first_event | _] = events) do
+    event_count = length(events)
+    stream_id = first_event.stream_id
+    stream_version = first_event.stream_version + event_count - 1
+
+    statement = build_insert_statement(event_count)
+    parameters = [event_count, stream_version, stream_id] ++ build_insert_parameters(events)
 
     conn
     |> Postgrex.query(statement, parameters, pool: DBConnection.Poolboy)
     |> handle_response(events)
   end
 
-  defp build_insert_statement(events) do
-    Statements.create_events(length(events))
+  defp build_insert_statement(event_count) do
+    Statements.create_events(event_count)
   end
 
   defp build_insert_parameters(events) do
