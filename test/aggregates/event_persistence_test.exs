@@ -1,54 +1,11 @@
-defmodule Commanded.Entities.EventPersistenceTest do
+defmodule Commanded.Aggregates.EventPersistenceTest do
   use Commanded.StorageCase
 
   import Commanded.Enumerable, only: [pluck: 2]
 
-  alias Commanded.Aggregates.{Aggregate,ExecutionContext}
   alias Commanded.EventStore
-
-  defmodule ExampleAggregate do
-    defstruct [
-      items: [],
-      last_index: 0,
-    ]
-
-    defmodule Commands do
-      defmodule AppendItems, do: defstruct [count: 0]
-      defmodule NoOp, do: defstruct [count: 0]
-    end
-
-    defmodule Events do
-      defmodule ItemAppended, do: defstruct [index: nil]
-    end
-
-    alias Commands.{AppendItems,NoOp}
-    alias Events.ItemAppended
-
-    def append_items(%ExampleAggregate{last_index: last_index}, count) do
-      Enum.map(1..count, fn index ->
-        %ItemAppended{index: last_index + index}
-      end)
-    end
-
-    def noop(%ExampleAggregate{}, %NoOp{}), do: []
-
-    # state mutatators
-
-    def apply(%ExampleAggregate{items: items} = state, %ItemAppended{index: index}) do
-      %ExampleAggregate{state |
-        items: items ++ [index],
-        last_index: index,
-      }
-    end
-  end
-
-  alias ExampleAggregate.Commands.{AppendItems,NoOp}
-
-  defmodule AppendItemsHandler do
-    @behaviour Commanded.Commands.Handler
-
-    def handle(%ExampleAggregate{} = aggregate, %AppendItems{count: count}), do: ExampleAggregate.append_items(aggregate, count)
-  end
+  alias Commanded.Aggregates.{Aggregate,AppendItemsHandler,ExampleAggregate}
+  alias ExampleAggregate.Commands.AppendItems
 
   test "should persist pending events in order applied" do
     aggregate_uuid = UUID.uuid4
@@ -114,7 +71,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     assert Aggregate.aggregate_version(ExampleAggregate, aggregate_uuid) == 10
-    assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
+    assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == %ExampleAggregate{
       items: 1..10 |> Enum.to_list(),
       last_index: 10,
     }
@@ -134,7 +91,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     assert Aggregate.aggregate_version(ExampleAggregate, aggregate_uuid) == 201
-    assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == %Commanded.Entities.EventPersistenceTest.ExampleAggregate{
+    assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == %ExampleAggregate{
       items: 1..201 |> Enum.to_list,
       last_index: 201,
     }

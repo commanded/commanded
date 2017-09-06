@@ -33,7 +33,7 @@ defmodule Commanded.Aggregates.Aggregate do
   ]
 
   def start_link(aggregate_module, aggregate_uuid) do
-    name = name(aggregate_uuid)
+    name = name(aggregate_module, aggregate_uuid)
     aggregate = %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,

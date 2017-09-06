@@ -74,6 +74,7 @@ defmodule Commanded.Event.Handler do
   """
 
   use GenServer
+  use Commanded.Registration
 
   require Logger
 

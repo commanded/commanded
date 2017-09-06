@@ -2,7 +2,6 @@ defmodule Commanded.Helpers.Process do
   @moduledoc false
   import ExUnit.Assertions
 
-  alias Commanded.Aggregates.Aggregate
   alias Commanded.Registration
 
   @doc """

@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManagers.ProcessRouter do
   @moduledoc false
   use GenServer
+  use Commanded.Registration
 
   require Logger
 
