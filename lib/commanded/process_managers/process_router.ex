@@ -6,6 +6,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   alias Commanded.ProcessManagers.{
     ProcessManagerInstance,
+    ProcessRouter,
     Supervisor,
   }
   alias Commanded.EventStore
@@ -28,13 +29,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   def start_link(process_manager_name, process_manager_module, command_dispatcher, opts \\ []) do
-    GenServer.start_link(__MODULE__, %State{
+    state = %State{
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
       command_dispatcher: command_dispatcher,
       consistency: opts[:consistency] || :eventual,
       subscribe_from: opts[:start_from] || :origin,
-    }, [name: process_manager_module])
+    }
+
+    @registry.start_link({ProcessRouter, process_manager_name}, __MODULE__, state)
   end
 
   def init(%State{command_dispatcher: command_dispatcher} = state) do

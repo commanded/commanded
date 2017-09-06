@@ -29,17 +29,9 @@ defmodule Commanded.Aggregates.Supervisor do
 
     aggregate_name = Aggregate.name(aggregate_module, aggregate_uuid)
 
-    case @registry.whereis_name(aggregate_name) do
-      :undefined ->
-        case @registry.register_name(aggregate_name, Supervisor, :start_child, [__MODULE__, [aggregate_module, aggregate_uuid]]) do
-          {:ok, _pid} -> {:ok, aggregate_uuid}
-          {:ok, _pid, _info} -> {:ok, aggregate_uuid}
-          {:error, {:already_started, _pid}} -> {:ok, aggregate_uuid}
-          {:error, _reason} = reply -> reply
-        end
-
-      _pid ->
-        {:ok, aggregate_uuid}
+    case @registry.start_child(aggregate_name, __MODULE__, [aggregate_module, aggregate_uuid]) do
+      {:ok, _pid} -> {:ok, aggregate_uuid}
+      reply -> reply
     end
   end
 

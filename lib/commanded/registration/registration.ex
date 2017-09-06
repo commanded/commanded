@@ -13,16 +13,21 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Starts a process using the given module/function/args parameters, and registers the pid with the given name.
+  Starts a child of a supervisor, and registers the pid with the given name.
   """
-  @callback register_name(name :: term, module :: atom, function :: atom, args :: [term]) :: {:ok, pid} | {:error, term}
+  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+
+  @doc """
+  Starts a `GenServer` process, and registers the pid with the given name.
+  """
+  @callback start_link(name :: term(), gen_server :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
 
   @doc """
   Get the pid of a registered name.
 
   Returns `:undefined` if the name is unregistered.
   """
-  @callback whereis_name(term) :: pid | :undefined
+  @callback whereis_name(term()) :: pid() | :undefined
 
   # get the configured registry provider
   defp registry_provider do

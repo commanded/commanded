@@ -12,14 +12,46 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc """
-  Starts a process using the given module/function/args parameters, and registers the pid with the given name.
+  Starts a child of a supervisor, and registers the pid with the given name.
   """
-  @spec register_name(name :: term, module :: atom, function :: atom, args :: [term]) :: {:ok, pid} | {:error, term}
+  @spec start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
   @impl Commanded.Registration
-  def register_name(name, module, fun, [supervisor, args]) do
-    name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
+  def start_child(name, supervisor, args) do
+    case whereis_name(name) do
+      :undefined ->
+        via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
 
-    apply(module, fun, [supervisor, args ++ [[name: name]]])
+        case apply(Supervisor, :start_child, [supervisor, args ++ [[name: via_name]]]) do
+          {:ok, pid} -> {:ok, pid}
+          {:ok, pid, _info} -> {:ok, pid}
+          {:error, {:already_started, pid}} -> {:ok, pid}
+          {:error, _reason} = reply -> reply
+        end
+
+      pid ->
+        {:ok, pid}
+    end
+  end
+
+  @doc """
+  Starts a `GenServer` process, and registers the pid with the given name.
+  """
+  @spec start_link(name :: term(), gen_server :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @impl Commanded.Registration
+  def start_link(name, gen_server, args) do
+    case whereis_name(name) do
+      :undefined ->
+        via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
+
+        case apply(GenServer, :start_link, [gen_server, args, [name: via_name]]) do
+          {:ok, pid} -> {:ok, pid}
+          {:error, {:already_started, pid}} -> {:ok, pid}
+          {:error, _reason} = reply -> reply
+        end
+
+      pid ->
+        {:ok, pid}
+    end
   end
 
   @doc """
