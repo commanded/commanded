@@ -105,12 +105,12 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       assert event.status == "start"
     end
 
-    :timer.sleep 100
-
     # wait for process instance to receive event
     Wait.until(fn ->
       process_instance = ProcessRouter.process_instance(process_router, process_uuid)
-      %{status_history: ["start"]} = ProcessManagerInstance.process_state(process_instance)
+
+      assert process_instance != {:error, :process_manager_not_found}
+      assert %{status_history: ["start"]} = ProcessManagerInstance.process_state(process_instance)
     end)
 
     Helpers.Process.shutdown(process_router)
@@ -124,11 +124,12 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     wait_for_event(ProcessResumed, fn event -> event.process_uuid == process_uuid end)
 
-    case ProcessRouter.process_instance(process_router, process_uuid) do
-      {:error, :process_manager_not_found} -> flunk("process state not available")
-      process_instance ->
-        state = ProcessManagerInstance.process_state(process_instance)
-        assert state.status_history == ["start", "resume"]
-    end
+    Wait.until(fn ->
+      process_instance = ProcessRouter.process_instance(process_router, process_uuid)
+      assert process_instance != {:error, :process_manager_not_found}
+
+      state = ProcessManagerInstance.process_state(process_instance)
+      assert state.status_history == ["start", "resume"]
+    end)
   end
 end
