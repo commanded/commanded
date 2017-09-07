@@ -4,7 +4,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   """
 
   use GenServer
-  use Commanded.EventStore
 
   require Logger
 
@@ -12,6 +11,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     ProcessManagerInstance,
     Supervisor,
   }
+  alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
 
   defmodule State do
@@ -83,7 +83,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   Subscribe the process router to all events
   """
   def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
-    {:ok, subscription} = @event_store.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
 
     state = %State{state |
       subscription: subscription,
@@ -175,7 +175,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %State{process_manager_name: process_manager_name, subscription: subscription} = state) do
     Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event: #{inspect event_number}" end)
 
-    @event_store.ack_event(subscription, event)
+    EventStore.ack_event(subscription, event)
 
     %State{state | last_seen_event: event_number}
   end

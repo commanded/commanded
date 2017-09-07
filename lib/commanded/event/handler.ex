@@ -1,10 +1,10 @@
 defmodule Commanded.Event.Handler do
   use GenServer
-  use Commanded.EventStore
 
   require Logger
 
   alias Commanded.Event.Handler
+  alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
 
   @type domain_event :: struct
@@ -81,7 +81,7 @@ defmodule Commanded.Event.Handler do
   end
 
   def handle_cast({:subscribe_to_events}, %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state) do
-    {:ok, subscription} = @event_store.subscribe_to_all_streams(handler_name, self(), subscribe_from)
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
 
     state = %Handler{state |
       subscription: subscription,
@@ -124,7 +124,7 @@ defmodule Commanded.Event.Handler do
   defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %Handler{subscription: subscription} = state) do
     Logger.debug(fn -> "event handler confirming receipt of event: #{inspect event_number}" end)
 
-    @event_store.ack_event(subscription, event)
+    EventStore.ack_event(subscription, event)
 
     %Handler{state | last_seen_event: event_number}
   end

@@ -16,8 +16,8 @@ Use with one of the following event stores for persistence:
 
 ---
 
-- [Changelog](CHANGELOG.md) 
-- [Wiki](https://github.com/slashdotdash/commanded/wiki) 
+- [Changelog](CHANGELOG.md)
+- [Wiki](https://github.com/slashdotdash/commanded/wiki)
 - [Frequently asked questions](https://github.com/slashdotdash/commanded/wiki/FAQ)
 - [Getting help](https://github.com/slashdotdash/commanded/wiki/Getting-help)
 
@@ -144,12 +144,6 @@ Want to use a different event store? Then you will need to write your own [event
     $ mix event_store.create
     ```
 
-6. Force a (re)compile of the commanded dependency to include the adapter:
-
-    ```console
-    $ mix deps.compile commanded --force
-    ```
-
 ### Greg Young's Event Store
 
 Greg's [Event Store](https://geteventstore.com/) is an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
@@ -194,24 +188,7 @@ This adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir
 
     The stream prefix **must not** contain a dash character ("-"). This is used for category projections and event handler subscriptions.
 
-5. Force a (re)compile of the commanded dependency to include the adapter:
-
-    ```console
-    $ mix deps.compile commanded --force
-    ```
-
 You **must** run the Event Store with all projections enabled and standard projections started. Use the `--run-projections=all --start-standard-projections=true` flags when running the Event Store executable.
-
-
-#### Changing event store adapters
-
-**Note** To switch between an event store adapter you *must* recompile the Commanded dependency:
-
-```console
-$ mix deps.compile commanded --force
-```
-
-For the test environment use: `$ MIX_ENV=test mix deps.compile commanded --force`
 
 ## Sample usage
 

@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   use Commanded.StorageCase
-  use Commanded.EventStore
+
+  alias Commanded.EventStore
 
   import Commanded.Assertions.EventAssertions
   import Commanded.Enumerable
@@ -129,7 +130,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       assert event.aggregate_uuid == aggregate_uuid
     end
 
-    events = @event_store.stream_forward(aggregate_uuid) |> Enum.to_list()
+    events = EventStore.stream_forward(aggregate_uuid) |> Enum.to_list()
 
     assert pluck(events, :data) == [
       %Started{aggregate_uuid: aggregate_uuid},
@@ -152,7 +153,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       assert ProcessRouter.process_instance(process_router, aggregate_uuid) == {:error, :process_manager_not_found}
 
       # process state snapshot should be deleted
-      assert @event_store.read_snapshot("example_process_manager-#{aggregate_uuid}") == {:error, :snapshot_not_found}
+      assert EventStore.read_snapshot("example_process_manager-#{aggregate_uuid}") == {:error, :snapshot_not_found}
     end
   end
 
@@ -172,7 +173,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       assert event.aggregate_uuid == aggregate_uuid
     end
 
-    events = @event_store.stream_forward(aggregate_uuid) |> Enum.to_list()
+    events = EventStore.stream_forward(aggregate_uuid) |> Enum.to_list()
 
     assert pluck(events, :data) == [
       %Started{aggregate_uuid: aggregate_uuid},

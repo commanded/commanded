@@ -6,12 +6,12 @@ defmodule Commanded.Aggregates.Aggregate do
   """
 
   use GenServer
-  use Commanded.EventStore
 
   require Logger
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Event.Mapper
+  alias Commanded.EventStore
 
   @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
   @aggregate_registry_name :aggregate_registry
@@ -111,7 +111,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   # load events from the event store, in batches, to rebuild the aggregate state
   defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module} = state) do
-    case @event_store.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
+    case EventStore.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
       {:error, :stream_not_found} ->
         # aggregate does not exist so return empty state
         state
@@ -171,6 +171,6 @@ defmodule Commanded.Aggregates.Aggregate do
     correlation_id = UUID.uuid4
     event_data = Mapper.map_to_event_data(pending_events, correlation_id)
 
-    @event_store.append_to_stream(aggregate_uuid, expected_version, event_data)
+    EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
   end
 end

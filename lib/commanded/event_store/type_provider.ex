@@ -3,16 +3,7 @@ defmodule Commanded.EventStore.TypeProvider do
   Specification to convert between an Elixir struct and a corresponding string type.
   """
 
-  defmacro __using__(_) do
-    type_provider = Application.get_env(:commanded, :type_provider, Commanded.Serialization.ModuleNameTypeProvider)
-
-    quote do
-      @type_provider unquote type_provider
-    end
-  end
-
   @type t :: module
-
   @type type :: String.t
 
   @doc """
@@ -24,4 +15,20 @@ defmodule Commanded.EventStore.TypeProvider do
   Convert the given type string to an Elixir struct
   """
   @callback to_struct(type) :: struct
+
+  @doc false
+  @spec to_string(struct) :: type
+  def to_string(struct), do: type_provider().to_string(struct)
+
+  @doc false
+  @spec to_struct(type) :: struct
+  def to_struct(type), do: type_provider().to_struct(type)
+
+  @doc """
+  Get the configured type provider
+  """
+  @spec type_provider() :: module()
+  def type_provider do
+    Application.get_env(:commanded, :type_provider, Commanded.Serialization.ModuleNameTypeProvider)
+  end
 end

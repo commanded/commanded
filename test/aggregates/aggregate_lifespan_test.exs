@@ -1,9 +1,7 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
-  use Commanded.EventStore
 
   alias Commanded.ExampleDomain.BankAccount
-
   alias Commanded.ExampleDomain.BankAccount.Commands.{
     OpenAccount,
     DepositMoney,
