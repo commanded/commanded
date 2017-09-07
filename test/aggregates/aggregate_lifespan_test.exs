@@ -1,34 +1,14 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
 
-  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Aggregates.{Aggregate,BankRouter}
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.{
     OpenAccount,
     DepositMoney,
     WithdrawMoney,
   }
-  alias Commanded.ExampleDomain.{
-    OpenAccountHandler,
-    DepositMoneyHandler,
-    WithdrawMoneyHandler,
-  }
   alias Commanded.Registration
-
-  defmodule BankAccountLifespan do
-    @behaviour Commanded.Aggregates.AggregateLifespan
-
-    def after_command(%OpenAccount{}), do: 5
-    def after_command(%DepositMoney{}), do: 20
-  end
-
-  defmodule BankRouter do
-    use Commanded.Commands.Router
-
-    dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, lifespan: BankAccountLifespan, identity: :account_number
-    dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, lifespan: BankAccountLifespan, identity: :account_number
-    dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount, identity: :account_number
-  end
 
   describe "aggregate started" do
     setup do

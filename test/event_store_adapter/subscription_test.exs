@@ -3,7 +3,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
   alias Commanded.EventStore
   alias Commanded.EventStore.EventData
-  alias Commanded.Helpers.Wait
+  alias Commanded.Helpers.{ProcessHelper,Wait}
 
   defmodule BankAccountOpened, do: defstruct [:account_number, :initial_balance]
 
@@ -154,7 +154,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       # wait for last `ack`
       :timer.sleep(event_store_wait(200))
 
-      Commanded.Helpers.Process.shutdown(subscriber)
+      ProcessHelper.shutdown(subscriber)
       wait_for_event_store()
 
       {:ok, subscriber} = Subscriber.start_link()

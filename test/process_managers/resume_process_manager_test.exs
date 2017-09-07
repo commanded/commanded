@@ -1,8 +1,7 @@
 defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
   use Commanded.StorageCase
 
-  alias Commanded.Helpers
-  alias Commanded.Helpers.Wait
+  alias Commanded.Helpers.{ProcessHelper,Wait}
   alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
 
   import Commanded.Assertions.EventAssertions
@@ -113,7 +112,7 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
       assert %{status_history: ["start"]} = ProcessManagerInstance.process_state(process_instance)
     end)
 
-    Helpers.Process.shutdown(process_router)
+    ProcessHelper.shutdown(process_router)
 
     # wait for subscription to receive DOWN notification and remove subscription's PID
     :timer.sleep(1_000)
