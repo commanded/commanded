@@ -1,6 +1,5 @@
 defmodule Commanded.Event.EventHandlerMacroTest do
   use Commanded.StorageCase
-  use Commanded.EventStore
 
   defmodule AccountBalanceHandler do
     use Commanded.Event.Handler, name: "account_balance_handler"

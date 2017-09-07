@@ -5,8 +5,7 @@ defmodule Commanded.Serialization.JsonSerializer do
 
   @behaviour Commanded.EventStore.Serializer
 
-  use Commanded.EventStore.TypeProvider
-
+  alias Commanded.EventStore.TypeProvider
   alias Commanded.Serialization.JsonDecoder
 
   @doc """
@@ -20,9 +19,9 @@ defmodule Commanded.Serialization.JsonSerializer do
   Deserialize given JSON binary data to the expected type.
   """
   def deserialize(binary, config) do
-    type = case Keyword.get(config, :type, nil) do
+    type = case Keyword.get(config, :type) do
       nil -> nil
-      type -> @type_provider.to_struct(type)
+      type -> TypeProvider.to_struct(type)
     end
 
     binary

@@ -9,14 +9,6 @@ defmodule Commanded.EventStore do
     SnapshotData,
   }
 
-  defmacro __using__(_) do
-    adapter = Application.get_env(:commanded, :event_store_adapter) || raise ArgumentError, "Commanded expects :event_store_adapter to be configured in environment"
-
-    quote do
-      @event_store unquote(adapter)
-    end
-  end
-
   @type stream_uuid :: String.t
   @type start_from :: :origin | :current | integer
   @type stream_version :: integer
@@ -45,7 +37,7 @@ defmodule Commanded.EventStore do
   @doc """
   Acknowledge receipt and successful processing of the given event received from a subscription to an event stream.
   """
-  @callback ack_event(pid, RecordedEvent.t) :: any
+  @callback ack_event(pid, RecordedEvent.t) :: any()
 
   @doc """
   Unsubscribe an existing subscriber from all event notifications.
@@ -66,4 +58,62 @@ defmodule Commanded.EventStore do
   Delete a previously recorded snapshop for a given source
   """
   @callback delete_snapshot(source_uuid) :: :ok | {:error, reason}
+
+  @doc false
+  @spec append_to_stream(stream_uuid, expected_version :: non_neg_integer, events :: list(EventData.t)) :: {:ok, stream_version} | {:error, reason}
+  def append_to_stream(stream_uuid, expected_version, events) do
+    event_store_adapter().append_to_stream(stream_uuid, expected_version, events)
+  end
+
+  @doc false
+  @spec stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, :stream_not_found} | {:error, reason}
+  def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000)
+  def stream_forward(stream_uuid, start_version, read_batch_size) do
+    event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size)
+  end
+
+  @doc false
+  @spec subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) :: {:ok, subscription :: pid}
+    | {:error, :subscription_already_exists}
+    | {:error, reason}
+  def subscribe_to_all_streams(subscription_name, subscriber, start_from) do
+    event_store_adapter().subscribe_to_all_streams(subscription_name, subscriber, start_from)
+  end
+
+  @doc false
+  @spec ack_event(pid, RecordedEvent.t) :: any()
+  def ack_event(pid, event) do
+    event_store_adapter().ack_event(pid, event)
+  end
+
+  @doc false
+  @spec unsubscribe_from_all_streams(subscription_name) :: :ok
+  def unsubscribe_from_all_streams(subscription_name) do
+    event_store_adapter().unsubscribe_from_all_streams(subscription_name)
+  end
+
+  @doc false
+  @spec read_snapshot(source_uuid) :: {:ok, snapshot} | {:error, :snapshot_not_found}
+  def read_snapshot(source_uuid) do
+    event_store_adapter().read_snapshot(source_uuid)
+  end
+
+  @doc false
+  @spec record_snapshot(snapshot) :: :ok | {:error, reason}
+  def record_snapshot(snapshot) do
+    event_store_adapter().record_snapshot(snapshot)
+  end
+
+  @doc false
+  @spec delete_snapshot(source_uuid) :: :ok | {:error, reason}
+  def delete_snapshot(source_uuid) do
+    event_store_adapter().delete_snapshot(source_uuid)
+  end
+
+  @doc """
+  Get the configured event store adapter
+  """
+  def event_store_adapter do
+    Application.get_env(:commanded, :event_store_adapter) || raise ArgumentError, "Commanded expects `:event_store_adapter` to be configured in environment"
+  end
 end

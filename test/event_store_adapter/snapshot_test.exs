@@ -1,7 +1,7 @@
 defmodule Commanded.EventStore.Adapter.SnapshotTest do
   use Commanded.StorageCase
-  use Commanded.EventStore
 
+  alias Commanded.EventStore
   alias Commanded.EventStore.SnapshotData
 
   defmodule BankAccountOpened, do: defstruct [:account_number, :initial_balance]
@@ -10,7 +10,7 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
     test "should record the snapshot" do
       snapshot = build_snapshot_data(100)
 
-      assert :ok = @event_store.record_snapshot(snapshot)
+      assert :ok = EventStore.record_snapshot(snapshot)
     end
   end
 
@@ -20,16 +20,16 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
       snapshot2 = build_snapshot_data(101)
       snapshot3 = build_snapshot_data(102)
 
-      assert :ok == @event_store.record_snapshot(snapshot1)
-      assert :ok == @event_store.record_snapshot(snapshot2)
-      assert :ok == @event_store.record_snapshot(snapshot3)
+      assert :ok == EventStore.record_snapshot(snapshot1)
+      assert :ok == EventStore.record_snapshot(snapshot2)
+      assert :ok == EventStore.record_snapshot(snapshot3)
 
-      {:ok, snapshot} = @event_store.read_snapshot(snapshot3.source_uuid)
+      {:ok, snapshot} = EventStore.read_snapshot(snapshot3.source_uuid)
       assert build_snapshot_created_at_seconds_to_zero(snapshot) == build_snapshot_created_at_seconds_to_zero(snapshot3)
     end
 
     test "should error when snapshot does not exist" do
-      {:error, :snapshot_not_found} = @event_store.read_snapshot("doesnotexist")
+      {:error, :snapshot_not_found} = EventStore.read_snapshot("doesnotexist")
     end
   end
 
@@ -37,12 +37,12 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
     test "should delete the snapshot" do
       snapshot1 = build_snapshot_data(100)
 
-      assert :ok == @event_store.record_snapshot(snapshot1)
-      {:ok, snapshot} = @event_store.read_snapshot(snapshot1.source_uuid)
+      assert :ok == EventStore.record_snapshot(snapshot1)
+      {:ok, snapshot} = EventStore.read_snapshot(snapshot1.source_uuid)
       assert build_snapshot_created_at_seconds_to_zero(snapshot) == build_snapshot_created_at_seconds_to_zero(snapshot1)
 
-      assert :ok == @event_store.delete_snapshot(snapshot1.source_uuid)
-      assert {:error, :snapshot_not_found} == @event_store.read_snapshot(snapshot1.source_uuid)
+      assert :ok == EventStore.delete_snapshot(snapshot1.source_uuid)
+      assert {:error, :snapshot_not_found} == EventStore.read_snapshot(snapshot1.source_uuid)
     end
   end
 

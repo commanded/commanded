@@ -1,7 +1,7 @@
 defmodule Commanded.Assertions.EventAssertions do
   import ExUnit.Assertions
 
-  use Commanded.EventStore
+  alias Commanded.EventStore
 
   @default_receive_timeout 1_000
 
@@ -105,7 +105,7 @@ defmodule Commanded.Assertions.EventAssertions do
     end
   end
 
-  defp create_subscription(subscription_name), do: @event_store.subscribe_to_all_streams(subscription_name, self(), :origin)
-  defp remove_subscription(subscription_name), do: @event_store.unsubscribe_from_all_streams(subscription_name)
-  defp ack_events(subscription, events), do: @event_store.ack_event(subscription, List.last(events))
+  defp create_subscription(subscription_name), do: EventStore.subscribe_to_all_streams(subscription_name, self(), :origin)
+  defp remove_subscription(subscription_name), do: EventStore.unsubscribe_from_all_streams(subscription_name)
+  defp ack_events(subscription, events), do: EventStore.ack_event(subscription, List.last(events))
 end

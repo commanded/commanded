@@ -4,7 +4,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   """
 
   use GenServer
-  use Commanded.EventStore
 
   require Logger
 
@@ -12,6 +11,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     ProcessRouter,
     ProcessManagerInstance,
   }
+  alias Commanded.EventStore
   alias Commanded.EventStore.{
     RecordedEvent,
     SnapshotData,
@@ -79,7 +79,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   Attempt to fetch intial process state from snapshot storage
   """
   def handle_cast({:fetch_state}, %ProcessManagerInstance{} = state) do
-    state = case @event_store.read_snapshot(process_state_uuid(state)) do
+    state = case EventStore.read_snapshot(process_state_uuid(state)) do
       {:ok, snapshot} ->
         %ProcessManagerInstance{state |
           process_state: snapshot.data,
@@ -156,7 +156,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state, source_version) do
-    @event_store.record_snapshot(%SnapshotData{
+    EventStore.record_snapshot(%SnapshotData{
       source_uuid: process_state_uuid(state),
       source_version: source_version,
       source_type: Atom.to_string(process_manager_module),
@@ -164,7 +164,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     })
   end
 
-  defp delete_state(%ProcessManagerInstance{} = state), do: @event_store.delete_snapshot(process_state_uuid(state))
+  defp delete_state(%ProcessManagerInstance{} = state), do: EventStore.delete_snapshot(process_state_uuid(state))
 
   defp ack_event(%RecordedEvent{} = event, process_router), do: ProcessRouter.ack_event(process_router, event)
 

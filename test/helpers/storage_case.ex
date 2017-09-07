@@ -1,6 +1,5 @@
 defmodule Commanded.StorageCase do
   use ExUnit.CaseTemplate
-  use Commanded.EventStore
 
   require Logger
 
@@ -14,7 +13,7 @@ defmodule Commanded.StorageCase do
   end
 
   defp reset_storage do
-    case Application.get_env(:commanded, :reset_storage, nil) do
+    case Application.get_env(:commanded, :reset_storage) do
       nil -> :ok
       reset -> reset.()
     end

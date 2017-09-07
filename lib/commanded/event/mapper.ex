@@ -3,8 +3,7 @@ defmodule Commanded.Event.Mapper do
   Map raw events to event data structs ready to be persisted to the event store.
   """
 
-  use Commanded.EventStore.TypeProvider
-
+  alias Commanded.EventStore.TypeProvider
   alias Commanded.EventStore.{
     EventData,
     RecordedEvent,
@@ -20,7 +19,7 @@ defmodule Commanded.Event.Mapper do
     %EventData{
       correlation_id: correlation_id,
       causation_id: causation_id,
-      event_type: @type_provider.to_string(event),
+      event_type: TypeProvider.to_string(event),
       data: event,
       metadata: metadata,
     }

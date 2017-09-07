@@ -1,10 +1,8 @@
 defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   use Commanded.StorageCase
-  use Commanded.EventStore
-
-  doctest Commanded.Aggregates.Aggregate
 
   alias Commanded.Aggregates.Aggregate
+  alias Commanded.EventStore
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler,DepositMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
@@ -70,7 +68,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     Aggregate.aggregate_state(account_number)
 
     # write an event to the aggregate's stream, bypassing the aggregate process (simulate concurrency error)
-    {:ok, _} = @event_store.append_to_stream(account_number, 0, [
+    {:ok, _} = EventStore.append_to_stream(account_number, 0, [
       %Commanded.EventStore.EventData{
         event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
         data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000}
