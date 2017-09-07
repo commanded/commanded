@@ -37,8 +37,10 @@ defmodule EventStore do
       Any positive number will be used to ensure you can only append to the stream if it is at exactly that version.
 
     - `events` is a list of `%EventStore.EventData{}` structs.
+
+  Returns `:ok` on success, or `{:error, :wrong_expected_version}` when the expected version differs from the stream version
   """
-  @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, reason :: term}
+  @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, :wrong_expected_version} | {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events)
   def append_to_stream(@all_stream, _expected_version, _events), do: {:error, :cannot_append_to_all_stream}
   def append_to_stream(stream_uuid, expected_version, events) do
