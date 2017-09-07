@@ -30,7 +30,7 @@ defmodule Commanded.Mixfile do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/aggregates", "test/example_domain", "test/helpers"]
+  defp elixirc_paths(:test), do: ["lib", "test/aggregates", "test/commands", "test/event", "test/example_domain", "test/helpers"]
   defp elixirc_paths(_), do: ["lib", "test/helpers"]
 
   defp deps do

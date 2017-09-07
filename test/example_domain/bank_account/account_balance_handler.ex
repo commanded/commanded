@@ -1,10 +1,14 @@
-defmodule Commanded.ExampleDomain.AccountBalanceHandler do
-  use Commanded.Event.Handler, name: "AccountBalanceHandler"
+defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
+  use Commanded.Event.Handler, name: __MODULE__
 
-  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
+  alias Commanded.ExampleDomain.BankAccount.Events.{
+    BankAccountOpened,
+    MoneyDeposited,
+    MoneyWithdrawn,
+  }
 
   def init do
-    with {:ok, _} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
+    with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
       :ok
     end
   end
@@ -14,6 +18,10 @@ defmodule Commanded.ExampleDomain.AccountBalanceHandler do
   end
 
   def handle(%MoneyDeposited{balance: balance}, _metadata) do
+    Agent.update(__MODULE__, fn _ -> balance end)
+  end
+
+  def handle(%MoneyWithdrawn{balance: balance}, _metadata) do
     Agent.update(__MODULE__, fn _ -> balance end)
   end
 

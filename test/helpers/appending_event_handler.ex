@@ -1,9 +1,9 @@
 defmodule Commanded.Event.AppendingEventHandler do
   @moduledoc false
-  use Commanded.Event.Handler, name: "AppendingEventHandler"
+  use Commanded.Event.Handler, name: __MODULE__
 
   def init do
-    with {:ok, _} <- Agent.start_link(fn -> %{events: [], metadata: []} end, name: __MODULE__) do
+    with {:ok, _pid} <- Agent.start_link(fn -> %{events: [], metadata: []} end, name: __MODULE__) do
       :ok
     end
   end

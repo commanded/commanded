@@ -16,6 +16,13 @@ defmodule Commanded.Helpers.ProcessHelper do
     assert_receive {:DOWN, ^ref, _, _, _}, 5_000
   end
 
+  def shutdown(name) when is_atom(name) do
+    case Process.whereis(name) do
+      nil -> :ok
+      pid -> shutdown(pid)
+    end
+  end
+
   @doc """
   Shutdown a named process.
   """

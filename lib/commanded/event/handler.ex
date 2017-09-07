@@ -83,9 +83,9 @@ defmodule Commanded.Event.Handler do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
 
-  @type domain_event :: struct
-  @type metadata :: struct
-  @type subscribe_from :: :origin | :current | non_neg_integer
+  @type domain_event :: struct()
+  @type metadata :: struct()
+  @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
 
   @doc """
@@ -112,14 +112,14 @@ defmodule Commanded.Event.Handler do
       defmodule ExampleHandler do
         use Commanded.Event.Handler, name: "ExampleHandler"
 
-        def init do
-          # ... optional initialisation
-          :ok
-        end
+      def init do
+        # optional initialisation
+        :ok
+      end
 
-        def handle(%AnEvent{...}, _metadata) do
-          # ...
-        end
+      def handle(%AnEvent{..}, _metadata) do
+        # ... process the event
+        :ok
       end
 
   Start event handler process (or configure as a worker inside a [supervisor](supervision.html)):
@@ -157,6 +157,9 @@ defmodule Commanded.Event.Handler do
   @doc false
   defmacro __before_compile__(_env) do
     quote do
+      @doc false
+      def init, do: :ok
+
       @doc false
       def handle(_event, _metadata), do: :ok
     end
