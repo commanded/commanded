@@ -158,9 +158,6 @@ defmodule Commanded.Event.Handler do
   defmacro __before_compile__(_env) do
     quote do
       @doc false
-      def init, do: :ok
-
-      @doc false
       def handle(_event, _metadata), do: :ok
     end
   end

@@ -18,7 +18,6 @@ defmodule Commanded.Event.HandleEventTest do
     end
   end
 
-  @tag :wip
   test "should be notified of events" do
     {:ok, handler} = AccountBalanceHandler.start_link()
 
@@ -35,7 +34,6 @@ defmodule Commanded.Event.HandleEventTest do
     end)
   end
 
-  # @tag :wip
   test "should ignore uninterested events" do
     {:ok, handler} = AccountBalanceHandler.start_link()
 
@@ -72,7 +70,7 @@ defmodule Commanded.Event.HandleEventTest do
     wait_for_event MoneyDeposited
 
     Wait.until(fn ->
-      assert AppendingEventHandler.received_events == new_events
+      assert AppendingEventHandler.received_events() == new_events
 
       [ metadata ] = AppendingEventHandler.received_metadata()
 
@@ -97,7 +95,7 @@ defmodule Commanded.Event.HandleEventTest do
     wait_for_event MoneyDeposited
 
     Wait.until(fn ->
-      assert AppendingEventHandler.received_events == initial_events ++ new_events
+      assert AppendingEventHandler.received_events() == initial_events ++ new_events
 
       received_metadata = AppendingEventHandler.received_metadata()
 
@@ -127,8 +125,8 @@ defmodule Commanded.Event.HandleEventTest do
     end)
 
     Wait.until(fn ->
-      assert AppendingEventHandler.received_events == events
-      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
+      assert AppendingEventHandler.received_events() == events
+      assert pluck(AppendingEventHandler.received_metadata(), :stream_version) == [1, 2]
     end)
 	end
 end
