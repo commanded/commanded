@@ -245,7 +245,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
             |> Stream.chunk_by(&chunk_by(&1))
             |> Stream.each(fn events ->
               notify_subscriber(data, events)
-              wait_for_ack(events)
+              wait_for_ack(stream_uuid, events)
             end)
             |> Stream.map(&Enum.at(&1, -1))
             |> Enum.at(-1)
@@ -264,8 +264,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   # wait until the subscriber ack's the last sent event
-  defp wait_for_ack(events) when is_list(events) do
-    expected_event_id = List.last(events).event_id
+  defp wait_for_ack(stream_uuid, events) when is_list(events) do
+    expected_event_id = subscription_provider(stream_uuid).event_id(List.last(events))
 
     wait_for_ack_event_id(expected_event_id)
   end
