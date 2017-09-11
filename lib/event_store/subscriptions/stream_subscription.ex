@@ -290,7 +290,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   # send the catch-up process an acknowledgement of receipt, allowing it to continue stream events to subscriber
   defp ack_catch_up(%SubscriptionState{stream_uuid: stream_uuid, catch_up_pid: catch_up_pid} = data, ack) do
-    ack = subscription_provider(stream_uuid).extract_ack(ack)  # extract `event_id` or `stream_version`
+    ack = extract_ack(stream_uuid, ack)
 
     send(catch_up_pid, {:ack, ack})
 
@@ -332,9 +332,17 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defp ack_events(%SubscriptionState{stream_uuid: stream_uuid, subscription_name: subscription_name} = data, ack) do
-    ack = subscription_provider(stream_uuid).extract_ack(ack)  # extract `event_id` or `stream_version`
+    ack = extract_ack(stream_uuid, ack)
+
     :ok = subscription_provider(stream_uuid).ack_last_seen_event(stream_uuid, subscription_name, ack)
 
     %SubscriptionState{data| last_ack: ack}
+  end
+
+  # An `ack` can be a single integer, indicating an `event_id` or `stream_version`, or a tuple containing both, as `{event_id, stream_version}`.
+  # This function extracts the relevant value depending upon the type of subscription (all / single stream).
+  defp extract_ack(_stream_uuid, ack) when is_integer(ack), do: ack
+  defp extract_ack(stream_uuid, ack) when is_tuple(ack) do
+    subscription_provider(stream_uuid).extract_ack(ack)
   end
 end
