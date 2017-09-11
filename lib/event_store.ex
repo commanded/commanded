@@ -44,8 +44,10 @@ defmodule EventStore do
   def append_to_stream(stream_uuid, expected_version, events)
   def append_to_stream(@all_stream, _expected_version, _events), do: {:error, :cannot_append_to_all_stream}
   def append_to_stream(stream_uuid, expected_version, events) do
-    with {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid) do
+    with {:ok, _stream} <- EventStore.Streams.Supervisor.open_stream(stream_uuid) do
       Stream.append_to_stream(stream_uuid, expected_version, events)
+    else
+      reply -> reply
     end
   end
 
@@ -62,8 +64,10 @@ defmodule EventStore do
   """
   @spec read_stream_forward(String.t, non_neg_integer, non_neg_integer) :: {:ok, list(RecordedEvent.t)} | {:error, reason :: term}
   def read_stream_forward(stream_uuid, start_version \\ 0, count \\ 1_000) do
-    with {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid) do
+    with {:ok, _stream} <- EventStore.Streams.Supervisor.open_stream(stream_uuid) do
       Stream.read_stream_forward(stream_uuid, start_version, count)
+    else
+      reply -> reply
     end
   end
 
@@ -78,8 +82,10 @@ defmodule EventStore do
   """
   @spec stream_forward(String.t, non_neg_integer, non_neg_integer) :: Enumerable.t | {:error, reason :: term}
   def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
-    with {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid) do
+    with {:ok, _stream} <- EventStore.Streams.Supervisor.open_stream(stream_uuid) do
       Stream.stream_forward(stream_uuid, start_version, read_batch_size)
+    else
+      reply -> reply
     end
   end
 
@@ -135,8 +141,10 @@ defmodule EventStore do
     | {:error, reason :: term}
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts \\ [])
   def subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts) do
-    with {:ok, _stream} = EventStore.Streams.Supervisor.open_stream(stream_uuid) do
+    with {:ok, _stream} <- EventStore.Streams.Supervisor.open_stream(stream_uuid) do
       Stream.subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts)
+    else
+      reply -> reply
     end
   end
 
