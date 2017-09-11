@@ -1,16 +1,17 @@
 defmodule EventStore.Subscriptions.AllStreamsSubscription do
   @behaviour EventStore.Subscriptions.StreamSubscriptionProvider
 
-  alias EventStore.Storage
+  alias EventStore.{RecordedEvent,Storage}
   alias EventStore.Streams.AllStream
+  alias EventStore.Subscriptions.StreamSubscriptionProvider
 
   @all_stream "$all"
 
-  def event_id(%EventStore.RecordedEvent{event_id: event_id}) do
-    event_id
-  end
+  def extract_ack({event_id, _stream_version}), do: event_id
 
-  def last_ack(%EventStore.Storage.Subscription{last_seen_event_id: last_seen_event_id}) do
+  def event_id(%RecordedEvent{event_id: event_id}), do: event_id
+
+  def last_ack(%Storage.Subscription{last_seen_event_id: last_seen_event_id}) do
     last_seen_event_id
   end
 

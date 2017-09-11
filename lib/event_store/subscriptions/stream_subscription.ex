@@ -265,19 +265,21 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   # wait until the subscriber ack's the last sent event
   defp wait_for_ack(stream_uuid, events) when is_list(events) do
-    expected_event_id = subscription_provider(stream_uuid).event_id(List.last(events))
-
-    wait_for_ack_event_id(expected_event_id)
+    events
+    |> List.last()
+    |> subscription_provider(stream_uuid).event_id()
+    |> wait_for_ack()
   end
 
-  # wait until the subscriber ack's the event id
-  defp wait_for_ack_event_id(event_id) do
+  # wait until the subscriber ack's the `event_id` or `stream_version`
+  defp wait_for_ack(ack) do
     receive do
-      {:ack, ^event_id} ->
+      {:ack, ^ack} ->
         :ok
 
-      {:ack, ack_event_id} when ack_event_id < event_id ->
-        wait_for_ack_event_id(event_id)
+      {:ack, received_ack} when received_ack < ack ->
+        # loop until expected ack received
+        wait_for_ack(ack)
 
       message ->
         raise RuntimeError, message: "Unexpected ack received: #{inspect message}"
@@ -285,7 +287,9 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   # send the catch-up process an acknowledgement of receipt, allowing it to continue stream events to subscriber
-  defp ack_catch_up(%SubscriptionState{catch_up_pid: catch_up_pid} = data, ack) do
+  defp ack_catch_up(%SubscriptionState{stream_uuid: stream_uuid, catch_up_pid: catch_up_pid} = data, ack) do
+    ack = subscription_provider(stream_uuid).extract_ack(ack)  # extract `event_id` or `stream_version`
+
     send(catch_up_pid, {:ack, ack})
 
     data
@@ -326,6 +330,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
   end
 
   defp ack_events(%SubscriptionState{stream_uuid: stream_uuid, subscription_name: subscription_name} = data, ack) do
+    ack = subscription_provider(stream_uuid).extract_ack(ack)  # extract `event_id` or `stream_version`
     :ok = subscription_provider(stream_uuid).ack_last_seen_event(stream_uuid, subscription_name, ack)
 
     %SubscriptionState{data| last_ack: ack}

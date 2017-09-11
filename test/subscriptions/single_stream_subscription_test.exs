@@ -1,8 +1,7 @@
 defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
   use EventStore.StorageCase
 
-  alias EventStore.EventFactory
-  alias EventStore.Streams
+  alias EventStore.{EventFactory,RecordedEvent,Streams}
   alias EventStore.Storage.{Appender,Stream}
   alias EventStore.Subscriptions.StreamSubscription
 
@@ -76,7 +75,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
       assert subscription.data.last_seen == 0
 
       assert_receive {:events, received_events}
-      subscription = StreamSubscription.ack(subscription, 3)
+      subscription = ack(subscription, received_events)
 
       assert_receive_caught_up(3)
 
@@ -99,7 +98,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
       assert subscription.data.last_seen == 0
 
       assert_receive {:events, received_events}
-      subscription = StreamSubscription.ack(subscription, 3)
+      subscription = ack(subscription, received_events)
 
       assert_receive_caught_up(3)
 
@@ -137,8 +136,8 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
   describe "ack events" do
     setup [:append_events_to_another_stream, :create_stream, :create_subscription]
 
-    test "should skip events during catch up when acknowledged", %{stream_uuid: stream_uuid, subscription: subscription} do
-      subscription = StreamSubscription.ack(subscription, 3)
+    test "should skip events during catch up when acknowledged", %{stream_uuid: stream_uuid, subscription: subscription, recorded_events: events} do
+      subscription = ack(subscription, events)
 
       assert subscription.state == :subscribed
       assert subscription.data.last_seen == 3
@@ -173,7 +172,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
       # should receive already seen, but not ack'd, events
       assert_receive {:events, received_events}
       assert length(received_events) == 3
-      subscription = StreamSubscription.ack(subscription, 3)
+      subscription = ack(subscription, received_events)
 
       assert_receive_caught_up(3)
 
@@ -258,9 +257,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
     assert pluck(received_events, :causation_id) == pluck(initial_events, :causation_id)
     assert pluck(received_events, :data) == pluck(initial_events, :data)
 
-    subscription =
-      subscription
-      |> StreamSubscription.ack(3)
+    subscription = ack(subscription, received_events)
 
     assert subscription.state == :subscribed
     assert subscription.data.last_seen == 6
@@ -273,11 +270,22 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
    assert pluck(received_events, :correlation_id) == pluck(remaining_events, :correlation_id)
    assert pluck(received_events, :causation_id) == pluck(remaining_events, :causation_id)
    assert pluck(received_events, :data) == pluck(remaining_events, :data)
+
+   ack(subscription, received_events)
+   refute_receive {:events, _received_events}
   end
 
   defp create_subscription(stream_uuid, opts \\ []) do
     StreamSubscription.new()
     |> StreamSubscription.subscribe(stream_uuid, @subscription_name, self(), opts)
+  end
+
+  def ack(subscription, events) when is_list(events) do
+    ack(subscription, List.last(events))
+  end
+
+  def ack(subscription, %RecordedEvent{event_id: event_id, stream_version: stream_version}) do
+    StreamSubscription.ack(subscription, {event_id, stream_version})
   end
 
   defp assert_receive_caught_up(to) do

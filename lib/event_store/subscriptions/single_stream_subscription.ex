@@ -1,12 +1,12 @@
 defmodule EventStore.Subscriptions.SingleStreamSubscription do
   @behaviour EventStore.Subscriptions.StreamSubscriptionProvider
 
-  alias EventStore.Storage
+  alias EventStore.{RecordedEvent,Storage}
   alias EventStore.Streams.Stream
 
-  def event_id(%EventStore.RecordedEvent{stream_version: stream_version}) do
-    stream_version
-  end
+  def extract_ack({_event_id, stream_version}), do: stream_version
+
+  def event_id(%RecordedEvent{stream_version: stream_version}), do: stream_version
 
   def last_ack(%EventStore.Storage.Subscription{last_seen_stream_version: last_seen_stream_version}) do
     last_seen_stream_version

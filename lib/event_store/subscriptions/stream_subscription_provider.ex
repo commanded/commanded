@@ -6,12 +6,18 @@ defmodule EventStore.Subscriptions.StreamSubscriptionProvider do
   @type event :: EventStore.RecordedEvent.t
   @type subscription :: EventStore.Storage.Subscription.t
   @type stream_uuid :: String.t
+  @type ack :: {event_id :: non_neg_integer(), stream_version :: non_neg_integer()}
   @type subscription_name :: String.t
   @type last_seen :: non_neg_integer()
   @type read_batch_size :: non_neg_integer()
 
   @doc """
-  Get the stream identity from the given event.
+  Get the last seen `event_id` or `stream_version` from the acknowledgement
+  """
+  @callback extract_ack(ack) :: non_neg_integer()
+
+  @doc """
+  Get the `event_id` or `stream_version` from the given event
   """
   @callback event_id(event) :: non_neg_integer()
 

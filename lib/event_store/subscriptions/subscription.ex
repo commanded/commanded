@@ -39,16 +39,18 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:notify_events, events})
   end
 
+  @doc """
+  Confirm receipt of the given events
+  """
   def ack(subscription, events) when is_list(events) do
     Subscription.ack(subscription, List.last(events))
   end
 
-  def ack(subscription, event_id) when is_integer(event_id) do
-    GenServer.cast(subscription, {:ack, event_id})
-  end
-
-  def ack(subscription, %RecordedEvent{event_id: event_id}) do
-    GenServer.cast(subscription, {:ack, event_id})
+  @doc """
+  Confirm receipt of the given event
+  """
+  def ack(subscription, %RecordedEvent{event_id: event_id, stream_version: stream_version}) do
+    GenServer.cast(subscription, {:ack, {event_id, stream_version}})
   end
 
   def caught_up(subscription, last_seen) do
@@ -111,13 +113,10 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, state}
   end
 
-  @doc """
-  Confirm receipt of an event by id
-  """
-  def handle_cast({:ack, last_seen_event_id}, %Subscription{subscription: subscription} = state) do
+  def handle_cast({:ack, ack}, %Subscription{subscription: subscription} = state) do
     subscription =
       subscription
-      |> StreamSubscription.ack(last_seen_event_id)
+      |> StreamSubscription.ack(ack)
 
     state = %Subscription{state | subscription: subscription}
 
