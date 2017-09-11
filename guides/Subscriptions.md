@@ -28,24 +28,79 @@ A subscriber can confirm receipt of each event in a batch by sending multiple ac
 
 A subscriber will not receive further published events until it has confirmed receipt of all received events. This provides back pressure to the subscription to prevent the subscriber from being overwhelmed with messages if it cannot keep up. The subscription will buffer events until the subscriber is ready to receive, or an overflow occurs. At which point it will move into a catch-up mode and query events and replay them from storage until caught up.
 
-### Example usage
+### Subscribe to all events
 
 Subscribe to events appended to all streams:
 
 ```elixir
-{:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self())
+{:ok, subscription} = EventStore.subscribe_to_all_streams("example_all_subscription", self())
 
 receive do
   {:events, events} ->
-    # ... process events & ack receipt    
+    # ... process events & ack receipt
     EventStore.ack(subscription, events)
 end
 ```
 
-Unsubscribe from a stream:
+Unsubscribe from all streams:
 
 ```elixir
-:ok = EventStore.unsubscribe_from_all_streams("example_subscription")
+:ok = EventStore.unsubscribe_from_all_streams("example_all_subscription")
+```
+
+### Subscribe to single stream events
+
+Subscribe to events appended to a *single* stream:
+
+```elixir
+stream_uuid = UUID.uuid4()
+{:ok, subscription} = EventStore.subscribe_to_stream(stream_uuid, "example_single_subscription", self())
+
+receive do
+  {:events, events} ->
+    # ... process events & ack receipt
+    EventStore.ack(subscription, events)
+end
+```
+
+Unsubscribe from a single stream:
+
+```elixir
+:ok = EventStore.unsubscribe_from_stream(stream_uuid, "example_single_subscription")
+```
+
+### Start subscription from a given position
+
+You can choose to receive events from a given starting position.
+
+The supported options are:
+
+  - `:origin` - Start receiving events from the beginning of the stream or all streams.
+  - `:current` - Subscribe to newly appended events only, skipping already persisted events.
+  - `event_id` or `stream_version` - Provide the event id (all streams) of stream version (single stream) to begin receiving events from.
+
+Example all stream subscription that will receive events appended after the subscription has been created:
+
+```elixir
+{:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self(), start_from: :current)
+```
+
+### Mapping events
+
+You can provide an event mapping function that runs in the subscription process, before sending the event to your subscriber. You can use this to change the data received.
+
+Subscribe to all streams and provide a `mapper` function that sends only the event data:
+
+```elixir
+{:ok, subscription} = EventStore.subscribe_to_all_streams("example_subscription", self(), mapper: fn %EventStore.RecordedEvent{data: data} -> {event_id, data} end)
+
+receive do
+  {:events, events} ->
+    # ... process events & ack receipt using last `event_id`
+    {event_id, _data} = List.last(events)
+
+    EventStore.ack(subscription, event_id)
+end
 ```
 
 ## Example subscriber
@@ -88,5 +143,3 @@ Start your subscriber process, which subscribes to all streams in the event stor
 ```elixir
 {:ok, subscriber} = Subscriber.start_link()
 ```
-
-Next: [Cluster](cluster.html)

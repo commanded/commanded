@@ -32,5 +32,3 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
       ```console
       $ mix event_store.create
       ```
-
-Next: [Using the EventStore](usage.html)

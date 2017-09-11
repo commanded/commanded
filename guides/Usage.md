@@ -85,5 +85,3 @@ all_events = EventStore.stream_all_forward() |> Enum.to_list()
 ```
 
 This will read *all* events into memory, it is for illustration only. Use the `Stream` functions to process the events in a memory efficient way.
-
-Next: [Subscriptions](subscriptions.html)
