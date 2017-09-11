@@ -15,6 +15,8 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
   end
 
   describe "single stream subscription" do
+    setup [:append_events_to_another_stream]
+
     test "subscribe to single stream from origin should receive all its events", %{subscription_name: subscription_name} do
       stream_uuid = UUID.uuid4
       events = EventFactory.create_events(1)
@@ -84,12 +86,35 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       :ok = Stream.append_to_stream(stream_uuid, 0, events)
 
       assert_receive {:events, received_mapped_events}
-      assert received_mapped_events == [1, 2, 3]
+      assert received_mapped_events == [4, 5, 6]
+    end
+
+    test "subscribe to single stream should continue receiving events after ack", %{subscription_name: subscription_name} do
+      stream_uuid = UUID.uuid4
+      initial_events = EventFactory.create_events(1)
+      new_events = EventFactory.create_events(1, 2)
+
+      {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
+      :ok = Stream.append_to_stream(stream_uuid, 0, initial_events)
+      :ok = Stream.append_to_stream(stream_uuid, 1, new_events)
+
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, self())
+
+      assert_receive {:events, received_events}
+      assert pluck(received_events, :data) == pluck(initial_events, :data)
+
+      Subscription.ack(subscription, received_events)
+
+      assert_receive {:events, received_events}
+      assert pluck(received_events, :data) == pluck(new_events, :data)
+
+      Subscription.ack(subscription, received_events)
+
+      refute_receive {:events, _received_events}
     end
   end
 
   describe "all stream subscription" do
-    @tag :wip
     test "subscribe to all streams should receive events from all streams", %{subscription_name: subscription_name} do
       stream1_uuid = UUID.uuid4
       stream2_uuid = UUID.uuid4
@@ -214,8 +239,6 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert length(remaining_received_events) == 3
       assert pluck(remaining_received_events, :data) == pluck(remaining_events, :data)
     end
-
-    # test "resume subscription to stream should skip already seen events", %{subscription_name: subscription_name}
   end
 
   describe "monitor single stream subscription" do
@@ -307,6 +330,15 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       refute_receive {:events, _received_events}
       assert Process.alive?(subscription) == false
     end
+  end
+
+  # append events to another stream so that for single stream subscription tests the
+  # event id does not match the stream version
+  def append_events_to_another_stream(_context) do
+    stream_uuid = UUID.uuid4()
+    events = EventFactory.create_events(3)
+
+    :ok = EventStore.append_to_stream(stream_uuid, 0, events)
   end
 
   defp pluck(enumerable, field) do

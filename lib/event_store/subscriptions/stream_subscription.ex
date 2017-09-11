@@ -1,7 +1,10 @@
 defmodule EventStore.Subscriptions.StreamSubscription do
   require Logger
 
-  alias EventStore.Storage
+  alias EventStore.{
+    RecordedEvent,
+    Storage,
+  }
   alias EventStore.Subscriptions.{
     AllStreamsSubscription,
     SingleStreamSubscription,
@@ -239,7 +242,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
         catch_up_pid = spawn_link(fn ->
           last_event =
             unseen_event_stream
-            |> Stream.chunk_by(&(&1.stream_id))
+            |> Stream.chunk_by(&chunk_by(&1))
             |> Stream.each(fn events ->
               notify_subscriber(data, events)
               wait_for_ack(events)
@@ -297,7 +300,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       ^next_ack ->
         # subscriber has ack'd last received event, so send pending
         pending_events
-        |> Enum.chunk_by(&(&1.stream_id))
+        |> Enum.chunk_by(&chunk_by(&1))
         |> Enum.each(&notify_subscriber(data, &1))
 
         %SubscriptionState{data|
@@ -309,6 +312,8 @@ defmodule EventStore.Subscriptions.StreamSubscription do
         data
     end
   end
+
+  defp chunk_by(%RecordedEvent{stream_id: stream_id, correlation_id: correlation_id}), do: {stream_id, correlation_id}
 
   defp notify_subscriber(%SubscriptionState{}, []), do: nil
   defp notify_subscriber(%SubscriptionState{subscriber: subscriber, mapper: mapper}, events) when is_function(mapper) do
