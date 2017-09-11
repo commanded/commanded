@@ -12,6 +12,12 @@
 
 Run the schema migration [v0.11.0.sql](scripts/upgrades/v0.11.0.sql) script against your event store database.
 
+## v0.10.1
+
+### Bug fixes
+
+- Fix for ack of last seen event in stream subscription ([#66](https://github.com/slashdotdash/eventstore/pull/66)).
+
 ## v0.10.0
 
 ### Enhancements
