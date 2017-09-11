@@ -1,4 +1,6 @@
 defmodule EventStore.Subscriptions.StreamSubscription do
+  @moduledoc false
+
   require Logger
 
   alias EventStore.{
@@ -304,7 +306,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       ^next_ack ->
         # subscriber has ack'd last received event, so send pending
         pending_events
-        |> Enum.chunk_by(&chunk_by(&1))
+        |> Enum.chunk_by(&chunk_by/1)
         |> Enum.each(&notify_subscriber(data, &1))
 
         %SubscriptionState{data|

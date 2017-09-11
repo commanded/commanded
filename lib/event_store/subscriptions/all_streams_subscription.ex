@@ -1,9 +1,10 @@
 defmodule EventStore.Subscriptions.AllStreamsSubscription do
+  @moduledoc false
+  
   @behaviour EventStore.Subscriptions.StreamSubscriptionProvider
 
   alias EventStore.{RecordedEvent,Storage}
   alias EventStore.Streams.AllStream
-  alias EventStore.Subscriptions.StreamSubscriptionProvider
 
   @all_stream "$all"
 
