@@ -111,6 +111,53 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       refute_receive {:events, _received_events}
     end
 
+    test "should support ack received events by `stream_version`", %{subscription_name: subscription_name} do
+      stream_uuid = UUID.uuid4
+      initial_events = EventFactory.create_events(1)
+      new_events = EventFactory.create_events(1, 2)
+
+      {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
+      :ok = Stream.append_to_stream(stream_uuid, 0, initial_events)
+      :ok = Stream.append_to_stream(stream_uuid, 1, new_events)
+
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, self())
+
+      assert_receive {:events, received_events}
+      assert pluck(received_events, :data) == pluck(initial_events, :data)
+
+      Subscription.ack(subscription, 1)
+
+      assert_receive {:events, received_events}
+      assert pluck(received_events, :data) == pluck(new_events, :data)
+
+      Subscription.ack(subscription, 2)
+
+      refute_receive {:events, _received_events}
+    end
+
+    test "should error when attempting to ack received events by invalid `stream_version`", %{subscription_name: subscription_name} do
+      stream_uuid = UUID.uuid4
+      initial_events = EventFactory.create_events(1)
+      new_events = EventFactory.create_events(1, 2)
+
+      {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
+      :ok = Stream.append_to_stream(stream_uuid, 0, initial_events)
+      :ok = Stream.append_to_stream(stream_uuid, 1, new_events)
+
+      {:ok, subscription} = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, self())
+
+      assert_receive {:events, received_events}
+      assert pluck(received_events, :data) == pluck(initial_events, :data)
+
+      Process.unlink(subscription)
+      ref = Process.monitor(subscription)
+
+      # ack an incorrect `stream_version` should crash subscription process
+      Subscription.ack(subscription, 2)
+
+      assert_receive {:DOWN, ^ref, _, _, _}
+    end
+
     # append events to another stream so that for single stream subscription tests the
     # event id does not match the stream version
     def append_events_to_another_stream(_context) do
@@ -245,6 +292,58 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert_receive {:events, remaining_received_events}
       assert length(remaining_received_events) == 3
       assert pluck(remaining_received_events, :data) == pluck(remaining_events, :data)
+    end
+
+    test "should support ack received events by `event_id`", %{subscription_name: subscription_name} do
+      stream1_uuid = UUID.uuid4
+      stream2_uuid = UUID.uuid4
+
+      stream1_events = EventFactory.create_events(1)
+      stream2_events = EventFactory.create_events(1)
+
+      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(subscription_name, self())
+
+      {:ok, _stream1} = Streams.Supervisor.open_stream(stream1_uuid)
+      {:ok, _stream2} = Streams.Supervisor.open_stream(stream2_uuid)
+
+      :ok = Stream.append_to_stream(stream1_uuid, 0, stream1_events)
+      :ok = Stream.append_to_stream(stream2_uuid, 0, stream2_events)
+
+      assert_receive {:events, stream1_received_events}
+      Subscription.ack(subscription, 1)
+
+      assert_receive {:events, stream2_received_events}
+
+      assert pluck(stream1_received_events, :data) == pluck(stream1_events, :data)
+      assert pluck(stream2_received_events, :data) == pluck(stream2_events, :data)
+      assert stream1_received_events != stream2_received_events
+    end
+
+    test "should error when attempting to ack received events by incorrect `event_id`", %{subscription_name: subscription_name} do
+      stream1_uuid = UUID.uuid4
+      stream2_uuid = UUID.uuid4
+
+      stream1_events = EventFactory.create_events(1)
+      stream2_events = EventFactory.create_events(1)
+
+      {:ok, _stream1} = Streams.Supervisor.open_stream(stream1_uuid)
+      {:ok, _stream2} = Streams.Supervisor.open_stream(stream2_uuid)
+
+      :ok = Stream.append_to_stream(stream1_uuid, 0, stream1_events)
+      :ok = Stream.append_to_stream(stream2_uuid, 0, stream2_events)
+
+      {:ok, subscription} = Subscriptions.subscribe_to_all_streams(subscription_name, self())
+
+      assert_receive {:events, stream1_received_events}
+      assert pluck(stream1_received_events, :data) == pluck(stream1_events, :data)
+
+      Process.unlink(subscription)
+      ref = Process.monitor(subscription)
+
+      # ack an incorrect `event_id` should crash subscription process
+      Subscription.ack(subscription, 2)
+
+      assert_receive {:DOWN, ^ref, _, _, _}
     end
   end
 
