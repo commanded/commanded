@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.1
+
+### Bug fixes
+
+- Fix for ack of last seen event in stream subscription ([#66](https://github.com/slashdotdash/eventstore/pull/66)).
+
 ## v0.10.0
 
 ### Enhancements
