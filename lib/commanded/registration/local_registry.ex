@@ -47,11 +47,7 @@ defmodule Commanded.Registration.LocalRegistry do
       :undefined ->
         via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
 
-        case GenServer.start_link(module, args, [name: via_name]) do
-          {:ok, pid} -> {:ok, pid}
-          {:error, {:already_started, pid}} -> {:ok, pid}
-          {:error, _reason} = reply -> reply
-        end
+        GenServer.start_link(module, args, [name: via_name])
 
       pid ->
         {:ok, pid}
