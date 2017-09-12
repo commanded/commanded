@@ -1,13 +1,16 @@
 defmodule EventStore.StorageCase do
   use ExUnit.CaseTemplate
-  use EventStore.Registration
+
+  alias EventStore.Registration
 
   setup do
-    before_reset(@registry)
+    registry = Registration.registry_provider()
+
+    before_reset(registry)
 
     EventStore.StorageInitializer.reset_storage!()
 
-    after_reset(@registry)
+    after_reset(registry)
 
     {:ok, conn} = EventStore.configuration() |> EventStore.Config.parse() |> Postgrex.start_link()
 

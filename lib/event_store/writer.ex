@@ -1,9 +1,11 @@
 defmodule EventStore.Writer do
   @moduledoc false
-  use EventStore.Registration
 
-  alias EventStore.RecordedEvent
-  alias EventStore.Storage
+  alias EventStore.{
+    RecordedEvent,
+    Registration,
+    Storage,
+  }
 
   @doc """
   Append the given list of recorded events to the stream
@@ -34,5 +36,5 @@ defmodule EventStore.Writer do
     end)
   end
 
-  defp publish_events(events, stream_uuid), do: @registry.publish_events(stream_uuid, events)
+  defp publish_events(events, stream_uuid), do: Registration.publish_events(stream_uuid, events)
 end

@@ -18,7 +18,9 @@ defmodule EventStore.Subscriptions.Supervisor do
   end
 
   def unsubscribe_from_stream(stream_uuid, subscription_name) do
-    case Registry.whereis_name(registry_name(stream_uuid, subscription_name)) do
+    name = registry_name(stream_uuid, subscription_name)
+
+    case Registry.whereis_name(name) do
       :undefined -> :ok
       subscription ->
         :ok = Subscription.unsubscribe(subscription)
@@ -35,6 +37,6 @@ defmodule EventStore.Subscriptions.Supervisor do
   end
 
   defp registry_name(stream_uuid, subscription_name) do
-    {EventStore.Subscriptions, {stream_uuid, subscription_name}}
+    {Subscription, {stream_uuid, subscription_name}}
   end
 end

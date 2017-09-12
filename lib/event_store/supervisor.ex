@@ -1,7 +1,8 @@
 defmodule EventStore.Supervisor do
   @moduledoc false
   use Supervisor
-  use EventStore.Registration
+
+  alias EventStore.Registration
 
   def start_link(config) do
     serializer = EventStore.configured_serializer()
@@ -11,13 +12,13 @@ defmodule EventStore.Supervisor do
 
   def init([config, serializer]) do
     children = [
-      Supervisor.child_spec({Registry, [keys: :unique, name: EventStore.Subscriptions]}, id: :event_store_subscriptions),
+      Supervisor.child_spec({Registry, [keys: :unique, name: EventStore.Subscriptions.Subscription]}, id: :event_store_subscriptions),
       Supervisor.child_spec({Registry, [keys: :duplicate, name: EventStore.Subscriptions.PubSub, partitions: System.schedulers_online]}, id: :event_store_pub_sub),
       {Postgrex, postgrex_opts(config)},
       {EventStore.Subscriptions.Supervisor, []},
       {EventStore.Streams.Supervisor, serializer},
       {EventStore.Publisher, serializer},
-    ] ++ @registry.child_spec()
+    ] ++ Registration.child_spec()
 
     Supervisor.init(children, strategy: :one_for_one)
   end

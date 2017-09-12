@@ -19,8 +19,15 @@ defmodule EventStore.Streams.Stream do
   ]
 
   def start_link(serializer, stream_uuid, opts \\ []) do
-    GenServer.start_link(__MODULE__, %Stream{serializer: serializer, stream_uuid: stream_uuid}, opts)
+    stream = %Stream{
+      serializer: serializer,
+      stream_uuid: stream_uuid,
+    }
+
+    GenServer.start_link(__MODULE__, stream, opts)
   end
+
+  def name(stream_uuid), do: {Stream, stream_uuid}
 
   @doc """
   Append a list of events to the stream, expected version is used for optimistic concurrency.
@@ -52,8 +59,6 @@ defmodule EventStore.Streams.Stream do
   def close(stream_uuid) do
     GenServer.stop(via_name(stream_uuid), :shutdown)
   end
-
-  def name(stream_uuid), do: {Stream, stream_uuid}
 
   def init(%Stream{stream_uuid: stream_uuid} = state) do
     GenServer.cast(self(), {:open_stream, stream_uuid})
