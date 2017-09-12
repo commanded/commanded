@@ -206,6 +206,10 @@ defmodule EventStore.Subscriptions.StreamSubscription do
       next_state(:unsubscribed, data)
     end
 
+    defevent caught_up(_last_seen), data: %SubscriptionState{} = data do
+      next_state(:unsubscribed, data)
+    end
+
     defevent unsubscribe, data: %SubscriptionState{} = data do
       next_state(:unsubscribed, data)
     end
@@ -213,6 +217,22 @@ defmodule EventStore.Subscriptions.StreamSubscription do
 
   defstate failed do
     defevent notify_events(_events), data: %SubscriptionState{} = data do
+      next_state(:failed, data)
+    end
+
+    defevent ack(_ack), data: %SubscriptionState{} = data do
+      next_state(:failed, data)
+    end
+
+    defevent catch_up, data: %SubscriptionState{} = data do
+      next_state(:failed, data)
+    end
+
+    defevent caught_up(_last_seen), data: %SubscriptionState{} = data do
+      next_state(:failed, data)
+    end
+
+    defevent unsubscribe, data: %SubscriptionState{} = data do
       next_state(:failed, data)
     end
   end

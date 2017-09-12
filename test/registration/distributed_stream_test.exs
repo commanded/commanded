@@ -1,9 +1,6 @@
 defmodule EventStore.Registration.DistributedStreamTest do
   use EventStore.StorageCase
 
-  alias EventStore.Streams.Stream
-  alias EventStore.Registration.DistributedRegistry
-
   @moduletag :distributed
 
   describe "swarm callbacks" do
