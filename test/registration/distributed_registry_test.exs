@@ -1,8 +1,8 @@
-defmodule EventStore.Registration.DistributedTest do
+defmodule EventStore.Registration.DistributedRegistryTest do
   use EventStore.StorageCase
 
   alias EventStore.{Cluster,Streams}
-  alias EventStore.Registration.Distributed
+  alias EventStore.Registration.DistributedRegistry
 
   @moduletag :distributed
 
@@ -73,6 +73,6 @@ defmodule EventStore.Registration.DistributedTest do
   end
 
   defp whereis_name(node, name) do
-    :rpc.call(node, Distributed, :whereis_name, [name], :infinity)
+    :rpc.call(node, DistributedRegistry, :whereis_name, [name], :infinity)
   end
 end

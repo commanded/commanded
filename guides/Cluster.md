@@ -41,12 +41,6 @@ EventStore supports running on a cluster of nodes. It uses the [Swarm](https://h
 
     This is to ensure consistency during a network partition. The `static_quorum_size` setting defines the minimum number of nodes that must be connected in the cluster to allow process registration and distribution. If there are fewer nodes currently available than the quorum size, any calls to the `EventStore` will block until enough nodes have started.
 
-  5. Compile the EventStore to include the code used for process distribution:
-
-      ```console
-      $ mix deps.compile eventstore --force
-      ```
-
 ## Cluster formation on node start
 
 You can configure the `:kernel` application to wait for cluster formation before starting your application during node start up. The `sync_nodes_optional` configuration specifies which nodes to attempt to connect to within the `sync_nodes_timeout` window, defined in milliseconds, before continuing with startup. There is also a `sync_nodes_mandatory` setting which can be used to enforce all nodes are connected within the timeout window or else the node terminates.
