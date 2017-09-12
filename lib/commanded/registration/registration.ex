@@ -9,6 +9,13 @@ defmodule Commanded.Registration do
   @callback child_spec() :: [:supervisor.child_spec()]
 
   @doc """
+  Starts a uniquely named child process of a supervisor using the given module and args.
+
+  Registers the pid with the given name.
+  """
+  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+
+  @doc """
   Starts a uniquely named `GenServer` process for the given module and args.
 
   Registers the pid with the given name.
@@ -30,6 +37,10 @@ defmodule Commanded.Registration do
   @doc false
   @spec child_spec() :: [:supervisor.child_spec()]
   def child_spec, do: registry_provider().child_spec()
+
+  @doc false
+  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  def start_child(name, supervisor, args), do: registry_provider().start_child(name, supervisor, args)
 
   @doc false
   @spec start_link(name :: term(), module :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}

@@ -7,6 +7,9 @@ defmodule Commanded.Aggregates.Supervisor do
 
   require Logger
 
+  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Registration
+
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
@@ -24,7 +27,9 @@ defmodule Commanded.Aggregates.Supervisor do
 
     Logger.debug(fn -> "Locating aggregate process for `#{inspect aggregate_module}` with UUID #{inspect aggregate_uuid}" end)
 
-    case Supervisor.start_child(__MODULE__, [aggregate_module, aggregate_uuid]) do
+    name = Aggregate.name(aggregate_uuid)
+
+    case Registration.start_child(name, __MODULE__, [aggregate_module, aggregate_uuid]) do
       {:ok, _pid} -> {:ok, aggregate_uuid}
       {:ok, _pid, _info} -> {:ok, aggregate_uuid}
       {:error, {:already_started, _pid}} -> {:ok, aggregate_uuid}
