@@ -111,6 +111,10 @@ defmodule EventStore.Streams.Stream do
     {:reply, {:ok, stream_version}, state}
   end
 
+  def handle_info(:timeout, %Stream{} = state) do
+    {:stop, :normal, state}
+  end
+
   defp start_from_stream_version(%Stream{}, :origin), do: 0
   defp start_from_stream_version(%Stream{stream_version: stream_version}, :current), do: stream_version
   defp start_from_stream_version(%Stream{}, start_from) when is_integer(start_from), do: start_from
