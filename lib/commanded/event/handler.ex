@@ -134,7 +134,7 @@ defmodule Commanded.Event.Handler do
       @behaviour Commanded.Event.Handler
 
       @opts unquote(opts) || []
-      @name @opts[:name] || raise "#{inspect __MODULE__} expects :name to be given"
+      @name Commanded.Event.Handler.parse_name(@opts[:name])
 
       @doc false
       def start_link(opts \\ []) do
@@ -150,6 +150,15 @@ defmodule Commanded.Event.Handler do
       def init, do: :ok
 
       defoverridable [init: 0]
+    end
+  end
+
+  def parse_name(nil), do: raise "#{inspect __MODULE__} expects :name to be given"
+  def parse_name(name) when is_atom(name), do: inspect(name)
+  def parse_name(name) do
+    case String.valid?(name) do
+      true -> name
+      _ -> raise "#{inspect __MODULE__} expects :name to be an atom or valid string, but was: #{inspect name}"
     end
   end
 
