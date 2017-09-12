@@ -1,4 +1,5 @@
 defmodule Commanded.ExampleDomain.WithdrawMoneyHandler do
+  @moduledoc false
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
 

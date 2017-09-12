@@ -1,4 +1,5 @@
 defmodule Commanded.Aggregates.ExampleAggregate do
+  @moduledoc false
   defstruct [
     items: [],
     last_index: 0,

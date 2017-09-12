@@ -1,4 +1,5 @@
 defmodule Commanded.Commands.TimeoutCommandHandler do
+  @moduledoc false
   @behaviour Commanded.Commands.Handler
 
   alias Commanded.Commands.{TimeoutAggregateRoot,TimeoutCommand}

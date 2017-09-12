@@ -1,4 +1,5 @@
 defmodule Commanded.Aggregates.BankRouter do
+  @moduledoc false
   use Commanded.Commands.Router
 
   alias Commanded.Aggregates.BankAccountLifespan

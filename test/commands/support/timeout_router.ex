@@ -1,4 +1,5 @@
 defmodule Commanded.Commands.TimeoutRouter do
+  @moduledoc false
   use Commanded.Commands.Router
 
   alias Commanded.Commands.{TimeoutAggregateRoot,TimeoutCommandHandler,TimeoutCommand}

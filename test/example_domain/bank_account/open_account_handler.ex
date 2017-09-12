@@ -1,4 +1,5 @@
 defmodule Commanded.ExampleDomain.OpenAccountHandler do
+  @moduledoc false
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount}
 

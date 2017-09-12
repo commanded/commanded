@@ -1,4 +1,5 @@
 defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
+  @moduledoc false
   use Commanded.ProcessManagers.ProcessManager,
     name: "transfer_money_process_manager",
     router: Commanded.ExampleDomain.BankRouter

@@ -63,7 +63,7 @@ defmodule Commanded.Event.HandleEventTest do
 
     wait_for_event BankAccountOpened
 
-    {:ok, _} = AppendingEventHandler.start_link(start_from: :current)
+    {:ok, _handler} = AppendingEventHandler.start_link(start_from: :current)
 
     {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
@@ -88,7 +88,7 @@ defmodule Commanded.Event.HandleEventTest do
 
     {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
-    {:ok, _} = AppendingEventHandler.start_link(start_from: :origin)
+    {:ok, _handler} = AppendingEventHandler.start_link(start_from: :origin)
 
     {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 

@@ -1,4 +1,5 @@
 defmodule Commanded.ExampleDomain.BankRouter do
+  @moduledoc false
   use Commanded.Commands.Router
 
   alias Commanded.ExampleDomain.{

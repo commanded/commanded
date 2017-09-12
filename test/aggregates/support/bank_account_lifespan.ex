@@ -1,4 +1,5 @@
 defmodule Commanded.Aggregates.BankAccountLifespan do
+  @moduledoc false
   @behaviour Commanded.Aggregates.AggregateLifespan
 
   alias Commanded.ExampleDomain.BankAccount.Commands.{

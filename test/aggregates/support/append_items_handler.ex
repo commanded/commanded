@@ -1,4 +1,5 @@
 defmodule Commanded.Aggregates.AppendItemsHandler do
+  @moduledoc false
   @behaviour Commanded.Commands.Handler
 
   alias Commanded.Aggregates.ExampleAggregate

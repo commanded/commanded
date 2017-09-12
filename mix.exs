@@ -73,10 +73,13 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
     [
       files: [
         "lib", "mix.exs", "README*", "LICENSE*",
-        "test/helpers",
+        "test/aggregates",
+        "test/commands",
+        "test/event",
         "test/event_store_adapter",
         "test/example_domain/bank_account",
         "test/example_domain/money_transfer",
+        "test/helpers",
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
