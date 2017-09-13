@@ -1,8 +1,5 @@
 defmodule Commanded.ProcessManagers.ProcessRouter do
-  @moduledoc """
-  Process router is responsible for starting, continuing and completing process managers in response to raised domain events.
-  """
-
+  @moduledoc false
   use GenServer
 
   require Logger

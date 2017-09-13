@@ -1,8 +1,5 @@
 defmodule Commanded.ProcessManagers.ProcessManagerInstance do
-  @moduledoc """
-  Defines an instance of a process manager.
-  """
-
+  @moduledoc false
   use GenServer
 
   require Logger

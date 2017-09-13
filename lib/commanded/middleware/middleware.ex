@@ -4,7 +4,7 @@ defmodule Commanded.Middleware do
 
   Examples include command validation, authorization, and logging.
 
-  Implement the `Commanded.Middleware` behaviour in your module and define the `before_dispatch`, `after_dispatch`, and `after_failure` callback functions.
+  Implement the `Commanded.Middleware` behaviour in your module and define the `c:before_dispatch/1`, `c:after_dispatch/1`, and `c:after_failure/1` callback functions.
 
   ## Example middleware
 

@@ -1,8 +1,5 @@
 defmodule Commanded.ProcessManagers.Supervisor do
-  @moduledoc """
-  Supervise zero, one or more process manager instances
-  """
-
+  @moduledoc false
   use Supervisor
   require Logger
 

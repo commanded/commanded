@@ -1,4 +1,5 @@
 defmodule Commanded.Commands.Dispatcher do
+  @moduledoc false
   use GenServer
   require Logger
 
@@ -6,6 +7,7 @@ defmodule Commanded.Commands.Dispatcher do
   alias Commanded.Middleware.Pipeline
 
   defmodule Payload do
+    @moduledoc false
     defstruct [
       command: nil,
       handler_module: nil,

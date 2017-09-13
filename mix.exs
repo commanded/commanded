@@ -1,27 +1,30 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
+  @version "0.13.0"
+
   def project do
     [
       app: :commanded,
-      version: "0.13.0",
-      elixir: "~> 1.5",
+      version: @version,
+      elixir: "~> 1.4",
       elixirc_paths: elixirc_paths(Mix.env),
+      deps: deps(),
       description: description(),
+      docs: docs(),
       package: package(),
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
       consolidate_protocols: Mix.env == :prod,
-      deps: deps(),
+      name: "Commanded",
+      source_url: "https://github.com/slashdotdash/commanded",
     ]
   end
 
   def application do
     [
-      applications: [
+      extra_applications: [
         :logger,
-        :poison,
-        :uuid,
       ],
       mod: {Commanded.Application, []}
     ]
@@ -32,8 +35,8 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.15", only: :dev},
-      {:mix_test_watch, "~> 0.2", only: :dev},
+      {:ex_doc, "~> 0.16", only: :dev},
+      {:mix_test_watch, "~> 0.5", only: :dev},
       {:poison, "~> 3.1"},
       {:uuid, "~> 1.1"},
     ]
@@ -41,8 +44,29 @@ defmodule Commanded.Mixfile do
 
   defp description do
 """
-Command handling middleware for CQRS applications
+Use Commanded to build your own Elixir applications following the CQRS/ES pattern.
 """
+  end
+
+  defp docs do
+    [
+      main: "Commanded",
+      canonical: "http://hexdocs.pm/commanded",
+      source_ref: "v#{@version}",
+      extra_section: "GUIDES",
+      extras: [
+        "guides/Getting Started.md",
+        "guides/Choosing an Event Store.md",
+        "guides/Usage.md",
+        "guides/Aggregate Roots.md",
+        "guides/Commands.md",
+        "guides/Events.md",
+        "guides/Process Managers.md",
+        "guides/Supervision.md",
+        "guides/Serialization.md",
+        "guides/Read Model Projections.md",
+      ],
+    ]
   end
 
   defp package do
@@ -51,7 +75,8 @@ Command handling middleware for CQRS applications
         "lib", "mix.exs", "README*", "LICENSE*",
         "test/helpers",
         "test/event_store_adapter",
-        "test/example_domain/bank_account", "test/example_domain/money_transfer",
+        "test/example_domain/bank_account",
+        "test/example_domain/money_transfer",
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],

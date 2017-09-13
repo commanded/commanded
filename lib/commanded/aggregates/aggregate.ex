@@ -1,15 +1,19 @@
 defmodule Commanded.Aggregates.Aggregate do
   @moduledoc """
-  Process to provide access to a single event sourced aggregate root.
+  Aggregate is a `GenServer` process used to provide access to an instance of an event sourced aggregate root.
+  It allows execution of commands against an aggregate instance, and handles persistence of events to the configured event store.
 
-  Allows execution of commands against an aggregate and handles persistence of events to the event store.
+  Concurrent commands sent to an aggregate instance are serialized and executed in the order received.
+
+  The `Commanded.Commands.Router` module will locate, or start, an aggregate instance when a command is dispatched.
+  By default, it will run indefinitely once started. Its lifespan may be controlled by using the `Commanded.Aggregates.AggregateLifespan` behaviour.
   """
 
   use GenServer
 
   require Logger
 
-  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Aggregates.{Aggregate,DefaultLifespan}
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
 
@@ -23,12 +27,6 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_state: nil,
     aggregate_version: 0,
   ]
-
-  defmodule DefaultLifespan do
-    @behaviour Commanded.Aggregates.AggregateLifespan
-
-    def after_command(_), do: :infinity
-  end
 
   def start_link(aggregate_module, aggregate_uuid) do
     name = via_tuple(aggregate_uuid)
@@ -51,39 +49,47 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc """
-  Execute the given command against the aggregate, optionally providing a timeout.
+  Execute the given command against the aggregate, optionally providing a timeout and lifespan.
+
+  - `aggregate_uuid` uniquely identifies an instance of the aggregate.
+
+  - `command` is the command to execute, typically a struct (e.g. `%OpenBankAccount{...}`).
+
+  - `handler` is the module that handles the command.
+    It may be the aggregate module, but does not have to be as you can specify and use a command handler module.
+
+  - `function` is the name of function, as an atom, that handles the command.
+    The default value is `:execute`, used to support command dispatch directly to the aggregate module.
+
   - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
     The default value is 5000.
 
-  Returns `{:ok, aggregate_version}` on success, or `{:error, reason}` on failure
+  - `lifespan` is a module implementing the `Commanded.Aggregates.AggregateLifespan` behaviour to control the aggregate instance process lifespan.
+    The default value, `Commanded.Aggregates.DefaultLifespan`, keeps the process running indefinitely.
+
+  Returns `{:ok, aggregate_version}` on success, or `{:error, reason}` on failure.
   """
   def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000, lifespan \\ DefaultLifespan) do
     GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command, lifespan}, timeout)
   end
 
-  @doc """
-  Access the aggregate's state
-  """
+  @doc false
   def aggregate_state(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_state})
+
+  @doc false
   def aggregate_state(aggregate_uuid, timeout), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_state}, timeout)
 
-  @doc """
-  Access the aggregate's version
-  """
+  @doc false
   def aggregate_version(aggregate_uuid), do: GenServer.call(via_tuple(aggregate_uuid), {:aggregate_version})
 
-  @doc """
-  Load any existing events for the aggregate from storage and repopulate the state using those events
-  """
+  @doc false
   def handle_cast({:populate_aggregate_state}, %Aggregate{} = state) do
     state = populate_aggregate_state(state)
 
     {:noreply, state}
   end
 
-  @doc """
-  Execute the given command, using the provided handler, against the current aggregate state
-  """
+  @doc false
   def handle_call({:execute_command, handler, function, command, lifespan}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(handler, function, command, state)
 
@@ -102,6 +108,7 @@ defmodule Commanded.Aggregates.Aggregate do
     {:stop, :normal, state}
   end
 
+  # Load any existing events for the aggregate from storage and repopulate the state using those events
   defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do
     rebuild_from_events(%Aggregate{state |
       aggregate_version: 0,
@@ -109,7 +116,7 @@ defmodule Commanded.Aggregates.Aggregate do
     })
   end
 
-  # load events from the event store, in batches, to rebuild the aggregate state
+  # Load events from the event store, in batches, to rebuild the aggregate state
   defp rebuild_from_events(%Aggregate{aggregate_uuid: aggregate_uuid, aggregate_module: aggregate_module} = state) do
     case EventStore.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
       {:error, :stream_not_found} ->

@@ -8,6 +8,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   use GenServer
 
   defmodule State do
+    @moduledoc false
     defstruct [
       persisted_events: [],
       streams: %{},
@@ -18,6 +19,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   defmodule Subscription do
+    @moduledoc false
     defstruct [
       name: nil,
       subscriber: nil,

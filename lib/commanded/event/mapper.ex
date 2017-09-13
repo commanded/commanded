@@ -1,8 +1,5 @@
 defmodule Commanded.Event.Mapper do
-  @moduledoc """
-  Map raw events to event data structs ready to be persisted to the event store.
-  """
-
+  @moduledoc false
   alias Commanded.EventStore.TypeProvider
   alias Commanded.EventStore.{
     EventData,

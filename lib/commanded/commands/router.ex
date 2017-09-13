@@ -15,7 +15,9 @@ defmodule Commanded.Commands.Router do
   The command handler module must implement a `handle/2` function that receives the aggregate's state and the command to execute.
   It should delegate the command to the aggregate.
 
-  It is also possible to route a command directly to an aggregate root. Without requiring an intermediate command handler.
+  ## Dispatch command directly to an aggregate root
+
+  You can route a command directly to an aggregate root, without requiring an intermediate command handler.
 
   ## Example
 
@@ -25,9 +27,9 @@ defmodule Commanded.Commands.Router do
         dispatch OpenAccount, to: BankAccount, identity: :account_number
       end
 
-  The aggregate root must implement an `execute/2` function that receives the aggregate's state and the command to execute.
+  The aggregate root must implement an `execute/2` function that receives the aggregate's state and the command being executed.
 
-  ### Aggregate version
+  ## Aggregate version
 
   You can optionally choose to include the aggregate's version as part of the dispatch result by setting `include_aggregate_version` true.
 
@@ -44,7 +46,7 @@ defmodule Commanded.Commands.Router do
       @registered_commands []
       @registered_middleware []
       @default_dispatch_timeout 5_000
-      @default_lifespan Commanded.Aggregates.Aggregate.DefaultLifespan
+      @default_lifespan Commanded.Aggregates.DefaultLifespan
       @include_aggregate_version false
     end
   end
@@ -53,7 +55,21 @@ defmodule Commanded.Commands.Router do
   @doc """
   Include the given middleware module to be called before and after success or failure of each command dispatch
 
-  Middleware modules are executed in the order they’ve been defined.
+  The middleware module must implement the `Commanded.Middleware` behaviour.
+
+  Middleware modules are executed in the order they are defined.
+
+  ## Example
+
+      defmodule BankingRouter do
+        use Commanded.Commands.Router
+
+        middleware CommandLogger
+        middleware MyCommandValidator
+        middleware AuthorizeCommand
+
+        dispatch [OpenAccount,DepositMoney] to: BankAccount, identity: :account_number
+      end
   """
   defmacro middleware(middleware_module) do
     quote do
@@ -62,7 +78,7 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc """
-  Dispatch the given command, or list of commands, to the corresponding handler for a given aggregate root
+  Configure the command, or list of commands, to be dispatched to the corresponding handler for a given aggregate root
   """
   defmacro dispatch(command_module_or_modules, opts) do
     opts = parse_opts(opts, [])
@@ -78,6 +94,7 @@ defmodule Commanded.Commands.Router do
 
   @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan]
 
+  @doc false
   defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan) do
     quote do
       if Enum.member?(@registered_commands, unquote(command_module)) do

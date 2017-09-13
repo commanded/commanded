@@ -1,4 +1,5 @@
 defmodule Commanded.Supervisor do
+  @moduledoc false
   use Supervisor
 
   import Logger
