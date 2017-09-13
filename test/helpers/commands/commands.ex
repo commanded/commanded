@@ -1,6 +1,6 @@
 defmodule Commanded.Helpers.Commands do
   @moduledoc false
-  
+
   defmodule IncrementCount do
     @moduledoc false
     defstruct [aggregate_uuid: nil, by: 1]

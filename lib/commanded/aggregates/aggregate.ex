@@ -41,6 +41,7 @@ defmodule Commanded.Aggregates.Aggregate do
     GenServer.start_link(__MODULE__, aggregate, opts)
   end
 
+  @doc false
   def name(aggregate_uuid), do: {Aggregate, aggregate_uuid}
 
   def init(%Aggregate{} = state) do

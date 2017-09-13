@@ -15,6 +15,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   alias Commanded.Subscriptions
 
   defmodule State do
+    @moduledoc false
     defstruct [
       command_dispatcher: nil,
       consistency: nil,

@@ -1,6 +1,10 @@
 defmodule Commanded.Registration do
   @moduledoc """
-  Process registry specification
+  Defines a behaviour for a process registry to be used by Commanded.
+
+  By default, Commanded will use a local process registry, defined in `Commanded.Registration.LocalRegistry`, that uses Elixir's `Registry` module for local process registration.
+  This limits Commanded to only run on a single node.
+  However the `Commanded.Registration` behaviour can be implemented by a library to provide distributed process registration to support running on a cluster of nodes.
   """
 
   @doc """
