@@ -158,7 +158,7 @@ defmodule Commanded.Event.Handler do
       @behaviour Commanded.Event.Handler
 
       @opts unquote(opts) || []
-      @name Commanded.Event.Handler.parse_name(@opts[:name])
+      @name Commanded.Event.Handler.parse_name(__MODULE__, @opts[:name])
 
       @doc false
       def start_link(opts \\ []) do
@@ -177,14 +177,10 @@ defmodule Commanded.Event.Handler do
     end
   end
 
-  def parse_name(nil), do: raise "#{inspect __MODULE__} expects :name to be given"
-  def parse_name(name) when is_atom(name), do: inspect(name)
-  def parse_name(name) do
-    case String.valid?(name) do
-      true -> name
-      _ -> raise "#{inspect __MODULE__} expects :name to be an atom or valid string, but was: #{inspect name}"
-    end
-  end
+  @doc false
+  def parse_name(module, name) when name in [nil, ""], do: raise "#{inspect module} expects `:name` to be given"
+  def parse_name(_module, name) when is_bitstring(name), do: name
+  def parse_name(_module, name), do: inspect(name)
 
   # include default fallback function at end, with lowest precedence
   @doc false

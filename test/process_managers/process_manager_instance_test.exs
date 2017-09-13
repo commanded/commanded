@@ -45,4 +45,36 @@ defmodule Commanded.ProcessManager.ProcessManagerInstanceTest do
     # should send ack to process router after processing event
     assert_receive({:"$gen_cast", {:ack_event, ^event}}, 1_000)
   end
+
+  test "should ensure a process manager name is provided" do
+    assert_raise RuntimeError, "UnnamedProcessManager expects `:name` to be given", fn ->
+      Code.eval_string """
+        defmodule UnnamedProcessManager do
+          use Commanded.ProcessManagers.ProcessManager,
+            router: Commanded.ExampleDomain.BankRouter
+        end
+      """
+    end
+  end
+
+  test "should ensure a process manager router is provided" do
+    assert_raise RuntimeError, "NoRouterProcessManager expects `:router` to be given", fn ->
+      Code.eval_string """
+        defmodule NoRouterProcessManager do
+          use Commanded.ProcessManagers.ProcessManager,
+            name: "MyProcessManager"
+        end
+      """
+    end
+  end
+
+  test "should allow using process manager module as name" do
+    Code.eval_string """
+      defmodule MyProcessManager do
+        use Commanded.ProcessManagers.ProcessManager,
+          name: __MODULE__,
+          router: Commanded.ExampleDomain.BankRouter
+      end
+    """
+  end
 end

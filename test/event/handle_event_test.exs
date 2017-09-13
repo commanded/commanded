@@ -129,4 +129,48 @@ defmodule Commanded.Event.HandleEventTest do
       assert pluck(AppendingEventHandler.received_metadata(), :stream_version) == [1, 2]
     end)
 	end
+
+  describe "event handler name" do
+    test "should parse string" do
+      assert Commanded.Event.Handler.parse_name(__MODULE__, "foo") == "foo"
+    end
+
+    test "should parse atom to string" do
+      assert Commanded.Event.Handler.parse_name(__MODULE__, :foo) == ":foo"
+    end
+
+    test "should parse tuple to string" do
+      assert Commanded.Event.Handler.parse_name(__MODULE__, {:foo, :bar}) == "{:foo, :bar}"
+    end
+
+    test "should error when parsing empty string" do
+      assert_raise RuntimeError, fn ->
+        Commanded.Event.Handler.parse_name(__MODULE__, "")
+      end
+    end
+
+    test "should error when parsing `nil`" do
+      assert_raise RuntimeError, fn ->
+        Commanded.Event.Handler.parse_name(__MODULE__, nil)
+      end
+    end
+  end
+
+  test "should ensure an event handler name is provided" do
+    assert_raise RuntimeError, "UnnamedEventHandler expects `:name` to be given", fn ->
+      Code.eval_string """
+        defmodule UnnamedEventHandler do
+          use Commanded.Event.Handler
+        end
+      """
+    end
+  end
+
+  test "should allow using event handler module as name" do
+    Code.eval_string """
+      defmodule EventHandler do
+        use Commanded.Event.Handler, name: __MODULE__
+      end
+    """
+  end
 end
