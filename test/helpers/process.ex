@@ -1,4 +1,5 @@
 defmodule Commanded.Helpers.Process do
+  @moduledoc false
   import ExUnit.Assertions
 
   @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
@@ -13,7 +14,7 @@ defmodule Commanded.Helpers.Process do
     ref = Process.monitor(pid)
     assert_receive {:DOWN, ^ref, _, _, _}, 5_000
   end
-  
+
   def shutdown(aggregate_uuid) do
     pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, aggregate_uuid}])
     shutdown(pid)

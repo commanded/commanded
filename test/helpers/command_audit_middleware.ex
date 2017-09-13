@@ -1,7 +1,9 @@
 defmodule Commanded.Helpers.CommandAuditMiddleware do
+  @moduledoc false
   @behaviour Commanded.Middleware
 
   defmodule AuditLog do
+    @moduledoc false
     defstruct [
       dispatched: [],
       succeeded: [],

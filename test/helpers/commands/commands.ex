@@ -1,15 +1,37 @@
 defmodule Commanded.Helpers.Commands do
+  @moduledoc false
   defmodule IncrementCount do
+    @moduledoc false
     defstruct [aggregate_uuid: nil, by: 1]
   end
 
-  defmodule Fail, do: defstruct [:aggregate_uuid]
-  defmodule RaiseError, do: defstruct [:aggregate_uuid]
-  defmodule Timeout, do: defstruct [:aggregate_uuid]
-  defmodule Validate, do: defstruct [:aggregate_uuid, :valid?]
-  defmodule CountIncremented, do: defstruct [:count]
+  defmodule Fail do
+    @moduledoc false
+    defstruct [:aggregate_uuid]
+  end
+
+  defmodule RaiseError do
+    @moduledoc false
+    defstruct [:aggregate_uuid]
+  end
+
+  defmodule Timeout do
+    @moduledoc false
+    defstruct [:aggregate_uuid]
+  end
+
+  defmodule Validate do
+    @moduledoc false
+    defstruct [:aggregate_uuid, :valid?]
+  end
+
+  defmodule CountIncremented do
+    @moduledoc false
+    defstruct [:count]
+  end
 
   defmodule CounterAggregateRoot do
+    @moduledoc false
     defstruct [count: 0]
 
     def increment(%CounterAggregateRoot{count: count}, increment_by)
@@ -24,6 +46,7 @@ defmodule Commanded.Helpers.Commands do
   end
 
   defmodule CommandHandler do
+    @moduledoc false
     @behaviour Commanded.Commands.Handler
 
     def handle(%CounterAggregateRoot{} = aggregate, %IncrementCount{by: by}) do

@@ -1,4 +1,5 @@
 defmodule Commanded.Event.AppendingEventHandler do
+  @moduledoc false
   @behaviour Commanded.Event.Handler
 
   def start_link do

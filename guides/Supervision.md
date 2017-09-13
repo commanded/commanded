@@ -16,7 +16,7 @@ defmodule Bank.Supervisor do
       worker(TransferMoneyProcessManager, [[start_from: :current]], id: :transfer_money_process_manager),
 
       # event handler
-      worker(AccountBalanceHandler, [start_from: :origin], id: :account_balance_handler)
+      worker(AccountBalanceHandler, [[start_from: :origin]], id: :account_balance_handler)
     ]
 
     supervise(children, strategy: :one_for_one)
