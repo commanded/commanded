@@ -67,6 +67,19 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     GenServer.call(process_router, {:process_instance, process_uuid})
   end
 
+  @doc """
+  Fetch the `process_uuid` and pid of all process manager instances
+  """
+  def process_instances(process_router) do
+    GenServer.call(process_router, {:process_instances})
+  end
+
+  def handle_call({:process_instances}, _from, %State{process_managers: process_managers} = state) do
+    reply = Enum.map(process_managers, fn {process_uuid, pid} -> {process_uuid, pid} end)
+
+    {:reply, reply, state}
+  end
+
   def handle_call({:process_instance, process_uuid}, _from, %State{process_managers: process_managers} = state) do
     reply = case Map.get(process_managers, process_uuid) do
       nil -> {:error, :process_manager_not_found}

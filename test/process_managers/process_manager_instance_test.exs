@@ -5,6 +5,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.ProcessManagers.{ProcessManagerInstance,NullRouter}
+  alias Commanded.Helpers.ProcessHelper
 
   test "process manager handles an event" do
     transfer_uuid = UUID.uuid4
@@ -29,6 +30,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
     # should send ack to process router after processing event
     assert_receive({:"$gen_cast", {:ack_event, ^event}}, 1_000)
+
+    ProcessHelper.shutdown(process_manager)
   end
 
   test "should ensure a process manager name is provided" do

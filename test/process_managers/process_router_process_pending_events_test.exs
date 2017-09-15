@@ -107,15 +107,20 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
 
     {:ok, process_router} = ExampleProcessManager.start_link(start_from: :current)
 
+    assert ProcessRouter.process_instances(process_router) == []
+
     :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
     :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
 
     wait_for_event Interested, fn event -> event.index == 6 end
-    :timer.sleep 100
 
-    process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
-    %{items: items} = ProcessManagerInstance.process_state(process_instance)
-    assert items == [1, 2, 3, 4, 5, 6]
+    Wait.until(fn ->
+      process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
+      refute process_instance == {:error, :process_manager_not_found}
+
+      %{items: items} = ProcessManagerInstance.process_state(process_instance)
+      assert items == [1, 2, 3, 4, 5, 6]
+    end)
   end
 
   test "should stop process router when handling event errors" do
