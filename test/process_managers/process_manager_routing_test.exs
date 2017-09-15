@@ -1,15 +1,16 @@
 defmodule Commanded.ProcessManager.ProcessManagerRoutingTest do
   use Commanded.StorageCase
 
-  alias Commanded.ExampleDomain.BankRouter
-  alias Commanded.ExampleDomain.TransferMoneyProcessManager
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount}
-  alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
-  alias Commanded.ExampleDomain.MoneyTransfer.Commands.{TransferMoney}
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.{MoneyTransferRequested}
-
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.ExampleDomain.BankRouter
+  alias Commanded.ExampleDomain.TransferMoneyProcessManager
+  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
+  alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
+
+  @tag :wip
   test "should start a process manager in response to an event" do
     account_number1 = UUID.uuid4
     account_number2 = UUID.uuid4

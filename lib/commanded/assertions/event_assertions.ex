@@ -7,13 +7,11 @@ defmodule Commanded.Assertions.EventAssertions do
 
   alias Commanded.EventStore
 
-  @default_receive_timeout 1_000
-
   @doc """
   Wait for an event of the given event type to be published
   """
   def wait_for_event(event_type) do
-    wait_for_event(event_type, fn _event -> true end, @default_receive_timeout)
+    wait_for_event(event_type, fn _event -> true end, default_receive_timeout())
   end
 
   @doc """
@@ -27,7 +25,7 @@ defmodule Commanded.Assertions.EventAssertions do
   Wait for an event of the given event type, matching the predicate, to be published.
   """
   def wait_for_event(event_type, predicate_fn) when is_function(predicate_fn) do
-    wait_for_event(event_type, predicate_fn, @default_receive_timeout)
+    wait_for_event(event_type, predicate_fn, default_receive_timeout())
   end
 
   @doc """
@@ -59,6 +57,8 @@ defmodule Commanded.Assertions.EventAssertions do
     end)
   end
 
+  defp default_receive_timeout, do: Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+
   defp with_subscription(callback_fn) do
     subscription_name = UUID.uuid4
 
@@ -72,7 +72,7 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp do_assert_receive(subscription, event_type, predicate_fn, assertion_fn) do
-    assert_receive {:events, received_events}, @default_receive_timeout
+    assert_receive {:events, received_events}
 
     ack_events(subscription, received_events)
 
