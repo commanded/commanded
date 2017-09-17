@@ -170,6 +170,27 @@ defmodule Commanded.Event.Handler do
         Commanded.Event.Handler.start_link(@name, __MODULE__, opts)
       end
 
+      @doc """
+      Provides a child specification to allow the event handler to be easily supervised
+
+      ## Example
+
+          Supervisor.start_link([
+            {ExampleHandler, []}
+          ], strategy: :one_for_one)
+
+      """
+      def child_spec(opts) do
+        default = %{
+          id: {__MODULE__, @name},
+          start: {Commanded.Event.Handler, :start_link, [@name, __MODULE__, opts]},
+          restart: :permanent,
+          type: :worker,
+        }
+
+        Supervisor.child_spec(default, [])
+      end
+
       @doc false
       def init, do: :ok
 
@@ -202,7 +223,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def start_link(handler_name, handler_module, opts \\ []) do
-    name = {Handler, handler_name}
+    name = name(handler_name)
     handler = %Handler{
       handler_name: handler_name,
       handler_module: handler_module,
@@ -213,6 +234,10 @@ defmodule Commanded.Event.Handler do
     Registration.start_link(name, __MODULE__, handler)
   end
 
+  @doc false
+  def name(name), do: {__MODULE__, name}
+
+  @doc false
   def init(%Handler{handler_module: handler_module} = state) do
     GenServer.cast(self(), :subscribe_to_events)
 
@@ -225,10 +250,17 @@ defmodule Commanded.Event.Handler do
     {reply, state}
   end
 
+  @doc false
+  def handle_call(:last_seen_event, _from, %Handler{last_seen_event: last_seen_event} = state) do
+    {:reply, last_seen_event, state}
+  end
+
+  @doc false
   def handle_cast(:subscribe_to_events, %Handler{} = state) do
     {:noreply, subscribe_to_all_streams(state)}
   end
 
+  @doc false
   def handle_info({:events, events}, %Handler{} = state) do
     Logger.debug(fn -> describe(state) <> " received events: #{inspect events}" end)
 
