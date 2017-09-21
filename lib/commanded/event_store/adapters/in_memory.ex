@@ -240,8 +240,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end)
   end
 
+  defp catch_up(%Subscription{subscriber: nil}, _persisted_events), do: :ok
   defp catch_up(%Subscription{start_from: :current}, _persisted_events), do: :ok
-
   defp catch_up(%Subscription{subscriber: subscriber, start_from: :origin, last_seen_event_number: last_seen_event_number}, persisted_events) do
     unseen_events =
       persisted_events
@@ -253,6 +253,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   # publish events to subscribers
   defp publish(events, %State{subscriptions: subscriptions}) do
-    for %Subscription{subscriber: subscriber} <- Map.values(subscriptions), do: send(subscriber, {:events, events})
+    subscribers =
+      subscriptions
+      |> Map.values()
+      |> Enum.map(&(&1.subscriber))
+      |> Enum.filter(&is_pid/1)
+
+    for subscriber <- subscribers, do: send(subscriber, {:events, events})
   end
 end
