@@ -29,6 +29,11 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
   end
 
   def current_balance do
-    Agent.get(@agent_name, fn balance -> balance end)
+    try do
+      Agent.get(@agent_name, fn balance -> balance end)
+    catch
+      # catch agent not started exits, return `nil` balance
+      :exit, _reason -> nil
+    end
   end
 end

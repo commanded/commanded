@@ -63,7 +63,9 @@ defmodule Commanded.Event.HandleEventTest do
 
     wait_for_event BankAccountOpened
 
-    {:ok, _handler} = AppendingEventHandler.start_link(start_from: :current)
+    {:ok, handler} = AppendingEventHandler.start_link(start_from: :current)
+
+    assert GenServer.call(handler, {:last_seen_event}) == nil
 
     {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
@@ -78,6 +80,8 @@ defmodule Commanded.Event.HandleEventTest do
       assert Map.get(metadata, :stream_id) == stream_uuid
       assert Map.get(metadata, :stream_version) == 2
       assert %NaiveDateTime{} = Map.get(metadata, :created_at)
+      
+      assert GenServer.call(handler, :last_seen_event) == 2
     end)
 	end
 

@@ -17,10 +17,18 @@ defmodule Commanded.Event.AppendingEventHandler do
   end
 
   def received_events do
-    Agent.get(@agent_name, fn %{events: events} -> events end)
+    try do
+      Agent.get(@agent_name, fn %{events: events} -> events end)
+    catch
+      :exit, _reason -> []
+    end
   end
 
   def received_metadata do
-    Agent.get(@agent_name, fn %{metadata: metadata} -> metadata end)
+    try do
+      Agent.get(@agent_name, fn %{metadata: metadata} -> metadata end)
+    catch
+      :exit, _reason -> []
+    end
   end
 end
