@@ -5,6 +5,8 @@ defmodule EventStore.Registration.DistributedRegistry do
 
   @behaviour EventStore.Registration
 
+  alias EventStore.Publisher
+
   @doc """
   Return an optional supervisor spec for the registry
   """
@@ -84,6 +86,6 @@ defmodule EventStore.Registration.DistributedRegistry do
   end
 
   defp publish_events_to_node(node, stream_uuid, events) do
-    send({EventStore.Publisher, node}, {:notify_events, stream_uuid, events})
+    Publisher.notify_events({Publisher, node}, stream_uuid, events)
   end
 end

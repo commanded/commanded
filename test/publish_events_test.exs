@@ -17,9 +17,9 @@ defmodule EventStore.PublishEventsTest do
     {:ok, subscriber, subscription} = subscribe_to_all_streams(start_from_event_id: 0)
 
     # notify stream2 events before stream3 and stream1 (out of order)
-    send(Publisher, {:notify_events, stream2_uuid, stream2_events})
-    send(Publisher, {:notify_events, stream3_uuid, stream3_events})
-    send(Publisher, {:notify_events, stream1_uuid, stream1_events})
+    Publisher.notify_events(Publisher, stream2_uuid, stream2_events)
+    Publisher.notify_events(Publisher, stream3_uuid, stream3_events)
+    Publisher.notify_events(Publisher, stream1_uuid, stream1_events)
 
     # should receive events in correct order (by event_id)
     assert_receive {:events, stream1_received_events}
@@ -51,7 +51,7 @@ defmodule EventStore.PublishEventsTest do
     stream2_uuid = UUID.uuid4()
     stream2_events = EventFactory.create_recorded_events(1, stream2_uuid, 2)
 
-    send(Publisher, {:notify_events, stream2_uuid, stream2_events})
+    Publisher.notify_events(Publisher, stream2_uuid, stream2_events)
 
     # should receive published events
     assert_receive {:events, stream2_received_events}

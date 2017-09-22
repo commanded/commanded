@@ -5,6 +5,8 @@ defmodule EventStore.Registration.LocalRegistry do
 
   @behaviour EventStore.Registration
 
+  alias EventStore.Publisher
+
   @doc """
   Return the local supervisor child spec
   """
@@ -55,6 +57,6 @@ defmodule EventStore.Registration.LocalRegistry do
   @callback publish_events(stream_uuid :: term, events :: list(EventStore.RecordedEvent.t)) :: :ok
   @impl EventStore.Registration
   def publish_events(stream_uuid, events) do
-    send(EventStore.Publisher, {:notify_events, stream_uuid, events})
+    Publisher.notify_events(Publisher, stream_uuid, events)
   end
 end
