@@ -59,12 +59,13 @@ defmodule Commanded.Registration do
   def via_tuple(name), do: registry_provider().via_tuple(name)
 
   @doc """
-  Get the configured process registry
+  Get the configured process registry.
+
+  Defaults to a local registry, restricted to running on a single node, if not configured.
   """
   @spec registry_provider() :: module()
   def registry_provider do
-    case Application.get_env(:commanded, :registry) do
-      nil -> raise ArgumentError, "Commanded expects `:registry` to be configured in environment"
+    case Application.get_env(:commanded, :registry, :local) do
       :local -> Commanded.Registration.LocalRegistry
       other -> other
     end

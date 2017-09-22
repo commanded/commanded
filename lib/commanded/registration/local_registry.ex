@@ -12,7 +12,7 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def child_spec do
     [
-      Supervisor.child_spec({Registry, [keys: :unique, name: Commanded.Registration.LocalRegistry]}, id: :commanded_local_registry),
+      Supervisor.child_spec({Registry, [keys: :unique, name: __MODULE__]}, id: :commanded_local_registry),
     ]
   end
 
@@ -26,7 +26,7 @@ defmodule Commanded.Registration.LocalRegistry do
   def start_child(name, supervisor, args) do
     case whereis_name(name) do
       :undefined ->
-        via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
+        via_name = {:via, Registry, {__MODULE__, name}}
 
         Supervisor.start_child(supervisor, args ++ [[name: via_name]])
 
@@ -45,7 +45,7 @@ defmodule Commanded.Registration.LocalRegistry do
   def start_link(name, module, args) do
     case whereis_name(name) do
       :undefined ->
-        via_name = {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
+        via_name = {:via, Registry, {__MODULE__, name}}
 
         GenServer.start_link(module, args, [name: via_name])
 
@@ -61,12 +61,12 @@ defmodule Commanded.Registration.LocalRegistry do
   """
   @spec whereis_name(name :: term) :: pid | :undefined
   @impl Commanded.Registration
-  def whereis_name(name), do: Registry.whereis_name({Commanded.Registration.LocalRegistry, name})
+  def whereis_name(name), do: Registry.whereis_name({__MODULE__, name})
 
   @doc """
   Return a `:via` tuple to route a message to a process by its registered name
   """
   @spec via_tuple(name :: term()) :: {:via, module(), name :: term()}
   @impl Commanded.Registration
-  def via_tuple(name), do: {:via, Registry, {Commanded.Registration.LocalRegistry, name}}
+  def via_tuple(name), do: {:via, Registry, {__MODULE__, name}}
 end

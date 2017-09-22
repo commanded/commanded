@@ -61,9 +61,11 @@ defmodule Commanded.Assertions.EventAssertions do
 
   ## Examples
 
-      assert_receive_event BankAccountOpened, fn opened -> opened.account_number == "ACC123" end, fn opened ->
-        assert opened.balance == 1_000
-      end
+      assert_receive_event BankAccountOpened,
+        fn opened -> opened.account_number == "ACC123" end,
+        fn opened ->
+          assert opened.balance == 1_000
+        end
 
   """
   def assert_receive_event(event_type, predicate_fn, assertion_fn) do

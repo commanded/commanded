@@ -1,4 +1,4 @@
-defmodule Commanded.Aggregates.ExecuteCommandForAggregateTest do
+defmodule Commanded.Aggregates.ExecuteCommandTest do
   use Commanded.StorageCase
 
   alias Commanded.Aggregates.{Aggregate,ExecutionContext}
