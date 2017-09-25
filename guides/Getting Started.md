@@ -21,9 +21,3 @@ Commanded can be installed from hex as follows.
 ## Starting the Commanded application
 
 The `commanded` application is automatically started for you once added to your application dependencies in `mix.exs`.
-
-Optionally, you can manually start the top level Commanded supervisor:
-
-```elixir
-{:ok, _} = Commanded.Supervisor.start_link()
-```
