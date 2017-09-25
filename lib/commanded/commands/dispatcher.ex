@@ -10,6 +10,7 @@ defmodule Commanded.Commands.Dispatcher do
     @moduledoc false
     defstruct [
       command: nil,
+      consistency: nil,
       handler_module: nil,
       handler_function: nil,
       aggregate_module: nil,
@@ -27,75 +28,76 @@ defmodule Commanded.Commands.Dispatcher do
   Returns `:ok` on success, or `{:error, reason}` on failure.
   """
   @spec dispatch(payload :: struct) :: :ok | {:error, reason :: term}
-  def dispatch(%Payload{command: command} = payload) do
-    pipeline = before_dispatch(%Pipeline{command: command}, payload)
+  def dispatch(%Payload{} = payload) do
+    pipeline =
+      payload
+      |> to_pipeline()
+      |> before_dispatch(payload)
 
     # don't allow command execution if pipeline has been halted
-    case Map.get(pipeline, :halted, false) do
+    case Pipeline.halted?(pipeline) do
       true ->
-        respond_with_failure(pipeline, {:error, :halted}, payload)
+        pipeline
+        |> Pipeline.respond({:error, :halted})
+        |> after_failure(:halted, payload)
+        |> Pipeline.response()
 
       false ->
-        case extract_aggregate_uuid(payload) do
-          nil ->
-            respond_with_failure(pipeline, {:error, :invalid_aggregate_identity}, payload)
-
-          aggregate_uuid ->
-            result = execute(payload, pipeline, aggregate_uuid)
-
-            extract_response(pipeline, result)
-        end
+        pipeline
+        |> execute(payload)
+        |> Pipeline.response()
     end
   end
 
-  defp respond_with_failure(pipeline, error, payload) do
-    response = extract_response(pipeline, error)
-
-    after_failure(pipeline, response, payload)
-
-    response
+  defp to_pipeline(%Payload{command: command, consistency: consistency, identity: identity}) do
+    %Pipeline{command: command, consistency: consistency, identity: identity}
   end
 
   defp execute(
-    %Payload{handler_module: handler_module, handler_function: handler_function, include_aggregate_version: include_aggregate_version, timeout: timeout, lifespan: lifespan} = payload,
-    %Pipeline{command: command} = pipeline,
-    aggregate_uuid)
+    %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}, command: command} = pipeline,
+    %Payload{handler_module: handler_module, handler_function: handler_function, timeout: timeout, lifespan: lifespan} = payload)
   do
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(payload.aggregate_module, aggregate_uuid)
 
     task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout, lifespan])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
 
-    result = case task_result do
-      {:ok, reply} -> reply
-      {:error, reason} -> {:error, :aggregate_execution_failed, reason}
-      {:exit, reason} -> {:error, :aggregate_execution_failed, reason}
-      nil -> {:error, :aggregate_execution_timeout}
-    end
+    result =
+      case task_result do
+        {:ok, reply} -> reply
+        {:error, reason} -> {:error, :aggregate_execution_failed, reason}
+        {:exit, reason} -> {:error, :aggregate_execution_failed, reason}
+        nil -> {:error, :aggregate_execution_timeout}
+      end
 
     case result do
       {:ok, aggregate_version} ->
-        after_dispatch(pipeline, payload)
+        pipeline
+        |> Pipeline.assign(:aggregate_version, aggregate_version)
+        |> after_dispatch(payload)
+        |> respond_with_success(payload, aggregate_version)
 
-        case include_aggregate_version do
-          true -> {:ok, aggregate_version}
-          false -> :ok
-        end
-
-      {:error, error} = reply ->
-        after_failure(pipeline, error, payload)
-        reply
+      {:error, error} ->
+        pipeline
+        |> after_failure(error, payload)
+        |> Pipeline.respond({:error, error})
 
       {:error, error, reason} ->
-        after_failure(pipeline, error, reason, payload)
-        {:error, error}
+        pipeline
+        |> after_failure(error, reason, payload)
+        |> Pipeline.respond({:error, error})
      end
   end
 
-  defp extract_aggregate_uuid(%Payload{command: command, identity: identity}), do: Map.get(command, identity)
+  defp respond_with_success(%Pipeline{} = pipeline, %Payload{include_aggregate_version: include_aggregate_version}, aggregate_version) do
+    response =
+      case include_aggregate_version do
+        true -> {:ok, aggregate_version}
+        false -> :ok
+      end
 
-  defp extract_response(%Pipeline{response: nil}, response), do: response
-  defp extract_response(%Pipeline{response: response}, _response), do: response
+    Pipeline.respond(pipeline, response)
+  end
 
   defp before_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
     pipeline

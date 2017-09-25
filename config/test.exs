@@ -7,6 +7,7 @@ config :ex_unit,
   assert_receive_timeout: 200
 
 config :commanded,
+  dispatch_consistency_timeout: 100,
   event_store_adapter: Commanded.EventStore.Adapters.InMemory,
   reset_storage: fn ->
     {:ok, _event_store} = Commanded.EventStore.Adapters.InMemory.start_link()

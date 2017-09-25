@@ -10,12 +10,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   }
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
+  alias Commanded.Subscriptions
 
   defmodule State do
     defstruct [
+      command_dispatcher: nil,
+      consistency: nil,
       process_manager_name: nil,
       process_manager_module: nil,
-      command_dispatcher: nil,
       subscribe_from: nil,
       process_managers: %{},
       supervisor: nil,
@@ -30,6 +32,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
       command_dispatcher: command_dispatcher,
+      consistency: opts[:consistency] || :eventual,
       subscribe_from: opts[:start_from] || :origin,
     }, [name: process_manager_module])
   end
@@ -79,14 +82,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   @doc """
   Subscribe the process router to all events
   """
-  def handle_cast({:subscribe_to_events}, %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
-
-    state = %State{state |
-      subscription: subscription,
-    }
-
-    {:noreply, state}
+  def handle_cast({:subscribe_to_events}, %State{} = state) do
+    {:noreply, subscribe_to_all_streams(state)}
   end
 
   def handle_cast({:process_pending_events}, %State{pending_events: []} = state), do: {:noreply, state}
@@ -125,6 +122,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     Logger.warn(fn -> "process manager process down due to: #{inspect reason}" end)
 
     {:noreply, %State{state | process_managers: remove_process_manager(process_managers, pid)}}
+  end
+
+  defp subscribe_to_all_streams(%State{consistency: consistency, process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
+
+    # register this event handler as a subscription with the given consistency
+    :ok = Subscriptions.register(process_manager_name, consistency)
+
+    %State{state | subscription: subscription}
   end
 
   # ignore already seen event
@@ -169,10 +175,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   # confirm receipt of given event
-  defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %State{process_manager_name: process_manager_name, subscription: subscription} = state) do
+  defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %State{process_manager_name: process_manager_name} = state) do
     Logger.debug(fn -> "process router \"#{process_manager_name}\" confirming receipt of event: #{inspect event_number}" end)
 
-    EventStore.ack_event(subscription, event)
+    do_ack_event(event, state)
 
     %State{state | last_seen_event: event_number}
   end
@@ -204,6 +210,11 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       ({process_uuid, process_manager_pid}, acc) when process_manager_pid == pid -> Map.delete(acc, process_uuid)
       (_, acc) -> acc
     end)
+  end
+
+  defp do_ack_event(event, %State{consistency: consistency, process_manager_name: name, subscription: subscription}) do
+    EventStore.ack_event(subscription, event)
+    Subscriptions.ack_event(name, consistency, event)
   end
 
   defp delegate_event(nil, _event), do: :ok

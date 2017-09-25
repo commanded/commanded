@@ -17,15 +17,15 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
 
     test "should dispatch command to registered handler" do
-      :ok = CommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+      assert :ok = CommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
     end
 
     test "should fail to dispatch unregistered command" do
-      {:error, :unregistered_command} = CommandHandlerRouter.dispatch(%UnregisteredCommand{})
+      assert {:error, :unregistered_command} = CommandHandlerRouter.dispatch(%UnregisteredCommand{})
     end
 
     test "should fail to dispatch command with nil identity" do
-      {:error, :invalid_aggregate_identity} = CommandHandlerRouter.dispatch(%OpenAccount{account_number: nil, initial_balance: 1_000})
+      assert {:error, :invalid_aggregate_identity} = CommandHandlerRouter.dispatch(%OpenAccount{account_number: nil, initial_balance: 1_000})
     end
   end
 
@@ -45,11 +45,11 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
 
     test "should dispatch command to registered handler" do
-      :ok = AggregateRouter.dispatch(%Command{uuid: UUID.uuid4})
+      assert :ok = AggregateRouter.dispatch(%Command{uuid: UUID.uuid4})
     end
 
     test "should fail to dispatch unregistered command" do
-      {:error, :unregistered_command} = AggregateRouter.dispatch(%UnregisteredCommand{})
+      assert {:error, :unregistered_command} = AggregateRouter.dispatch(%UnregisteredCommand{})
     end
   end
 
@@ -96,7 +96,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   test "should show a help note when bad argument given to a `dispatch/2` function" do
     assert_raise RuntimeError, """
     unexpected dispatch parameter "id"
-    available params are: to, function, aggregate, identity, timeout, lifespan
+    available params are: to, function, aggregate, identity, timeout, lifespan, consistency
     """,
     fn ->
       Code.eval_string """
