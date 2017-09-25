@@ -126,7 +126,7 @@ defmodule Commanded.Event.Handler do
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the event, or `{:error, reason}` on failure.
   """
-  @callback handle(domain_event, metadata) :: :ok | {:error, reason :: any()}
+  @callback handle(domain_event, metadata) :: :ok | {:error, :already_seen_event} | {:error, reason :: any()}
 
   @doc """
   Macro as a convenience for defining an event handler.
@@ -212,6 +212,7 @@ defmodule Commanded.Event.Handler do
     end
   end
 
+  @doc false
   defstruct [
     consistency: nil,
     handler_name: nil,
@@ -297,6 +298,9 @@ defmodule Commanded.Event.Handler do
   defp handle_event(%RecordedEvent{data: data} = event, %Handler{handler_module: handler_module} = state) do
     case handler_module.handle(data, enrich_metadata(event)) do
       :ok ->
+        confirm_receipt(event, state)
+
+      {:error, :already_seen_event} ->
         confirm_receipt(event, state)
 
       {:error, reason} = error ->
