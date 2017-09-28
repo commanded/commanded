@@ -338,7 +338,7 @@ defmodule EventStore.Subscriptions.StreamSubscription do
     end
   end
 
-  defp chunk_by(%RecordedEvent{stream_id: stream_id, correlation_id: correlation_id}), do: {stream_id, correlation_id}
+  defp chunk_by(%RecordedEvent{stream_uuid: stream_uuid, correlation_id: correlation_id}), do: {stream_uuid, correlation_id}
 
   defp notify_subscriber(%SubscriptionState{}, []), do: nil
   defp notify_subscriber(%SubscriptionState{subscriber: subscriber, mapper: mapper}, events) when is_function(mapper) do

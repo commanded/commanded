@@ -21,9 +21,11 @@ defmodule EventStore.EventFactory do
     end)
   end
 
-  def create_recorded_events(number_of_events, stream_id, initial_event_id \\ 1, initial_stream_version \\ 1) when number_of_events > 0 do
-    correlation_id = UUID.uuid4
-    causation_id = UUID.uuid4
+  def create_recorded_events(number_of_events, stream_uuid, initial_event_id \\ 1, initial_stream_version \\ 1)
+    when is_bitstring(stream_uuid) and number_of_events > 0
+  do
+    correlation_id = UUID.uuid4()
+    causation_id = UUID.uuid4()
 
     1..number_of_events
     |> Enum.map(fn number ->
@@ -32,7 +34,7 @@ defmodule EventStore.EventFactory do
 
       %RecordedEvent{
         event_id: event_id,
-        stream_id: stream_id,
+        stream_uuid: stream_uuid,
         stream_version: stream_version,
         correlation_id: correlation_id,
         causation_id: causation_id,

@@ -356,18 +356,19 @@ WHERE source_uuid = $1;
   def read_events_forward do
 """
 SELECT
-  event_id,
-  stream_id,
-  stream_version,
-  event_type,
-  correlation_id,
-  causation_id,
-  data,
-  metadata,
-  created_at
-FROM events
-WHERE stream_id = $1 and stream_version >= $2
-ORDER BY stream_version ASC
+  e.event_id,
+  s.stream_uuid,
+  e.stream_version,
+  e.event_type,
+  e.correlation_id,
+  e.causation_id,
+  e.data,
+  e.metadata,
+  e.created_at
+FROM events e
+INNER JOIN streams s ON s.stream_id = e.stream_id
+WHERE e.stream_id = $1 and e.stream_version >= $2
+ORDER BY e.stream_version ASC
 LIMIT $3;
 """
   end
@@ -375,18 +376,19 @@ LIMIT $3;
   def read_all_events_forward do
 """
 SELECT
-  event_id,
-  stream_id,
-  stream_version,
-  event_type,
-  correlation_id,
-  causation_id,
-  data,
-  metadata,
-  created_at
-FROM events
-WHERE event_id >= $1
-ORDER BY event_id ASC
+  e.event_id,
+  s.stream_uuid,
+  e.stream_version,
+  e.event_type,
+  e.correlation_id,
+  e.causation_id,
+  e.data,
+  e.metadata,
+  e.created_at
+FROM events e
+INNER JOIN streams s ON s.stream_id = e.stream_id
+WHERE e.event_id >= $1
+ORDER BY e.event_id ASC
 LIMIT $2;
 """
   end

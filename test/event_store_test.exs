@@ -38,8 +38,9 @@ defmodule EventStoreTest do
     created_event = hd(events)
     recorded_event = hd(recorded_events)
 
+    assert is_integer(recorded_event.event_id)
     assert recorded_event.event_id > 0
-    assert recorded_event.stream_id > 0
+    assert recorded_event.stream_uuid == stream_uuid
     assert recorded_event.data == created_event.data
     assert recorded_event.metadata == created_event.metadata
   end
@@ -55,7 +56,7 @@ defmodule EventStoreTest do
     recorded_event = hd(recorded_events)
 
     assert recorded_event.event_id > 0
-    assert recorded_event.stream_id > 0
+    assert recorded_event.stream_uuid == stream_uuid
     assert recorded_event.data == created_event.data
     assert recorded_event.metadata == created_event.metadata
   end
@@ -71,7 +72,7 @@ defmodule EventStoreTest do
     recorded_event = hd(recorded_events)
 
     assert recorded_event.event_id > 0
-    assert recorded_event.stream_id > 0
+    assert recorded_event.stream_uuid == stream_uuid
     assert recorded_event.data == created_event.data
     assert recorded_event.metadata == created_event.metadata
   end
@@ -107,7 +108,7 @@ defmodule EventStoreTest do
     assert length(received_events) == 1
     assert hd(received_events).data == hd(new_events).data
 
-    :ok = EventStore.unsubscribe_from_all_streams(@subscription_name)    
+    :ok = EventStore.unsubscribe_from_all_streams(@subscription_name)
   end
 
   defmodule ExampleData, do: defstruct [:data]

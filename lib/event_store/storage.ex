@@ -38,8 +38,8 @@ defmodule EventStore.Storage do
   @doc """
   Append the given list of recorded events to storage
   """
-  def append_to_stream(events) do
-    Appender.append(@event_store, events)
+  def append_to_stream(stream_id, events) do
+    Appender.append(@event_store, stream_id, events)
   end
 
   @doc """

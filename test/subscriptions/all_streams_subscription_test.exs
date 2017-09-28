@@ -47,8 +47,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   test "catch-up subscription, unseen persisted events", %{conn: conn} do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
-    recorded_events = EventFactory.create_recorded_events(3, stream_id)
-    {:ok, [1, 2, 3]} = Appender.append(conn, recorded_events)
+    recorded_events = EventFactory.create_recorded_events(3, stream_uuid)
+    {:ok, [1, 2, 3]} = Appender.append(conn, stream_id, recorded_events)
 
     subscription =
       create_subscription()
@@ -73,7 +73,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   end
 
   test "notify events" do
-    events = EventFactory.create_recorded_events(1, 1)
+    stream_uuid = UUID.uuid4()
+    events = EventFactory.create_recorded_events(1, stream_uuid)
 
     subscription =
       create_subscription()
@@ -139,8 +140,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
       stream_uuid = UUID.uuid4
       {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
 
-      recorded_events = EventFactory.create_recorded_events(3, stream_id)
-      {:ok, [1, 2, 3]} = Appender.append(conn, recorded_events)
+      recorded_events = EventFactory.create_recorded_events(3, stream_uuid)
+      {:ok, [1, 2, 3]} = Appender.append(conn, stream_id, recorded_events)
 
       [recorded_events: recorded_events]
     end
@@ -166,7 +167,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
   end
 
   test "should not notify events until ack received" do
-    events = EventFactory.create_recorded_events(6, 1)
+    stream_uuid = UUID.uuid4
+    events = EventFactory.create_recorded_events(6, stream_uuid)
     initial_events = Enum.take(events, 3)
     remaining_events = Enum.drop(events, 3)
 
@@ -209,7 +211,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
 
   describe "pending event buffer limit" do
     test "should restrict pending events until ack" do
-      events = EventFactory.create_recorded_events(6, 1)
+      stream_uuid = UUID.uuid4
+      events = EventFactory.create_recorded_events(6, stream_uuid)
       initial_events = Enum.take(events, 3)
       remaining_events = Enum.drop(events, 3)
 
@@ -244,7 +247,8 @@ defmodule EventStore.Subscriptions.AllStreamsSubscriptionTest do
     end
 
     test "should receive pending events on ack after reaching max capacity" do
-      events = EventFactory.create_recorded_events(6, 1)
+      stream_uuid = UUID.uuid4
+      events = EventFactory.create_recorded_events(6, stream_uuid)
       initial_events = Enum.take(events, 3)
       remaining_events = Enum.drop(events, 3)
 

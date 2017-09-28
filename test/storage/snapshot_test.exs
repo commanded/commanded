@@ -14,7 +14,7 @@ defmodule EventStore.Storage.SnapshotTest do
     test "should read successfully when present", %{conn: conn} do
       source_uuid = UUID.uuid4
       source_version = 1
-      recorded_event = hd(EventFactory.create_recorded_events(1, 1))
+      recorded_event = hd(EventFactory.create_recorded_events(1, source_uuid))
       :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: source_version, source_type: recorded_event.event_type, data: recorded_event.data, metadata: recorded_event.metadata})
 
       {:ok, snapshot} = Snapshot.read_snapshot(conn, source_uuid)
@@ -31,14 +31,14 @@ defmodule EventStore.Storage.SnapshotTest do
     test "should record snapshot when none exists", %{conn: conn} do
       source_uuid = UUID.uuid4
       source_version = 1
-      recorded_event = hd(EventFactory.create_recorded_events(1, 1))
+      recorded_event = hd(EventFactory.create_recorded_events(1, source_uuid))
 
       :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: source_version, source_type: recorded_event.event_type, data: recorded_event.data, metadata: recorded_event.metadata})
     end
 
     test "should modify snapshot when already exists", %{conn: conn} do
       source_uuid = UUID.uuid4
-      [recorded_event1, recorded_event2] = EventFactory.create_recorded_events(2, 1)
+      [recorded_event1, recorded_event2] = EventFactory.create_recorded_events(2, source_uuid)
 
       :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: 1, source_type: recorded_event1.event_type, data: recorded_event1.data, metadata: recorded_event1.metadata})
       :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: 2, source_type: recorded_event2.event_type, data: recorded_event2.data, metadata: recorded_event2.metadata})
@@ -52,8 +52,8 @@ defmodule EventStore.Storage.SnapshotTest do
 
   test "record snapshot when present should update existing", %{conn: conn} do
     source_uuid = UUID.uuid4
-    initial_recorded_event = hd(EventFactory.create_recorded_events(1, 1))
-    updated_recorded_event = hd(EventFactory.create_recorded_events(1, 1, 2))
+    initial_recorded_event = hd(EventFactory.create_recorded_events(1, source_uuid))
+    updated_recorded_event = hd(EventFactory.create_recorded_events(1, source_uuid, 2))
 
     :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: 1, source_type: initial_recorded_event.event_type, data: initial_recorded_event.data, metadata: initial_recorded_event.metadata})
     :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: 2, source_type: updated_recorded_event.event_type, data: updated_recorded_event.data, metadata: updated_recorded_event.metadata})
@@ -71,7 +71,7 @@ defmodule EventStore.Storage.SnapshotTest do
     test "should delete existing snapshot", %{conn: conn} do
       source_uuid = UUID.uuid4
       source_version = 1
-      recorded_event = hd(EventFactory.create_recorded_events(1, 1))
+      recorded_event = hd(EventFactory.create_recorded_events(1, source_uuid))
       :ok = Snapshot.record_snapshot(conn, %SnapshotData{source_uuid: source_uuid, source_version: source_version, source_type: recorded_event.event_type, data: recorded_event.data, metadata: recorded_event.metadata})
 
       :ok = Snapshot.delete_snapshot(conn, source_uuid)
