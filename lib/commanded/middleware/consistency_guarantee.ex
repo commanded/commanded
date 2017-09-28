@@ -25,7 +25,7 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
         pipeline
 
       {:error, :timeout} ->
-        Logger.warn(fn -> "Consistency timeout waiting for aggregate \"#{inspect aggregate_uuid}\" at version #{inspect aggregate_version}" end)
+        Logger.warn(fn -> "Consistency timeout waiting for aggregate #{inspect aggregate_uuid} at version #{inspect aggregate_version}" end)
         respond(pipeline, {:error, :consistency_timeout})
     end
   end
