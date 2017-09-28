@@ -13,7 +13,7 @@ defmodule EventStore.RecordedEvent do
     - `causation_id` - an optional identifier used to identify which message you are responding to
     - `data` - the serialized event as binary data
     - `metadata` - the serialized event metadata as binary data
-    - `created_at` - the date/time, in UTC, indicating when the event was persisted to storage
+    - `created_at` - the date/time, in UTC, indicating when the event was created
 
   """
 

@@ -22,7 +22,7 @@ defmodule EventStoreTest do
     :ok = EventStore.append_to_stream(stream_uuid, 0, events)
   end
 
-  test "attempt to append to $all stream should fail" do
+  test "attempt to append to `$all` stream should fail" do
     events = EventFactory.create_events(1)
 
     {:error, :cannot_append_to_all_stream} = EventStore.append_to_stream(@all_stream, 0, events)
@@ -111,6 +111,49 @@ defmodule EventStoreTest do
     :ok = EventStore.unsubscribe_from_all_streams(@subscription_name)
   end
 
+  test "catch-up subscription should receive all persisted events" do
+    stream_uuid = UUID.uuid4()
+    events = EventFactory.create_events(3)
+    :ok = EventStore.append_to_stream(stream_uuid, 0, events)
+
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(@subscription_name, self())
+
+    # should receive events appended before subscription created
+    assert_receive {:events, received_events}
+    EventStore.ack(subscription, received_events)
+
+    assert length(received_events) == 3
+    assert pluck(received_events, :event_id) == [1, 2, 3]
+    assert pluck(received_events, :stream_uuid) == [stream_uuid, stream_uuid, stream_uuid]
+    assert pluck(received_events, :stream_version) == [1, 2, 3]
+    assert pluck(received_events, :correlation_id) == pluck(events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(events, :causation_id)
+    assert pluck(received_events, :event_type) == pluck(events, :event_type)
+    assert pluck(received_events, :data) == pluck(events, :data)
+    assert pluck(received_events, :metadata) == pluck(events, :metadata)
+    refute pluck(received_events, :created_at) |> Enum.any?(&is_nil/1)
+
+    new_events = EventFactory.create_events(3, 4)
+    :ok = EventStore.append_to_stream(stream_uuid, 3, new_events)
+
+    # should receive events appended after subscription created
+    assert_receive {:events, received_events}
+    EventStore.ack(subscription, received_events)
+
+    assert length(received_events) == 3
+    assert pluck(received_events, :event_id) == [4, 5, 6]
+    assert pluck(received_events, :stream_uuid) == [stream_uuid, stream_uuid, stream_uuid]
+    assert pluck(received_events, :stream_version) == [4, 5, 6]
+    assert pluck(received_events, :correlation_id) == pluck(new_events, :correlation_id)
+    assert pluck(received_events, :causation_id) == pluck(new_events, :causation_id)
+    assert pluck(received_events, :event_type) == pluck(new_events, :event_type)
+    assert pluck(received_events, :data) == pluck(new_events, :data)
+    assert pluck(received_events, :metadata) == pluck(new_events, :metadata)
+    refute pluck(received_events, :created_at) |> Enum.any?(&is_nil/1)
+
+    :ok = EventStore.unsubscribe_from_all_streams(@subscription_name)
+  end
+
   defmodule ExampleData, do: defstruct [:data]
 
   test "record snapshot" do
@@ -148,4 +191,6 @@ defmodule EventStoreTest do
 
     snapshot
   end
+
+  defp pluck(enumerable, field), do: Enum.map(enumerable, &Map.get(&1, field))
 end

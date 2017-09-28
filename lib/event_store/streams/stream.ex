@@ -138,15 +138,14 @@ defmodule EventStore.Streams.Stream do
 
   defp append_to_storage(_expected_version, _events, _state), do: {:error, :wrong_expected_version}
 
-  defp prepare_events(events, %Stream{serializer: serializer, stream_version: stream_version}) do
-    initial_stream_version = stream_version + 1
-
+  defp prepare_events(events, %Stream{serializer: serializer, stream_uuid: stream_uuid, stream_version: stream_version}) do
     events
     |> Enum.map(&map_to_recorded_event(&1, serializer))
-    |> Enum.with_index(0)
+    |> Enum.with_index(1)
     |> Enum.map(fn {recorded_event, index} ->
       %RecordedEvent{recorded_event |
-        stream_version: initial_stream_version + index
+        stream_uuid: stream_uuid,
+        stream_version: stream_version + index,
       }
     end)
   end
