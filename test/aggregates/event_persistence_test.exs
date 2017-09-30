@@ -52,7 +52,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, AppendItemsHandler, :handle)
+    {:ok, 10} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, %{}, AppendItemsHandler, :handle)
 
     recorded_events = EventStore.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
 
@@ -64,7 +64,7 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, AppendItemsHandler, :handle)
+    {:ok, 10} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 10}, %{}, AppendItemsHandler, :handle)
 
     Commanded.Helpers.Process.shutdown(aggregate_uuid)
 
@@ -82,9 +82,9 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 100} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 100}, AppendItemsHandler, :handle)
-    {:ok, 200} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 100}, AppendItemsHandler, :handle)
-    {:ok, 201} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 1}, AppendItemsHandler, :handle)
+    {:ok, 100} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 100}, %{}, AppendItemsHandler, :handle)
+    {:ok, 200} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 100}, %{}, AppendItemsHandler, :handle)
+    {:ok, 201} = Aggregate.execute(aggregate_uuid, %AppendItems{count: 1}, %{}, AppendItemsHandler, :handle)
 
     Commanded.Helpers.Process.shutdown(aggregate_uuid)
 
