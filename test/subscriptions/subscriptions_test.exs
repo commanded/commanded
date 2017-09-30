@@ -53,6 +53,10 @@ defmodule Commanded.SubscriptionsTest do
   end
 
   describe "notify subscribers" do
+    test "should immediately succeed when no registered handlers" do
+      assert :ok == Subscriptions.wait_for("stream1", 2)
+    end
+
     test "should immediately succeed when waited event has already been ack'd" do
       :ok = Subscriptions.register("handler", :strong)
 

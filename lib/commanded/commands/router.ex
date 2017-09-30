@@ -172,7 +172,7 @@ defmodule Commanded.Commands.Router do
 
       Returns `:ok` on success, unless `:include_aggregate_version` is enabled where it returns `{:ok, aggregate_version}`.
       """
-      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, reason :: term}
+      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, :consistency_timeout} | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
       def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, timeout: :infinity)
       def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, timeout: timeout)

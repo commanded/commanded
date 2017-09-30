@@ -91,6 +91,45 @@ defmodule BankRouter do
 end
 ```
 
+### Command dispatch consistency guarantee
+
+You can choose the consistency guarantee provided by a command dispatch using the `consistency` option:
+
+```elixir
+:ok = BankRouter.dispatch(command, consistency: :strong)
+```
+
+The available options are `:eventual` (default) and `:strong`:
+
+- *Strong consistency* offers up-to-date data but at the cost of high latency.
+- *Eventual consistency* offers low latency but read model queries may reply with stale data since they may not have processed the persisted events.
+
+When dispatching a command using `consistency: :strong` the dispatch will block until all of the strongly consistent event handlers and process managers have handled all events created by the command. This guarantees that when you receive the `:ok` response from dispatch your strongly consistent read models will have been updated and can safely be queried. Strong consistency helps to alleviate problems and workarounds you would otherwise encounter when dealing with eventual consistency in your own application.
+
+Use `:strong` consistency when you want to query a read model immediately after dispatching a command. You *must* also configure the event handler to use `:strong` consistency. Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
+
+Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers. The handlers run independently and asynchronously in the background, therefore you will need to deal with potentially stale read model data.  
+
+#### Consistency failures
+
+By opting-in to strong consistency you may encounter an additional error reply from command dispatch:
+
+```elixir
+case BankRouter.dispatch(command, consistency: :strong) do
+  :ok -> # ... all ok
+  {:error, :consistency_timeout} -> # command ok, handlers have not yet executed
+end
+```
+
+Receiving an `{:error, :consistency_timeout}` error indicates the command successfully dispatched, but some or all of the strongly consistent event handlers have not yet executed.
+
+The default timeout is configured as five seconds; this determines how long the dispatch will block waiting for the handlers. You can override the default value in your environment config file (e.g. `config/config.exs`):
+
+```elixir
+config :commanded,
+  dispatch_consistency_timeout: 10_000  # ten seconds
+```
+
 ### Dispatch returning aggregate version
 
 You can optionally choose to include the aggregate's version as part of the dispatch result by setting the  `include_aggregate_version` option to true:
