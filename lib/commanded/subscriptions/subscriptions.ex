@@ -6,10 +6,10 @@ defmodule Commanded.Subscriptions do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
 
-  @subscriptions_table :subscriptions
-  @streams_table :streams
-
   defstruct [
+    subscriptions_table: nil,
+    streams_table: nil,
+    started_at: nil,
     subscribers: [],
   ]
 
@@ -36,7 +36,9 @@ defmodule Commanded.Subscriptions do
   end
 
   @doc false
-  def all, do: subscriptions()
+  def all do
+    GenServer.call(__MODULE__, :all_subscriptions)
+  end
 
   @doc """
   Have all the registered handlers processed the given event?
@@ -63,22 +65,32 @@ defmodule Commanded.Subscriptions do
     end
   end
 
-  def init(state) do
-    _table = :ets.new(@subscriptions_table, [:set, :protected, :named_table])
-    _table = :ets.new(@streams_table, [:set, :protected, :named_table])
+  def init(%Subscriptions{} = state) do
+    schedule_purge_streams()
+
+    state = %Subscriptions{state |
+      subscriptions_table: :ets.new(:subscriptions, [:set, :private]),
+      streams_table: :ets.new(:streams, [:set, :private]),
+      started_at: now(),
+    }
 
     {:ok, state}
   end
 
+  def handle_call(:all_subscriptions, _from, %Subscriptions{} = state) do
+    reply = subscriptions(state)
+    {:reply, reply, state}
+  end
+
   def handle_call({:handled?, stream_uuid, stream_version}, _from, %Subscriptions{} = state) do
-    reply = handled_by_all?(stream_uuid, stream_version)
+    reply = handled_by_all?(stream_uuid, stream_version, state)
 
     {:reply, reply, state}
   end
 
   def handle_call({:subscribe, stream_uuid, stream_version, pid}, _from, %Subscriptions{subscribers: subscribers} = state) do
     state =
-      case handled_by_all?(stream_uuid, stream_version) do
+      case handled_by_all?(stream_uuid, stream_version, state) do
         true ->
           # immediately notify subscriber since all handlers have already processed the requested event
           notify_subscriber(pid, stream_uuid, stream_version)
@@ -104,20 +116,33 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_call({:register_subscription, name}, _from, %Subscriptions{} = state) do
-    :ets.insert(@subscriptions_table, {name})
+  def handle_call({:register_subscription, name}, _from, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
+    :ets.insert(subscriptions_table, {name})
 
     {:reply, :ok, state}
   end
 
-  def handle_cast({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{} = state) do
-    :ets.insert(@streams_table, {{name, stream_uuid}, stream_version})
+  def handle_cast({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{streams_table: streams_table, started_at: started_at} = state) do
+    # track insert date as ms since the subscripions process was started to support expiry of stale acks
+    inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :millisecond)
+
+    :ets.insert(streams_table, {{name, stream_uuid}, stream_version, inserted_at_epoch})
 
     state =
-      case handled_by_all?(stream_uuid, stream_version) do
+      case handled_by_all?(stream_uuid, stream_version, state) do
         true -> notify_subscribers(stream_uuid, stream_version, state)
         false -> state
       end
+
+    {:noreply, state}
+  end
+
+  @doc """
+  Purge stream acks that are older than the configured ttl (default is one hour).
+  """
+  def handle_info({:purge_expired_streams, ttl}, %Subscriptions{} = state) do
+    purge_expired_streams(ttl, state)
+    schedule_purge_streams(ttl)
 
     {:noreply, state}
   end
@@ -131,20 +156,22 @@ defmodule Commanded.Subscriptions do
   end
 
   # Have all subscriptions handled the event for the given stream and version
-  defp handled_by_all?(stream_uuid, stream_version) do
-    Enum.all?(subscriptions(), &handled_by?(&1, stream_uuid, stream_version))
+  defp handled_by_all?(stream_uuid, stream_version, %Subscriptions{} = state) do
+    state
+    |> subscriptions()
+    |> Enum.all?(&handled_by?(&1, stream_uuid, stream_version, state))
   end
 
   # Has the named subscription handled the event for the given stream and version
-  defp handled_by?(name, stream_uuid, stream_version) do
-    case :ets.lookup(@streams_table, {name, stream_uuid}) do
-      [{{^name, ^stream_uuid}, last_seen}] when last_seen >= stream_version -> true
+  defp handled_by?(name, stream_uuid, stream_version, %Subscriptions{streams_table: streams_table}) do
+    case :ets.lookup(streams_table, {name, stream_uuid}) do
+      [{{^name, ^stream_uuid}, last_seen, _inserted_at}] when last_seen >= stream_version -> true
       _ -> false
     end
   end
 
-  defp subscriptions do
-    @subscriptions_table
+  defp subscriptions(%Subscriptions{subscriptions_table: subscriptions_table}) do
+    subscriptions_table
     |> :ets.tab2list()
     |> Enum.map(fn {name} -> name end)
   end
@@ -174,5 +201,28 @@ defmodule Commanded.Subscriptions do
 
   defp notify_subscriber(pid, stream_uuid, stream_version), do: send(pid, {:ok, stream_uuid, stream_version})
 
+  # send an info message to the process to purge expired stream ack's
+  defp schedule_purge_streams(ttl \\ default_ttl()) do
+    Process.send_after(self(), {:purge_expired_streams, ttl}, ttl)
+  end
+
+  # delete subscription ack's that are older than the configured ttl
+  defp purge_expired_streams(ttl, %Subscriptions{streams_table: streams_table, started_at: started_at}) do
+    stale_epoch =
+      now()
+      |> NaiveDateTime.add(-ttl, :millisecond)
+      |> NaiveDateTime.diff(started_at, :millisecond)
+
+    streams_table
+    |> :ets.select([{{:"$1",:"$2",:"$3"},[{:"=<",:"$3",stale_epoch}],[:"$1"]}])
+    |> Enum.each(&:ets.delete(streams_table, &1))
+  end
+
+  defp now, do: DateTime.utc_now() |> DateTime.to_naive()
+
+  # time to live period for ack'd events before they can be safely purged in milliseconds
+  @default_ttl :timer.hours(1)
+
+  defp default_ttl, do: Application.get_env(:commanded, :subscriptions_ttl, @default_ttl)
   defp default_consistency_timeout, do: Application.get_env(:commanded, :dispatch_consistency_timeout, 5_000)
 end

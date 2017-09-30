@@ -111,4 +111,30 @@ defmodule Commanded.SubscriptionsTest do
       assert Subscriptions.handled?("stream1", 2)
     end
   end
+
+  describe "expire stream acks" do
+    test "should expire stale acks" do
+      :ok = Subscriptions.register("handler1", :strong)
+      :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 1})
+
+      assert Subscriptions.handled?("stream1", 1)
+
+      pid = Process.whereis(Subscriptions)
+      send(pid, {:purge_expired_streams, 0})
+
+      refute Subscriptions.handled?("stream1", 1)
+    end
+
+    test "should not expire fresh acks" do
+      :ok = Subscriptions.register("handler1", :strong)
+      :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 1})
+
+      assert Subscriptions.handled?("stream1", 1)
+
+      pid = Process.whereis(Subscriptions)
+      send(pid, {:purge_expired_streams, 1_000})
+
+      assert Subscriptions.handled?("stream1", 1)
+    end
+  end
 end
