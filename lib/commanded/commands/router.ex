@@ -115,7 +115,7 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
-      def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, [])
+      def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, %{}, [])
 
       @doc """
       Dispatch the given command to the registered handler providing a timeout.
@@ -133,18 +133,23 @@ defmodule Commanded.Commands.Router do
 
       Returns `:ok` on success, unless `:include_aggregate_version` is enabled where it returns `{:ok, aggregate_version}`.
       """
-      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, reason :: term}
+      @spec dispatch(command :: struct, metadata :: struct | timeout :: integer | :infinity | keyword(), timeout :: integer | :infinity | keyword()) :: :ok | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
-      def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, timeout: :infinity)
-      def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, timeout: timeout)
-      def dispatch(%unquote(command_module){} = command, opts), do: do_dispatch(command, opts)
+      def dispatch(%unquote(command_module){} = command, metadata) when is_map(metadata), do: do_dispatch(command, metadata, [])
+      def dispatch(%unquote(command_module){} = command, metadata, :infinity) when is_map(metadata), do: do_dispatch(command, metadata, timeout: :infinity)
+      def dispatch(%unquote(command_module){} = command, metadata, timeout) when is_map(metadata) and is_integer(timeout), do: do_dispatch(command, metadata, timeout: timeout)
+      def dispatch(%unquote(command_module){} = command, metadata, opts) when is_map(metadata), do: do_dispatch(command, metadata, opts)
+      def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, %{}, timeout: :infinity)
+      def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, %{}, timeout: timeout)
+      def dispatch(%unquote(command_module){} = command, opts), do: do_dispatch(command, %{}, opts)
 
-      defp do_dispatch(%unquote(command_module){} = command, opts) do
+      defp do_dispatch(%unquote(command_module){} = command, metadata, opts) do
         timeout = Keyword.get(opts, :timeout, unquote(timeout) || @default_dispatch_timeout)
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version, @include_aggregate_version)
 
         Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
+          metadata: metadata,
           handler_module: unquote(handler),
           handler_function: unquote(function),
           aggregate_module: unquote(aggregate),

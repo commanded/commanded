@@ -10,6 +10,7 @@ defmodule Commanded.Commands.Dispatcher do
     @moduledoc false
     defstruct [
       command: nil,
+      metadata: nil,
       handler_module: nil,
       handler_function: nil,
       aggregate_module: nil,
@@ -57,13 +58,13 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp execute(
-    %Payload{handler_module: handler_module, handler_function: handler_function, include_aggregate_version: include_aggregate_version, timeout: timeout, lifespan: lifespan} = payload,
+    %Payload{metadata: metadata, handler_module: handler_module, handler_function: handler_function, include_aggregate_version: include_aggregate_version, timeout: timeout, lifespan: lifespan} = payload,
     %Pipeline{command: command} = pipeline,
     aggregate_uuid)
   do
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(payload.aggregate_module, aggregate_uuid)
 
-    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout, lifespan])
+    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, metadata, handler_module, handler_function, timeout, lifespan])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
 
     result = case task_result do

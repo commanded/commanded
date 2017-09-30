@@ -142,4 +142,9 @@ defmodule Commanded.Commands.RoutingCommandsTest do
       assert {:ok, 2} == MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100}, include_aggregate_version: true)
     end
   end
+
+  test "should allow setting metadata" do
+    assert :ok == MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, %{ip_address: "127.0.0.1"})
+    assert :ok == MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100}, %{ip_address: "127.0.0.1"})
+  end
 end
