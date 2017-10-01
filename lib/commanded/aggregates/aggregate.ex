@@ -1,19 +1,24 @@
 defmodule Commanded.Aggregates.Aggregate do
   @moduledoc """
-  Aggregate is a `GenServer` process used to provide access to an instance of an event sourced aggregate root.
-  It allows execution of commands against an aggregate instance, and handles persistence of events to the configured event store.
+  Aggregate is a `GenServer` process used to provide access to an
+  instance of an event sourced aggregate root. It allows execution of commands
+  against an aggregate instance, and handles persistence of created events to
+  the configured event store.
 
-  Concurrent commands sent to an aggregate instance are serialized and executed in the order received.
+  Concurrent commands sent to an aggregate instance are serialized and executed
+  in the order received.
 
-  The `Commanded.Commands.Router` module will locate, or start, an aggregate instance when a command is dispatched.
-  By default, it will run indefinitely once started. Its lifespan may be controlled by using the `Commanded.Aggregates.AggregateLifespan` behaviour.
+  The `Commanded.Commands.Router` module will locate, or start, an aggregate
+  instance when a command is dispatched. By default, an aggregate process will
+  run indefinitely once started. Its lifespan may be controlled by using the
+  `Commanded.Aggregates.AggregateLifespan` behaviour.
   """
 
   use GenServer
 
   require Logger
 
-  alias Commanded.Aggregates.{Aggregate,DefaultLifespan}
+  alias Commanded.Aggregates.{Aggregate,ExecutionContext}
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
 
@@ -41,6 +46,7 @@ defmodule Commanded.Aggregates.Aggregate do
     {:via, @registry_provider, {@aggregate_registry_name, aggregate_uuid}}
   end
 
+  @doc false
   def init(%Aggregate{} = state) do
     # initial aggregate state is populated by loading events from event store
     GenServer.cast(self(), {:populate_aggregate_state})
@@ -49,28 +55,19 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc """
-  Execute the given command against the aggregate, optionally providing a timeout and lifespan.
+  Execute the given command against the aggregate.
 
-  - `aggregate_uuid` uniquely identifies an instance of the aggregate.
-
-  - `command` is the command to execute, typically a struct (e.g. `%OpenBankAccount{...}`).
-
-  - `handler` is the module that handles the command.
-    It may be the aggregate module, but does not have to be as you can specify and use a command handler module.
-
-  - `function` is the name of function, as an atom, that handles the command.
-    The default value is `:execute`, used to support command dispatch directly to the aggregate module.
-
-  - `timeout` is an integer greater than zero which specifies how many milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
+  - `aggregate_uuid` - uniquely identifies an instance of the aggregate.
+  - `context` - includes command execution arguments
+    (see `Commanded.Aggregates.ExecutionContext` for details).
+  - `timeout` - is an integer greater than zero which specifies how many
+    milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
     The default value is 5000.
-
-  - `lifespan` is a module implementing the `Commanded.Aggregates.AggregateLifespan` behaviour to control the aggregate instance process lifespan.
-    The default value, `Commanded.Aggregates.DefaultLifespan`, keeps the process running indefinitely.
 
   Returns `{:ok, aggregate_version}` on success, or `{:error, reason}` on failure.
   """
-  def execute(aggregate_uuid, command, handler, function \\ :execute, timeout \\ 5_000, lifespan \\ DefaultLifespan) do
-    GenServer.call(via_tuple(aggregate_uuid), {:execute_command, handler, function, command, lifespan}, timeout)
+  def execute(aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000) do
+    GenServer.call(via_tuple(aggregate_uuid), {:execute_command, context}, timeout)
   end
 
   @doc false
@@ -90,20 +87,23 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def handle_call({:execute_command, handler, function, command, lifespan}, _from, %Aggregate{} = state) do
-    {reply, state} = execute_command(handler, function, command, state)
+  def handle_call({:execute_command, %ExecutionContext{command: command, lifespan: lifespan} = context}, _from, %Aggregate{} = state) do
+    {reply, state} = execute_command(context, state)
 
     {:reply, reply, state, lifespan.after_command(command)}
   end
 
+  @doc false
   def handle_call({:aggregate_state}, _from, %Aggregate{aggregate_state: aggregate_state} = state) do
     {:reply, aggregate_state, state}
   end
 
+  @doc false
   def handle_call({:aggregate_version}, _from, %Aggregate{aggregate_version: aggregate_version} = state) do
     {:reply, aggregate_version, state}
   end
 
+  @doc false
   def handle_info(:timeout, %Aggregate{} = state) do
     {:stop, :normal, state}
   end
@@ -150,7 +150,10 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp execute_command(handler, function, command, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state) do
+  defp execute_command(
+    %ExecutionContext{handler: handler, function: function, command: command, metadata: metadata},
+    %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version, aggregate_state: aggregate_state, aggregate_module: aggregate_module} = state)
+  do
     case Kernel.apply(handler, function, [aggregate_state, command]) do
       {:error, _reason} = reply -> {reply, state}
       events ->
@@ -158,7 +161,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
         updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        {:ok, stream_version} = persist_events(pending_events, aggregate_uuid, expected_version)
+        {:ok, stream_version} = persist_events(pending_events, aggregate_uuid, expected_version, metadata)
 
         state = %Aggregate{state |
           aggregate_state: updated_state,
@@ -173,10 +176,10 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events([], _aggregate_uuid, expected_version), do: {:ok, expected_version}
-  defp persist_events(pending_events, aggregate_uuid, expected_version) do
+  defp persist_events([], _aggregate_uuid, expected_version, _metadata), do: {:ok, expected_version}
+  defp persist_events(pending_events, aggregate_uuid, expected_version, metadata) do
     correlation_id = UUID.uuid4
-    event_data = Mapper.map_to_event_data(pending_events, correlation_id)
+    event_data = Mapper.map_to_event_data(pending_events, correlation_id, nil, metadata)
 
     EventStore.append_to_stream(aggregate_uuid, expected_version, event_data)
   end

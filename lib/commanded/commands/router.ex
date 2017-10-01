@@ -62,6 +62,14 @@ defmodule Commanded.Commands.Router do
   This is useful when you need to wait for an event handler (e.g. a read model
   projection) to be up-to-date before continuing or querying its data.
 
+  ## Metadata
+
+  You can associate metadata with all events created by the command.
+
+  Supply a map containing key/value pairs comprising the metadata:
+
+      :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
+
   """
   defmacro __using__(_) do
     quote do
@@ -77,6 +85,7 @@ defmodule Commanded.Commands.Router do
       @default_consistency :eventual
       @default_dispatch_timeout 5_000
       @default_lifespan Commanded.Aggregates.DefaultLifespan
+      @default_metadata %{}
       @include_aggregate_version false
     end
   end
@@ -153,26 +162,31 @@ defmodule Commanded.Commands.Router do
 
       - `timeout_or_opts` is either an integer timeout or a keyword list of options.
         The timeout must be an integer greater than zero which specifies how
-        many milliseconds to allow the command to be handled, or the atom `:infinity` to wait indefinitely.
-        The default timeout value is 5000.
+        many milliseconds to allow the command to be handled, or the atom
+        `:infinity` to wait indefinitely. The default timeout value is 5000.
 
         Alternatively, an options keyword list can be provided, it supports:
 
         Options:
 
           - `:consistency` as one of `:eventual` (default) or `:strong`
-            By setting the consistency to `:strong` a successful command dispatch
-            will block until all strongly consistent event handlers and process managers
-            have handled all events created by the command.
+            By setting the consistency to `:strong` a successful command
+            dispatch will block until all strongly consistent event handlers and
+            process managers have handled all events created by the command.
 
-          - `:timeout` as described above
+          - `:timeout` as described above.
 
-          - `:include_aggregate_version` set to true to include the aggregate stream version in the success response: `{:ok, aggregate_version}`
+          - `:include_aggregate_version` set to true to include the aggregate
+            stream version in the success response: `{:ok, aggregate_version}`
             The default is false, to return just `:ok`
 
-      Returns `:ok` on success, unless `:include_aggregate_version` is enabled where it returns `{:ok, aggregate_version}`.
+          - `:metadata` - An optional map containing key/value pairs comprising
+            the metadata to be associated with all events created by the command.
+
+      Returns `:ok` on success, unless `:include_aggregate_version` is enabled
+      where it returns `{:ok, aggregate_version}`.
       """
-      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, :consistency_timeout} | {:error, reason :: term}
+      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok | {:error, :consistency_timeout} | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
       def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, timeout: :infinity)
       def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, timeout: timeout)
@@ -180,6 +194,7 @@ defmodule Commanded.Commands.Router do
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
         consistency = Keyword.get(opts, :consistency, unquote(consistency) || @default_consistency)
+        metadata = Keyword.get(opts, :metadata, @default_metadata)
         timeout = Keyword.get(opts, :timeout, unquote(timeout) || @default_dispatch_timeout)
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version, @include_aggregate_version)
 
@@ -193,6 +208,7 @@ defmodule Commanded.Commands.Router do
           include_aggregate_version: include_aggregate_version,
           timeout: timeout,
           lifespan: unquote(lifespan) || @default_lifespan,
+          metadata: metadata,
           middleware: @registered_middleware ++ @default_middleware,
         })
       end
