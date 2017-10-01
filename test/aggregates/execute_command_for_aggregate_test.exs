@@ -1,7 +1,7 @@
 defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   use Commanded.StorageCase
 
-  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Aggregates.{Aggregate,ExecutionContext}
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler,DepositMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
@@ -15,7 +15,10 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    {:ok, 1} = Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1_000}, BankAccount, :open_account)
+    command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+    context = %ExecutionContext{command: command, handler: BankAccount, function: :open_account}
+
+    {:ok, 1} = Aggregate.execute(account_number, context)
 
     Helpers.Process.shutdown(account_number)
 
@@ -31,7 +34,10 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    {:ok, 1} = Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
+    command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+    context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
+
+    {:ok, 1} = Aggregate.execute(account_number, context)
 
     Helpers.Process.shutdown(account_number)
 
@@ -47,12 +53,18 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
 
     {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    {:ok, 1} = Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1_000}, OpenAccountHandler, :handle)
+    command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+    context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
+
+    {:ok, 1} = Aggregate.execute(account_number, context)
 
     state_before = Aggregate.aggregate_state(account_number)
 
     assert_process_exit(account_number, fn ->
-      Aggregate.execute(account_number, %OpenAccount{account_number: account_number, initial_balance: 1}, OpenAccountHandler, :handle)
+      command = %OpenAccount{account_number: account_number, initial_balance: 1}
+      context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
+
+      Aggregate.execute(account_number, context)
     end)
 
     {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
@@ -76,7 +88,10 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     ])
 
     assert_process_exit(account_number, fn ->
-      Aggregate.execute(account_number, %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}, DepositMoneyHandler, :handle)
+      command = %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}
+      context = %ExecutionContext{command: command, handler: DepositMoneyHandler, function: :handle}
+
+      Aggregate.execute(account_number, context)
     end)
   end
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.14.0 (unreleased)
+
+- Dispatch command with `:eventual` or `:strong` consistency guarantee ([#82](https://github.com/slashdotdash/commanded/issues/82)).
+- Include custom metadata during command dispatch ([#61](https://github.com/slashdotdash/commanded/issues/61)).
+
 ## v0.13.0
 
 ### Enhancements

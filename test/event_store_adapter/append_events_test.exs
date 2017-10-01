@@ -36,15 +36,23 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
 
   describe "stream events from an existing stream" do
     test "should read events" do
-      events = build_events(4)
+      correlation_id = UUID.uuid4()
+      causation_id = UUID.uuid4()
+      events = build_events(4, correlation_id, causation_id)
 
       assert {:ok, 4} == EventStore.append_to_stream("stream", 0, events)
 
       read_events = EventStore.stream_forward("stream") |> Enum.to_list()
       assert length(read_events) == 4
       assert coerce(events) == coerce(read_events)
-
       assert pluck(read_events, :stream_version) == [1, 2, 3, 4]
+
+      Enum.each(read_events, fn event ->
+        assert event.stream_id == "stream"
+        assert event.correlation_id == correlation_id
+        assert event.causation_id == causation_id
+        assert event.metadata == %{"metadata" => "value"}
+      end)
 
       read_events = EventStore.stream_forward("stream", 3) |> Enum.to_list()
       assert coerce(Enum.slice(events, 2, 2)) == coerce(read_events)
@@ -80,18 +88,20 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
     end
   end
 
-  defp build_event(account_number) do
+  defp build_event(account_number, correlation_id, causation_id) do
     %EventData{
-      correlation_id: UUID.uuid4,
+      correlation_id: correlation_id,
+      causation_id: causation_id,
       event_type: "Elixir.Commanded.EventStore.Adapter.AppendEventsTest.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
       metadata: %{"metadata" => "value"},
     }
   end
 
-  defp build_events(count) do
-    for account_number <- 1..count, do: build_event(account_number)
+  defp build_events(count, correlation_id \\ UUID.uuid4(), causation_id \\ UUID.uuid4())
+  defp build_events(count, correlation_id, causation_id) do
+    for account_number <- 1..count, do: build_event(account_number, correlation_id, causation_id)
   end
 
-  defp coerce(events), do: Enum.map(events, &(%{correlation_id: &1.correlation_id, data: &1.data, metadata: &1.metadata}))
+  defp coerce(events), do: Enum.map(events, &(%{causation_id: &1.causation_id, correlation_id: &1.correlation_id, data: &1.data, metadata: &1.metadata}))
 end

@@ -4,6 +4,7 @@ defmodule Commanded.Commands.Dispatcher do
   require Logger
 
   alias Commanded.Aggregates
+  alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Middleware.Pipeline
 
   defmodule Payload do
@@ -18,6 +19,7 @@ defmodule Commanded.Commands.Dispatcher do
       identity: nil,
       timeout: nil,
       lifespan: nil,
+      metadata: nil,
       middleware: [],
     ]
   end
@@ -54,12 +56,13 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp execute(
-    %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}, command: command} = pipeline,
-    %Payload{handler_module: handler_module, handler_function: handler_function, timeout: timeout, lifespan: lifespan} = payload)
+    %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline,
+    %Payload{timeout: timeout} = payload)
   do
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(payload.aggregate_module, aggregate_uuid)
 
-    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, command, handler_module, handler_function, timeout, lifespan])
+    context = to_execution_context(pipeline, payload)
+    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, context, timeout])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
 
     result =
@@ -87,6 +90,19 @@ defmodule Commanded.Commands.Dispatcher do
         |> after_failure(error, reason, payload)
         |> Pipeline.respond({:error, error})
      end
+  end
+
+  defp to_execution_context(
+    %Pipeline{command: command},
+    %Payload{handler_module: handler_module, handler_function: handler_function, lifespan: lifespan, metadata: metadata})
+  do
+    %ExecutionContext{
+      command: command,
+      metadata: metadata,
+      handler: handler_module,
+      function: handler_function,
+      lifespan: lifespan,
+    }
   end
 
   defp respond_with_success(%Pipeline{} = pipeline, %Payload{include_aggregate_version: include_aggregate_version}, aggregate_version) do
