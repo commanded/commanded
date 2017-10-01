@@ -4,21 +4,21 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
   The available options are:
 
-    - `command` is the command to execute, typically a struct
+    - `command` - the command to execute, typically a struct
       (e.g. `%OpenBankAccount{...}`).
 
-    - `metadata` is a map of key/value pairs containing the metadata to be
+    - `metadata` - a map of key/value pairs containing the metadata to be
       associated with all events created by the command.
 
-    - `handler` is the module that handles the command. It may be either the
+    - `handler` - the module that handles the command. It may be either the
       aggregate module itself or a separate command handler module.
 
-    - `function` is the name of function, as an atom, that handles the command.
+    - `function` - the name of function, as an atom, that handles the command.
       The default value is `:execute`, used to support command dispatch directly
       to the aggregate module. For command handlers the `:handle` function is
       used.
 
-    - `lifespan` is a module implementing the `Commanded.Aggregates.AggregateLifespan`
+    - `lifespan` - a module implementing the `Commanded.Aggregates.AggregateLifespan`
       behaviour to control the aggregate instance process lifespan. The default
       value, `Commanded.Aggregates.DefaultLifespan`, keeps the process running
       indefinitely.
