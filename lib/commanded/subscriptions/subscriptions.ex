@@ -122,10 +122,11 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_cast({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{streams_table: streams_table, started_at: started_at} = state) do
+  def handle_cast({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
     # track insert date as ms since the subscripions process was started to support expiry of stale acks
-    inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :millisecond)
+    inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :second)
 
+    :ets.insert(subscriptions_table, {name})
     :ets.insert(streams_table, {{name, stream_uuid}, stream_version, inserted_at_epoch})
 
     state =
@@ -211,10 +212,10 @@ defmodule Commanded.Subscriptions do
     stale_epoch =
       now()
       |> NaiveDateTime.add(-ttl, :millisecond)
-      |> NaiveDateTime.diff(started_at, :millisecond)
+      |> NaiveDateTime.diff(started_at, :second)
 
     streams_table
-    |> :ets.select([{{:"$1",:"$2",:"$3"},[{:"=<",:"$3",stale_epoch}],[:"$1"]}])
+    |> :ets.select([{{:"$1", :"$2", :"$3"}, [{:"=<", :"$3", stale_epoch}], [:"$1"]}])
     |> Enum.each(&:ets.delete(streams_table, &1))
   end
 
