@@ -12,6 +12,7 @@ defmodule Commanded.Supervisor do
     children = registry_supervision_tree(registry_provider()) ++ [
       supervisor(Task.Supervisor, [[name: Commanded.Commands.TaskDispatcher]]),
       supervisor(Commanded.Aggregates.Supervisor, []),
+      worker(Commanded.Subscriptions, []),
     ]
 
     supervise(children, strategy: :one_for_one)

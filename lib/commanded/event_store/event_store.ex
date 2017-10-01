@@ -28,7 +28,18 @@ defmodule Commanded.EventStore do
   @callback stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, :stream_not_found} | {:error, reason}
 
   @doc """
-  Subscriber will be notified of every event persisted to any stream.
+  Create a persistent subscription to all event streams.
+
+  The event store will remember the subscribers last acknowledged event.
+  Restarting the named subscription will resume from the next event following
+  the last seen.
+
+  The subscriber process will be sent all events persisted to any stream. It
+  will receive a `{:events, events}` message for each batch of events persisted
+  for a single aggregate.
+
+  The subscriber must ack each received, and successfully processed event, using
+  `Commanded.EventStore.ack_event/2`.
   """
   @callback subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}

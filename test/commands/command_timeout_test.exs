@@ -26,7 +26,7 @@ defmodule Commanded.Commands.CommandTimeoutTest do
       {:error, :aggregate_execution_failed} -> :ok
       {:error, :aggregate_execution_failed, _reason} -> :ok
       {:error, :aggregate_execution_timeout} -> :ok
-      _ = reply -> flunk("received an unexpected response: #{inspect reply}")
+      reply -> flunk("received an unexpected response: #{inspect reply}")
     end
   end
 

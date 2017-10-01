@@ -7,7 +7,7 @@ defmodule Commanded.EventStore.RecordedEvent do
 
   @type t :: %Commanded.EventStore.RecordedEvent{
     event_number: non_neg_integer,
-    stream_id: non_neg_integer,
+    stream_id: String.t,
     stream_version: non_neg_integer,
     correlation_id: String.t,
     causation_id: String.t,

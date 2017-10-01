@@ -3,10 +3,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   Behaviour to define a process manager.
 
   A process manager is responsible for coordinating one or more aggregate roots.
-  It handles events and dispatches commands in response.
-  Process managers have state that can be used to track which aggregate roots are being orchestrated.
+  It handles events and dispatches commands in response. Process managers have
+  state that can be used to track which aggregate roots are being orchestrated.
 
-  Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the three callback functions defined in the behaviour:
+  Use the `Commanded.ProcessManagers.ProcessManager` macro in your process
+  manager module and implement the three callback functions defined in the
+  behaviour:
 
   - `c:interested?/1`
   - `c:handle/2`
@@ -36,6 +38,34 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       {:ok, process_manager} = ExampleProcessManager.start_link()
 
+  # Consistency
+
+  For each process manager you can define its consistency, as one of either
+  `:strong` or `:eventual`.
+
+  This setting is used when dispatching commands and specifying the `consistency`
+  option.
+
+  When you dispatch a command using `:strong` consistency, after successful
+  command dispatch the process will block until all process managers configured to
+  use `:strong` consistency have processed the domain events created by the
+  command.
+
+  The default setting is `:eventual` consistency. Command dispatch will return
+  immediately upon confirmation of event persistence, not waiting for any
+  process managers.
+
+  ## Example
+
+      defmodule ExampleProcessManager do
+        use Commanded.ProcessManagers.ProcessManager,
+          name: "ExampleProcessManager",
+          router: BankRouter
+          consistency: :strong
+
+        # ...
+      end
+
   Please read the [Process managers](process-managers.html) guide for more details.
   """
 
@@ -43,6 +73,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @type command :: struct
   @type process_manager :: struct
   @type process_uuid :: String.t
+  @type consistency :: :eventual | :strong
 
   @doc """
   Is the process manager interested in the given command?
@@ -89,7 +120,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       def start_link(opts \\ []) do
         opts =
           @opts
-          |> Keyword.take([:start_from])
+          |> Keyword.take([:consistency, :start_from])
           |> Keyword.merge(opts)
 
         Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)

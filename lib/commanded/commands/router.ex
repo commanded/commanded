@@ -7,17 +7,25 @@ defmodule Commanded.Commands.Router do
       defmodule BankRouter do
         use Commanded.Commands.Router
 
-        dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+        dispatch OpenAccount,
+          to: OpenAccountHandler,
+          aggregate: BankAccount,
+          identity: :account_number
       end
 
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+      :ok = BankRouter.dispatch(%OpenAccount{
+        account_number: "ACC123",
+        initial_balance: 1_000
+      })
 
-  The command handler module must implement a `handle/2` function that receives the aggregate's state and the command to execute.
-  It should delegate the command to the aggregate.
+  The command handler module must implement a `handle/2` function that receives
+  the aggregate's state and the command to execute. It should delegate the
+  command to the aggregate.
 
   ## Dispatch command directly to an aggregate root
 
-  You can route a command directly to an aggregate root, without requiring an intermediate command handler.
+  You can route a command directly to an aggregate root, without requiring an
+  intermediate command handler.
 
   ## Example
 
@@ -27,15 +35,32 @@ defmodule Commanded.Commands.Router do
         dispatch OpenAccount, to: BankAccount, identity: :account_number
       end
 
-  The aggregate root must implement an `execute/2` function that receives the aggregate's state and the command being executed.
+  The aggregate root must implement an `execute/2` function that receives the
+  aggregate's state and the command being executed.
+
+  ## Consistency
+
+  You can choose to dispatch commands using either `:eventual` or `:strong`
+  consistency:
+
+      :ok = BankRouter.dispatch(command, consistency: :strong)
+
+  Using `:strong` consistency will block command dispatch until all strongly
+  consistent event handlers and process managers have successfully process all
+  events created by the command.
+
+  Use this when you have event handlers that update read models you need to
+  query immediately after dispatching the command.
 
   ## Aggregate version
 
-  You can optionally choose to include the aggregate's version as part of the dispatch result by setting `include_aggregate_version` true.
+  You can optionally choose to include the aggregate's version as part of the
+  dispatch result by setting `include_aggregate_version` true.
 
       {:ok, aggregate_version} = BankRouter.dispatch(command, include_aggregate_version: true)
 
-  This is useful when you need to wait for an event handler (e.g. a read model projection) to be up-to-date before continuing or querying its data.
+  This is useful when you need to wait for an event handler (e.g. a read model
+  projection) to be up-to-date before continuing or querying its data.
 
   """
   defmacro __using__(_) do
@@ -45,15 +70,20 @@ defmodule Commanded.Commands.Router do
       @before_compile unquote(__MODULE__)
       @registered_commands []
       @registered_middleware []
+      @default_middleware [
+        Commanded.Middleware.ExtractAggregateIdentity,
+        Commanded.Middleware.ConsistencyGuarantee,
+      ]
+      @default_consistency :eventual
       @default_dispatch_timeout 5_000
       @default_lifespan Commanded.Aggregates.DefaultLifespan
       @include_aggregate_version false
     end
   end
 
-
   @doc """
-  Include the given middleware module to be called before and after success or failure of each command dispatch
+  Include the given middleware module to be called before and after
+  success or failure of each command dispatch
 
   The middleware module must implement the `Commanded.Middleware` behaviour.
 
@@ -78,7 +108,8 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc """
-  Configure the command, or list of commands, to be dispatched to the corresponding handler for a given aggregate root
+  Configure the command, or list of commands, to be dispatched to the
+  corresponding handler for a given aggregate root
   """
   defmacro dispatch(command_module_or_modules, opts) do
     opts = parse_opts(opts, [])
@@ -92,10 +123,10 @@ defmodule Commanded.Commands.Router do
     end)
   end
 
-  @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan]
+  @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan, :consistency]
 
   @doc false
-  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan) do
+  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan, consistency: consistency) do
     quote do
       if Enum.member?(@registered_commands, unquote(command_module)) do
         raise "duplicate command registration for: #{inspect unquote(command_module)}"
@@ -121,30 +152,40 @@ defmodule Commanded.Commands.Router do
       Dispatch the given command to the registered handler providing a timeout.
 
       - `timeout_or_opts` is either an integer timeout or a keyword list of options.
-        The timeout must be an integer greater than zero which specifies how many milliseconds to allow the command to be handled, or the atom `:infinity` to wait indefinitely.
+        The timeout must be an integer greater than zero which specifies how
+        many milliseconds to allow the command to be handled, or the atom `:infinity` to wait indefinitely.
         The default timeout value is 5000.
+
         Alternatively, an options keyword list can be provided, it supports:
 
         Options:
 
+          - `:consistency` as one of `:eventual` (default) or `:strong`
+            By setting the consistency to `:strong` a successful command dispatch
+            will block until all strongly consistent event handlers and process managers
+            have handled all events created by the command.
+
           - `:timeout` as described above
+
           - `:include_aggregate_version` set to true to include the aggregate stream version in the success response: `{:ok, aggregate_version}`
             The default is false, to return just `:ok`
 
       Returns `:ok` on success, unless `:include_aggregate_version` is enabled where it returns `{:ok, aggregate_version}`.
       """
-      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, reason :: term}
+      @spec dispatch(command :: struct, timeout :: integer | :infinity | keyword()) :: :ok | {:error, :consistency_timeout} | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
       def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, timeout: :infinity)
       def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, timeout: timeout)
       def dispatch(%unquote(command_module){} = command, opts), do: do_dispatch(command, opts)
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
+        consistency = Keyword.get(opts, :consistency, unquote(consistency) || @default_consistency)
         timeout = Keyword.get(opts, :timeout, unquote(timeout) || @default_dispatch_timeout)
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version, @include_aggregate_version)
 
         Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
+          consistency: consistency,
           handler_module: unquote(handler),
           handler_function: unquote(function),
           aggregate_module: unquote(aggregate),
@@ -152,7 +193,7 @@ defmodule Commanded.Commands.Router do
           include_aggregate_version: include_aggregate_version,
           timeout: timeout,
           lifespan: unquote(lifespan) || @default_lifespan,
-          middleware: @registered_middleware,
+          middleware: @registered_middleware ++ @default_middleware,
         })
       end
     end
@@ -196,7 +237,6 @@ defmodule Commanded.Commands.Router do
   end
 
   defp parse_opts([], result) do
-    @register_params
-    |> Enum.map(fn key -> {key, Keyword.get(result, key)} end)
+    Enum.map(@register_params, fn key -> {key, Keyword.get(result, key)} end)
   end
 end

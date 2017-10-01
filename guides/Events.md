@@ -60,3 +60,22 @@ end
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
 You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
+
+
+### Consistency guarantee
+
+You can specify an event handler's consistency guarantee using the `consistency` option:
+
+```elixir
+defmodule AccountBalanceHandler do
+  use Commanded.Event.Handler,
+    name: "account_balance",
+    consistency: :eventual
+```
+
+The available options are `:eventual` (default) and `:strong`:
+
+- *Strong consistency* offers up-to-date data but at the cost of high latency.
+- *Eventual consistency* offers low latency but read model queries may reply with stale data since they may not have processed the persisted events.
+
+You request the consistency guarantee, either `:strong` or `:eventual`, when dispatching a command. Strong consistency will block the command dispatch and wait for all strongly consistent event handlers to successfully process all events created by the command. Whereas eventual consistency will immediately return after command dispatch, without waiting for any event handlers, even those configured for strong consistency.
