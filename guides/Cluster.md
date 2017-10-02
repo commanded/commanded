@@ -34,20 +34,75 @@ EventStore supports running on a cluster of nodes. It uses the [Swarm](https://h
         nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3@127.0.0.1"],
         node_blacklist: [~r/^primary@.+$/],
         distribution_strategy: Swarm.Distribution.StaticQuorumRing,
-        static_quorum_size: 3,
+        static_quorum_size: 2,
         sync_nodes_timeout: 0,
         debug: false
       ```
 
     This is to ensure consistency during a network partition. The `static_quorum_size` setting defines the minimum number of nodes that must be connected in the cluster to allow process registration and distribution. If there are fewer nodes currently available than the quorum size, any calls to the `EventStore` will block until enough nodes have started.
 
-## Cluster formation on node start
+## Automatic cluster formation
 
-You can configure the `:kernel` application to wait for cluster formation before starting your application during node start up. The `sync_nodes_optional` configuration specifies which nodes to attempt to connect to within the `sync_nodes_timeout` window, defined in milliseconds, before continuing with startup. There is also a `sync_nodes_mandatory` setting which can be used to enforce all nodes are connected within the timeout window or else the node terminates.
+Swarm can be used with [libcluster](https://github.com/bitwalker/libcluster), a library that provides a mechanism for automatically forming clusters of Erlang nodes, with either static or dynamic node membership.
+
+You will need to include `libcluster` as an additional dependency:
 
 ```elixir
+defp deps do
+  [{:libcluster, "~> 2.2"}]
+end
+```
+
+Then configure the cluster topology in the environment config (e.g. `config/config.exs`). An example is shown below using the standard Erlang `epmd` daemon strategy:
+
+```elixir
+config :libcluster,
+  topologies: [
+    example: [
+      strategy: Cluster.Strategy.Epmd,
+      config: [hosts: [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3@127.0.0.1"]],
+    ]
+  ]
+```
+
+Please refer to the [libcluster docs](https://hexdocs.pm/libcluster/) for more detail.
+
+### Starting a cluster
+
+  1. Run an [Erlang Port Mapper Daemon](http://erlang.org/doc/man/epmd.html) (epmd):
+
+      ```console
+      $ epmd -d
+      ```
+
+  2. Start an `iex` console per node:
+
+      ```console
+      $ MIX_ENV=distributed iex --name node1@127.0.0.1 -S mix
+      ```
+
+      ```console
+      $ MIX_ENV=distributed iex --name node2@127.0.0.1 -S mix
+      ```
+
+      ```console
+      $ MIX_ENV=distributed iex --name node3@127.0.0.1 -S mix
+      ```
+
+The cluster will be automatically formed as soon as the nodes start.     
+
+## Static cluster topology and formation
+
+Instead of using `libcluster` you can configure the `:kernel` application to wait for cluster formation before starting your application during node start up. This approach is useful when you have a static cluster topology that can be defined in config.
+
+The `sync_nodes_optional` configuration specifies which nodes to attempt to connect to within the `sync_nodes_timeout` window, defined in milliseconds, before continuing with startup. There is also a `sync_nodes_mandatory` setting which can be used to enforce all nodes are connected within the timeout window or else the node terminates.
+
+Each node requires its own individual configuration, listing the other nodes in the cluster:
+
+```elixir
+# node1 config
 config :kernel,
-  sync_nodes_optional: [:"node1@192.168.1.1", :"node2@192.168.1.2"],
+  sync_nodes_optional: [:"node2@192.168.1.1", :"node3@192.168.1.2"],
   sync_nodes_timeout: 30_000
 ```
 
@@ -59,15 +114,16 @@ This approach will only work for Elixir releases. You will need to use [Erlang's
 The Erlang equivalent of the `:kernerl` mix config, as above, is:
 
 ```erlang
+% node1.sys.config
 [{kernel,
   [
-    {sync_nodes_optional, ['node1@127.0.0.1', 'node2@127.0.0.1']},
+    {sync_nodes_optional, ['node2@127.0.0.1', 'node3@127.0.0.1']},
     {sync_nodes_timeout, 30000}
   ]}
 ].
 ```
 
-## Starting a cluster
+### Starting a cluster
 
   1. Run an [Erlang Port Mapper Daemon](http://erlang.org/doc/man/epmd.html) (epmd):
 
@@ -92,6 +148,8 @@ The Erlang equivalent of the `:kernerl` mix config, as above, is:
 The node specific `<node>.sys.config` files ensure the cluster is formed before starting the `:eventstore` application, assuming this occurs within the 30 seconds timeout.
 
 Once the cluster has formed, you can use the EventStore API from any node. Stream processes will be distributed amongst the cluster and moved around on node up/down.
+
+## Usage
 
 ### Append events to a stream
 
