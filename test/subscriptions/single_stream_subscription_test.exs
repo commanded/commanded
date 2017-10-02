@@ -116,7 +116,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
     stream_uuid = UUID.uuid4
     {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
 
-    events = EventFactory.create_recorded_events(1, 1)
+    events = EventFactory.create_recorded_events(1, stream_uuid)
 
     subscription =
       create_subscription(stream_uuid)
@@ -197,8 +197,8 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
     stream_uuid = UUID.uuid4
     {:ok, stream_id} = Stream.create_stream(conn, stream_uuid)
 
-    recorded_events = EventFactory.create_recorded_events(3, stream_id, 4)
-    {:ok, [4, 5, 6]} = Appender.append(conn, recorded_events)
+    recorded_events = EventFactory.create_recorded_events(3, stream_uuid, 4)
+    {:ok, [4, 5, 6]} = Appender.append(conn, stream_id, recorded_events)
 
     {:ok, stream} = Streams.Supervisor.open_stream(stream_uuid)
 
@@ -231,7 +231,7 @@ defmodule EventStore.Subscriptions.SingleStreamSubscriptionTest do
 
   test "should not notify events until ack received" do
     stream_uuid = UUID.uuid4
-    events = EventFactory.create_recorded_events(6, 1)
+    events = EventFactory.create_recorded_events(6, stream_uuid)
     initial_events = Enum.take(events, 3)
     remaining_events = Enum.drop(events, 3)
 

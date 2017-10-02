@@ -1,15 +1,27 @@
 defmodule EventStore.RecordedEvent do
   @moduledoc """
-  RecordedEvent contains the persisted data and metadata for a single event.
+  `EventStore.RecordedEvent` contains the persisted data and metadata for a single event.
 
   Events are immutable once recorded.
+
+  ## Recorded event fields
+
+    - `event_id` - a globally unique, monotonically incrementing and gapless integer
+    - `stream_uuid` - the stream identity for the event
+    - `stream_version` - the version of the stream for the event
+    - `correlation_id` - an optional identifier used to correlate related messages
+    - `causation_id` - an optional identifier used to identify which message you are responding to
+    - `data` - the serialized event as binary data
+    - `metadata` - the serialized event metadata as binary data
+    - `created_at` - the date/time, in UTC, indicating when the event was created
+
   """
 
   alias EventStore.RecordedEvent
-  
+
   @type t :: %RecordedEvent{
     event_id: non_neg_integer,
-    stream_id: non_neg_integer,
+    stream_uuid: String.t,
     stream_version: non_neg_integer,
     correlation_id: String.t,
     causation_id: String.t,
@@ -21,7 +33,7 @@ defmodule EventStore.RecordedEvent do
 
   defstruct [
     event_id: nil,
-    stream_id: nil,
+    stream_uuid: nil,
     stream_version: nil,
     correlation_id: nil,
     causation_id: nil,

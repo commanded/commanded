@@ -17,16 +17,24 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
 
     test "subscribe to single stream from origin should receive all its events", %{subscription_name: subscription_name} do
       stream_uuid = UUID.uuid4
-      events = EventFactory.create_events(1)
+      events = EventFactory.create_events(3)
 
       {:ok, _stream} = Streams.Supervisor.open_stream(stream_uuid)
 
       {:ok, _subscription} = subscribe_to_stream(stream_uuid, subscription_name, self())
 
       :ok = Stream.append_to_stream(stream_uuid, 0, events)
-
       assert_receive {:events, received_events}
+
+      assert pluck(received_events, :event_id) == [4, 5, 6]
+      assert pluck(received_events, :stream_uuid) == [stream_uuid, stream_uuid, stream_uuid]
+      assert pluck(received_events, :stream_version) == [1, 2, 3]
+      assert pluck(received_events, :correlation_id) == pluck(events, :correlation_id)
+      assert pluck(received_events, :causation_id) == pluck(events, :causation_id)
+      assert pluck(received_events, :event_type) == pluck(events, :event_type)
       assert pluck(received_events, :data) == pluck(events, :data)
+      assert pluck(received_events, :metadata) == pluck(events, :metadata)
+      refute pluck(received_events, :created_at) |> Enum.any?(&is_nil/1)
     end
 
     test "subscribe to single stream from given stream version should only receive later events", %{subscription_name: subscription_name} do
@@ -42,7 +50,15 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       :ok = Stream.append_to_stream(stream_uuid, 1, new_events)
 
       assert_receive {:events, received_events}
+      assert pluck(received_events, :event_id) == [5]
+      assert pluck(received_events, :stream_uuid) == [stream_uuid]
+      assert pluck(received_events, :stream_version) == [2]
+      assert pluck(received_events, :correlation_id) == pluck(new_events, :correlation_id)
+      assert pluck(received_events, :causation_id) == pluck(new_events, :causation_id)
+      assert pluck(received_events, :event_type) == pluck(new_events, :event_type)
       assert pluck(received_events, :data) == pluck(new_events, :data)
+      assert pluck(received_events, :metadata) == pluck(new_events, :metadata)
+      refute pluck(received_events, :created_at) |> Enum.any?(&is_nil/1)
     end
 
     test "subscribe to stream more than once using same subscription name should error", %{subscription_name: subscription_name} do
@@ -185,13 +201,28 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       :ok = Stream.append_to_stream(stream2_uuid, 0, stream2_events)
 
       assert_receive {:events, stream1_received_events}
+      assert pluck(stream1_received_events, :event_id) == [1]
+      assert pluck(stream1_received_events, :stream_uuid) == [stream1_uuid]
+      assert pluck(stream1_received_events, :stream_version) == [1]
+      assert pluck(stream1_received_events, :correlation_id) == pluck(stream1_events, :correlation_id)
+      assert pluck(stream1_received_events, :causation_id) == pluck(stream1_events, :causation_id)
+      assert pluck(stream1_received_events, :event_type) == pluck(stream1_events, :event_type)
+      assert pluck(stream1_received_events, :data) == pluck(stream1_events, :data)
+      assert pluck(stream1_received_events, :metadata) == pluck(stream1_events, :metadata)
+      refute pluck(stream1_received_events, :created_at) |> Enum.any?(&is_nil/1)
+
       Subscription.ack(subscription, stream1_received_events)
 
       assert_receive {:events, stream2_received_events}
-
-      assert pluck(stream1_received_events, :data) == pluck(stream1_events, :data)
+      assert pluck(stream2_received_events, :event_id) == [2]
+      assert pluck(stream2_received_events, :stream_uuid) == [stream2_uuid]
+      assert pluck(stream2_received_events, :stream_version) == [1]
+      assert pluck(stream2_received_events, :correlation_id) == pluck(stream2_events, :correlation_id)
+      assert pluck(stream2_received_events, :causation_id) == pluck(stream2_events, :causation_id)
+      assert pluck(stream2_received_events, :event_type) == pluck(stream2_events, :event_type)
       assert pluck(stream2_received_events, :data) == pluck(stream2_events, :data)
-      assert stream1_received_events != stream2_received_events
+      assert pluck(stream2_received_events, :metadata) == pluck(stream2_events, :metadata)
+      refute pluck(stream2_received_events, :created_at) |> Enum.any?(&is_nil/1)
     end
 
     test "subscribe to all streams from given stream id should only receive later events from all streams", %{subscription_name: subscription_name} do

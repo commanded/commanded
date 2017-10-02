@@ -12,17 +12,16 @@ defmodule EventStore.Storage.Appender do
 
   Returns `{:ok, event_ids}` on success, where `event_ids` is a list of the ids assigned by the database.
   """
-  def append(conn, events) do
-    execute_using_multirow_value_insert(conn, events)
+  def append(conn, stream_id, events) do
+    execute_using_multirow_value_insert(conn, stream_id, events)
   end
 
-  defp execute_using_multirow_value_insert(conn, [first_event | _] = events) do
+  defp execute_using_multirow_value_insert(conn, stream_id, [first_event | _] = events) do
     event_count = length(events)
-    stream_id = first_event.stream_id
     stream_version = first_event.stream_version + event_count - 1
 
     statement = build_insert_statement(event_count)
-    parameters = [event_count, stream_version, stream_id] ++ build_insert_parameters(events)
+    parameters = [event_count, stream_version, stream_id] ++ build_insert_parameters(stream_id, events)
 
     conn
     |> Postgrex.query(statement, parameters, pool: DBConnection.Poolboy)
@@ -33,13 +32,13 @@ defmodule EventStore.Storage.Appender do
     Statements.create_events(event_count)
   end
 
-  defp build_insert_parameters(events) do
+  defp build_insert_parameters(stream_id, events) do
     events
     |> Enum.with_index(1)
     |> Enum.flat_map(fn {event, index} ->
       [
         index,
-        event.stream_id,
+        stream_id,
         event.stream_version,
         event.correlation_id,
         event.causation_id,
@@ -57,31 +56,31 @@ defmodule EventStore.Storage.Appender do
   end
 
   defp handle_response({:ok, %Postgrex.Result{num_rows: 0}}, events) do
-    _ = Logger.warn(fn -> "failed to append any events to stream id #{stream_id(events)}" end)
+    _ = Logger.warn(fn -> "failed to append any events to stream \"#{stream_uuid(events)}\"" end)
     {:error, :failed_to_append_events}
   end
 
   defp handle_response({:ok, %Postgrex.Result{num_rows: num_rows, rows: rows}}, events) do
     event_ids = List.flatten(rows)
 
-    _ = Logger.info(fn -> "appended #{num_rows} event(s) to stream id #{stream_id(events)} (event ids: #{Enum.join(event_ids, ", ")})" end)
+    _ = Logger.info(fn -> "appended #{num_rows} event(s) to stream \"#{stream_uuid(events)}\" (event ids: #{Enum.join(event_ids, ", ")})" end)
     {:ok, event_ids}
   end
 
   defp handle_response({:error, %Postgrex.Error{postgres: %{code: :foreign_key_violation, message: message}}}, events) do
-    _ = Logger.warn(fn -> "failed to append events to stream id #{stream_id(events)} due to: #{inspect message}" end)
+    _ = Logger.warn(fn -> "failed to append events to stream \"#{stream_uuid(events)}\" due to: #{inspect message}" end)
     {:error, :stream_not_found}
   end
 
   defp handle_response({:error, %Postgrex.Error{postgres: %{code: :unique_violation, message: message}}}, events) do
-    _ = Logger.warn(fn -> "failed to append events to stream id #{stream_id(events)} due to: #{inspect message}" end)
+    _ = Logger.warn(fn -> "failed to append events to stream \"#{stream_uuid(events)}\" due to: #{inspect message}" end)
     {:error, :wrong_expected_version}
   end
 
   defp handle_response({:error, reason}, events) do
-    _ = Logger.warn(fn -> "failed to append events to stream id #{stream_id(events)} due to: #{inspect reason}" end)
+    _ = Logger.warn(fn -> "failed to append events to stream \"#{stream_uuid(events)}\" due to: #{inspect reason}" end)
     {:error, reason}
   end
 
-  defp stream_id([event | _]), do: event.stream_id
+  defp stream_uuid([event | _]), do: event.stream_uuid
 end

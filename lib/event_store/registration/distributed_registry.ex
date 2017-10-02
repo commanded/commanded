@@ -1,3 +1,4 @@
+if Code.ensure_loaded?(Swarm) do
 defmodule EventStore.Registration.DistributedRegistry do
   @moduledoc """
   Process registration and distribution throughout a cluster of nodes using [Swarm](https://github.com/bitwalker/swarm)
@@ -88,4 +89,5 @@ defmodule EventStore.Registration.DistributedRegistry do
   defp publish_events_to_node(node, stream_uuid, events) do
     Publisher.notify_events({Publisher, node}, stream_uuid, events)
   end
+end
 end

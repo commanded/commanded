@@ -8,15 +8,14 @@ defmodule EventStore.Writer do
   }
 
   @doc """
-  Append the given list of recorded events to the stream
+  Append the given list of recorded events to the stream.
 
   Returns `:ok` on success, or `{:error, reason}` on failure
   """
-  @spec append_to_stream(list(RecordedEvent.t), String.t) :: :ok | {:error, reason :: any()}
-  def append_to_stream(events, stream_uuid)
-  def append_to_stream([], _stream_uuid), do: :ok
-  def append_to_stream(events, stream_uuid) do
-    case Storage.append_to_stream(events) do
+  @spec append_to_stream(events :: list(RecordedEvent.t), stream_id :: non_neg_integer(), stream_uuid :: String.t) :: :ok | {:error, reason :: any()}
+  def append_to_stream([], _stream_id, _stream_uuid), do: :ok
+  def append_to_stream(events, stream_id, stream_uuid) do
+    case Storage.append_to_stream(stream_id, events) do
       {:ok, assigned_event_ids} ->
         events
         |> assign_event_ids(assigned_event_ids)
