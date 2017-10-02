@@ -118,4 +118,20 @@ defmodule Commanded.Entities.EventPersistenceTest do
       last_index: 201,
     }
   end
+
+  test "should prefix stream UUID with aggregate indentity prefix" do
+    aggregate_uuid = UUID.uuid4()
+    prefix = "example-preifx-"
+
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid, prefix)
+
+    context = %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle}
+
+    {:ok, 1} = Aggregate.execute(ExampleAggregate, aggregate_uuid, context)
+
+    recorded_events = EventStore.stream_forward(prefix <> aggregate_uuid, 0) |> Enum.to_list()
+    assert length(recorded_events) == 1
+
+    assert {:error, :stream_not_found} == EventStore.stream_forward(aggregate_uuid, 0)
+  end
 end

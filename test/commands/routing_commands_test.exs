@@ -1,7 +1,7 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
   use Commanded.StorageCase
-  doctest Commanded.Commands.Router
 
+  alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,WithdrawMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount,DepositMoney,WithdrawMoney}
@@ -53,6 +53,40 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  describe "identify aggregate" do
+    defmodule IdentityCommand, do: defstruct [:uuid]
+    defmodule IdentityEvent, do: defstruct [:uuid]
+
+    defmodule IdentityAggregateRoot do
+      defstruct [uuid: nil]
+
+      def execute(%__MODULE__{}, %IdentityCommand{uuid: uuid}), do: %IdentityEvent{uuid: uuid}
+      def apply(aggregate, _event), do: aggregate
+    end
+
+    defmodule IdentityAggregateRouter do
+      use Commanded.Commands.Router
+
+      identify IdentityAggregateRoot,
+        by: :uuid,
+        prefix: "prefix-"
+
+      dispatch IdentityCommand, to: IdentityAggregateRoot
+    end
+
+    test "should dispatch command to registered handler" do
+      assert :ok = IdentityAggregateRouter.dispatch(%IdentityCommand{uuid: UUID.uuid4})
+    end
+
+    test "should append events to stream using identity prefix" do
+      uuid = UUID.uuid4()
+      assert :ok = IdentityAggregateRouter.dispatch(%IdentityCommand{uuid: uuid})
+
+      recorded_events = EventStore.stream_forward("prefix-" <> uuid, 0) |> Enum.to_list()
+      assert length(recorded_events) == 1
+    end
+  end
+
   test "should prevent duplicate registrations for a command" do
     # compile time safety net to prevent duplicate command registrations
     assert_raise RuntimeError, "duplicate command registration for: Commanded.ExampleDomain.BankAccount.Commands.OpenAccount", fn ->
@@ -96,7 +130,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   test "should show a help note when bad argument given to a `dispatch/2` function" do
     assert_raise RuntimeError, """
     unexpected dispatch parameter "id"
-    available params are: to, function, aggregate, identity, timeout, lifespan, consistency
+    available params are: to, function, aggregate, identity, identity_prefix, timeout, lifespan, consistency
     """,
     fn ->
       Code.eval_string """

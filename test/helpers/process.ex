@@ -12,7 +12,7 @@ defmodule Commanded.Helpers.Process do
     Process.exit(pid, :shutdown)
 
     ref = Process.monitor(pid)
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, _, _, _}, 5_000
   end
 
   def shutdown(name) when is_atom(name) do
