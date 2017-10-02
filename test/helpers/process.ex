@@ -12,11 +12,18 @@ defmodule Commanded.Helpers.Process do
     Process.exit(pid, :shutdown)
 
     ref = Process.monitor(pid)
-    assert_receive {:DOWN, ^ref, _, _, _}, 5_000
+    assert_receive {:DOWN, ^ref, _, _, _}
   end
 
-  def shutdown(aggregate_uuid) do
-    pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, aggregate_uuid}])
+  def shutdown(name) when is_atom(name) do
+    case Process.whereis(name) do
+      nil -> :ok
+      pid -> shutdown(pid)
+    end
+  end
+
+  def shutdown(aggregate_module, aggregate_uuid) do
+    pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, {aggregate_module, aggregate_uuid}}])
     shutdown(pid)
   end
 end
