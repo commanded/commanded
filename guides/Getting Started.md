@@ -14,6 +14,7 @@ EventStore is [available in Hex](https://hex.pm/packages/eventstore) and can be 
 
       ```elixir
       config :eventstore, EventStore.Storage,
+        serializer: EventStore.TermSerializer,
         username: "postgres",
         password: "postgres",
         database: "eventstore_dev",
