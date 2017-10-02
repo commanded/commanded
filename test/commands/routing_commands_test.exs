@@ -113,7 +113,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent registrations for a invalid command module" do
-    assert_raise RuntimeError, "module `OpenAccount` does not exist, perhaps you forgot to `alias` the namespace", fn ->
+    assert_raise RuntimeError, "module `UnknownCommand` does not exist, perhaps you forgot to `alias` the namespace", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount
         alias Commanded.ExampleDomain.OpenAccountHandler
@@ -121,14 +121,14 @@ defmodule Commanded.Commands.RoutingCommandsTest do
         defmodule InvalidCommandRouter do
           use Commanded.Commands.Router
 
-          dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+          dispatch UnknownCommand, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
         end
       """
     end
   end
 
   test "should prevent registrations for an invalid command handler module" do
-    assert_raise RuntimeError, "module `Handler` does not exist, perhaps you forgot to `alias` the namespace", fn ->
+    assert_raise RuntimeError, "module `UnknownHandler` does not exist, perhaps you forgot to `alias` the namespace", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount
         alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
@@ -136,14 +136,14 @@ defmodule Commanded.Commands.RoutingCommandsTest do
         defmodule InvalidHandlerRouter do
           use Commanded.Commands.Router
 
-          dispatch OpenAccount, to: Handler, aggregate: BankAccount, identity: :account_number
+          dispatch OpenAccount, to: UnknownHandler, aggregate: BankAccount, identity: :account_number
         end
       """
     end
   end
 
   test "should prevent registrations for an invalid aggregate module" do
-    assert_raise RuntimeError, "module `BankAccount` does not exist, perhaps you forgot to `alias` the namespace", fn ->
+    assert_raise RuntimeError, "module `UnknownAggregate` does not exist, perhaps you forgot to `alias` the namespace", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
         alias Commanded.ExampleDomain.OpenAccountHandler
@@ -151,7 +151,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
         defmodule InvalidAggregateRouter do
           use Commanded.Commands.Router
 
-          dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+          dispatch OpenAccount, to: OpenAccountHandler, aggregate: UnknownAggregate, identity: :account_number
         end
       """
     end
