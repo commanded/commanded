@@ -112,6 +112,51 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  test "should prevent registrations for a invalid command module" do
+    assert_raise RuntimeError, "module `OpenAccount` does not exist, perhaps you forgot to `alias` the namespace", fn ->
+      Code.eval_string """
+        alias Commanded.ExampleDomain.BankAccount
+        alias Commanded.ExampleDomain.OpenAccountHandler
+
+        defmodule InvalidCommandRouter do
+          use Commanded.Commands.Router
+
+          dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+        end
+      """
+    end
+  end
+
+  test "should prevent registrations for an invalid command handler module" do
+    assert_raise RuntimeError, "module `Handler` does not exist, perhaps you forgot to `alias` the namespace", fn ->
+      Code.eval_string """
+        alias Commanded.ExampleDomain.BankAccount
+        alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+
+        defmodule InvalidHandlerRouter do
+          use Commanded.Commands.Router
+
+          dispatch OpenAccount, to: Handler, aggregate: BankAccount, identity: :account_number
+        end
+      """
+    end
+  end
+
+  test "should prevent registrations for an invalid aggregate module" do
+    assert_raise RuntimeError, "module `BankAccount` does not exist, perhaps you forgot to `alias` the namespace", fn ->
+      Code.eval_string """
+        alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+        alias Commanded.ExampleDomain.OpenAccountHandler
+
+        defmodule InvalidAggregateRouter do
+          use Commanded.Commands.Router
+
+          dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
+        end
+      """
+    end
+  end
+
   defmodule MultiCommandRouter do
     use Commanded.Commands.Router
 
