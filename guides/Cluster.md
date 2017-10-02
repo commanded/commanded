@@ -4,7 +4,7 @@ EventStore supports running on a cluster of nodes. It uses the [Swarm](https://h
 
 ## Running on a cluster
 
-  1. Add `:swarm` as a dependency in your `mix.exs` file:
+1. Add `:swarm` as a dependency in your `mix.exs` file:
 
       ```elixir
       defp deps do
@@ -14,20 +14,20 @@ EventStore supports running on a cluster of nodes. It uses the [Swarm](https://h
       end
       ```
 
-  2. Fetch the dependencies:
+2. Fetch the dependencies:
 
       ```console
       $ mix deps.get
       ```
 
-  3. Configure the EventStore to use the `:distributed` registry in the environment config (e.g. `config/config.exs`):
+3. Configure the EventStore to use the `:distributed` registry in the environment config (e.g. `config/config.exs`):
 
       ```elixir
       config :eventstore,
         registry: :distributed
       ```
 
-  4. Swarm must be configured to use the `Swarm.Distribution.StaticQuorumRing` distribution strategy:
+4. Swarm must be configured to use the `Swarm.Distribution.StaticQuorumRing` distribution strategy:
 
       ```elixir
       config :swarm,
