@@ -87,6 +87,41 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  describe "identify aggregate using function" do
+    defmodule IdentityFunctionCommand, do: defstruct [:uuid]
+    defmodule IdentityFunctionEvent, do: defstruct [:uuid]
+
+    defmodule IdentityFunctionAggregateRoot do
+      defstruct [uuid: nil]
+
+      def execute(%__MODULE__{}, %IdentityFunctionCommand{uuid: uuid}), do: %IdentityFunctionEvent{uuid: uuid}
+      def apply(aggregate, _event), do: aggregate
+    end
+
+    defmodule IdentityFunctionAggregateRouter do
+      use Commanded.Commands.Router
+
+      identify IdentityFunctionAggregateRoot,
+        by: &IdentityFunctionAggregateRouter.aggregate_identity/1
+
+      dispatch IdentityFunctionCommand, to: IdentityFunctionAggregateRoot
+
+      def aggregate_identity(%{uuid: uuid}), do: "fun-prefix-" <> uuid
+    end
+
+    test "should dispatch command to registered handler" do
+      assert :ok = IdentityFunctionAggregateRouter.dispatch(%IdentityFunctionCommand{uuid: UUID.uuid4})
+    end
+
+    test "should append events to stream" do
+      uuid = UUID.uuid4()
+      assert :ok = IdentityFunctionAggregateRouter.dispatch(%IdentityFunctionCommand{uuid: uuid})
+
+      recorded_events = EventStore.stream_forward("fun-prefix-" <> uuid, 0) |> Enum.to_list()
+      assert length(recorded_events) == 1
+    end
+  end
+
   test "should prevent duplicate registrations for a command" do
     # compile time safety net to prevent duplicate command registrations
     assert_raise RuntimeError, "duplicate command registration for: Commanded.ExampleDomain.BankAccount.Commands.OpenAccount", fn ->
