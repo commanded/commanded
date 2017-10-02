@@ -71,6 +71,7 @@ defmodule Commanded.Commands.Router do
       :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
   """
+
   defmacro __using__(_) do
     quote do
       require Logger
@@ -136,10 +137,15 @@ defmodule Commanded.Commands.Router do
 
   @doc false
   defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan, consistency: consistency) do
-    quote do
+    quote location: :keep do
       if Enum.member?(@registered_commands, unquote(command_module)) do
         raise "duplicate command registration for: #{inspect unquote(command_module)}"
       end
+
+      # sanity check the configured modules exist
+      ensure_module_exists(unquote(command_module))
+      ensure_module_exists(unquote(handler))
+      ensure_module_exists(unquote(aggregate))
 
       handler_functions = unquote(handler).__info__(:functions)
       unless Keyword.get(handler_functions, unquote(function)) == 2 do
@@ -227,6 +233,13 @@ defmodule Commanded.Commands.Router do
         Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)
         {:error, :unregistered_command}
       end
+    end
+  end
+
+  @doc false
+  def ensure_module_exists(module) do
+    unless Code.ensure_compiled?(module) do
+      raise "module `#{inspect module}` does not exist, perhaps you forgot to `alias` the namespace"
     end
   end
 
