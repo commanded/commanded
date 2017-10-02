@@ -36,7 +36,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, aggregate_uuid)
 
-      pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, aggregate_uuid}])
+      pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, {BankAccount, aggregate_uuid}}])
       ref = Process.monitor(pid)
 
       %{aggregate_uuid: aggregate_uuid, ref: ref}

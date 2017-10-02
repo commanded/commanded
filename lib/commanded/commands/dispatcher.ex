@@ -17,6 +17,7 @@ defmodule Commanded.Commands.Dispatcher do
       aggregate_module: nil,
       include_aggregate_version: nil,
       identity: nil,
+      identity_prefix: nil,
       timeout: nil,
       lifespan: nil,
       metadata: nil,
@@ -57,12 +58,12 @@ defmodule Commanded.Commands.Dispatcher do
 
   defp execute(
     %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline,
-    %Payload{timeout: timeout} = payload)
+    %Payload{aggregate_module: aggregate_module, identity_prefix: identity_prefix, timeout: timeout} = payload)
   do
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(payload.aggregate_module, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(aggregate_module, aggregate_uuid, identity_prefix)
 
     context = to_execution_context(pipeline, payload)
-    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_uuid, context, timeout])
+    task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_module, aggregate_uuid, context, timeout])
     task_result = Task.yield(task, timeout) || Task.shutdown(task)
 
     result =

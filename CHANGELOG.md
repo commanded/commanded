@@ -5,6 +5,7 @@
 ### Enhancements
 
 - Dispatch command with `:eventual` or `:strong` consistency guarantee ([#82](https://github.com/slashdotdash/commanded/issues/82)).
+- Additional stream prefix per aggregate ([#77](https://github.com/slashdotdash/commanded/issues/77)).
 - Include custom metadata during command dispatch ([#61](https://github.com/slashdotdash/commanded/issues/61)).
 - Validate command dispatch registration in router ([59](https://github.com/slashdotdash/commanded/issues/59)).
 

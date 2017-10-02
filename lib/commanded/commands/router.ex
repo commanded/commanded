@@ -27,7 +27,7 @@ defmodule Commanded.Commands.Router do
   You can route a command directly to an aggregate root, without requiring an
   intermediate command handler.
 
-  ## Example
+  ### Example
 
       defmodule BankRouter do
         use Commanded.Commands.Router
@@ -37,6 +37,33 @@ defmodule Commanded.Commands.Router do
 
   The aggregate root must implement an `execute/2` function that receives the
   aggregate's state and the command being executed.
+
+  ## Define aggregate identity
+
+  You can define the identity field for an aggregate once using the `identify` macro.
+  The configured identity will be used for all commands registered to the aggregate,
+  unless overridden by a command registration.
+
+  ### Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        identify BankAccount,
+          by: :account_number,
+          prefix: "bank-account-"
+
+        dispatch OpenAccount, to: BankAccount
+      end
+
+  An optional identity prefix can be used to distinguish between different
+  aggregates that  would otherwise share the same identity. As an example you
+  might have a `User` and a `UserPreferences` aggregate that you wish
+  to share the same identity. In this scenario you should specify a `prefix`
+  for each aggregate (e.g. "user-" and "user-preference-").
+
+  The prefix is used as the stream identity when appending, and reading, the
+  aggregate's events: "<identity_prefix><aggregate_uuid>".
 
   ## Consistency
 
@@ -79,6 +106,7 @@ defmodule Commanded.Commands.Router do
       @before_compile unquote(__MODULE__)
       @registered_commands []
       @registered_middleware []
+      @registered_identities %{}
       @default_middleware [
         Commanded.Middleware.ExtractAggregateIdentity,
         Commanded.Middleware.ConsistencyGuarantee,
@@ -118,6 +146,23 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc """
+  Define an aggregate's identity
+
+  You can define the identity field for an aggregate using the `identify` macro.
+  The configured identity will be used for all commands registered to the
+  aggregate, unless overridden by a command registration.
+  """
+  defmacro identify(aggregate_module, opts) do
+    quote location: :keep do
+      if Map.has_key?(@registered_identities, unquote(aggregate_module)) do
+        raise "aggregate #{inspect unquote(aggregate_module)} has already been identified by"
+      end
+
+      @registered_identities Map.put(@registered_identities, unquote(aggregate_module), unquote(opts))
+    end
+  end
+
+  @doc """
   Configure the command, or list of commands, to be dispatched to the
   corresponding handler for a given aggregate root
   """
@@ -133,10 +178,28 @@ defmodule Commanded.Commands.Router do
     end)
   end
 
-  @register_params [:to, :function, :aggregate, :identity, :timeout, :lifespan, :consistency]
+  @register_params [
+    :to,
+    :function,
+    :aggregate,
+    :identity,
+    :identity_prefix,
+    :timeout,
+    :lifespan,
+    :consistency,
+  ]
 
   @doc false
-  defmacro register(command_module, to: handler, function: function, aggregate: aggregate, identity: identity, timeout: timeout, lifespan: lifespan, consistency: consistency) do
+  defmacro register(command_module,
+    to: handler,
+    function: function,
+    aggregate: aggregate,
+    identity: identity,
+    identity_prefix: identity_prefix,
+    timeout: timeout,
+    lifespan: lifespan,
+    consistency: consistency)
+  do
     quote location: :keep do
       if Enum.member?(@registered_commands, unquote(command_module)) do
         raise "duplicate command registration for: #{inspect unquote(command_module)}"
@@ -199,10 +262,26 @@ defmodule Commanded.Commands.Router do
       def dispatch(%unquote(command_module){} = command, opts), do: do_dispatch(command, opts)
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
-        consistency = Keyword.get(opts, :consistency, unquote(consistency) || @default_consistency)
-        metadata = Keyword.get(opts, :metadata, @default_metadata)
-        timeout = Keyword.get(opts, :timeout, unquote(timeout) || @default_dispatch_timeout)
-        include_aggregate_version = Keyword.get(opts, :include_aggregate_version, @include_aggregate_version)
+        consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default_consistency
+        metadata = Keyword.get(opts, :metadata) || @default_metadata
+        timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default_dispatch_timeout
+        include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
+        lifespan = unquote(lifespan) || @default_lifespan
+
+        default_identity = unquote(identity)
+        default_identity_prefix = unquote(identity_prefix)
+
+        {identity, identity_prefix} =
+          case Map.get(@registered_identities, unquote(aggregate)) do
+            nil ->
+              {default_identity, default_identity_prefix}
+
+            config ->
+              identity = Keyword.get(config, :by, default_identity)
+              prefix = default_identity_prefix || Keyword.get(config, :prefix, default_identity_prefix)
+
+              {identity, prefix}
+          end
 
         Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
@@ -210,10 +289,11 @@ defmodule Commanded.Commands.Router do
           handler_module: unquote(handler),
           handler_function: unquote(function),
           aggregate_module: unquote(aggregate),
-          identity: unquote(identity),
+          identity: identity,
+          identity_prefix: identity_prefix,
           include_aggregate_version: include_aggregate_version,
           timeout: timeout,
-          lifespan: unquote(lifespan) || @default_lifespan,
+          lifespan: lifespan,
           metadata: metadata,
           middleware: @registered_middleware ++ @default_middleware,
         })

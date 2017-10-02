@@ -24,7 +24,13 @@ defmodule Commanded.Middleware.ExtractAggregateIdentity do
 
   def after_failure(%Pipeline{} = pipeline), do: pipeline
 
-  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity}) do
+  # extract identity using a user-provider function
+  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity}) when is_function(identity) do
+    identity.(command)
+  end
+
+  # extract identity using a field in the command
+  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity}) when is_atom(identity) do
     Map.get(command, identity)
   end
 end
