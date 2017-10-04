@@ -35,7 +35,7 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.16", only: :dev},
+      {:ex_doc, "~> 0.17", only: :dev},
       {:mix_test_watch, "~> 0.5", only: :dev},
       {:poison, "~> 3.1"},
       {:uuid, "~> 1.1"},

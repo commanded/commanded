@@ -5,7 +5,7 @@
   "docker": {:git, "https://github.com/bearice/elixir-docker.git", "03809fc594b9706c106fc28b7ef03c2dbde2fe93", []},
   "earmark": {:hex, :earmark, "1.2.3", "206eb2e2ac1a794aa5256f3982de7a76bf4579ff91cb28d0e17ea2c9491e46a4", [:mix], [], "hexpm"},
   "eventstore": {:hex, :eventstore, "0.8.0", "677c8897d97b263b4358370bea3be4220df814f483fcd281a45e4db19fb3dee0", [:mix], [{:fsm, "~> 0.3", [hex: :fsm, optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, optional: false]}, {:postgrex, "~> 0.13", [hex: :postgrex, optional: false]}]},
-  "ex_doc": {:hex, :ex_doc, "0.16.4", "4bf6b82d4f0a643b500366ed7134896e8cccdbab4d1a7a35524951b25b1ec9f0", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
+  "ex_doc": {:hex, :ex_doc, "0.17.1", "39f777415e769992e6732d9589dc5846ea587f01412241f4a774664c746affbb", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
   "exjsx": {:hex, :exjsx, "3.2.1", "1bc5bf1e4fd249104178f0885030bcd75a4526f4d2a1e976f4b428d347614f0f", [], [{:jsx, "~> 2.8.0", [hex: :jsx, optional: false]}]},
   "exprotobuf": {:hex, :exprotobuf, "1.0.2", "71056a3547eb37e53d64d892d4bc7a5d8d6355f48070e646357c6ed64571bfea", [], [{:gpb, "~> 3.23.2", [hex: :gpb, optional: false]}]},
   "extreme": {:hex, :extreme, "0.7.1", "bb7bd7de4a15e2fdd022bf03bf1106818c608b9d0b08df183e3d49615169c140", [], [{:exprotobuf, "~> 1.0.0", [hex: :exprotobuf, optional: false]}, {:httpoison, "~> 0.8.0", [hex: :httpoison, optional: false]}, {:poison, "~> 1.4 or ~> 2.2", [hex: :poison, optional: false]}, {:uuid, "~> 1.1.4", [hex: :uuid, optional: false]}]},
@@ -21,8 +21,8 @@
   "metrics": {:hex, :metrics, "1.0.1", "25f094dea2cda98213cecc3aeff09e940299d950904393b2a29d191c346a8486", [:rebar3], []},
   "mimerl": {:hex, :mimerl, "1.0.2", "993f9b0e084083405ed8252b99460c4f0563e41729ab42d9074fd5e52439be88", [:rebar3], []},
   "mix_test_watch": {:hex, :mix_test_watch, "0.5.0", "2c322d119a4795c3431380fca2bca5afa4dc07324bd3c0b9f6b2efbdd99f5ed3", [:mix], [{:fs, "~> 0.9.1", [hex: :fs, repo: "hexpm", optional: false]}], "hexpm"},
-  "poison": {:hex, :poison, "3.1.0", "d9eb636610e096f86f25d9a46f35a9facac35609a7591b3be3326e99a0484665", [:mix], []},
+  "poison": {:hex, :poison, "3.1.0", "d9eb636610e096f86f25d9a46f35a9facac35609a7591b3be3326e99a0484665", [:mix], [], "hexpm"},
   "poolboy": {:hex, :poolboy, "1.5.1", "6b46163901cfd0a1b43d692657ed9d7e599853b3b21b95ae5ae0a777cf9b6ca8", [:rebar], []},
   "postgrex": {:hex, :postgrex, "0.13.0", "e101ab47d0725955c5c8830ae8812412992e02e4bd9db09e17abb0a5d82d09c7", [:mix], [{:connection, "~> 1.0", [hex: :connection, optional: false]}, {:db_connection, "~> 1.1", [hex: :db_connection, optional: false]}, {:decimal, "~> 1.0", [hex: :decimal, optional: false]}]},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.1", "28a4d65b7f59893bc2c7de786dec1e1555bd742d336043fe644ae956c3497fbe", [:make, :rebar], []},
-  "uuid": {:hex, :uuid, "1.1.7", "007afd58273bc0bc7f849c3bdc763e2f8124e83b957e515368c498b641f7ab69", [:mix], []}}
+  "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm"}}
