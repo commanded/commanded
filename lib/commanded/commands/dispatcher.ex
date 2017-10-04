@@ -75,9 +75,10 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version} ->
+      {:ok, aggregate_version, event_count} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
+        |> Pipeline.assign(:event_count, event_count)
         |> after_dispatch(payload)
         |> respond_with_success(payload, aggregate_version)
 

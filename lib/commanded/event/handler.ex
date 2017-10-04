@@ -1,8 +1,7 @@
 defmodule Commanded.Event.Handler do
   @moduledoc """
-  Defines the behaviour an event handler must implement.
-
-  Provides a convenience macro that implements the behaviour, allowing you to
+  Defines the behaviour an event handler must implement and
+  provides a convenience macro that implements the behaviour, allowing you to
   handle only the events you are interested in processing.
 
   You should start your event handlers using a [Supervisor](supervision.html) to
@@ -36,8 +35,6 @@ defmodule Commanded.Event.Handler do
         use Commanded.Event.Handler,
           name: "AccountBalanceHandler",
           start_from: :origin
-
-        # ...
       end
 
   You can optionally override `:start_from` by passing it as option when
@@ -68,13 +65,11 @@ defmodule Commanded.Event.Handler do
 
   ## Example
 
-    defmodule AccountBalanceHandler do
-      use Commanded.Event.Handler,
-        name: "AccountBalanceHandler",
-        consistency: :strong
-
-      # ...
-    end
+      defmodule AccountBalanceHandler do
+        use Commanded.Event.Handler,
+          name: "AccountBalanceHandler",
+          consistency: :strong
+      end
 
   """
 
@@ -100,21 +95,21 @@ defmodule Commanded.Event.Handler do
   @callback handle(domain_event, metadata) :: :ok | {:error, reason :: atom}
 
   @doc """
-  Macro as a convenience for defining an event handler
+  Macro as a convenience for defining an event handler.
 
   ## Example
 
-    defmodule ExampleHandler do
-      use Commanded.Event.Handler, name: "ExampleHandler"
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler, name: "ExampleHandler"
 
-      def handle(%AnEvent{...}, _metadata) do
-        # ...
+        def handle(%AnEvent{...}, _metadata) do
+          # ...
+        end
       end
-    end
 
   Start event handler process (or configure as a worker inside a [supervisor](supervision.html)):
 
-    {:ok, handler} = ExampleHandler.start_link()
+      {:ok, handler} = ExampleHandler.start_link()
   """
   defmacro __using__(opts) do
     quote location: :keep do
@@ -125,6 +120,7 @@ defmodule Commanded.Event.Handler do
       @opts unquote(opts) || []
       @name @opts[:name] || raise "#{inspect __MODULE__} expects :name to be given"
 
+      @doc false
       def start_link(opts \\ []) do
         opts =
           @opts
@@ -154,6 +150,7 @@ defmodule Commanded.Event.Handler do
     subscription: nil,
   ]
 
+  @doc false
   def start_link(handler_name, handler_module, opts \\ []) do
     GenServer.start_link(__MODULE__, %Handler{
       handler_name: handler_name,
@@ -182,7 +179,7 @@ defmodule Commanded.Event.Handler do
 
       case handle_event(event_number, data, metadata, state) do
         :ok -> confirm_receipt(event, state)
-        {:error, :already_seen_event} -> state
+        {:error, :already_seen_event} -> confirm_receipt(event, state)
       end
     end)
 

@@ -5,6 +5,10 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     defstruct [:uuid, :delay]
   end
 
+  defmodule NoOpCommand do
+    defstruct [:uuid]
+  end
+
   defmodule ConsistencyEvent do
     defstruct [:delay]
   end
@@ -16,6 +20,8 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
       %ConsistencyEvent{delay: delay}
     end
 
+    def execute(%ConsistencyAggregateRoot{}, %NoOpCommand{}), do: []
+
     def apply(%ConsistencyAggregateRoot{} = aggregate, %ConsistencyEvent{delay: delay}) do
       %ConsistencyAggregateRoot{aggregate | delay: delay}
     end
@@ -24,7 +30,9 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   defmodule ConsistencyRouter do
     use Commanded.Commands.Router
 
-    dispatch ConsistencyCommand, to: ConsistencyAggregateRoot, identity: :uuid
+    dispatch [NoOpCommand,ConsistencyCommand],
+      to: ConsistencyAggregateRoot,
+      identity: :uuid
   end
 
   defmodule StronglyConsistentEventHandler do
@@ -62,17 +70,17 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   end
 
   test "should wait for strongly consistent event handler to handle event" do
-    case ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: UUID.uuid4(), delay: 0}, consistency: :strong) do
-      :ok -> :ok
-      reply -> flunk("received an unexpected response: #{inspect reply}")
-    end
+    command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 0}
+    assert :ok = ConsistencyRouter.dispatch(command, consistency: :strong)
   end
 
   # default consistency timeout set to 100ms test config
   test "should timeout waiting for strongly consistent event handler to handle event" do
-    case ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}, consistency: :strong) do
-      {:error, :consistency_timeout} -> :ok
-      reply -> flunk("received an unexpected response: #{inspect reply}")
-    end
+    command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}
+    assert {:error, :consistency_timeout} =  ConsistencyRouter.dispatch(command, consistency: :strong)
+  end
+
+  test "should not wait when command creates no events" do
+    assert :ok = ConsistencyRouter.dispatch(%NoOpCommand{uuid: UUID.uuid4()}, consistency: :strong)
   end
 end
