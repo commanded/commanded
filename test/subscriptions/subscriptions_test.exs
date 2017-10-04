@@ -5,16 +5,17 @@ defmodule Commanded.SubscriptionsTest do
   alias Commanded.Subscriptions
 
   setup do
-    _ = Subscriptions.start_link()
+    Subscriptions.start_link()
+
+    # sleeping process used in tests that require a PID
+    pid = spawn(fn -> :timer.sleep(:infinity) end)
 
     on_exit fn ->
-      case Process.whereis(Subscriptions) do
-        nil -> :ok
-        pid -> Commanded.Helpers.Process.shutdown(pid)
-      end
+      Commanded.Helpers.Process.shutdown(Subscriptions)
+      Commanded.Helpers.Process.shutdown(pid)
     end
 
-    :ok
+    [pid: pid]
   end
 
   describe "register event handler" do
@@ -23,12 +24,11 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.register("handler2", :eventual)
       :ok = Subscriptions.register("handler3", :strong)
 
-      assert Subscriptions.all() |> Enum.sort() == ["handler1", "handler3"]
+      assert Subscriptions.all() |> Enum.sort() == [{"handler1", self()}, {"handler3", self()}]
     end
 
     test "should ack event" do
       :ok = Subscriptions.register("handler1", :strong)
-
       :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
 
       assert Subscriptions.handled?("stream1", 1)
@@ -56,8 +56,15 @@ defmodule Commanded.SubscriptionsTest do
 
       :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
 
-      assert Subscriptions.all() == ["handler1"]
+      assert Subscriptions.all() == [{"handler1", self()}]
       assert Subscriptions.handled?("stream1", 2)
+    end
+
+    test "should ignore current process as handler" do
+      :ok = Subscriptions.register("handler1", :strong)
+
+      # current process should not block handler
+      assert Subscriptions.handled?("stream1", 1, [self()])
     end
   end
 
@@ -75,11 +82,17 @@ defmodule Commanded.SubscriptionsTest do
       assert :ok == Subscriptions.wait_for("stream1", 2)
     end
 
+    test "should immediately succeed when excluding handler process" do
+      :ok = Subscriptions.register("handler", :strong)
+
+      assert :ok == Subscriptions.wait_for("stream1", 2, [self()])
+    end
+
     test "should succeed when waited event is ack'd" do
       :ok = Subscriptions.register("handler", :strong)
 
       wait_task = Task.async(fn ->
-        Subscriptions.wait_for("stream1", 2, 1_000)
+        Subscriptions.wait_for("stream1", 2, [], 1_000)
       end)
 
       :ok = Subscriptions.ack_event("handler", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 1})

@@ -16,12 +16,15 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
 
   import Pipeline
 
-  def before_dispatch(%Pipeline{} = pipeline), do: pipeline
+  def before_dispatch(%Pipeline{consistency: :eventual} = pipeline), do: pipeline
+  def before_dispatch(%Pipeline{consistency: :strong} = pipeline) do
+    Pipeline.assign(pipeline, :dispatcher_pid, self())
+  end
 
   def after_dispatch(%Pipeline{consistency: :eventual} = pipeline), do: pipeline
   def after_dispatch(%Pipeline{consistency: :strong, assigns: %{event_count: 0}} = pipeline), do: pipeline
-  def after_dispatch(%Pipeline{consistency: :strong, assigns: %{aggregate_uuid: aggregate_uuid, aggregate_version: aggregate_version}} = pipeline) do
-    case Subscriptions.wait_for(aggregate_uuid, aggregate_version) do
+  def after_dispatch(%Pipeline{consistency: :strong, assigns: %{aggregate_uuid: aggregate_uuid, aggregate_version: aggregate_version, dispatcher_pid: dispatcher_pid}} = pipeline) do
+    case Subscriptions.wait_for(aggregate_uuid, aggregate_version, [dispatcher_pid]) do
       :ok ->
         pipeline
 

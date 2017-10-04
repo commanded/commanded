@@ -23,7 +23,7 @@ defmodule Commanded.Subscriptions do
   def register(name, consistency)
   def register(_name, :eventual), do: :ok
   def register(name, :strong) do
-    GenServer.call(__MODULE__, {:register_subscription, name})
+    GenServer.call(__MODULE__, {:register_subscription, name, self()})
   end
 
   @doc """
@@ -32,7 +32,7 @@ defmodule Commanded.Subscriptions do
   def ack_event(name, consistency, event)
   def ack_event(_name, :eventual, _event), do: :ok
   def ack_event(name, :strong, %RecordedEvent{stream_id: stream_id, stream_version: stream_version}) do
-    GenServer.cast(__MODULE__, {:ack_event, name, stream_id, stream_version})
+    GenServer.cast(__MODULE__, {:ack_event, name, stream_id, stream_version, self()})
   end
 
   @doc false
@@ -43,8 +43,9 @@ defmodule Commanded.Subscriptions do
   @doc """
   Have all the registered handlers processed the given event?
   """
-  def handled?(stream_uuid, stream_version) do
-    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version})
+  def handled?(stream_uuid, stream_version, exclude \\ [])
+  def handled?(stream_uuid, stream_version, exclude) do
+    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, exclude})
   end
 
   @doc """
@@ -53,8 +54,9 @@ defmodule Commanded.Subscriptions do
 
   Returns `:ok` on success, or `{:error, :timeout}` on failure due to timeout.
   """
-  def wait_for(stream_uuid, stream_version, timeout \\ default_consistency_timeout()) do
-    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, self()})
+  def wait_for(stream_uuid, stream_version, exclude \\ [], timeout \\ default_consistency_timeout())
+  def wait_for(stream_uuid, stream_version, exclude, timeout) do
+    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, exclude, self()})
 
     receive do
       {:ok, ^stream_uuid, ^stream_version} -> :ok
@@ -82,18 +84,19 @@ defmodule Commanded.Subscriptions do
     {:reply, reply, state}
   end
 
-  def handle_call({:handled?, stream_uuid, stream_version}, _from, %Subscriptions{} = state) do
-    reply = handled_by_all?(stream_uuid, stream_version, state)
+  def handle_call({:handled?, stream_uuid, stream_version, excluding}, _from, %Subscriptions{} = state) do
+    reply = handled_by_all?(stream_uuid, stream_version, excluding, state)
 
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe, stream_uuid, stream_version, pid}, _from, %Subscriptions{subscribers: subscribers} = state) do
+  def handle_call({:subscribe, stream_uuid, stream_version, exclude, pid}, _from, %Subscriptions{subscribers: subscribers} = state) do
     state =
-      case handled_by_all?(stream_uuid, stream_version, state) do
+      case handled_by_all?(stream_uuid, stream_version, exclude, state) do
         true ->
           # immediately notify subscriber since all handlers have already processed the requested event
           notify_subscriber(pid, stream_uuid, stream_version)
+
           state
 
         false ->
@@ -116,21 +119,21 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_call({:register_subscription, name}, _from, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
-    :ets.insert(subscriptions_table, {name})
+  def handle_call({:register_subscription, name, pid}, _from, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
+    :ets.insert(subscriptions_table, {name, pid})
 
     {:reply, :ok, state}
   end
 
-  def handle_cast({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
+  def handle_cast({:ack_event, name, stream_uuid, stream_version, pid}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
     # track insert date as ms since the subscripions process was started to support expiry of stale acks
     inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :second)
 
-    :ets.insert(subscriptions_table, {name})
+    :ets.insert(subscriptions_table, {name, pid})
     :ets.insert(streams_table, {{name, stream_uuid}, stream_version, inserted_at_epoch})
 
     state =
-      case handled_by_all?(stream_uuid, stream_version, state) do
+      case handled_by_all?(stream_uuid, stream_version, [], state) do
         true -> notify_subscribers(stream_uuid, stream_version, state)
         false -> state
       end
@@ -157,10 +160,12 @@ defmodule Commanded.Subscriptions do
   end
 
   # Have all subscriptions handled the event for the given stream and version
-  defp handled_by_all?(stream_uuid, stream_version, %Subscriptions{} = state) do
+  defp handled_by_all?(stream_uuid, stream_version, exclude, %Subscriptions{} = state) do
+    exclusions = MapSet.new(exclude)
     state
     |> subscriptions()
-    |> Enum.all?(&handled_by?(&1, stream_uuid, stream_version, state))
+    |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclusions, pid) end)
+    |> Enum.all?(fn {name, _pid} -> handled_by?(name, stream_uuid, stream_version, state) end)
   end
 
   # Has the named subscription handled the event for the given stream and version
@@ -172,9 +177,7 @@ defmodule Commanded.Subscriptions do
   end
 
   defp subscriptions(%Subscriptions{subscriptions_table: subscriptions_table}) do
-    subscriptions_table
-    |> :ets.tab2list()
-    |> Enum.map(fn {name} -> name end)
+    :ets.tab2list(subscriptions_table)
   end
 
   defp remove_by_pid(subscribers, pid) do

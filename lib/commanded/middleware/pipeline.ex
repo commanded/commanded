@@ -6,10 +6,12 @@ defmodule Commanded.Middleware.Pipeline do
 
   ## Pipeline fields
 
-    * `assigns` - shared user data as a map
-    * `command` - the command struct being dispatched
-    * `consistency` - the requested dispatch consistency, either `:eventual` (default) or `:strong`
-    * `identity` - the field in the command containing the aggregate's identity
+    * `assigns` - shared user data as a map.
+    * `command` - the command struct being dispatched.
+    * `consistency` - the requested dispatch consistency, either: `:eventual` (default) or `:strong`
+    * `identity` - an atom specifying a field in the command containing the
+                   aggregate's identity or a one-arity function that returns
+                   an identity from the command being dispatched.
     * `halted` - the boolean status on whether the pipeline was halted
     * `response` - set the response to send back to the caller
 

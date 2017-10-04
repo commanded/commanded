@@ -9,8 +9,16 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     defstruct [:uuid]
   end
 
+  defmodule RequestDispatchCommand do
+    defstruct [:uuid, :delay]
+  end
+
   defmodule ConsistencyEvent do
     defstruct [:delay]
+  end
+
+  defmodule DispatchRequestedEvent do
+    defstruct [:uuid, :delay]
   end
 
   defmodule ConsistencyAggregateRoot do
@@ -22,15 +30,21 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
     def execute(%ConsistencyAggregateRoot{}, %NoOpCommand{}), do: []
 
+    def execute(%ConsistencyAggregateRoot{}, %RequestDispatchCommand{uuid: uuid, delay: delay}) do
+      %DispatchRequestedEvent{uuid: uuid, delay: delay}
+    end
+
     def apply(%ConsistencyAggregateRoot{} = aggregate, %ConsistencyEvent{delay: delay}) do
       %ConsistencyAggregateRoot{aggregate | delay: delay}
     end
+
+    def apply(%ConsistencyAggregateRoot{} = aggregate, _event), do: aggregate
   end
 
   defmodule ConsistencyRouter do
     use Commanded.Commands.Router
 
-    dispatch [NoOpCommand,ConsistencyCommand],
+    dispatch [ConsistencyCommand,NoOpCommand,RequestDispatchCommand],
       to: ConsistencyAggregateRoot,
       identity: :uuid
   end
@@ -44,6 +58,12 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
       :timer.sleep(delay)
       :ok
     end
+
+    # handle event by dispatching a command
+    def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
+      :timer.sleep(delay)
+      ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: uuid, delay: delay}, consistency: :strong)
+    end
   end
 
   defmodule EventuallyConsistentEventHandler do
@@ -54,6 +74,11 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     def handle(%ConsistencyEvent{}, _metadata) do
       :timer.sleep(:infinity) # simulate slow event handler
       :ok
+    end
+
+    # handle event by dispatching a command
+    def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
+      ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: uuid, delay: delay})
     end
   end
 
@@ -77,10 +102,21 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   # default consistency timeout set to 100ms test config
   test "should timeout waiting for strongly consistent event handler to handle event" do
     command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}
-    assert {:error, :consistency_timeout} =  ConsistencyRouter.dispatch(command, consistency: :strong)
+    assert {:error, :consistency_timeout} = ConsistencyRouter.dispatch(command, consistency: :strong)
   end
 
   test "should not wait when command creates no events" do
-    assert :ok = ConsistencyRouter.dispatch(%NoOpCommand{uuid: UUID.uuid4()}, consistency: :strong)
+    command = %NoOpCommand{uuid: UUID.uuid4()}
+    assert :ok = ConsistencyRouter.dispatch(command, consistency: :strong)
+  end
+
+  test "should allow strongly consistent event handler to dispatch a command" do
+    command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 0}
+    assert :ok = ConsistencyRouter.dispatch(command, consistency: :strong)
+  end
+
+  test "should timeout waiting for strongly consistent handler dispatching a command" do
+    command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 5_000}
+    assert {:error, :consistency_timeout} = ConsistencyRouter.dispatch(command, consistency: :strong)
   end
 end
