@@ -119,7 +119,9 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %State{process_managers: process_managers} = state) do
-    Logger.warn(fn -> "process manager process down due to: #{inspect reason}" end)
+    if reason != :normal do
+      Logger.warn(fn -> "process manager process down due to: #{inspect reason}" end)
+    end
 
     {:noreply, %State{state | process_managers: remove_process_manager(process_managers, pid)}}
   end
