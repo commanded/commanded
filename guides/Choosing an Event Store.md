@@ -24,28 +24,12 @@ Want to use a different event store? Then you will need to [write your own event
     end
     ```
 
-2. Include `:eventstore` in the list of applications to start.
-
-    For **Elixir 1.4** and later, add `:eventstore` to the extra applications list in `mix.exs`:
+2. Include `:eventstore` in the extra applications list in `mix.exs`:
 
     ```elixir
     def application do
       [
         extra_applications: [
-          :logger,
-          :eventstore,
-        ],
-        # ...
-      ]
-    end
-    ```
-
-    For **Elixir 1.3** and before, add `:eventstore` to the applications list in `mix.exs`:
-
-    ```elixir
-    def application do
-      [
-        applications: [
           :logger,
           :eventstore,
         ],
