@@ -61,14 +61,21 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Execute the given command against the aggregate.
 
+  - `aggregate_module` - the aggregate's module (e.g. `BankAccount`).
   - `aggregate_uuid` - uniquely identifies an instance of the aggregate.
   - `context` - includes command execution arguments
     (see `Commanded.Aggregates.ExecutionContext` for details).
-  - `timeout` - is an integer greater than zero which specifies how many
+  - `timeout` - an integer greater than zero which specifies how many
     milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
     The default value is five seconds (5,000ms).
 
-  Returns `{:ok, aggregate_version}` on success, or `{:error, reason}` on failure.
+  ## Return values
+
+  Returns `{:ok, aggregate_version, event_count}` on success, or `{:error, reason}` on failure.
+
+    - `aggregate_version` - the updated version of the aggregate after executing the command.
+    - `event_count` - number of events produced by the command, will be 0 when no events created,
+
   """
   def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000) do
     GenServer.call(via_tuple(aggregate_module, aggregate_uuid), {:execute_command, context}, timeout)
@@ -165,7 +172,12 @@ defmodule Commanded.Aggregates.Aggregate do
     %Aggregate{aggregate_module: aggregate_module, aggregate_version: expected_version, aggregate_state: aggregate_state} = state)
   do
     case Kernel.apply(handler, function, [aggregate_state, command]) do
-      {:error, _reason} = reply -> {reply, state}
+      {:error, _reason} = reply ->
+        {reply, state}
+
+      none when none in [nil, []] ->
+        {{:ok, expected_version, 0}, state}
+
       events ->
         pending_events = List.wrap(events)
 
@@ -178,7 +190,7 @@ defmodule Commanded.Aggregates.Aggregate do
           aggregate_version: stream_version
         }
 
-        {{:ok, stream_version}, state}
+        {{:ok, stream_version, length(pending_events)}, state}
     end
   end
 

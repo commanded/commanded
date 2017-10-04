@@ -9,7 +9,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   alias Commanded.Helpers
 
   @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
-
+  
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
 
@@ -18,7 +18,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: BankAccount, function: :open_account}
 
-    {:ok, 1} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, 1} = Aggregate.execute(BankAccount, account_number, context)
 
     Helpers.Process.shutdown(BankAccount, account_number)
 
@@ -37,7 +37,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
 
-    {:ok, 1} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, 1} = Aggregate.execute(BankAccount, account_number, context)
 
     Helpers.Process.shutdown(BankAccount, account_number)
 
@@ -56,7 +56,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
 
-    {:ok, 1} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, 1} = Aggregate.execute(BankAccount, account_number, context)
 
     state_before = Aggregate.aggregate_state(BankAccount, account_number)
 

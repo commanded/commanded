@@ -38,17 +38,15 @@ defmodule Commanded.Commands.Dispatcher do
       |> before_dispatch(payload)
 
     # don't allow command execution if pipeline has been halted
-    case Pipeline.halted?(pipeline) do
-      true ->
-        pipeline
-        |> Pipeline.respond({:error, :halted})
-        |> after_failure(:halted, payload)
-        |> Pipeline.response()
-
-      false ->
-        pipeline
-        |> execute(payload)
-        |> Pipeline.response()
+    unless Pipeline.halted?(pipeline) do
+      pipeline
+      |> execute(payload)
+      |> Pipeline.response()
+    else
+      pipeline
+      |> Pipeline.respond({:error, :halted})
+      |> after_failure(:halted, payload)
+      |> Pipeline.response()
     end
   end
 
@@ -75,9 +73,10 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version} ->
+      {:ok, aggregate_version, event_count} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
+        |> Pipeline.assign(:event_count, event_count)
         |> after_dispatch(payload)
         |> respond_with_success(payload, aggregate_version)
 
