@@ -25,7 +25,7 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
         true -> pipeline
         false ->
           pipeline
-          |> respond({:error, :validation_failure})
+          |> respond({:error, :validation_failure, "validation failed"})
           |> halt
       end
     end
@@ -55,7 +55,7 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
   test "should not dispatch the command when middleware halts pipeline" do
     {:ok, _} = CommandAuditMiddleware.start_link
 
-    {:error, :halted} = HaltingRouter.dispatch(%IncrementCount{aggregate_uuid: UUID.uuid4})
+    assert {:error, :halted} = HaltingRouter.dispatch(%IncrementCount{aggregate_uuid: UUID.uuid4})
 
     {dispatched, succeeded, failed} = CommandAuditMiddleware.count_commands
 
@@ -67,7 +67,7 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
   test "should allow middleware to set dispatch response" do
     {:ok, _} = CommandAuditMiddleware.start_link
 
-    {:error, :validation_failure} = ValidatingRouter.dispatch(%Validate{aggregate_uuid: UUID.uuid4, valid?: false})
+    assert {:error, :validation_failure, "validation failed"} = ValidatingRouter.dispatch(%Validate{aggregate_uuid: UUID.uuid4, valid?: false})
 
     {dispatched, succeeded, failed} = CommandAuditMiddleware.count_commands
 

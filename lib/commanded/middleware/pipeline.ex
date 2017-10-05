@@ -46,16 +46,16 @@ defmodule Commanded.Middleware.Pipeline do
   Prevents dispatch of the command if `halt` occurs in a `before_dispatch` callback.
   """
   def halt(%Pipeline{} = pipeline) do
-    %Pipeline{pipeline | halted: true}
+    %Pipeline{pipeline | halted: true} |> respond({:error, :halted})
   end
 
   @doc """
-  Extract the response from the pipeline, if present, or use the given response
+  Extract the response from the pipeline
   """
   def response(%Pipeline{response: response}), do: response
 
   @doc """
-  Sets the response to be returned to the dispatch caller
+  Sets the response to be returned to the dispatch caller, unless already set
   """
   def respond(%Pipeline{response: nil} = pipeline, response) do
     %Pipeline{pipeline | response: response}

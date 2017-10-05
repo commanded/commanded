@@ -44,8 +44,7 @@ defmodule Commanded.Commands.Dispatcher do
       |> Pipeline.response()
     else
       pipeline
-      |> Pipeline.respond({:error, :halted})
-      |> after_failure(:halted, payload)
+      |> after_failure(payload)
       |> Pipeline.response()
     end
   end
@@ -82,13 +81,14 @@ defmodule Commanded.Commands.Dispatcher do
 
       {:error, error} ->
         pipeline
-        |> after_failure(error, payload)
         |> Pipeline.respond({:error, error})
+        |> after_failure(payload)
 
       {:error, error, reason} ->
         pipeline
-        |> after_failure(error, reason, payload)
+        |> Pipeline.assign(:error_reason, reason)
         |> Pipeline.respond({:error, error})
+        |> after_failure(payload)
      end
   end
 
@@ -125,16 +125,21 @@ defmodule Commanded.Commands.Dispatcher do
     |> Pipeline.chain(:after_dispatch, middleware)
   end
 
-  defp after_failure(%Pipeline{} = pipeline, error, %Payload{middleware: middleware}) do
+  defp after_failure(%Pipeline{response: {:error, error}} = pipeline, %Payload{middleware: middleware}) do
     pipeline
     |> Pipeline.assign(:error, error)
     |> Pipeline.chain(:after_failure, middleware)
   end
 
-  defp after_failure(%Pipeline{} = pipeline, error, reason, %Payload{middleware: middleware}) do
+  defp after_failure(%Pipeline{response: {:error, error, reason}} = pipeline, %Payload{middleware: middleware}) do
     pipeline
     |> Pipeline.assign(:error, error)
     |> Pipeline.assign(:error_reason, reason)
+    |> Pipeline.chain(:after_failure, middleware)
+  end
+
+  defp after_failure(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
+    pipeline
     |> Pipeline.chain(:after_failure, middleware)
   end
 end

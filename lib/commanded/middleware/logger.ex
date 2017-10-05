@@ -24,8 +24,7 @@ defmodule Commanded.Middleware.Logger do
   end
 
   def after_failure(%Pipeline{assigns: %{error: error, error_reason: error_reason}} = pipeline) do
-    Logger.info(fn -> "#{log_context(pipeline)} failed #{inspect error} in #{formatted_diff(delta(pipeline))}" end)
-    Logger.info(fn -> inspect(error_reason) end)
+    Logger.info(fn -> "#{log_context(pipeline)} failed #{inspect error} in #{formatted_diff(delta(pipeline))}, due to: #{inspect(error_reason)}" end)
     pipeline
   end
 
@@ -33,6 +32,8 @@ defmodule Commanded.Middleware.Logger do
     Logger.info(fn -> "#{log_context(pipeline)} failed #{inspect error} in #{formatted_diff(delta(pipeline))}" end)
     pipeline
   end
+
+  def after_failure(%Pipeline{} = pipeline), do: pipeline
 
   defp delta(%Pipeline{assigns: %{started_at: started_at}}) do
     now_usecs = DateTime.utc_now |> DateTime.to_unix(:microseconds)
