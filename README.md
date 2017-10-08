@@ -9,10 +9,12 @@ Provides support for:
 - Event handling.
 - Long running process managers.
 
-Use with one of the following event stores for persistence:
+You can use Commanded with one of the following event stores for persistence:
 
 - [EventStore](https://github.com/slashdotdash/eventstore) Elixir library, using PostgreSQL for persistence
 - Greg Young's [Event Store](https://geteventstore.com/).
+
+Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
 ---
 

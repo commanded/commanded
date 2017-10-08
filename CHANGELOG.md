@@ -9,6 +9,13 @@
 - Include custom metadata during command dispatch ([#61](https://github.com/slashdotdash/commanded/issues/61)).
 - Validate command dispatch registration in router ([59](https://github.com/slashdotdash/commanded/issues/59)).
 
+### Upgrading
+
+Using the Elixir [EventStore](https://github.com/slashdotdash/eventstore) with Commabded? Please ensure you upgrade the following dependencies:
+
+- `eventstore` to [v0.11.0](https://hex.pm/packages/eventstore)
+- `commanded_eventstore_adapter` to [v0.2.0](https://hex.pm/packages/commanded_eventstore_adapter)
+
 ## v0.13.0
 
 ### Enhancements
