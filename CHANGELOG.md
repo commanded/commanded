@@ -11,7 +11,7 @@
 
 ### Upgrading
 
-Using the Elixir [EventStore](https://github.com/slashdotdash/eventstore) with Commabded? Please ensure you upgrade the following dependencies:
+Using the Elixir [EventStore](https://github.com/slashdotdash/eventstore) with Commanded? Please ensure you upgrade the following dependencies:
 
 - `eventstore` to [v0.11.0](https://hex.pm/packages/eventstore)
 - `commanded_eventstore_adapter` to [v0.2.0](https://hex.pm/packages/commanded_eventstore_adapter)
