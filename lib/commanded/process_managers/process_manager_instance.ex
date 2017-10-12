@@ -133,7 +133,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
           :ok = persist_state(state, event_number)
           :ok = ack_event(event, process_router)
 
-	        {:noreply, state}
+          {:noreply, state}
         else
           {:stop, reason} ->
             {:stop, reason, state}
@@ -160,7 +160,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         dispatch_commands(pending_commands, %{}, state)
 
       error ->
-        Logger.warn(fn -> describe(state) <> " failed to dispatch command due to: #{inspect error}" end)
+        Logger.warn(fn -> describe(state) <> " failed to dispatch command #{inspect command} due to: #{inspect error}" end)
 
         dispatch_failure(error, command, pending_commands, context, state)
     end
@@ -174,7 +174,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         dispatch_commands([failed_command | pending_commands], context, state)
 
       {:retry, delay, context} ->
-        Logger.info(fn -> describe(state) <> " is retrying failed event due to: #{inspect error}, retrying after #{inspect delay}ms" end)
+        Logger.info(fn -> describe(state) <> " is retrying failed command due to: #{inspect error}, retrying after #{inspect delay}ms" end)
 
         :timer.sleep(delay)
         dispatch_commands([failed_command | pending_commands], context, state)

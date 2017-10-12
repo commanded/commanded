@@ -13,13 +13,14 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:interested?/1`
   - `c:handle/2`
   - `c:apply/2`
+  - `c:error/3`
 
   ## Example
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
           name: "ExampleProcessManager",
-          router: BankRouter
+          router: ExampleRouter
 
         def interested?(%AnEvent{...}) do
           # ...
@@ -32,11 +33,48 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         def apply(%ExampleProcessManager{...}, %AnEvent{...}) do
           # ...
         end
+
+        def error({:error, failure}, %ExampleCommand{}, %{} = context) do
+          # retry, skip, ignore, or stop process manager on error dispatching command
+        end
       end
 
   Start the process manager (or configure as a worker inside a [Supervisor](supervision.html))
 
       {:ok, process_manager} = ExampleProcessManager.start_link()
+
+  # Error handling
+
+  You can define an `c:error/3` callback function to handle any errors returned
+  from command dispatch. Use pattern matching on the error and/or command to
+  explicitely handle certain errors or commands. Choose to retry, skip, ignore,
+  or stop the process manager after an error dispatching command.
+
+  The default behaviour if you don't provide an `c:error/3` callback is to stop
+  the process manager using the exact error reason returned from the command
+  dispatch. You should supervise process managers to ensure they are correctly
+  restarted on error.
+
+  ## Example
+
+      defmodule ExampleProcessManager do
+        use Commanded.ProcessManagers.ProcessManager,
+          name: "ExampleProcessManager",
+          router: ExampleRouter
+
+        # stop process manager after three attempts
+        def error({:error, :failed}, command, %{attempts: attempts} = context)
+          when attempts >= 2
+        do
+          {:stop, :too_many_attempts}
+        end
+
+        # retry command, record attempt count in context map
+        def error({:error, :failed}, command, context) do
+          context = Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
+          {:retry, context}
+        end
+      end
 
   # Consistency
 
@@ -100,6 +138,15 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @callback handle(process_manager, domain_event) :: list(command)
 
   @doc """
+  Mutate the process manager's state by applying the domain event.
+
+  The `c:apply/2` function is used to mutate the process manager’s state. It
+  receives its current state and the interested event. It must return the
+  modified state.
+  """
+  @callback apply(process_manager, domain_event) :: process_manager
+
+  @doc """
   Called when a command dispatch returns an error.
 
   The `c:error/3` function allows you to control how command dispatch failures
@@ -118,21 +165,13 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - :skip - discard the event, don't dispatch any pending commands.
   - :ignore - ignore the error and continue dispatching any remaining commands.
   - {:stop, reason} - stop the process manager with the given reason.
+
   """
   @callback error(error :: term(), command, context :: map()) :: {:retry, context :: map()}
     | {:retry, delay :: non_neg_integer(), context :: map()}
     | :skip
     | :ignore
     | {:stop, reason :: term()}
-
-  @doc """
-  Mutate the process manager's state by applying the domain event.
-
-  The `c:apply/2` function is used to mutate the process manager’s state. It
-  receives its current state and the interested event. It must return the
-  modified state.
-  """
-  @callback apply(process_manager, domain_event) :: process_manager
 
   @doc false
   defmacro __using__(opts) do
@@ -168,6 +207,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       @doc false
       def apply(process_manager, _event), do: process_manager
+
+      @doc false
+      def error({:error, reason}, _command, _context), do: {:stop, reason}
     end
   end
 end
