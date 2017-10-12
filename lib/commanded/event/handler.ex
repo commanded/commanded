@@ -88,6 +88,15 @@ defmodule Commanded.Event.Handler do
   @type consistency :: :eventual | :strong
 
   @doc """
+  Optional initialisation callback function called when the handler starts.
+
+  Can be used to start any related processes when the event handler is started.
+
+  Return `:ok` on success, or `{:stop, reason}` to stop the handler process.
+  """
+  @callback init() :: :ok | {:stop, reason :: any()}
+
+  @doc """
   Event handler behaviour to handle a domain event and its metadata
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the event, or `{:error, reason}` on failure.
@@ -101,6 +110,11 @@ defmodule Commanded.Event.Handler do
 
       defmodule ExampleHandler do
         use Commanded.Event.Handler, name: "ExampleHandler"
+
+        def init do
+          # ... optional initialisation
+          :ok
+        end
 
         def handle(%AnEvent{...}, _metadata) do
           # ...
@@ -129,6 +143,11 @@ defmodule Commanded.Event.Handler do
 
         Commanded.Event.Handler.start_link(@name, __MODULE__, opts)
       end
+
+      @doc false
+      def init, do: :ok
+
+      defoverridable [init: 0]
     end
   end
 
@@ -160,9 +179,16 @@ defmodule Commanded.Event.Handler do
     })
   end
 
-  def init(%Handler{} = state) do
+  def init(%Handler{handler_module: handler_module} = state) do
     GenServer.cast(self(), {:subscribe_to_events})
-    {:ok, state}
+
+    reply =
+      case handler_module.init() do
+        :ok -> :ok
+        {:stop, _reason} = reply -> reply
+      end
+
+    {reply, state}
   end
 
   def handle_cast({:subscribe_to_events}, %Handler{} = state) do
