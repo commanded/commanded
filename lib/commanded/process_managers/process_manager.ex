@@ -78,31 +78,56 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Is the process manager interested in the given command?
 
-  The `c:interested?/1` function is used to indicate which events the process manager receives.
-  The response is used to route the event to an existing instance or start a new process instance.
+  The `c:interested?/1` function is used to indicate which events the process
+  manager receives. The response is used to route the event to an existing
+  instance or start a new process instance:
 
-  - Return `{:start, process_uuid}` to create a new instance of the process manager.
-  - Return `{:continue, process_uuid}` to continue execution of an existing process manager.
-  - Return `{:stop, process_uuid}` to stop an existing process manager and shutdown its process.
-  - Return `false` to ignore the event.
+  - `{:start, process_uuid}` - create a new instance of the process manager.
+  - `{:continue, process_uuid}` - continue execution of an existing process manager.
+  - `{:stop, process_uuid}` - stop an existing process manager and shutdown its process.
+  - `false` - ignore the event.
   """
   @callback interested?(domain_event) :: {:start, process_uuid} | {:continue, process_uuid} | {:stop, process_uuid} | false
 
   @doc """
-  Process manager instance handles the domain event, returning commands to dispatch
+  Process manager instance handles the domain event, returning commands to dispatch.
 
-  A `c:handle/2` function must exist for each `:start` and `:continue` tagged event previously specified.
-  It receives the process manager’s state and the event to be handled.
-  It must return the commands to be dispatched. This may be none, a single command, or many commands.
+  A `c:handle/2` function must exist for each `:start` and `:continue` tagged
+  event previously specified. It receives the process manager’s state and the
+  event to be handled. It must return the commands to be dispatched. This may be
+  none, a single command, or many commands.
   """
   @callback handle(process_manager, domain_event) :: list(command)
 
   @doc """
-  Mutate the process manager's state by applying the domain event
+  Called when a command dispatch returns an error.
 
-  The `c:apply/2` function is used to mutate the process manager’s state.
-  It receives its current state and the interested event.
-  It must return the modified state.
+  The `c:error/3` function allows you to control how command dispatch failures
+  are handled. The function receives the error returned from the dispatch, the
+  domain event being handled, and a context map containing the dispatched
+  command. The context may also be used to track state between retried failures.
+
+  You can return one of the following responses depending upon the
+  error severity:
+
+  - {:retry, context} - retry the event, provide a context map to provide state
+    to subsequent failures. This could be used to count the number of retries,
+    failing after too many attempts.
+  - :skip - discard the event, don't dispatch any pending commands.
+  - :ignore - ignore the error and continue dispatching any remaining commands.
+  - {:stop, reason} - stop the process manager with the given reason.
+  """
+  @callback error(error :: any(), domain_event, context :: map()) :: {:retry, context :: struct()}
+    | :skip
+    | :ignore
+    | {:stop, reason :: any()}
+
+  @doc """
+  Mutate the process manager's state by applying the domain event.
+
+  The `c:apply/2` function is used to mutate the process manager’s state. It
+  receives its current state and the interested event. It must return the
+  modified state.
   """
   @callback apply(process_manager, domain_event) :: process_manager
 
