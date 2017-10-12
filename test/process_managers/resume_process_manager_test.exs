@@ -98,7 +98,6 @@ defmodule Commanded.ProcessManager.ResumeProcessManagerTest do
 
     {:ok, process_router} = ExampleProcessManager.start_link()
 
-    # transfer funds between account 1 and account 2
     :ok = ExampleRouter.dispatch(%StartProcess{process_uuid: process_uuid, status: "start"})
 
     assert_receive_event ProcessStarted, fn event ->
