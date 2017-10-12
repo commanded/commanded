@@ -23,8 +23,7 @@ defmodule Commanded.Commands.CommandTimeoutTest do
   test "should allow timeout to be specified during command registration" do
     # handler is set to take longer than the configured timeout
     case TimeoutRouter.dispatch(%TimeoutCommand{aggregate_uuid: UUID.uuid4, sleep_in_ms: 2_000}) do
-      {:error, :aggregate_execution_failed} -> :ok
-      {:error, :aggregate_execution_failed, _reason} -> :ok
+      {:error, :aggregate_execution_failed}  -> :ok
       {:error, :aggregate_execution_timeout} -> :ok
       reply -> flunk("received an unexpected response: #{inspect reply}")
     end

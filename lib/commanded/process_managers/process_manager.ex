@@ -113,14 +113,17 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - {:retry, context} - retry the event, provide a context map to provide state
     to subsequent failures. This could be used to count the number of retries,
     failing after too many attempts.
+  - {:retry, delay, context} - retry the event, after sleeping for the requested
+    delay, given in milliseconds. Context is as per the above retry.
   - :skip - discard the event, don't dispatch any pending commands.
   - :ignore - ignore the error and continue dispatching any remaining commands.
   - {:stop, reason} - stop the process manager with the given reason.
   """
-  @callback error(error :: any(), domain_event, context :: map()) :: {:retry, context :: struct()}
+  @callback error(error :: term(), command, context :: map()) :: {:retry, context :: map()}
+    | {:retry, delay :: non_neg_integer(), context :: map()}
     | :skip
     | :ignore
-    | {:stop, reason :: any()}
+    | {:stop, reason :: term()}
 
   @doc """
   Mutate the process manager's state by applying the domain event.
