@@ -22,6 +22,12 @@ Use pattern matching to match on each type of event you are interested in. A cat
 defmodule AccountBalanceHandler do
   use Commanded.Event.Handler, name: "account_balance"
 
+  def init do
+    with {:ok, _} <- Agent.start_link(fn -> 0 end, name: AccountBalance) do
+      :ok
+    end
+  end
+
   def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
     Agent.update(AccountBalance, fn _ -> initial_balance end)
   end
@@ -39,7 +45,6 @@ end
 The name given to the event handler **must be** unique and remain unchanged between releases. It is used when subscribing to the event store to track which events the handler has seen during restarts.
 
 ```elixir
-{:ok, _balance} = Agent.start_link(fn -> 0 end, name: AccountBalance)
 {:ok, _handler} = AccountBalanceHandler.start_link()
 ```
 
