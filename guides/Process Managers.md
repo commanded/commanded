@@ -2,16 +2,16 @@
 
 A process manager is responsible for coordinating one or more aggregate roots. It handles events and dispatches commands in response. Process managers have state that can be used to track which aggregate roots are being orchestrated.
 
-Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the three callback functions defined in the behaviour: `interested?/1`, `handle/2`, and `apply/2`.
+Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the callback functions defined in the behaviour: `interested?/1`, `handle/2`, `apply/2`, and `error/3`.
 
 ## `interested?/1`
 
-The `interested?/1` function is used to indicate which events the process manager receives. The response is used to route the event to an existing instance or start a new process instance.
+The `interested?/1` function is used to indicate which events the process manager receives. The response is used to route the event to an existing instance or start a new process instance:
 
-- Return `{:start, process_uuid}` to create a new instance of the process manager.
-- Return `{:continue, process_uuid}` to continue execution of an existing process manager.
-- Return `{:stop, process_uuid}` to stop an existing process manager and shutdown its process.
-- Return `false` to ignore the event.
+- `{:start, process_uuid}` - create a new instance of the process manager.
+- `{:continue, process_uuid}` - continue execution of an existing process manager.
+- `{:stop, process_uuid}` - stop an existing process manager and shutdown its process.
+- `false` - ignore the event.
 
 ## `handle/2`
 
@@ -20,6 +20,51 @@ A `handle/2` function must exist for each `:start` and `:continue` tagged event 
 ## `apply/2`
 
 The `apply/2` function is used to mutate the process manager's state. It receives its current state and the interested event. It must return the modified state.
+
+## `error/3`
+
+You can define an `error/3` callback function to handle any errors returned from command dispatch. Use pattern matching on the error and/or command to explicitly handle certain errors or commands.
+
+You can return one of the following responses depending upon the error severity:
+
+- `{:retry, context}` - retry the failed command, provide a context map containing any state passed to subsequent failures. This could be used to count the number of retries, failing after too many attempts.
+
+- `{:retry, delay, context}` - retry the failed command, after sleeping for the requested delay, given in milliseconds. Context is a map as described in `{:retry, context}` above.
+
+- `{:skip, :discard_pending}` - discard the failed command and any pending commands.
+
+- `{:skip, :continue_pending}` - skip the failed command, but continue dispatching any pending commands.
+
+- `{:stop, reason}` - stop the process manager with the given reason.
+
+### Error handling example
+
+```elixir
+defmodule ExampleProcessManager do
+  use Commanded.ProcessManagers.ProcessManager,
+    name: "ExampleProcessManager",
+    router: ExampleRouter
+
+  # stop process manager after three attempts
+  def error({:error, _failure}, command, %{attempts: attempts} = context)
+    when attempts >= 2
+  do
+    {:stop, :too_many_attempts}
+  end
+
+  # retry command, record attempt count in context map
+  def error({:error, _failure}, command, context) do
+    context = Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
+    {:retry, context}
+  end
+end
+```
+
+The default behaviour if you don't provide an `error/3` callback is to stop the process manager using the same error reason returned from the failed command dispatch.
+
+You should supervise process managers to ensure they are correctly restarted on error.
+
+## Example process manager
 
 ```elixir
 defmodule TransferMoneyProcessManager do

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.15.0
+
+### Enhancements
+
+- Process manager command dispatch error handling ([#93](https://github.com/slashdotdash/commanded/issues/93)).
+
 ## v0.14.0
 
 ### Enhancements

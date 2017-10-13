@@ -7,8 +7,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   state that can be used to track which aggregate roots are being orchestrated.
 
   Use the `Commanded.ProcessManagers.ProcessManager` macro in your process
-  manager module and implement the three callback functions defined in the
-  behaviour:
+  manager module and implement the callback functions defined in the behaviour:
 
   - `c:interested?/1`
   - `c:handle/2`
