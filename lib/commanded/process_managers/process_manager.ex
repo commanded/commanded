@@ -47,7 +47,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   You can define an `c:error/3` callback function to handle any errors returned
   from command dispatch. Use pattern matching on the error and/or command to
-  explicitely handle certain errors or commands. Choose to retry, skip, ignore,
+  explicitly handle certain errors or commands. Choose to retry, skip, ignore,
   or stop the process manager after an error dispatching command.
 
   The default behaviour if you don't provide an `c:error/3` callback is to stop
@@ -63,14 +63,14 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           router: ExampleRouter
 
         # stop process manager after three attempts
-        def error({:error, :failed}, command, %{attempts: attempts} = context)
+        def error({:error, _failure}, command, %{attempts: attempts} = context)
           when attempts >= 2
         do
           {:stop, :too_many_attempts}
         end
 
         # retry command, record attempt count in context map
-        def error({:error, :failed}, command, context) do
+        def error({:error, _failure}, command, context) do
           context = Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
           {:retry, context}
         end
