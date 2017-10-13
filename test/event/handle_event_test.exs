@@ -56,7 +56,7 @@ defmodule Commanded.Event.HandleEventTest do
     end)
   end
 
-  test "should ignore events created before the event handler's subscription when starting from `current`" do
+  test "should ignore events created before the event handler's subscription when starting from `:current`" do
     stream_uuid = UUID.uuid4
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
@@ -73,18 +73,24 @@ defmodule Commanded.Event.HandleEventTest do
 
     Wait.until(fn ->
       assert AppendingEventHandler.received_events == new_events
-      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [2]
+
+      [ metadata ] = AppendingEventHandler.received_metadata()
+
+      assert Map.get(metadata, :event_number) == 2
+      assert Map.get(metadata, :stream_id) == stream_uuid
+      assert Map.get(metadata, :stream_version) == 2
+      assert %NaiveDateTime{} = Map.get(metadata, :created_at)
     end)
 	end
 
-  test "should receive events created before the event handler's subscription when starting from `origin`" do
+  test "should receive events created before the event handler's subscription when starting from `:origin`" do
     stream_uuid = UUID.uuid4
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
     {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
 
-    {:ok, _} = AppendingEventHandler.start_link()
+    {:ok, _} = AppendingEventHandler.start_link(start_from: :origin)
 
     {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
 
@@ -92,12 +98,21 @@ defmodule Commanded.Event.HandleEventTest do
 
     Wait.until(fn ->
       assert AppendingEventHandler.received_events == initial_events ++ new_events
-      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
+
+      received_metadata = AppendingEventHandler.received_metadata()
+
+      assert pluck(received_metadata, :event_number) == [1, 2]
+      assert pluck(received_metadata, :stream_version) == [1, 2]
+
+      Enum.each(received_metadata, fn metadata ->
+        assert Map.get(metadata, :stream_id) == stream_uuid
+        assert %NaiveDateTime{} = Map.get(metadata, :created_at)
+      end)
     end)
 	end
 
 	test "should ignore already seen events" do
-    {:ok, handler} = AppendingEventHandler.start_link
+    {:ok, handler} = AppendingEventHandler.start_link()
 
     events = [
       %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},

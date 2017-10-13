@@ -118,8 +118,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp process_unseen_event(%RecordedEvent{event_number: event_number} = event, process_router, %ProcessManagerInstance{} = state) do
     case handle_event(event, state) do
       {:error, reason} ->
-        Logger.warn(fn -> describe(state) <> " failed to handle event #{inspect event_number} due to: #{inspect reason}" end)
-	      {:noreply, state}
+        Logger.error(fn -> describe(state) <> " failed to handle event #{inspect event_number} due to: #{inspect reason}" end)
+
+	      {:stop, reason, state}
 
       commands ->
         with :ok <- commands |> List.wrap() |> dispatch_commands(state) do
@@ -178,7 +179,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         Logger.info(fn -> describe(state) <> " is retrying failed command due to: #{inspect error}, retrying after #{inspect delay}ms" end)
 
         :timer.sleep(delay)
-        
+
         dispatch_commands([failed_command | pending_commands], state, context)
 
       :skip ->

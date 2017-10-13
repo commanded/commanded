@@ -20,6 +20,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       defmodule Start, do: defstruct [:aggregate_uuid]
       defmodule Publish, do: defstruct [:aggregate_uuid, :interesting, :uninteresting]
       defmodule Stop, do: defstruct [:aggregate_uuid]
+      defmodule Error, do: defstruct [:aggregate_uuid]
     end
 
     defmodule Events do
@@ -27,6 +28,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
       defmodule Interested, do: defstruct [:aggregate_uuid, :index]
       defmodule Uninterested, do: defstruct [:aggregate_uuid, :index]
       defmodule Stopped, do: defstruct [:aggregate_uuid]
+      defmodule Errored, do: defstruct [:aggregate_uuid]
     end
 
     def start(%ExampleAggregate{}, aggregate_uuid) do
@@ -42,6 +44,10 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
     def stop(%ExampleAggregate{uuid: aggregate_uuid}) do
       %Events.Stopped{aggregate_uuid: aggregate_uuid}
+    end
+
+    def error(%ExampleAggregate{uuid: aggregate_uuid}) do
+      %Events.Errored{aggregate_uuid: aggregate_uuid}
     end
 
     defp publish_interesting(_aggregate_uuid, 0, _index), do: []
@@ -62,12 +68,13 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
     def apply(%ExampleAggregate{} = state, %Events.Started{aggregate_uuid: aggregate_uuid}), do: %ExampleAggregate{state | uuid: aggregate_uuid, state: :started}
     def apply(%ExampleAggregate{items: items} = state, %Events.Interested{index: index}), do: %ExampleAggregate{state | items: items ++ [index]}
+    def apply(%ExampleAggregate{} = state, %Events.Errored{}), do: %ExampleAggregate{state | state: :errored}
     def apply(%ExampleAggregate{} = state, %Events.Uninterested{}), do: state
     def apply(%ExampleAggregate{} = state, %Events.Stopped{}), do: %ExampleAggregate{state | state: :stopped}
   end
 
-  alias ExampleAggregate.Commands.{Start,Publish,Stop}
-  alias ExampleAggregate.Events.{Started,Interested,Uninterested,Stopped}
+  alias ExampleAggregate.Commands.{Start,Publish,Stop,Error}
+  alias ExampleAggregate.Events.{Started,Interested,Uninterested,Stopped,Errored}
 
   defmodule ExampleCommandHandler do
     @behaviour Commanded.Commands.Handler
@@ -75,12 +82,16 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     def handle(%ExampleAggregate{} = aggregate, %Start{aggregate_uuid: aggregate_uuid}), do: ExampleAggregate.start(aggregate, aggregate_uuid)
     def handle(%ExampleAggregate{} = aggregate, %Publish{interesting: interesting, uninteresting: uninteresting}), do: ExampleAggregate.publish(aggregate, interesting, uninteresting)
     def handle(%ExampleAggregate{} = aggregate, %Stop{}), do: ExampleAggregate.stop(aggregate)
+    def handle(%ExampleAggregate{} = aggregate, %Error{}), do: ExampleAggregate.error(aggregate)
   end
 
   defmodule Router do
     use Commanded.Commands.Router
 
-    dispatch [Start,Publish,Stop], to: ExampleCommandHandler, aggregate: ExampleAggregate, identity: :aggregate_uuid
+    dispatch [Start,Publish,Stop,Error],
+      to: ExampleCommandHandler,
+      aggregate: ExampleAggregate,
+      identity: :aggregate_uuid
   end
 
   defmodule ExampleProcessManager do
@@ -95,11 +106,14 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
     def interested?(%Started{aggregate_uuid: aggregate_uuid}), do: {:start, aggregate_uuid}
     def interested?(%Interested{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
+    def interested?(%Errored{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
     def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:stop, aggregate_uuid}
 
     def handle(%ExampleProcessManager{}, %Interested{index: 10, aggregate_uuid: aggregate_uuid}) do
       %Stop{aggregate_uuid: aggregate_uuid}
     end
+
+    def handle(%ExampleProcessManager{}, %Errored{}), do: {:error, :failed}
 
     ## state mutators
 
@@ -208,7 +222,7 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
 
     wait_for_event Interested, fn event -> event.index == 4 end
 
-    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router, start_from: :current)
+    {:ok, process_router} = ExampleProcessManager.start_link(start_from: :current)
 
     :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
     :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
@@ -219,5 +233,20 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
     %{items: items} = ProcessManagerInstance.process_state(process_instance)
     assert items == [1, 2, 3, 4, 5, 6]
+  end
+
+  test "should stop process router when handling event errors" do
+    aggregate_uuid = UUID.uuid4
+
+    {:ok, process_router} = ExampleProcessManager.start_link()
+
+    Process.unlink(process_router)
+    ref = Process.monitor(process_router)
+
+    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = Router.dispatch(%Error{aggregate_uuid: aggregate_uuid})
+
+    # should shutdown process
+    assert_receive {:DOWN, ^ref, _, _, _}
   end
 end

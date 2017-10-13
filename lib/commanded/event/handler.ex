@@ -101,7 +101,7 @@ defmodule Commanded.Event.Handler do
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the event, or `{:error, reason}` on failure.
   """
-  @callback handle(domain_event, metadata) :: :ok | {:error, reason :: atom}
+  @callback handle(domain_event, metadata) :: :ok | {:error, reason :: any()}
 
   @doc """
   Macro as a convenience for defining an event handler.
@@ -124,6 +124,7 @@ defmodule Commanded.Event.Handler do
   Start event handler process (or configure as a worker inside a [supervisor](supervision.html)):
 
       {:ok, handler} = ExampleHandler.start_link()
+
   """
   defmacro __using__(opts) do
     quote location: :keep do
@@ -180,7 +181,7 @@ defmodule Commanded.Event.Handler do
   end
 
   def init(%Handler{handler_module: handler_module} = state) do
-    GenServer.cast(self(), {:subscribe_to_events})
+    GenServer.cast(self(), :subscribe_to_events)
 
     reply =
       case handler_module.init() do
@@ -191,25 +192,22 @@ defmodule Commanded.Event.Handler do
     {reply, state}
   end
 
-  def handle_cast({:subscribe_to_events}, %Handler{} = state) do
+  def handle_cast(:subscribe_to_events, %Handler{} = state) do
     {:noreply, subscribe_to_all_streams(state)}
   end
 
-  def handle_info({:events, events}, state) do
-    Logger.debug(fn -> "event handler received events: #{inspect events}" end)
+  def handle_info({:events, events}, %Handler{} = state) do
+    Logger.debug(fn -> describe(state) <> " received events: #{inspect events}" end)
 
-    state = Enum.reduce(events, state, fn (event, state) ->
-      event_number = extract_event_number(event)
-      data = extract_data(event)
-      metadata = extract_metadata(event)
-
-      case handle_event(event_number, data, metadata, state) do
-        :ok -> confirm_receipt(event, state)
-        {:error, :already_seen_event} -> confirm_receipt(event, state)
-      end
-    end)
-
-    {:noreply, state}
+    try do
+      state = Enum.reduce(events, state, &handle_event/2)
+      
+      {:noreply, state}
+    catch
+      {:error, reason} ->
+        # stop after event handling returned an error
+        {:stop, reason, state}
+    end
   end
 
   defp subscribe_to_all_streams(%Handler{consistency: consistency, handler_name: handler_name, subscribe_from: subscribe_from} = state) do
@@ -222,21 +220,30 @@ defmodule Commanded.Event.Handler do
   end
 
   # ignore already seen events
-  defp handle_event(event_number, _data, _metadata, %Handler{last_seen_event: last_seen_event})
+  defp handle_event(%RecordedEvent{event_number: event_number} = event, %Handler{last_seen_event: last_seen_event} = state)
     when not is_nil(last_seen_event) and event_number <= last_seen_event
   do
-    Logger.debug(fn -> "event handler has already seen event: #{inspect event_number}" end)
-    {:error, :already_seen_event}
+    Logger.debug(fn -> describe(state) <> " has already seen event ##{inspect event_number}" end)
+
+    confirm_receipt(event, state)
   end
 
   # delegate event to handler module
-  defp handle_event(_event_number, data, metadata, %Handler{handler_module: handler_module}) do
-    handler_module.handle(data, metadata)
+  defp handle_event(%RecordedEvent{data: data} = event, %Handler{handler_module: handler_module} = state) do
+    case handler_module.handle(data, enrich_metadata(event)) do
+      :ok ->
+        confirm_receipt(event, state)
+
+      {:error, reason} = error ->
+        Logger.error(fn -> describe(state) <> " failed to handle event #{inspect event} due to: #{inspect reason}" end)
+
+        throw(error)
+    end
   end
 
   # confirm receipt of event
   defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %Handler{} = state) do
-    Logger.debug(fn -> "event handler confirming receipt of event: #{inspect event_number}" end)
+    Logger.debug(fn -> describe(state) <> " confirming receipt of event ##{inspect event_number}" end)
 
     ack_event(event, state)
 
@@ -248,12 +255,12 @@ defmodule Commanded.Event.Handler do
     Subscriptions.ack_event(handler_name, consistency, event)
   end
 
-  defp extract_event_number(%RecordedEvent{event_number: event_number}), do: event_number
-
-  defp extract_data(%RecordedEvent{data: data}), do: data
-
-  defp extract_metadata(%RecordedEvent{metadata: nil} = event), do: extract_metadata(%RecordedEvent{event | metadata: %{}})
-  defp extract_metadata(%RecordedEvent{event_number: event_number, stream_id: stream_id, stream_version: stream_version, metadata: metadata, created_at: created_at}) do
-    Map.merge(%{event_number: event_number, stream_id: stream_id, stream_version: stream_version, created_at: created_at}, metadata)
+  defp enrich_metadata(%RecordedEvent{metadata: metadata} = event) do
+    event
+    |> Map.from_struct()
+    |> Map.take([:event_number, :stream_id, :stream_version, :created_at])
+    |> Map.merge(metadata || %{})
   end
+
+  defp describe(%Handler{handler_module: handler_module}), do: inspect(handler_module)
 end
