@@ -84,11 +84,11 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       {:retry, context}
     end
 
-    # skip event
+    # skip failed command, continue pending
     def error({:error, :failed}, %AttemptProcess{strategy: :skip, reply_to: reply_to}, context) do
       send(reply_to, {:error, :failed, record_attempt(context)})
 
-      :skip
+      {:skip, :continue_pending}
     end
 
     defp record_attempt(context) do
@@ -173,7 +173,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     command = %StartProcess{process_uuid: process_uuid}
 
     {:ok, process_router} = ErrorHandlingProcessManager.start_link()
-    
+
     Process.unlink(process_router)
     ref = Process.monitor(process_router)
 

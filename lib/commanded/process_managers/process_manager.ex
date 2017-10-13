@@ -157,20 +157,27 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   You can return one of the following responses depending upon the
   error severity:
 
-  - {:retry, context} - retry the event, provide a context map to provide state
-    to subsequent failures. This could be used to count the number of retries,
-    failing after too many attempts.
-  - {:retry, delay, context} - retry the event, after sleeping for the requested
-    delay, given in milliseconds. Context is as per the above retry.
-  - :skip - discard the event, don't dispatch any pending commands.
-  - :ignore - ignore the error and continue dispatching any remaining commands.
-  - {:stop, reason} - stop the process manager with the given reason.
+  - `{:retry, context}` - retry the failed command, provide a context
+    map containing any state passed to subsequent failures. This could be used
+    to count the number of retries, failing after too many attempts.
+
+  - `{:retry, delay, context}` - retry the failed command, after
+    sleeping for the requested delay, given in milliseconds. Context is a map as
+    described in `{:retry, context}` above.
+
+  - `{:skip, :discard_pending}` - discard the failed command and any pending
+    commands.
+
+  - `{:skip, :continue_pending}` - skip the failed command, but continue
+    dispatching any pending commands.
+
+  - `{:stop, reason}` - stop the process manager with the given reason.
 
   """
   @callback error(error :: term(), command, context :: map()) :: {:retry, context :: map()}
     | {:retry, delay :: non_neg_integer(), context :: map()}
-    | :skip
-    | :ignore
+    | {:skip, :discard_pending}
+    | {:skip, :continue_pending}
     | {:stop, reason :: term()}
 
   @doc false
