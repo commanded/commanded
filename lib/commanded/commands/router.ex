@@ -266,7 +266,7 @@ defmodule Commanded.Commands.Router do
         metadata = Keyword.get(opts, :metadata) || @default_metadata
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default_dispatch_timeout
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
-        lifespan = unquote(lifespan) || @default_lifespan
+        lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default_lifespan
 
         default_identity = unquote(identity)
         default_identity_prefix = unquote(identity_prefix)
