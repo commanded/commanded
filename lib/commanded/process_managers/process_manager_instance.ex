@@ -169,7 +169,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp dispatch_failure(error, failed_command, pending_commands, context, %ProcessManagerInstance{process_manager_module: process_manager_module} = state) do
-    case process_manager_module.error(error, failed_command, context) do
+    case process_manager_module.error(error, failed_command, pending_commands, context) do
       {:retry, context} ->
         # retry the failed command immediately
         Logger.info(fn -> describe(state) <> " is retrying failed command due to" end)

@@ -12,7 +12,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:interested?/1`
   - `c:handle/2`
   - `c:apply/2`
-  - `c:error/3`
+  - `c:error/4`
 
   ## Example
 
@@ -33,7 +33,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           # ...
         end
 
-        def error({:error, failure}, %ExampleCommand{}, %{} = context) do
+        def error({:error, failure}, %ExampleCommand{}, _pending_commands, %{} = context) do
           # retry, skip, ignore, or stop process manager on error dispatching command
         end
       end
@@ -44,12 +44,16 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   # Error handling
 
-  You can define an `c:error/3` callback function to handle any errors returned
-  from command dispatch. Use pattern matching on the error and/or command to
-  explicitly handle certain errors or commands. Choose to retry, skip, ignore,
-  or stop the process manager after an error dispatching command.
+  You can define an `c:error/4` callback function to handle any errors returned
+  from command dispatch. The function is passed the command dispatch error (e.g.
+  `{:error, :failure}`), the failed command, any pending commands, and a context
+  map containing state passed between retries.
 
-  The default behaviour if you don't provide an `c:error/3` callback is to stop
+  Use pattern matching on the error and/or failed command to explicitly handle
+  certain errors or commands. You can choose to retry, skip, ignore, or stop the
+  process manager after an error dispatching command.
+
+  The default behaviour if you don't provide an `c:error/4` callback is to stop
   the process manager using the exact error reason returned from the command
   dispatch. You should supervise process managers to ensure they are correctly
   restarted on error.
@@ -62,14 +66,14 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           router: ExampleRouter
 
         # stop process manager after three attempts
-        def error({:error, _failure}, command, %{attempts: attempts} = context)
+        def error({:error, _failure}, _failed_command, _pending_commands, %{attempts: attempts} = context)
           when attempts >= 2
         do
           {:stop, :too_many_attempts}
         end
 
         # retry command, record attempt count in context map
-        def error({:error, _failure}, command, context) do
+        def error({:error, _failure}, _failed_command, _pending_commands, context) do
           context = Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
           {:retry, context}
         end
@@ -148,10 +152,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Called when a command dispatch returns an error.
 
-  The `c:error/3` function allows you to control how command dispatch failures
-  are handled. The function receives the error returned from the dispatch, the
-  domain event being handled, and a context map containing the dispatched
-  command. The context may also be used to track state between retried failures.
+  The `c:error/4` function allows you to control how command dispatch failures
+  are handled. The function is passed the command dispatch error (e.g. `{:error,
+  :failure}`), the failed command, any pending commands, and a context map
+  containing state passed between retries. The context may also be used to track
+  state between retried failures.
 
   You can return one of the following responses depending upon the
   error severity:
@@ -170,13 +175,19 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `{:skip, :continue_pending}` - skip the failed command, but continue
     dispatching any pending commands.
 
+  - `{:continue, commands, context}` - continue dispatching the given commands.
+    This allows you to retry the failed command, modify it and retry, drop it,
+    or drop all pending commands by passing an empty list `[]`. Context is a map
+    as described in `{:retry, context}` above.
+
   - `{:stop, reason}` - stop the process manager with the given reason.
 
   """
-  @callback error(error :: term(), command, context :: map()) :: {:retry, context :: map()}
+  @callback error(error :: term(), failed_command :: command, pending_commands :: list(command), context :: map()) :: {:retry, context :: map()}
     | {:retry, delay :: non_neg_integer(), context :: map()}
     | {:skip, :discard_pending}
     | {:skip, :continue_pending}
+    | {:continue, commands :: list(command), context :: map()}
     | {:stop, reason :: term()}
 
   @doc false
@@ -215,7 +226,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       def apply(process_manager, _event), do: process_manager
 
       @doc false
-      def error({:error, reason}, _command, _context), do: {:stop, reason}
+      def error({:error, reason}, _failed_command, _pending_commands, _context),
+        do: {:stop, reason}
     end
   end
 end

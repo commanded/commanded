@@ -58,7 +58,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     end
 
     # stop after three attempts
-    def error({:error, :failed}, %AttemptProcess{strategy: :retry, reply_to: reply_to}, %{attempts: attempts} = context)
+    def error({:error, :failed}, %AttemptProcess{strategy: :retry, reply_to: reply_to}, _pending_commands, %{attempts: attempts} = context)
       when attempts >= 2
     do
       send(reply_to, {:error, :too_many_attempts, record_attempt(context)})
@@ -67,25 +67,25 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     end
 
     # retry command with delay
-    def error({:error, :failed}, %AttemptProcess{strategy: :retry, delay: delay} = command, context)
+    def error({:error, :failed}, %AttemptProcess{strategy: :retry, delay: delay} = failed_command, _pending_commands, context)
       when is_integer(delay)
     do
       context = record_attempt(context)
-      send_failure(command, Map.put(context, :delay, delay))
+      send_failure(failed_command, Map.put(context, :delay, delay))
 
       {:retry, delay, context}
     end
 
     # retry command
-    def error({:error, :failed}, %AttemptProcess{strategy: :retry} = command, context) do
+    def error({:error, :failed}, %AttemptProcess{strategy: :retry} = failed_command, _pending_commands, context) do
       context = record_attempt(context)
-      send_failure(command, context)
+      send_failure(failed_command, context)
 
       {:retry, context}
     end
 
     # skip failed command, continue pending
-    def error({:error, :failed}, %AttemptProcess{strategy: :skip, reply_to: reply_to}, context) do
+    def error({:error, :failed}, %AttemptProcess{strategy: :skip, reply_to: reply_to}, _pending_commands, context) do
       send(reply_to, {:error, :failed, record_attempt(context)})
 
       {:skip, :continue_pending}
