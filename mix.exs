@@ -103,7 +103,6 @@ EventStore using PostgreSQL for persistence.
       "es.reset":           ["event_store.drop", "event_store.create"],
       "event_store.reset":  ["event_store.drop", "event_store.create"],
       "benchmark":          ["es.reset", "app.start", "bench"],
-      "test":               ["test --no-start"],
       "test.all":           &test_registries/1,
       "test.distributed":   &test_distributed/1,
       "test.local":         &test_local/1,
