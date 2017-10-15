@@ -58,22 +58,26 @@ defmodule EventStore.Subscriptions.Subscription do
     GenServer.cast(subscription, {:ack, {event_id, stream_version}})
   end
 
+  @doc false
   def caught_up(subscription, last_seen) do
     GenServer.cast(subscription, {:caught_up, last_seen})
   end
 
+  @doc false
   def unsubscribe(subscription) do
-    GenServer.call(subscription, {:unsubscribe})
+    GenServer.call(subscription, :unsubscribe)
   end
 
+  @doc false
   def subscribed?(subscription) do
-    GenServer.call(subscription, {:subscribed?})
+    GenServer.call(subscription, :subscribed?)
   end
 
+  @doc false
   def init(%Subscription{subscriber: subscriber} = state) do
     Process.link(subscriber)
 
-    GenServer.cast(self(), {:subscribe_to_stream})
+    GenServer.cast(self(), :subscribe_to_stream)
 
     {:ok, state}
   end
@@ -88,7 +92,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, state}
   end
 
-  def handle_cast({:subscribe_to_stream}, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
+  def handle_cast(:subscribe_to_stream, %Subscription{stream_uuid: stream_uuid, subscription_name: subscription_name, subscriber: subscriber, subscription: subscription, subscription_opts: opts} = state) do
     subscription = StreamSubscription.subscribe(subscription, stream_uuid, subscription_name, subscriber, opts)
 
     state = %Subscription{state | subscription: subscription}
@@ -100,7 +104,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, state}
   end
 
-  def handle_cast({:catch_up}, %Subscription{subscription: subscription} = state) do
+  def handle_cast(:catch_up, %Subscription{subscription: subscription} = state) do
     subscription = StreamSubscription.catch_up(subscription)
 
     state = %Subscription{state | subscription: subscription}
@@ -130,7 +134,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:noreply, state}
   end
 
-  def handle_call({:unsubscribe}, _from, %Subscription{subscriber: subscriber, subscription: subscription} = state) do
+  def handle_call(:unsubscribe, _from, %Subscription{subscriber: subscriber, subscription: subscription} = state) do
     Process.unlink(subscriber)
 
     subscription = StreamSubscription.unsubscribe(subscription)
@@ -142,7 +146,7 @@ defmodule EventStore.Subscriptions.Subscription do
     {:reply, :ok, state}
   end
 
-  def handle_call({:subscribed?}, _from, %Subscription{subscription: %{state: subscription_state}} = state) do
+  def handle_call(:subscribed?, _from, %Subscription{subscription: %{state: subscription_state}} = state) do
     reply = case subscription_state do
       :subscribed -> true
       _ -> false
@@ -156,7 +160,7 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   defp handle_subscription_state(%Subscription{subscription: %{state: :request_catch_up}}) do
-    GenServer.cast(self(), {:catch_up})
+    GenServer.cast(self(), :catch_up)
   end
 
   defp handle_subscription_state(%Subscription{subscription: %{state: :max_capacity}, subscription_name: subscription_name}) do

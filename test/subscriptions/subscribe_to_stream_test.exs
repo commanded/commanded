@@ -225,7 +225,7 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       refute pluck(stream2_received_events, :created_at) |> Enum.any?(&is_nil/1)
     end
 
-    test "subscribe to all streams from given stream id should only receive later events from all streams", %{subscription_name: subscription_name} do
+    test "subscribe to all streams from given event id should only receive later events from all streams", %{subscription_name: subscription_name} do
       stream1_uuid = UUID.uuid4
       stream2_uuid = UUID.uuid4
 
@@ -253,6 +253,29 @@ defmodule EventStore.Subscriptions.SubscribeToStream do
       assert pluck(stream1_received_events, :data) == pluck(stream1_new_events, :data)
       assert pluck(stream2_received_events, :data) == pluck(stream2_new_events, :data)
       assert stream1_received_events != stream2_received_events
+    end
+
+    test "subscribe to all streams as events being appended should receive events from all streams", %{subscription_name: subscription_name} do
+      stream_uuid = UUID.uuid4()
+      stream_events = EventFactory.create_events(1)
+      reply_to = self()
+
+      append_to_stream_task = Task.async(fn ->
+        with {:ok, _stream1} <- Streams.Supervisor.open_stream(stream_uuid) do
+          :ok = Stream.append_to_stream(stream_uuid, 0, stream_events)
+        end
+      end)
+
+      subscribe_task = Task.async(fn ->
+        {:ok, _subscription} = Subscriptions.subscribe_to_all_streams(subscription_name, reply_to)
+      end)
+
+      Enum.each([append_to_stream_task, subscribe_task], &Task.await/1)
+
+      assert_receive {:events, [received_event]}
+      assert received_event.event_id == 1
+      assert received_event.stream_uuid == stream_uuid
+      assert received_event.stream_version == 1
     end
 
     test "should monitor all stream subscription, terminate subscription and subscriber on error", %{subscription_name: subscription_name} do

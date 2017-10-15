@@ -100,7 +100,7 @@ defmodule EventStore.Streams.Stream do
   def handle_call({:subscribe_to_stream, subscription_name, subscriber, opts}, _from, %Stream{stream_uuid: stream_uuid} = state) do
     {start_from, opts} = Keyword.pop(opts, :start_from, :origin)
 
-    opts = Keyword.merge([start_from_stream_version: start_from_stream_version(state, start_from)], opts)
+    opts = Keyword.merge([start_from_stream_version: start_from_stream_version(start_from, state)], opts)
 
     reply = Subscriptions.subscribe_to_stream(stream_uuid, subscription_name, subscriber, opts)
 
@@ -115,9 +115,9 @@ defmodule EventStore.Streams.Stream do
     {:stop, :normal, state}
   end
 
-  defp start_from_stream_version(%Stream{}, :origin), do: 0
-  defp start_from_stream_version(%Stream{stream_version: stream_version}, :current), do: stream_version
-  defp start_from_stream_version(%Stream{}, start_from) when is_integer(start_from), do: start_from
+  defp start_from_stream_version(:origin, %Stream{}), do: 0
+  defp start_from_stream_version(:current, %Stream{stream_version: stream_version}), do: stream_version
+  defp start_from_stream_version(start_from, %Stream{}) when is_integer(start_from), do: start_from
 
   defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
     {:ok, stream_id} = Storage.create_stream(stream_uuid)

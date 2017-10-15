@@ -8,6 +8,7 @@ defmodule EventStore.Subscriptions.SubscriptionState do
     mapper: nil,
     last_seen: 0,
     last_ack: 0,
+    last_received: nil,
     pending_events: [],
     max_size: nil,
   ]
