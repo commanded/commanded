@@ -1,7 +1,7 @@
 defmodule EventStore.Mixfile do
   use Mix.Project
 
-  @version "0.11.0"
+  @version "0.11.1"
 
   def project do
     [
@@ -50,13 +50,13 @@ defmodule EventStore.Mixfile do
   defp deps do
     [
       {:benchfella, "~> 0.3", only: :bench},
-      {:credo, "~> 0.7", only: [:dev, :test]},
-      {:dialyxir, "~> 0.4", only: :dev},
-      {:ex_doc, "~> 0.16", only: :dev},
+      {:credo, "~> 0.8", only: [:dev, :test]},
+      {:dialyxir, "~> 0.5", only: :dev},
+      {:ex_doc, "~> 0.18", only: :dev},
       {:fsm, "~> 0.3"},
       {:markdown, github: "devinus/markdown", only: :dev},
-      {:mix_test_watch, "~> 0.4", only: :dev},
-      {:poison, "~> 3.0", optional: true},
+      {:mix_test_watch, "~> 0.5", only: :dev},
+      {:poison, "~> 3.1", optional: true},
       {:poolboy, "~> 1.5"},
       {:postgrex, "~> 0.13"},
       {:swarm, "~> 3.0", optional: true},
@@ -103,6 +103,7 @@ EventStore using PostgreSQL for persistence.
       "es.reset":           ["event_store.drop", "event_store.create"],
       "event_store.reset":  ["event_store.drop", "event_store.create"],
       "benchmark":          ["es.reset", "app.start", "bench"],
+      "test":               ["test --no-start"],
       "test.all":           &test_registries/1,
       "test.distributed":   &test_distributed/1,
       "test.local":         &test_local/1,
