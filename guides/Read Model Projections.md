@@ -36,7 +36,6 @@ defmodule MyApp.ExampleProjector do
     name: "ExampleProjector",
     consistency: :strong
 
-
   # ...
 end
 ```

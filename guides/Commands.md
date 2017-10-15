@@ -248,7 +248,7 @@ defmodule BankingRouter do
   middleware AuthorizeCommand
 
   identify BankAccount, by: :account_number
-  
+
   dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount
   dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount
 end

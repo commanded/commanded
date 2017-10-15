@@ -1,5 +1,12 @@
 # Changelog
 
+## Next release
+
+### Enhancements
+
+- Process manager command dispatch error handling ([#93](https://github.com/slashdotdash/commanded/issues/93)).
+- Event handlers may define an `init/0` callback function to start any related processes. It must return `:ok`, otherwise the handler process will be stopped.
+
 ## v0.14.0
 
 ### Enhancements

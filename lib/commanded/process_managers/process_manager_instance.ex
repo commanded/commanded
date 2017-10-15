@@ -34,7 +34,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   def init(%ProcessManagerInstance{} = state) do
-    GenServer.cast(self(), {:fetch_state})
+    GenServer.cast(self(), :fetch_state)
     {:ok, state}
   end
 
@@ -51,31 +51,33 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   Typically called when it has reached its final state.
   """
   def stop(process_manager) do
-    GenServer.call(process_manager, {:stop})
+    GenServer.call(process_manager, :stop)
   end
 
   @doc """
   Fetch the process state of this instance
   """
   def process_state(process_manager) do
-    GenServer.call(process_manager, {:process_state})
+    GenServer.call(process_manager, :process_state)
   end
 
-  def handle_call({:stop}, _from, %ProcessManagerInstance{} = state) do
+  @doc false
+  def handle_call(:stop, _from, %ProcessManagerInstance{} = state) do
     :ok = delete_state(state)
 
     # stop the process with a normal reason
     {:stop, :normal, :ok, state}
   end
 
-  def handle_call({:process_state}, _from, %ProcessManagerInstance{process_state: process_state} = state) do
+  @doc false
+  def handle_call(:process_state, _from, %ProcessManagerInstance{process_state: process_state} = state) do
     {:reply, process_state, state}
   end
 
   @doc """
   Attempt to fetch intial process state from snapshot storage
   """
-  def handle_cast({:fetch_state}, %ProcessManagerInstance{} = state) do
+  def handle_cast(:fetch_state, %ProcessManagerInstance{} = state) do
     state = case EventStore.read_snapshot(process_state_uuid(state)) do
       {:ok, snapshot} ->
         %ProcessManagerInstance{state |
@@ -93,63 +95,123 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   Handle the given event, using the process manager module, against the current process state
   """
   def handle_cast({:process_event, %RecordedEvent{} = event, process_router}, %ProcessManagerInstance{} = state) do
-    state = case event_already_seen?(event, state) do
+    case event_already_seen?(event, state) do
       true -> process_seen_event(event, process_router, state)
       false -> process_unseen_event(event, process_router, state)
     end
+  end
+
+  defp event_already_seen?(
+    %RecordedEvent{event_number: event_number},
+    %ProcessManagerInstance{last_seen_event: last_seen_event})
+  do
+    not is_nil(last_seen_event) and event_number <= last_seen_event
+  end
+
+  defp process_seen_event(event = %RecordedEvent{}, process_router, state) do
+    # already seen event, so just ack
+    :ok = ack_event(event, process_router)
 
     {:noreply, state}
   end
 
-  defp event_already_seen?(%RecordedEvent{event_number: event_number}, %ProcessManagerInstance{last_seen_event: last_seen_event}) do
-    not is_nil(last_seen_event) and event_number <= last_seen_event
-  end
-
-  # already seen event, so just ack
-  defp process_seen_event(event = %RecordedEvent{}, process_router, state) do
-    :ok = ack_event(event, process_router)
-    state
-  end
-
-  defp process_unseen_event(%RecordedEvent{event_number: event_number} = event, process_router, %ProcessManagerInstance{command_dispatcher: command_dispatcher, process_manager_module: process_manager_module, process_state: process_state} = state) do
-    case handle_event(process_manager_module, process_state, event) do
+  defp process_unseen_event(%RecordedEvent{event_number: event_number} = event, process_router, %ProcessManagerInstance{} = state) do
+    case handle_event(event, state) do
       {:error, reason} ->
-        Logger.warn(fn -> "process manager instance failed to handle event #{inspect event_number} due to: #{inspect reason}" end)
-	      state
+        Logger.error(fn -> describe(state) <> " failed to handle event #{inspect event_number} due to: #{inspect reason}" end)
+
+	      {:stop, reason, state}
 
       commands ->
-        :ok = dispatch_commands(List.wrap(commands), command_dispatcher)
+        with :ok <- commands |> List.wrap() |> dispatch_commands(state) do
+          process_state = mutate_state(event, state)
 
-        process_state = mutate_state(process_manager_module, process_state, event)
+          state = %ProcessManagerInstance{state |
+            process_state: process_state,
+            last_seen_event: event_number,
+          }
 
-        state = %ProcessManagerInstance{state |
-          process_state: process_state,
-          last_seen_event: event_number,
-        }
+          :ok = persist_state(state, event_number)
+          :ok = ack_event(event, process_router)
 
-        :ok = persist_state(state, event_number)
-        :ok = ack_event(event, process_router)
-
-	      state
+          {:noreply, state}
+        else
+          {:stop, reason} ->
+            {:stop, reason, state}
+        end
     end
   end
 
   # process instance is given the event and returns applicable commands (may be none, one or many)
-  defp handle_event(process_manager_module, process_state, %RecordedEvent{data: data}) do
+  defp handle_event(%RecordedEvent{data: data}, %ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state}) do
     process_manager_module.handle(process_state, data)
   end
 
   # update the process instance's state by applying the event
-  defp mutate_state(process_manager_module, process_state, %RecordedEvent{data: data}) do
+  defp mutate_state(%RecordedEvent{data: data}, %ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state}) do
     process_manager_module.apply(process_state, data)
   end
 
-  defp dispatch_commands([], _command_dispatcher), do: :ok
-  defp dispatch_commands(commands, command_dispatcher) when is_list(commands) do
-    Enum.each(commands, fn command ->
-      Logger.debug(fn -> "process manager instance attempting to dispatch command: #{inspect command}" end)
-      :ok = command_dispatcher.dispatch(command)
-    end)
+  defp dispatch_commands(commands, state, context \\ %{})
+  defp dispatch_commands([], _state, _context), do: :ok
+  defp dispatch_commands([command | pending_commands], %ProcessManagerInstance{command_dispatcher: command_dispatcher} = state, context) do
+    Logger.debug(fn -> describe(state) <> " attempting to dispatch command: #{inspect command}" end)
+
+    case command_dispatcher.dispatch(command) do
+      :ok ->
+        dispatch_commands(pending_commands, state)
+
+      error ->
+        Logger.warn(fn -> describe(state) <> " failed to dispatch command #{inspect command} due to: #{inspect error}" end)
+
+        dispatch_failure(error, command, pending_commands, context, state)
+    end
+  end
+
+  defp dispatch_failure(error, failed_command, pending_commands, context, %ProcessManagerInstance{process_manager_module: process_manager_module} = state) do
+    case process_manager_module.error(error, failed_command, pending_commands, context) do
+      {:continue, commands, context} ->
+        # continue dispatching the given commands
+        Logger.info(fn -> describe(state) <> " is continuing with modified command(s)" end)
+
+        dispatch_commands(commands, state, context)
+
+      {:retry, context} ->
+        # retry the failed command immediately
+        Logger.info(fn -> describe(state) <> " is retrying failed command" end)
+
+        dispatch_commands([failed_command | pending_commands], state, context)
+
+      {:retry, delay, context} ->
+        # retry the failed command after waiting for the given delay, in milliseconds
+        Logger.info(fn -> describe(state) <> " is retrying failed command after #{inspect delay}ms" end)
+
+        :timer.sleep(delay)
+
+        dispatch_commands([failed_command | pending_commands], state, context)
+
+      {:skip, :discard_pending} ->
+        # skip the failed command and discard any pending commands
+        Logger.info(fn -> describe(state) <> " is skipping event and #{length(pending_commands)} pending command(s)" end)
+
+        :ok
+
+      {:skip, :continue_pending} ->
+        # skip the failed command, but continue dispatching any pending commands
+        Logger.info(fn -> describe(state) <> " is ignoring error dispatching command" end)
+
+        dispatch_commands(pending_commands, state)
+
+      {:stop, reason} = reply ->
+        # stop process manager
+        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect reason}" end)
+
+        reply
+    end
+  end
+
+  defp describe(%ProcessManagerInstance{process_manager_module: process_manager_module}) do
+    inspect(process_manager_module)
   end
 
   defp persist_state(%ProcessManagerInstance{process_manager_module: process_manager_module, process_state: process_state} = state, source_version) do
