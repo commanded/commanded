@@ -25,25 +25,21 @@ defmodule EventStore.Publisher do
   ]
 
   def start_link(serializer) do
-    GenServer.start_link(__MODULE__, %Publisher{serializer: serializer}, name: __MODULE__)
+    {:ok, latest_event_id} = Storage.latest_event_id()
+
+    GenServer.start_link(__MODULE__, %Publisher{
+      serializer: serializer,
+      last_published_event_id: latest_event_id,
+    }, name: __MODULE__)
   end
 
   def notify_events(pid, stream_uuid, events) do
     GenServer.cast(pid, {:notify_events, stream_uuid, events})
   end
 
-  def init(%Publisher{} = state) do
-    GenServer.cast(self(), {:fetch_latest_event_id})
-    {:ok, state}
-  end
+  def init(%Publisher{} = state), do: {:ok, state}
 
-  def handle_cast({:fetch_latest_event_id}, %Publisher{} = state) do
-    {:ok, latest_event_id} = Storage.latest_event_id()
-
-    {:noreply, %Publisher{state | last_published_event_id: latest_event_id}}
-  end
-
-  def handle_cast({:notify_pending_events}, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
+  def handle_cast(:notify_pending_events, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
     next_event_id = last_published_event_id + 1
 
     state = case Map.get(pending_events, next_event_id) do
@@ -86,7 +82,7 @@ defmodule EventStore.Publisher do
         }
 
         # attempt to publish pending events
-        GenServer.cast(self(), {:notify_pending_events})
+        GenServer.cast(self(), :notify_pending_events)
 
         %Publisher{state |
           pending_events: Map.put(pending_events, initial_event_id, pending)
