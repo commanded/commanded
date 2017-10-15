@@ -170,15 +170,21 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   defp dispatch_failure(error, failed_command, pending_commands, context, %ProcessManagerInstance{process_manager_module: process_manager_module} = state) do
     case process_manager_module.error(error, failed_command, pending_commands, context) do
+      {:continue, commands, context} ->
+        # continue dispatching the given commands
+        Logger.info(fn -> describe(state) <> " is continuing with modified command(s)" end)
+
+        dispatch_commands(commands, state, context)
+
       {:retry, context} ->
         # retry the failed command immediately
-        Logger.info(fn -> describe(state) <> " is retrying failed command due to" end)
+        Logger.info(fn -> describe(state) <> " is retrying failed command" end)
 
         dispatch_commands([failed_command | pending_commands], state, context)
 
       {:retry, delay, context} ->
         # retry the failed command after waiting for the given delay, in milliseconds
-        Logger.info(fn -> describe(state) <> " is retrying failed command due to: #{inspect error}, retrying after #{inspect delay}ms" end)
+        Logger.info(fn -> describe(state) <> " is retrying failed command after #{inspect delay}ms" end)
 
         :timer.sleep(delay)
 

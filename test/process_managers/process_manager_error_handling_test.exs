@@ -8,14 +8,16 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     defmodule Commands do
       defmodule StartProcess, do: defstruct [:process_uuid, :strategy, :delay, :reply_to]
       defmodule AttemptProcess, do: defstruct [:process_uuid, :strategy, :delay, :reply_to]
+      defmodule ContinueProcess, do: defstruct [:process_uuid, :reply_to]
     end
 
     defmodule Events do
       defmodule ProcessStarted, do: defstruct [:process_uuid, :strategy, :delay, :reply_to]
+      defmodule ProcessContinued, do: defstruct [:process_uuid, :reply_to]
     end
 
-    alias Commands.{StartProcess,AttemptProcess}
-    alias Events.ProcessStarted
+    alias Commands.{AttemptProcess,ContinueProcess,StartProcess}
+    alias Events.{ProcessContinued,ProcessStarted}
 
     def execute(
       %ExampleAggregate{},
@@ -24,19 +26,26 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       %ProcessStarted{process_uuid: process_uuid, strategy: strategy, delay: delay, reply_to: reply_to}
     end
 
-    def execute(%ExampleAggregate{}, %AttemptProcess{}), do: {:error, :failed}
+    def execute(%ExampleAggregate{}, %AttemptProcess{}),
+      do: {:error, :failed}
 
-    def apply(%ExampleAggregate{} = aggregate, %ProcessStarted{}), do: aggregate
+    def execute(%ExampleAggregate{}, %ContinueProcess{process_uuid: process_uuid, reply_to: reply_to}),
+      do: %ProcessContinued{process_uuid: process_uuid, reply_to: reply_to}
+
+    def apply(%ExampleAggregate{} = aggregate, %ProcessStarted{process_uuid: process_uuid}),
+      do: %ExampleAggregate{aggregate | process_uuid: process_uuid}
+
+    def apply(%ExampleAggregate{} = aggregate, %ProcessContinued{}), do: aggregate
   end
 
-  alias ExampleAggregate.Commands.{StartProcess,AttemptProcess}
-  alias ExampleAggregate.Events.ProcessStarted
+  alias ExampleAggregate.Commands.{AttemptProcess,ContinueProcess,StartProcess}
+  alias ExampleAggregate.Events.{ProcessContinued,ProcessStarted}
 
   defmodule ExampleRouter do
     @moduledoc false
     use Commanded.Commands.Router
 
-    dispatch [StartProcess,AttemptProcess],
+    dispatch [StartProcess,AttemptProcess,ContinueProcess],
       to: ExampleAggregate, identity: :process_uuid
   end
 
@@ -49,12 +58,18 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     defstruct [:process_uuid]
 
     def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}
+    def interested?(%ProcessContinued{process_uuid: process_uuid}), do: {:continue, process_uuid}
 
     def handle(
       %ErrorHandlingProcessManager{},
       %ProcessStarted{process_uuid: process_uuid, strategy: strategy, delay: delay, reply_to: reply_to})
     do
       %AttemptProcess{process_uuid: process_uuid, strategy: strategy, delay: delay, reply_to: reply_to}
+    end
+
+    def handle(%ErrorHandlingProcessManager{}, %ProcessContinued{reply_to: reply_to}) do
+      send(reply_to, :process_continued)
+      []
     end
 
     # stop after three attempts
@@ -89,6 +104,16 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       send(reply_to, {:error, :failed, record_attempt(context)})
 
       {:skip, :continue_pending}
+    end
+
+    # continue with modified command
+    def error({:error, :failed}, %AttemptProcess{strategy: :continue, process_uuid: process_uuid, reply_to: reply_to}, pending_commands, context) do
+      context = record_attempt(context)
+      send(reply_to, {:error, :failed, context})
+
+      continue = %ContinueProcess{process_uuid: process_uuid, reply_to: reply_to}
+
+      {:continue, [continue | pending_commands], context}
     end
 
     defp record_attempt(context) do
@@ -138,7 +163,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     assert_receive {:DOWN, ^ref, _, _, _}
   end
 
-  test "should skip the event when process manager requests" do
+  test "should skip the event when error reply is `{:skip, :continue_pending}`" do
     process_uuid = UUID.uuid4()
     command = %StartProcess{process_uuid: process_uuid, strategy: :skip, reply_to: self()}
 
@@ -148,6 +173,21 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
 
     assert_receive {:error, :failed, %{attempts: 1}}
     refute_receive {:error, :failed, %{attempts: 2}}
+
+    # should not shutdown process router
+    assert Process.alive?(process_router)
+  end
+
+  test "should continue with modified command" do
+    process_uuid = UUID.uuid4()
+    command = %StartProcess{process_uuid: process_uuid, strategy: :continue, reply_to: self()}
+
+    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+
+    assert :ok = ExampleRouter.dispatch(command)
+
+    assert_receive {:error, :failed, %{attempts: 1}}
+    assert_receive :process_continued
 
     # should not shutdown process router
     assert Process.alive?(process_router)

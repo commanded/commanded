@@ -165,9 +165,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     map containing any state passed to subsequent failures. This could be used
     to count the number of retries, failing after too many attempts.
 
-  - `{:retry, delay, context}` - retry the failed command, after
-    sleeping for the requested delay, given in milliseconds. Context is a map as
-    described in `{:retry, context}` above.
+  - `{:retry, delay, context}` - retry the failed command, after sleeping for
+    the requested delay (in milliseconds). Context is a map as described in
+    `{:retry, context}` above.
 
   - `{:skip, :discard_pending}` - discard the failed command and any pending
     commands.
