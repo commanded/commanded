@@ -168,7 +168,7 @@ When dispatching a command using `consistency: :strong` the dispatch will block 
 
 Use `:strong` consistency when you want to query a read model immediately after dispatching a command. You *must* also configure the event handler to use `:strong` consistency. Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
 
-Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers. The handlers run independently and asynchronously in the background, therefore you will need to deal with potentially stale read model data.  
+Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers. The handlers run independently and asynchronously in the background, therefore you will need to deal with potentially stale read model data.
 
 #### Consistency failures
 

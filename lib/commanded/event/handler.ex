@@ -201,7 +201,7 @@ defmodule Commanded.Event.Handler do
 
     try do
       state = Enum.reduce(events, state, &handle_event/2)
-      
+
       {:noreply, state}
     catch
       {:error, reason} ->

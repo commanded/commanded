@@ -18,7 +18,7 @@ Pattern matching is used to invoke the respective `apply/2` function for an even
 
 ## Example aggregate root
 
-You can write your aggregate root with public API functions using the language of your domain. 
+You can write your aggregate root with public API functions using the language of your domain.
 
 In this bank account example, the public function to open a new account is `open_account/3`:
 

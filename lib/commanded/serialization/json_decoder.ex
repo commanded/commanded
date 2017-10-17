@@ -11,7 +11,7 @@ end
 defimpl Commanded.Serialization.JsonDecoder, for: Any do
   @moduledoc """
   Null decoder for values that require no additional decoding.
-  
+
   Returns the data exactly as provided.
   """
   def decode(data), do: data
