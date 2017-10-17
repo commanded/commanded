@@ -221,7 +221,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   defp map_to_recorded_event(
-    event_number, stream_uuid, stream_version, now, 
+    event_number, stream_uuid, stream_version, now,
     %EventData{causation_id: causation_id, correlation_id: correlation_id, event_type: event_type, data: data, metadata: metadata})
   do
     %RecordedEvent{

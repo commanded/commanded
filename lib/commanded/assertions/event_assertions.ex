@@ -2,7 +2,7 @@ defmodule Commanded.Assertions.EventAssertions do
   @moduledoc """
   Provides test assertion and wait for event functions to help test applications built using Commanded
   """
-  
+
   import ExUnit.Assertions
 
   alias Commanded.EventStore

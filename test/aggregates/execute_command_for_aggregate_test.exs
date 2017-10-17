@@ -9,7 +9,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
   alias Commanded.Helpers
 
   @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
-  
+
   test "execute command against an aggregate" do
     account_number = UUID.uuid4
 

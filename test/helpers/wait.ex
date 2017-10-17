@@ -1,6 +1,6 @@
 defmodule Commanded.Helpers.Wait do
   @moduledoc false
-  
+
   def until(fun), do: until(500, fun)
 
   def until(0, fun), do: fun.()
