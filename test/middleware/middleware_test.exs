@@ -3,6 +3,8 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
 
   import Commanded.Enumerable
 
+  alias Commanded.Commands.ExecutionResult
+  alias Commanded.Middleware.Pipeline
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.Helpers.Commands.{IncrementCount,Fail,RaiseError,Timeout,CommandHandler,CounterAggregateRoot}
 
@@ -10,6 +12,18 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     @behaviour Commanded.Middleware
 
     def before_dispatch(pipeline), do: pipeline
+    def after_dispatch(pipeline), do: pipeline
+    def after_failure(pipeline), do: pipeline
+  end
+
+  defmodule ModifyMetadataMiddleware do
+    @behaviour Commanded.Middleware
+
+    def before_dispatch(pipeline) do
+      pipeline
+      |> Pipeline.assign_metadata(:updated_by, "ModifyMetadataMiddleware")
+    end
+
     def after_dispatch(pipeline), do: pipeline
     def after_failure(pipeline), do: pipeline
   end
@@ -26,6 +40,7 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     use Commanded.Commands.Router
 
     middleware FirstMiddleware
+    middleware ModifyMetadataMiddleware
     middleware Commanded.Middleware.Logger
     middleware CommandAuditMiddleware
     middleware LastMiddleware
@@ -100,5 +115,21 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
     assert dispatched == 1
     assert succeeded == 0
     assert failed == 1
+  end
+
+  test "should let a middleware update the metadata" do
+    {:ok, _} = CommandAuditMiddleware.start_link
+
+    {:ok, %ExecutionResult{metadata: metadata}} =
+      Router.dispatch(
+        %IncrementCount{aggregate_uuid: UUID.uuid4, by: 1},
+        include_execution_result: true,
+        metadata: %{first_metadata: "first_metadata"}
+      )
+
+    assert metadata == %{
+      first_metadata: "first_metadata",
+      updated_by: "ModifyMetadataMiddleware"
+    }
   end
 end

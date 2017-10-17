@@ -15,6 +15,7 @@ defmodule Commanded.Middleware.Pipeline do
     * `identity` - An atom specifying a field in the command containing the
        aggregate's identity or a one-arity function that returns
        an identity from the command being dispatched.
+    * `metadata` - the metadata map to be persisted along with the events.
     * `identity_prefix` - An optional prefix to the aggregate's identity.
     * `halted` - Boolean status on whether the pipeline was halted
     * `response` - Set the response to send back to the caller
@@ -27,6 +28,7 @@ defmodule Commanded.Middleware.Pipeline do
     consistency: nil,
     identity: nil,
     identity_prefix: nil,
+    metadata: nil,
     halted: false,
     response: nil,
   ]
@@ -40,6 +42,13 @@ defmodule Commanded.Middleware.Pipeline do
     when is_atom(key)
   do
     %Pipeline{pipeline | assigns: Map.put(assigns, key, value)}
+  end
+
+  @doc """
+  Puts the `key` with value equal to `value` into `metadata` map
+  """
+  def assign_metadata(%Pipeline{metadata: metadata, response: response} = pipeline, key, value) when is_atom(key) do
+    %Pipeline{pipeline | metadata: Map.put(metadata, key, value)}
   end
 
   @doc """
