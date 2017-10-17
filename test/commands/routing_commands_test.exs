@@ -5,6 +5,8 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,WithdrawMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount,DepositMoney,WithdrawMoney}
+  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.Commands.Dispatcher.ExecutionResult
 
   defmodule UnregisteredCommand, do: defstruct [aggregate_uuid: UUID.uuid4]
 
@@ -262,5 +264,20 @@ defmodule Commanded.Commands.RoutingCommandsTest do
 
     assert :ok == MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, metadata: metadata)
     assert :ok == MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100}, metadata: metadata)
+  end
+
+  describe "include execution result" do
+    test "should return created events" do
+      assert MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, include_execution_result: true) ==
+        {
+          :ok,
+          %ExecutionResult{
+            aggregate_uuid: "ACC123",
+            aggregate_version: 1,
+            events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1000}],
+            metadata: nil
+          }
+        }
+    end
   end
 end

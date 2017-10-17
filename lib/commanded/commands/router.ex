@@ -89,6 +89,16 @@ defmodule Commanded.Commands.Router do
   This is useful when you need to wait for an event handler (e.g. a read model
   projection) to be up-to-date before continuing or querying its data.
 
+  ## Execution results
+
+  You can also choose to include the execution result as part of the dispatch result by
+  setting `include_execution_result` true.
+
+      {:ok, execution_result} = BankRouter.dispatch(command, include_execution_result: true)
+
+  You can use this if you need to get information from the events produced by the aggregate
+  but you can't afford to wait for the events to be projected.
+
   ## Metadata
 
   You can associate metadata with all events created by the command.
@@ -116,6 +126,7 @@ defmodule Commanded.Commands.Router do
       @default_lifespan Commanded.Aggregates.DefaultLifespan
       @default_metadata %{}
       @include_aggregate_version false
+      @include_execution_result false
     end
   end
 
@@ -247,13 +258,19 @@ defmodule Commanded.Commands.Router do
 
           - `:include_aggregate_version` set to true to include the aggregate
             stream version in the success response: `{:ok, aggregate_version}`
-            The default is false, to return just `:ok`
+            The default is false, to return just `:ok`.
+
+          - `:include_execution_result` set to true to include more information
+            about the dispatch, like the aggregate name, uuid, and the produced
+            events. Overrides `include_aggregate_version`. The default is false,
+            to return just `:ok`. See `Commanded.Commands.Dispatcher.ExecutionResult`.
 
           - `:metadata` - An optional map containing key/value pairs comprising
             the metadata to be associated with all events created by the command.
 
-      Returns `:ok` on success, unless `:include_aggregate_version` is enabled
-      where it returns `{:ok, aggregate_version}`.
+      Returns `:ok` on success, unless `:include_aggregate_version` or
+      `:include_execution_result` is enabled, where it respectively returns
+      `{:ok, aggregate_version}` or `{:ok, execution_result}`.
       """
       @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok | {:error, :consistency_timeout} | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
@@ -266,6 +283,7 @@ defmodule Commanded.Commands.Router do
         metadata = Keyword.get(opts, :metadata) || @default_metadata
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default_dispatch_timeout
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
+        include_execution_result = Keyword.get(opts, :include_execution_result) || @include_execution_result
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default_lifespan
 
         default_identity = unquote(identity)
@@ -292,6 +310,7 @@ defmodule Commanded.Commands.Router do
           identity: identity,
           identity_prefix: identity_prefix,
           include_aggregate_version: include_aggregate_version,
+          include_execution_result: include_execution_result,
           timeout: timeout,
           lifespan: lifespan,
           metadata: metadata,
