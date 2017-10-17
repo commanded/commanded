@@ -16,12 +16,23 @@ defmodule Commanded.Commands.Dispatcher do
       handler_function: nil,
       aggregate_module: nil,
       include_aggregate_version: nil,
+      include_execution_result: nil,
       identity: nil,
       identity_prefix: nil,
       timeout: nil,
       lifespan: nil,
       metadata: nil,
       middleware: [],
+    ]
+  end
+
+  defmodule ExecutionResult do
+    @moduledoc false
+    defstruct [
+      aggregate_uuid: nil,
+      aggregate_version: nil,
+      events: nil,
+      metadata: nil,
     ]
   end
 
@@ -72,12 +83,12 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version, event_count} ->
+      {:ok, aggregate_version, event_count, events} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
         |> Pipeline.assign(:event_count, event_count)
         |> after_dispatch(payload)
-        |> respond_with_success(payload, aggregate_version)
+        |> respond_with_success(payload, events)
 
       {:error, error} ->
         pipeline
@@ -105,11 +116,21 @@ defmodule Commanded.Commands.Dispatcher do
     }
   end
 
-  defp respond_with_success(%Pipeline{} = pipeline, %Payload{include_aggregate_version: include_aggregate_version}, aggregate_version) do
+  defp respond_with_success(%Pipeline{} = pipeline, payload, events) do
     response =
-      case include_aggregate_version do
-        true -> {:ok, aggregate_version}
-        false -> :ok
+      case payload do
+        %{include_execution_result: true} ->
+          {
+            :ok,
+            %ExecutionResult{
+              aggregate_uuid: pipeline.assigns.aggregate_uuid,
+              aggregate_version: pipeline.assigns.aggregate_version,
+              events: events,
+              metadata: nil,
+            }
+          }
+        %{include_aggregate_version: true} -> {:ok, pipeline.assigns.aggregate_version}
+        _ -> :ok
       end
 
     Pipeline.respond(pipeline, response)
