@@ -55,7 +55,8 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10, 10, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 10}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 10, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 10}, handler: AppendItemsHandler, function: :handle})
+    assert length(events) == 10
 
     recorded_events = EventStore.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
 
@@ -72,8 +73,11 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 1, 1, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle})
-    {:ok, 1, 0, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %NoOp{}, handler: ExampleAggregate, function: :noop})
+    {:ok, 1, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle})
+    assert length(events) == 1
+
+    {:ok, 1, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %NoOp{}, handler: ExampleAggregate, function: :noop})
+    assert length(events) == 0
 
     recorded_events = EventStore.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
     assert length(recorded_events) == 1
@@ -87,7 +91,8 @@ defmodule Commanded.Entities.EventPersistenceTest do
     metadata = %{"ip_address" => "127.0.0.1"}
     context = %ExecutionContext{command: %AppendItems{count: 10}, metadata: metadata, handler: AppendItemsHandler, function: :handle}
 
-    {:ok, 10, 10, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, context)
+    {:ok, 10, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, context)
+    assert length(events) == 10
 
     recorded_events = EventStore.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
 
@@ -101,7 +106,8 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10, 10, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 10}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 10, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 10}, handler: AppendItemsHandler, function: :handle})
+    assert length(events) == 10
 
     Commanded.Helpers.Process.shutdown(ExampleAggregate, aggregate_uuid)
 
@@ -119,9 +125,9 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 100, 100, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 100}, handler: AppendItemsHandler, function: :handle})
-    {:ok, 200, 100, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 100}, handler: AppendItemsHandler, function: :handle})
-    {:ok, 201, 1, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 100, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 100}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 200, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 100}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 201, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle})
 
     Commanded.Helpers.Process.shutdown(ExampleAggregate, aggregate_uuid)
 
@@ -142,7 +148,8 @@ defmodule Commanded.Entities.EventPersistenceTest do
 
     context = %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle}
 
-    {:ok, 1, 1, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, context)
+    {:ok, 1, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, context)
+    assert length(events) == 1
 
     recorded_events = EventStore.stream_forward(prefix <> aggregate_uuid, 0) |> Enum.to_list()
     assert length(recorded_events) == 1

@@ -53,6 +53,7 @@ defmodule Commanded.Assertions.EventAssertions do
     unless Code.ensure_compiled?(event_type) do
       raise ExUnit.AssertionError, "event_type #{inspect(event_type)} not found"
     end
+    
     with_subscription(fn subscription ->
       do_assert_receive(subscription, event_type, predicate_fn, assertion_fn)
     end)

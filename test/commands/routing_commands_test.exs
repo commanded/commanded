@@ -260,22 +260,32 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should allow setting metadata" do
-    metadata = %{ip_address: "127.0.0.1"}
+    metadata = %{"ip_address" => "127.0.0.1"}
 
     assert :ok == MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, metadata: metadata)
     assert :ok == MultiCommandHandlerRouter.dispatch(%DepositMoney{account_number: "ACC123", amount: 100}, metadata: metadata)
+
+    events = EventStore.stream_forward("ACC123") |> Enum.to_list()
+    assert length(events) == 2
+
+    Enum.each(events, fn event ->
+      assert event.metadata == metadata
+    end)
   end
 
   describe "include execution result" do
     test "should return created events" do
-      assert MultiCommandHandlerRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, include_execution_result: true) ==
+      metadata = %{"ip_address" => "127.0.0.1"}
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      assert MultiCommandHandlerRouter.dispatch(command, metadata: metadata, include_execution_result: true) ==
         {
           :ok,
           %ExecutionResult{
             aggregate_uuid: "ACC123",
             aggregate_version: 1,
             events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1000}],
-            metadata: nil
+            metadata: metadata,
           }
         }
     end

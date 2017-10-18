@@ -22,7 +22,7 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
   end
 
   def after_dispatch(%Pipeline{consistency: :eventual} = pipeline), do: pipeline
-  def after_dispatch(%Pipeline{consistency: :strong, assigns: %{event_count: 0}} = pipeline), do: pipeline
+  def after_dispatch(%Pipeline{consistency: :strong, assigns: %{events: []}} = pipeline), do: pipeline
   def after_dispatch(%Pipeline{consistency: :strong, assigns: %{aggregate_uuid: aggregate_uuid, aggregate_version: aggregate_version, dispatcher_pid: dispatcher_pid}} = pipeline) do
     case Subscriptions.wait_for(aggregate_uuid, aggregate_version, [dispatcher_pid]) do
       :ok ->

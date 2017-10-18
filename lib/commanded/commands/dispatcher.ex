@@ -83,10 +83,10 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version, event_count, events} ->
+      {:ok, aggregate_version, events} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
-        |> Pipeline.assign(:event_count, event_count)
+        |> Pipeline.assign(:events, events)
         |> after_dispatch(payload)
         |> respond_with_success(payload, events)
 
@@ -116,7 +116,7 @@ defmodule Commanded.Commands.Dispatcher do
     }
   end
 
-  defp respond_with_success(%Pipeline{} = pipeline, payload, events) do
+  defp respond_with_success(%Pipeline{} = pipeline, %Payload{metadata: metadata} = payload, events) do
     response =
       case payload do
         %{include_execution_result: true} ->
@@ -126,7 +126,7 @@ defmodule Commanded.Commands.Dispatcher do
               aggregate_uuid: pipeline.assigns.aggregate_uuid,
               aggregate_version: pipeline.assigns.aggregate_version,
               events: events,
-              metadata: nil,
+              metadata: metadata,
             }
           }
         %{include_aggregate_version: true} -> {:ok, pipeline.assigns.aggregate_version}

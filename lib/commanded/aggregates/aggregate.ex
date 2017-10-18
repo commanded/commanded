@@ -71,11 +71,10 @@ defmodule Commanded.Aggregates.Aggregate do
 
   ## Return values
 
-  Returns `{:ok, aggregate_version, event_count, events}` on success, or `{:error, reason}` on failure.
+  Returns `{:ok, aggregate_version, events}` on success, or `{:error, reason}` on failure.
 
     - `aggregate_version` - the updated version of the aggregate after executing the command.
-    - `event_count` - number of events produced by the command, will be 0 when no events created.
-    - `events` - events produced by the command, can be empty.
+    - `events` - events produced by the command, can be an empty list.
 
   """
   def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000) do
@@ -177,7 +176,7 @@ defmodule Commanded.Aggregates.Aggregate do
         {reply, state}
 
       none when none in [nil, []] ->
-        {{:ok, expected_version, 0, []}, state}
+        {{:ok, expected_version, []}, state}
 
       events ->
         pending_events = List.wrap(events)
@@ -191,7 +190,7 @@ defmodule Commanded.Aggregates.Aggregate do
           aggregate_version: stream_version
         }
 
-        {{:ok, stream_version, length(pending_events), pending_events}, state}
+        {{:ok, stream_version, pending_events}, state}
     end
   end
 

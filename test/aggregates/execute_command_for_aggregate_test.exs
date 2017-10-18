@@ -18,14 +18,15 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: BankAccount, function: :open_account}
 
-    {:ok, 1, 1, events} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, events} = Aggregate.execute(BankAccount, account_number, context)
+
+    assert events == [%BankAccountOpened{account_number: account_number, initial_balance: 1000}]
 
     Helpers.Process.shutdown(BankAccount, account_number)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
     {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    assert events == [%BankAccountOpened{account_number: account_number, initial_balance: 1000}]
     assert Aggregate.aggregate_version(BankAccount, account_number) == 1
     assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
   end
@@ -38,14 +39,15 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
 
-    {:ok, 1, 1, events} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, events} = Aggregate.execute(BankAccount, account_number, context)
+
+    assert events == [%BankAccountOpened{account_number: account_number, initial_balance: 1000}]
 
     Helpers.Process.shutdown(BankAccount, account_number)
 
     # reload aggregate to fetch persisted events from event store and rebuild state by applying saved events
     {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
 
-    assert events == [%BankAccountOpened{account_number: account_number, initial_balance: 1000}]
     assert Aggregate.aggregate_version(BankAccount, account_number) == 1
     assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{account_number: account_number, balance: 1_000, state: :active}
   end
@@ -58,7 +60,7 @@ defmodule Commanded.Entities.ExecuteCommandForAggregateTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
 
-    {:ok, 1, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
 
     state_before = Aggregate.aggregate_state(BankAccount, account_number)
 
