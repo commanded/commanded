@@ -178,19 +178,20 @@ defmodule Commanded.Aggregates.Aggregate do
       none when none in [nil, []] ->
         {{:ok, expected_version, []}, state}
 
+      %Commanded.Aggregate.Multi{} = multi ->
+        case Commanded.Aggregate.Multi.run(multi) do
+          {:error, _reason} = reply ->
+            {reply, state}
+
+          {aggregate_state, pending_events} ->
+            persist_events(pending_events, metadata, %Aggregate{state | aggregate_state: aggregate_state})
+        end
+
       events ->
         pending_events = List.wrap(events)
+        aggregate_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        updated_state = apply_events(aggregate_module, aggregate_state, pending_events)
-
-        {:ok, stream_version} = persist_events(pending_events, stream_uuid(state), expected_version, metadata)
-
-        state = %Aggregate{state |
-          aggregate_state: updated_state,
-          aggregate_version: stream_version
-        }
-
-        {{:ok, stream_version, pending_events}, state}
+        persist_events(pending_events, metadata, %Aggregate{state | aggregate_state: aggregate_state})
     end
   end
 
@@ -198,8 +199,14 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events([], _stream_uuid, expected_version, _metadata), do: {:ok, expected_version}
-  defp persist_events(pending_events, stream_uuid, expected_version, metadata) do
+  defp persist_events(pending_events, metadata, %Aggregate{aggregate_version: expected_version} = state) do
+    {:ok, stream_version} = append_to_stream(pending_events, stream_uuid(state), expected_version, metadata)
+
+    {{:ok, stream_version, pending_events}, %Aggregate{state | aggregate_version: stream_version}}
+  end
+
+  defp append_to_stream([], _stream_uuid, expected_version, _metadata), do: {:ok, expected_version}
+  defp append_to_stream(pending_events, stream_uuid, expected_version, metadata) do
     correlation_id = UUID.uuid4()
     event_data = Mapper.map_to_event_data(pending_events, correlation_id, nil, metadata)
 
