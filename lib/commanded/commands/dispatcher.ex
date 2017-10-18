@@ -5,6 +5,7 @@ defmodule Commanded.Commands.Dispatcher do
 
   alias Commanded.Aggregates
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Commands.ExecutionResult
   alias Commanded.Middleware.Pipeline
 
   defmodule Payload do
@@ -23,16 +24,6 @@ defmodule Commanded.Commands.Dispatcher do
       lifespan: nil,
       metadata: nil,
       middleware: [],
-    ]
-  end
-
-  defmodule ExecutionResult do
-    @moduledoc false
-    defstruct [
-      aggregate_uuid: nil,
-      aggregate_version: nil,
-      events: nil,
-      metadata: nil,
     ]
   end
 

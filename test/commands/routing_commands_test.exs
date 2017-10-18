@@ -1,12 +1,12 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
   use Commanded.StorageCase
 
+  alias Commanded.Commands.ExecutionResult
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,WithdrawMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount,DepositMoney,WithdrawMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-  alias Commanded.Commands.Dispatcher.ExecutionResult
 
   defmodule UnregisteredCommand, do: defstruct [aggregate_uuid: UUID.uuid4]
 

@@ -190,6 +190,25 @@ config :commanded,
   dispatch_consistency_timeout: 10_000  # ten seconds
 ```
 
+### Dispatch returning execution result
+
+You can choose to include the execution result as part of the dispatch result by
+setting `include_execution_result` true:
+
+```elixir
+{
+  :ok,
+  %Commanded.Commands.ExecutionResult{
+    aggregate_uuid: aggregate_uuid,
+    aggregate_version: aggregate_version,
+    events: events,
+    metadata: metadata
+  }
+} = BankRouter.dispatch(command, include_execution_result: true)
+```
+
+You can use this if you need to get information from the events produced by the aggregate without waiting for the events to be projected.
+
 ### Dispatch returning aggregate version
 
 You can optionally choose to include the aggregate's version as part of the dispatch result by setting the  `include_aggregate_version` option to true:
