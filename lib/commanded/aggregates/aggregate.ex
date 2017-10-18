@@ -184,14 +184,14 @@ defmodule Commanded.Aggregates.Aggregate do
             {reply, state}
 
           {aggregate_state, pending_events} ->
-            persist_events(pending_events, metadata, %Aggregate{state | aggregate_state: aggregate_state})
+            persist_events(pending_events, aggregate_state, metadata, state)
         end
 
       events ->
         pending_events = List.wrap(events)
         aggregate_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        persist_events(pending_events, metadata, %Aggregate{state | aggregate_state: aggregate_state})
+        persist_events(pending_events, aggregate_state, metadata, state)
     end
   end
 
@@ -199,10 +199,17 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events(pending_events, metadata, %Aggregate{aggregate_version: expected_version} = state) do
-    {:ok, stream_version} = append_to_stream(pending_events, stream_uuid(state), expected_version, metadata)
+  defp persist_events(pending_events, aggregate_state, metadata, %Aggregate{aggregate_version: expected_version} = state) do
+    with {:ok, stream_version} <- append_to_stream(pending_events, stream_uuid(state), expected_version, metadata) do
+      state = %Aggregate{state |
+        aggregate_state: aggregate_state,
+        aggregate_version: stream_version,
+      }
 
-    {{:ok, stream_version, pending_events}, %Aggregate{state | aggregate_version: stream_version}}
+      {{:ok, stream_version, pending_events}, state}
+    else
+      {:error, _reason} = reply -> {reply, state}
+    end
   end
 
   defp append_to_stream([], _stream_uuid, expected_version, _metadata), do: {:ok, expected_version}
