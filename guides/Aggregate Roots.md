@@ -55,7 +55,6 @@ An alternative approach is to expose one or more public command functions, `exec
 
 In this case the example function matches on the `OpenAccount` command module:
 
-
 ```elixir
 defmodule BankAccount do
   defstruct [account_number: nil, balance: nil]
@@ -68,11 +67,8 @@ defmodule BankAccount do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
-  def execute(%BankAccount{} = account,  %OpenAccount{initial_balance: initial_balance})
-    when initial_balance <= 0
-  do
-    {:error, :initial_balance_must_be_above_zero}
-  end
+  def execute(%BankAccount{} = account, %OpenAccount{initial_balance: initial_balance})
+    do: {:error, :initial_balance_must_be_above_zero}
 
   # state mutators
 
@@ -82,5 +78,57 @@ defmodule BankAccount do
       balance: initial_balance
     }
   end
+end
+```
+
+## Using `Commanded.Aggregate.Multi` to return multiple events
+
+Sometimes you need to create multiple events from a single command. You can use `Commanded.Aggregate.Multi` to help track the events and update the aggregate state. This can be useful when you want to emit multiple events that depend upon the aggregate state being updated.
+
+Any errors encountered will be returned to the caller, the modified aggregate state and any pending events are discarded.
+
+## Example
+
+In the example below, money is withdrawn from the bank account and the updated balance is used to check whether the account is overdrawn.
+
+```elixir
+defmodule BankAccount do
+  defstruct [
+    account_number: nil,
+    balance: 0,
+    state: nil,
+  ]
+
+  alias Commanded.Aggregate.Multi
+
+  # public command API
+
+  def withdraw(
+    %BankAccount{state: :active} = account,
+    %WithdrawMoney{amount: amount})
+    when is_number(amount) and amount > 0
+  do
+    account
+    |> Multi.new()
+    |> Multi.execute(&withdraw_money(&1, amount))
+    |> Multi.execute(&check_balance/1)
+  end
+
+  # private helpers
+
+  defp withdraw_money(%BankAccount{account_number: account_number, balance: balance}, amount) do
+    %MoneyWithdrawn{
+      account_number: account_number,
+      amount: amount,
+      balance: balance - amount
+    }
+  end
+
+  defp check_balance(%BankAccount{account_number: account_number, balance: balance})
+    when balance < 0
+  do
+    %AccountOverdrawn{account_number: account_number, balance: balance}
+  end
+  defp check_balance(%BankAccount{}), do: []
 end
 ```
