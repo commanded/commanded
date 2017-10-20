@@ -4,10 +4,10 @@ Commanded provides the building blocks for you to create your own Elixir applica
 
 A separate guide is provided for each of the components you can build:
 
-- [Aggregate roots](aggregate-roots.html)
-- [Commands, registration and dispatch](commands.html)
-- [Events and handlers](events.html)
-- [Process managers](process-managers.html)
+- Aggregate roots.
+- Commands, registration and dispatch.
+- Events and handlers.
+- Process managers.
 
 ## Quick overview
 
