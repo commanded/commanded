@@ -1,7 +1,5 @@
-defmodule EventStore.Streams.StreamTest do
+defmodule EventStore.Streams.SingleStreamTest do
   use EventStore.StorageCase
-  doctest EventStore.Streams.Supervisor
-  doctest EventStore.Streams.Stream
 
   alias EventStore.EventFactory
   alias EventStore.ProcessHelper
@@ -148,7 +146,7 @@ defmodule EventStore.Streams.StreamTest do
     test "from current should receive only new events", context do
       {:ok, _subscription} = Stream.subscribe_to_stream(context[:stream_uuid], @subscription_name, self(), start_from: :current)
 
-      refute_received {:events, _received_events}
+      refute_receive {:events, _received_events}
 
       events = EventFactory.create_events(1, 4)
       :ok = Stream.append_to_stream(context[:stream_uuid], 3, events)
