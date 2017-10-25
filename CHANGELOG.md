@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.12.0
+
+### Enhancements
+
+- Allow optimistic concurrency check on write to be optional ([#31](https://github.com/slashdotdash/eventstore/issues/31)).
+
+### Bug fixes
+
+- Fix issue where subscription doesn't immediately receive events published while transitioning between catch-up and subscribed. Any missed events would be noticed and replayed upon next event publish.
+
 ## v0.11.0
 
 ### Enhancements
