@@ -1,7 +1,5 @@
-defmodule EventStore.Streams.StreamTest do
+defmodule EventStore.Streams.SingleStreamTest do
   use EventStore.StorageCase
-  doctest EventStore.Streams.Supervisor
-  doctest EventStore.Streams.Stream
 
   alias EventStore.EventFactory
   alias EventStore.ProcessHelper

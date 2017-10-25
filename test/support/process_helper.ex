@@ -2,12 +2,15 @@ defmodule EventStore.ProcessHelper do
   import ExUnit.Assertions
 
   @doc """
-  Stop the given process with a non-normal exit reason
+  Stop the given process name with a non-normal exit reason
   """
   def shutdown(name) when is_atom(name) do
     name |> Process.whereis() |> shutdown()
   end
 
+  @doc """
+  Stop the given process with a non-normal exit reason
+  """
   def shutdown(pid) when is_pid(pid) do
     Process.unlink(pid)
     Process.exit(pid, :shutdown)

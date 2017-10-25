@@ -77,10 +77,14 @@ defmodule EventStore.Streams.Stream do
   end
 
   def handle_call({:append_to_stream, expected_version, events}, _from, %Stream{stream_version: stream_version} = state) do
-    {reply, state} = case append_to_storage(expected_version, events, state) do
-      {:ok, state} -> {:ok, %Stream{state | stream_version: stream_version + length(events)}}
-      {:error, :wrong_expected_version} = reply -> {reply, state}
-    end
+    {reply, state} =
+      case append_to_storage(expected_version, events, state) do
+        {:ok, state} ->
+          {:ok, %Stream{state | stream_version: stream_version + length(events)}}
+
+        {:error, _reason} = reply ->
+          {reply, state}
+      end
 
     {:reply, reply, state}
   end
@@ -119,15 +123,41 @@ defmodule EventStore.Streams.Stream do
   defp start_from_stream_version(:current, %Stream{stream_version: stream_version}), do: stream_version
   defp start_from_stream_version(start_from, %Stream{}) when is_integer(start_from), do: start_from
 
-  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state) when expected_version == 0 and is_nil(stream_id) and stream_version == 0 do
-    {:ok, stream_id} = Storage.create_stream(stream_uuid)
-
-    append_to_storage(expected_version, events, %Stream{state | stream_id: stream_id})
+  defp append_to_storage(expected_version, events, %Stream{stream_uuid: stream_uuid, stream_id: stream_id, stream_version: stream_version} = state)
+    when is_nil(stream_id) and stream_version == 0 and expected_version in [0, :any_version, :no_stream]
+  do
+    with {:ok, stream_id} <- Storage.create_stream(stream_uuid) do
+      do_append_to_storage(events, %Stream{state | stream_id: stream_id})
+    end
   end
 
   defp append_to_storage(expected_version, events, %Stream{stream_id: stream_id, stream_version: stream_version} = stream)
-    when not is_nil(stream_id) and stream_version == expected_version
+    when not is_nil(stream_id) and expected_version in [stream_version, :any_version, :stream_exists]
   do
+    do_append_to_storage(events, stream)
+  end
+
+  defp append_to_storage(expected_version, events, %Stream{stream_id: stream_id, stream_version: stream_version} = stream)
+    when not is_nil(stream_id) and stream_version == 0 and expected_version == :no_stream
+  do
+    do_append_to_storage(events, stream)
+  end
+
+  defp append_to_storage(expected_version, _events, %Stream{stream_id: stream_id, stream_version: stream_version})
+    when is_nil(stream_id) and stream_version == 0 and expected_version == :stream_exists
+  do
+    {:error, :stream_does_not_exist}
+  end
+
+  defp append_to_storage(expected_version, _events, %Stream{stream_id: stream_id, stream_version: stream_version})
+    when not is_nil(stream_id) and stream_version != 0 and expected_version == :no_stream
+  do
+    {:error, :stream_exists}
+  end
+
+  defp append_to_storage(_expected_version, _events, _state), do: {:error, :wrong_expected_version}
+
+  defp do_append_to_storage(events, %Stream{} = stream) do
     reply =
       events
       |> prepare_events(stream)
@@ -135,8 +165,6 @@ defmodule EventStore.Streams.Stream do
 
     {reply, stream}
   end
-
-  defp append_to_storage(_expected_version, _events, _state), do: {:error, :wrong_expected_version}
 
   defp prepare_events(events, %Stream{serializer: serializer, stream_uuid: stream_uuid, stream_version: stream_version}) do
     events

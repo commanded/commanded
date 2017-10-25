@@ -18,7 +18,8 @@ defmodule EventStore do
 
   """
 
-  @type start_from :: :origin | :current | integer
+  @type start_from :: :origin | :current | non_neg_integer()
+  @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer()
 
   alias EventStore.Snapshots.{SnapshotData,Snapshotter}
   alias EventStore.{EventData,RecordedEvent,Subscriptions}
@@ -28,19 +29,41 @@ defmodule EventStore do
   @all_stream "$all"
 
   @doc """
-  Append one or more events to a stream atomically. Returns `:ok` on success.
+  Append one or more events to a stream atomically.
 
     - `stream_uuid` is used to uniquely identify a stream.
 
-    - `expected_version` is used for optimistic concurrency.
-      Specify 0 for the creation of a new stream. An `{:error, wrong_expected_version}` response will be returned if the stream already exists.
-      Any positive number will be used to ensure you can only append to the stream if it is at exactly that version.
+    - `expected_version` is used for optimistic concurrency checks.
+      You can provide a non-negative integer to specify the expected stream
+      version. This is used to ensure you can only append to the stream if it is
+      at exactly that version.
+
+      You can also provide one of the following values to affect the concurrency
+      check behaviour:
+
+      - `:any_version` - No concurrency checking; allow any stream version
+        (including no stream).
+      - `:no_stream` - Ensure the stream does not exist.
+      - `:stream_exists` - Ensure the stream exists.
 
     - `events` is a list of `%EventStore.EventData{}` structs.
 
-  Returns `:ok` on success, or `{:error, :wrong_expected_version}` when the expected version differs from the stream version
+  Returns `:ok` on success, or an `{:error, reason}` tagged tuple. The returned
+  error may be due to one of the following reasons:
+
+    - `{:error, :wrong_expected_version}` when the actual stream version differs
+      from the provided expected version.
+    - `{:error, :stream_exists}` when the stream exists, but expected version
+      was `:no_stream`.
+    - `{:error, :stream_does_not_exist}` when the stream does not exist, but
+      expected version was `:stream_exists`.
+
   """
-  @spec append_to_stream(String.t, non_neg_integer, list(EventData.t)) :: :ok | {:error, :wrong_expected_version} | {:error, reason :: term}
+  @spec append_to_stream(String.t, expected_version, list(EventData.t)) :: :ok |
+    {:error, :wrong_expected_version} |
+    {:error, :stream_exists} |
+    {:error, :stream_does_not_exist} |
+    {:error, reason :: term}
   def append_to_stream(stream_uuid, expected_version, events)
   def append_to_stream(@all_stream, _expected_version, _events), do: {:error, :cannot_append_to_all_stream}
   def append_to_stream(stream_uuid, expected_version, events) do
