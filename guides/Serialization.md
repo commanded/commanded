@@ -23,4 +23,34 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
 end
 ```
 
-You can implement the `EventStore.Serializer` behaviour to use an alternative serialization format if preferred.
+[Poison](https://github.com/devinus/poison), a pure Elixir JSON library, is used for the actual serialization. It provides an extension point if you need to manually encode your event by using the `Poison.Encoder` protocol:
+
+```elixir
+defimpl Poison.Encoder, for: Person do
+  def encode(%{name: name, age: age}, options) do
+    Poison.Encoder.BitString.encode("#{name} (#{age})", options)
+  end
+end
+```
+
+For maximum performance, make sure you `@derive [Poison.Encoder]` for any struct you plan on encoding.
+
+```elixir
+defmodule ExampleEvent do
+  @derive [Poison.Encoder]
+  defstruct [:name, :date]
+end
+```
+
+## Using an alternative serialization format
+
+You can implement the `Commanded.EventStore.Serializer` behaviour to use an alternative serialization format if preferred.
+
+Configure your own serializer in `config/config.exs`:
+
+```elixir
+config :commanded,
+  serializer: MyApp.MessagePackSerializer
+```
+
+You *should not* change serialization format once your app has been deployed to production since Commanded will not be able to deserialize any existing events or snapshot data. In this scenario, to change serialization format you would need to also migrate your event store to the new format.

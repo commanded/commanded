@@ -55,6 +55,7 @@ MIT License
     - [Event handlers](guides/Events.md#event-handlers)
       - [Consistency guarantee](guides/Events.md#consistency-guarantee)
   - [Process managers](guides/Process%20Managers.md)
+    - [Example process manager](guides/Process%20Managers.md#example-process-manager)
   - [Supervision](guides/Supervision.md)
   - [Serialization](guides/Serialization.md)
   - [Read model projections](guides/Read%20Model%20Projections.md)
