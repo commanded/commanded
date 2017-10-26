@@ -9,6 +9,8 @@ A separate guide is provided for each of the components you can build:
 - Events and handlers.
 - Process managers.
 
+Commanded uses strong consistency for command dispatch (write model) and eventual consistency, by default, for the read model. Receiving an `:ok` reply from dispatch indicates the command was successfully handled and any created domain events fully persisted to your chosen event store. You may opt-in to strong consistency for individual event handlers and command dispatch as required.
+
 ## Quick overview
 
 Here's an example bank account opening feature built using Commanded to demonstrate its usage.
@@ -37,21 +39,21 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
       # public command API
 
-      def open_account(%BankAccount{account_number: nil} = account, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
+      def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
         when initial_balance > 0
       do
         %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
       end
 
       # ensure initial balance is never negative
-      def open_account(%BankAccount{} = account, %OpenBankAccount{initial_balance: initial_balance})
+      def execute(%BankAccount{} = account, %OpenBankAccount{initial_balance: initial_balance})
         when initial_balance <= 0
       do
         {:error, :initial_balance_must_be_above_zero}
       end
 
       # ensure account has not already been opened
-      def open_account(%BankAccount{account_number: nil} = account, %OpenBankAccount{}) do
+      def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{}) do
         {:error, :account_already_opened}
       end
 
