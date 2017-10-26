@@ -93,9 +93,18 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 ### Contributors
 
 - [Andrey Akulov](https://github.com/astery)
-- [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Brenton Annan](https://github.com/brentonannan)
+- [Olafur Arason](https://github.com/olafura)
+- [Chris Brodt](https://github.com/uberbrodt)
+- [David Carlin](https://github.com/davich)
+- [Patrick Detlefsen](https://github.com/patrickdet)
+- [Florian Ebeling](https://github.com/febeling)
+- [Leif Gensert](https://github.com/leifg)
 - [Henry Hazan](https://github.com/henry-hz)
+- [Raphaël Lustin](https://github.com/rlustin)
+- [Kok J Sam](https://github.com/sammkj)
+- [Andrzej Sliwa](https://github.com/andrzejsliwa)
+- [Joan Zapata](https://github.com/JoanZapata)
 
 ## Need help?
 
