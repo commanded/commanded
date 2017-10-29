@@ -51,15 +51,20 @@ defmodule Commanded.Commands.Dispatcher do
     end
   end
 
-  defp to_pipeline(%Payload{command: command, consistency: consistency, identity: identity}) do
-    %Pipeline{command: command, consistency: consistency, identity: identity}
+  defp to_pipeline(%Payload{command: command, consistency: consistency, identity: identity, identity_prefix: identity_prefix}) do
+    %Pipeline{
+      command: command,
+      consistency: consistency,
+      identity: identity,
+      identity_prefix: identity_prefix,
+    }
   end
 
   defp execute(
     %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline,
-    %Payload{aggregate_module: aggregate_module, identity_prefix: identity_prefix, timeout: timeout} = payload)
+    %Payload{aggregate_module: aggregate_module, timeout: timeout} = payload)
   do
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(aggregate_module, aggregate_uuid, identity_prefix)
+    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(aggregate_module, aggregate_uuid)
 
     context = to_execution_context(pipeline, payload)
     task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_module, aggregate_uuid, context, timeout])

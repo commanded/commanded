@@ -31,17 +31,15 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_uuid: nil,
     aggregate_state: nil,
     aggregate_version: 0,
-    identity_prefix: nil,
   ]
 
-  def start_link(aggregate_module, aggregate_uuid, identity_prefix \\ nil)
-  def start_link(aggregate_module, aggregate_uuid, identity_prefix) do
+  def start_link(aggregate_module, aggregate_uuid)
+  def start_link(aggregate_module, aggregate_uuid) do
     name = via_tuple(aggregate_module, aggregate_uuid)
 
     GenServer.start_link(__MODULE__, %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
-      identity_prefix: identity_prefix,
     },
     name: name)
   end
@@ -66,14 +64,16 @@ defmodule Commanded.Aggregates.Aggregate do
   - `context` - includes command execution arguments
     (see `Commanded.Aggregates.ExecutionContext` for details).
   - `timeout` - an integer greater than zero which specifies how many
-    milliseconds to wait for a reply, or the atom :infinity to wait indefinitely.
-    The default value is five seconds (5,000ms).
+    milliseconds to wait for a reply, or the atom :infinity to wait
+    indefinitely. The default value is five seconds (5,000ms).
 
   ## Return values
 
-  Returns `{:ok, aggregate_version, events}` on success, or `{:error, reason}` on failure.
+  Returns `{:ok, aggregate_version, events}` on success, or `{:error, reason}`
+  on failure.
 
-    - `aggregate_version` - the updated version of the aggregate after executing the command.
+    - `aggregate_version` - the updated version of the aggregate after executing
+       the command.
     - `events` - events produced by the command, can be an empty list.
 
   """
@@ -123,7 +123,8 @@ defmodule Commanded.Aggregates.Aggregate do
     {:stop, :normal, state}
   end
 
-  # Load any existing events for the aggregate from storage and repopulate the state using those events
+  # Load any existing events for the aggregate from storage and repopulate the
+  # state using those events
   defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do
     aggregate = %Aggregate{state |
       aggregate_version: 0,
@@ -134,8 +135,8 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   # Load events from the event store, in batches, to rebuild the aggregate state
-  defp rebuild_from_events(%Aggregate{aggregate_module: aggregate_module} = state) do
-    case EventStore.stream_forward(stream_uuid(state), 0, @read_event_batch_size) do
+  defp rebuild_from_events(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid} = state) do
+    case EventStore.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
       {:error, :stream_not_found} ->
         # aggregate does not exist so return empty state
         state
@@ -199,8 +200,8 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events(pending_events, aggregate_state, metadata, %Aggregate{aggregate_version: expected_version} = state) do
-    with {:ok, stream_version} <- append_to_stream(pending_events, stream_uuid(state), expected_version, metadata) do
+  defp persist_events(pending_events, aggregate_state, metadata, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version} = state) do
+    with {:ok, stream_version} <- append_to_stream(pending_events, aggregate_uuid, expected_version, metadata) do
       state = %Aggregate{state |
         aggregate_state: aggregate_state,
         aggregate_version: stream_version,
@@ -219,8 +220,4 @@ defmodule Commanded.Aggregates.Aggregate do
 
     EventStore.append_to_stream(stream_uuid, expected_version, event_data)
   end
-
-  # Get the stream indentity to read/append events for the aggregate, with an optional prefix
-  defp stream_uuid(%Aggregate{aggregate_uuid: aggregate_uuid, identity_prefix: nil}), do: aggregate_uuid
-  defp stream_uuid(%Aggregate{aggregate_uuid: aggregate_uuid, identity_prefix: identity_prefix}), do: identity_prefix <> aggregate_uuid
 end

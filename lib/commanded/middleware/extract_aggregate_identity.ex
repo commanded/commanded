@@ -1,6 +1,7 @@
 defmodule Commanded.Middleware.ExtractAggregateIdentity do
   @moduledoc """
-  A `Commanded.Middleware` that extracts the target aggregate's identity from the command
+  A `Commanded.Middleware` that extracts the target aggregate's identity from
+  the command.
   """
 
   @behaviour Commanded.Middleware
@@ -16,7 +17,7 @@ defmodule Commanded.Middleware.ExtractAggregateIdentity do
         |> halt()
 
       aggregate_uuid ->
-        assign(pipeline, :aggregate_uuid, aggregate_uuid)
+        assign(pipeline, :aggregate_uuid, prefix(aggregate_uuid, pipeline))
     end
   end
 
@@ -24,13 +25,21 @@ defmodule Commanded.Middleware.ExtractAggregateIdentity do
 
   def after_failure(%Pipeline{} = pipeline), do: pipeline
 
-  # extract identity using a user-provider function
-  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity}) when is_function(identity) do
+  # extract identity using a user defined function
+  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity})
+    when is_function(identity)
+  do
     identity.(command)
   end
 
   # extract identity using a field in the command
-  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity}) when is_atom(identity) do
+  defp extract_aggregate_uuid(%Pipeline{command: command, identity: identity})
+    when is_atom(identity)
+  do
     Map.get(command, identity)
   end
+
+  defp prefix(aggregate_uuid, %Pipeline{identity_prefix: nil}), do: aggregate_uuid
+  defp prefix(aggregate_uuid, %Pipeline{identity_prefix: identity_prefix}),
+    do: identity_prefix <> aggregate_uuid
 end
