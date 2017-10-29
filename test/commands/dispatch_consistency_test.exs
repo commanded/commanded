@@ -1,6 +1,9 @@
 defmodule Commanded.Commands.DispatchConsistencyTest do
   use Commanded.StorageCase
 
+  alias Commanded.Commands.ExecutionResult
+  alias Commanded.EventStore
+
   defmodule ConsistencyCommand do
     defstruct [:uuid, :delay]
   end
@@ -47,6 +50,17 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     dispatch [ConsistencyCommand,NoOpCommand,RequestDispatchCommand],
       to: ConsistencyAggregateRoot,
       identity: :uuid
+  end
+
+  defmodule ConsistencyPrefixRouter do
+    use Commanded.Commands.Router
+
+    identify ConsistencyAggregateRoot,
+        by: :uuid,
+        prefix: "example-prefix-"
+
+    dispatch [ConsistencyCommand,NoOpCommand,RequestDispatchCommand],
+      to: ConsistencyAggregateRoot
   end
 
   defmodule StronglyConsistentEventHandler do
@@ -118,5 +132,27 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   test "should timeout waiting for strongly consistent handler dispatching a command" do
     command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 5_000}
     assert {:error, :consistency_timeout} = ConsistencyRouter.dispatch(command, consistency: :strong)
+  end
+
+  describe "aggregate identity prefix" do
+    test "should wait for strongly consistent event handler to handle event" do
+      uuid = UUID.uuid4()
+      command = %ConsistencyCommand{uuid: uuid, delay: 0}
+
+      assert :ok = ConsistencyPrefixRouter.dispatch(command, consistency: :strong)
+    end
+
+    test "should append events to stream using prefixed aggregate uuid" do
+      uuid = UUID.uuid4()
+      command = %ConsistencyCommand{uuid: uuid, delay: 0}
+
+      assert {:ok, %ExecutionResult{aggregate_uuid: aggregate_uuid}}
+        = ConsistencyPrefixRouter.dispatch(command, consistency: :strong, include_execution_result: true)
+
+      assert aggregate_uuid == "example-prefix-" <> uuid
+
+      recorded_events = EventStore.stream_forward(aggregate_uuid) |> Enum.to_list()
+      assert length(recorded_events) == 1
+    end
   end
 end

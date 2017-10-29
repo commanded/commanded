@@ -9,6 +9,10 @@
 - Add `include_execution_result` option to command dispatch ([#96](https://github.com/slashdotdash/commanded/pull/96)).
 - Add `Commanded.Aggregate.Multi` ([#98](https://github.com/slashdotdash/commanded/pull/98)).
 
+### Bug fixes
+
+- Adding a prefix to the aggregate in the router breaks the strong consistency of command dispatch ([#101](https://github.com/slashdotdash/commanded/issues/101)).
+
 ## v0.14.0
 
 ### Enhancements
