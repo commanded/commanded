@@ -251,16 +251,27 @@ defmodule Commanded.Event.Handler do
   end
 
   defp ack_event(event, %Handler{consistency: consistency, handler_name: handler_name, subscription: subscription}) do
-    EventStore.ack_event(subscription, event)
-    Subscriptions.ack_event(handler_name, consistency, event)
+    :ok = EventStore.ack_event(subscription, event)
+    :ok = Subscriptions.ack_event(handler_name, consistency, event)
   end
+
+  @enrich_metadata_fields [
+    :event_id,
+    :event_number,
+    :stream_id,
+    :stream_version,
+    :correlation_id,
+    :causation_id,
+    :created_at,
+  ]
 
   defp enrich_metadata(%RecordedEvent{metadata: metadata} = event) do
     event
     |> Map.from_struct()
-    |> Map.take([:event_number, :stream_id, :stream_version, :created_at])
+    |> Map.take(@enrich_metadata_fields)
     |> Map.merge(metadata || %{})
   end
 
-  defp describe(%Handler{handler_module: handler_module}), do: inspect(handler_module)
+  defp describe(%Handler{handler_module: handler_module}),
+    do: inspect(handler_module)
 end

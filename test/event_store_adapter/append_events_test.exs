@@ -48,6 +48,7 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
       assert pluck(read_events, :stream_version) == [1, 2, 3, 4]
 
       Enum.each(read_events, fn event ->
+        assert_is_uuid event.event_id
         assert event.stream_id == "stream"
         assert event.correlation_id == correlation_id
         assert event.causation_id == causation_id
@@ -101,6 +102,10 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
   defp build_events(count, correlation_id \\ UUID.uuid4(), causation_id \\ UUID.uuid4())
   defp build_events(count, correlation_id, causation_id) do
     for account_number <- 1..count, do: build_event(account_number, correlation_id, causation_id)
+  end
+
+  defp assert_is_uuid(uuid) do
+    assert uuid |> UUID.string_to_binary!() |> is_binary()
   end
 
   defp coerce(events), do: Enum.map(events, &(%{causation_id: &1.causation_id, correlation_id: &1.correlation_id, data: &1.data, metadata: &1.metadata}))

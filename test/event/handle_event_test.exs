@@ -61,13 +61,13 @@ defmodule Commanded.Event.HandleEventTest do
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
-    {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+    {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
     wait_for_event BankAccountOpened
 
     {:ok, _} = AppendingEventHandler.start_link(start_from: :current)
 
-    {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+    {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
     wait_for_event MoneyDeposited
 
@@ -88,11 +88,11 @@ defmodule Commanded.Event.HandleEventTest do
     initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
     new_events = [%MoneyDeposited{amount: 50, balance: 1_050}]
 
-    {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4))
+    {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
     {:ok, _} = AppendingEventHandler.start_link(start_from: :origin)
 
-    {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4))
+    {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
     wait_for_event MoneyDeposited
 

@@ -62,7 +62,7 @@ defmodule Commanded.Commands.Router do
   to share the same identity. In this scenario you should specify a `prefix`
   for each aggregate (e.g. "user-" and "user-preference-").
 
-  The prefix is used as the stream identity when appending, and reading, the
+  The prefix is used as the stream identity when appending and reading the
   aggregate's events: "<identity_prefix><aggregate_uuid>".
 
   ## Consistency
@@ -229,9 +229,9 @@ defmodule Commanded.Commands.Router do
       @registered_commands [unquote(command_module) | @registered_commands]
 
       @doc """
-      Dispatch the given command to the registered handler
+      Dispatch the given command to the registered handler.
 
-      Returns `:ok` on success.
+      Returns `:ok` on success, or `{:error, reason}` on failure.
       """
       @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
       def dispatch(command)
@@ -240,45 +240,66 @@ defmodule Commanded.Commands.Router do
       @doc """
       Dispatch the given command to the registered handler providing a timeout.
 
-      - `timeout_or_opts` is either an integer timeout or a keyword list of options.
-        The timeout must be an integer greater than zero which specifies how
-        many milliseconds to allow the command to be handled, or the atom
-        `:infinity` to wait indefinitely. The default timeout value is 5000.
+      - `timeout_or_opts` is either an integer timeout or a keyword list of
+        options. The timeout must be an integer greater than zero which
+        specifies how many milliseconds to allow the command to be handled, or
+        the atom `:infinity` to wait indefinitely. The default timeout value is
+        five seconds.
 
-        Alternatively, an options keyword list can be provided, it supports:
+        Alternatively, an options keyword list can be provided, it supports the
+        following options.
 
         Options:
 
-          - `:consistency` as one of `:eventual` (default) or `:strong`
-            By setting the consistency to `:strong` a successful command
-            dispatch will block until all strongly consistent event handlers and
-            process managers have handled all events created by the command.
+          - `:causation_id` - an optional UUID used to identify the cause of the
+            command being dispatched.
 
-          - `:timeout` as described above.
+          - `:correlation_id` - an optional UUID used to correlate related
+            commands/events together.
 
-          - `:include_aggregate_version` set to true to include the aggregate
+          - `:consistency` - one of `:eventual` (default) or `:strong`. By
+            setting the consistency to `:strong` a successful command dispatch
+            will block until all strongly consistent event handlers and process
+            managers have handled all events created by the command.
+
+          - `:timeout` - as described above.
+
+          - `:include_aggregate_version` - set to true to include the aggregate
             stream version in the success response: `{:ok, aggregate_version}`
             The default is false, to return just `:ok`.
 
-          - `:include_execution_result` set to true to include more information
-            about the dispatch, like the aggregate name, uuid, and the produced
-            events. Overrides `include_aggregate_version`. The default is false,
-            to return just `:ok`. See `Commanded.Commands.Dispatcher.ExecutionResult`.
+          - `:include_execution_result` - set to true to include more
+            information about the dispatch, like the aggregate name, uuid, and
+            the produced events. Overrides `include_aggregate_version`. The
+            default is false to return `:ok`. See
+            `Commanded.Commands.Dispatcher.ExecutionResult`.
 
-          - `:metadata` - An optional map containing key/value pairs comprising
-            the metadata to be associated with all events created by the command.
+          - `:metadata` - an optional map containing key/value pairs comprising
+            the metadata to be associated with all events created by the
+            command.
 
       Returns `:ok` on success, unless `:include_aggregate_version` or
       `:include_execution_result` is enabled, where it respectively returns
-      `{:ok, aggregate_version}` or `{:ok, execution_result}`.
+      `{:ok, aggregate_version}` or `{:ok, %ExecutionResult{..}}`. Returns
+      `{:error, reason}` on failure.
       """
-      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok | {:error, :consistency_timeout} | {:error, reason :: term}
+      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok
+        | {:error, :consistency_timeout}
+        | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
-      def dispatch(%unquote(command_module){} = command, :infinity), do: do_dispatch(command, timeout: :infinity)
-      def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout), do: do_dispatch(command, timeout: timeout)
-      def dispatch(%unquote(command_module){} = command, opts), do: do_dispatch(command, opts)
+
+      def dispatch(%unquote(command_module){} = command, :infinity),
+        do: do_dispatch(command, timeout: :infinity)
+
+      def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout),
+        do: do_dispatch(command, timeout: timeout)
+
+      def dispatch(%unquote(command_module){} = command, opts),
+        do: do_dispatch(command, opts)
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
+        causation_id = Keyword.get(opts, :causation_id)
+        correlation_id = Keyword.get(opts, :correlation_id)
         consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default_consistency
         metadata = Keyword.get(opts, :metadata) || @default_metadata
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default_dispatch_timeout
@@ -303,6 +324,9 @@ defmodule Commanded.Commands.Router do
 
         Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
           command: command,
+          command_uuid: UUID.uuid4(),
+          causation_id: causation_id,
+          correlation_id: correlation_id,
           consistency: consistency,
           handler_module: unquote(handler),
           handler_function: unquote(function),

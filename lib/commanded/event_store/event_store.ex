@@ -23,7 +23,8 @@ defmodule Commanded.EventStore do
   @callback append_to_stream(stream_uuid, expected_version :: non_neg_integer, events :: list(EventData.t)) :: {:ok, stream_version} | {:error, reason}
 
   @doc """
-  Streams events from the given stream, in the order in which they were originally written.
+  Streams events from the given stream, in the order in which they were
+  originally written.
   """
   @callback stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, :stream_not_found} | {:error, reason}
 
@@ -46,9 +47,10 @@ defmodule Commanded.EventStore do
     | {:error, reason}
 
   @doc """
-  Acknowledge receipt and successful processing of the given event received from a subscription to an event stream.
+  Acknowledge receipt and successful processing of the given event received from
+  a subscription to an event stream.
   """
-  @callback ack_event(pid, RecordedEvent.t) :: any()
+  @callback ack_event(pid, RecordedEvent.t) :: :ok
 
   @doc """
   Unsubscribe an existing subscriber from all event notifications.
@@ -92,7 +94,7 @@ defmodule Commanded.EventStore do
   end
 
   @doc false
-  @spec ack_event(pid, RecordedEvent.t) :: any()
+  @spec ack_event(pid, RecordedEvent.t) :: :ok
   def ack_event(pid, event) do
     event_store_adapter().ack_event(pid, event)
   end
@@ -125,6 +127,7 @@ defmodule Commanded.EventStore do
   Get the configured event store adapter
   """
   def event_store_adapter do
-    Application.get_env(:commanded, :event_store_adapter) || raise ArgumentError, "Commanded expects `:event_store_adapter` to be configured in environment"
+    Application.get_env(:commanded, :event_store_adapter) ||
+      raise ArgumentError, "Commanded expects `:event_store_adapter` to be configured in environment"
   end
 end

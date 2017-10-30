@@ -225,6 +225,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     %EventData{causation_id: causation_id, correlation_id: correlation_id, event_type: event_type, data: data, metadata: metadata})
   do
     %RecordedEvent{
+      event_id: UUID.uuid4(),
       event_number: event_number,
       stream_id: stream_uuid,
       stream_version: stream_version,
