@@ -51,12 +51,13 @@ defmodule Commanded.Commands.Dispatcher do
     end
   end
 
-  defp to_pipeline(%Payload{command: command, consistency: consistency, identity: identity, identity_prefix: identity_prefix}) do
+  defp to_pipeline(%Payload{command: command, consistency: consistency, identity: identity, identity_prefix: identity_prefix, metadata: metadata}) do
     %Pipeline{
       command: command,
       consistency: consistency,
       identity: identity,
       identity_prefix: identity_prefix,
+      metadata: metadata
     }
   end
 
@@ -100,8 +101,8 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp to_execution_context(
-    %Pipeline{command: command},
-    %Payload{handler_module: handler_module, handler_function: handler_function, lifespan: lifespan, metadata: metadata})
+    %Pipeline{command: command, metadata: metadata},
+    %Payload{handler_module: handler_module, handler_function: handler_function, lifespan: lifespan})
   do
     %ExecutionContext{
       command: command,
@@ -112,7 +113,7 @@ defmodule Commanded.Commands.Dispatcher do
     }
   end
 
-  defp respond_with_success(%Pipeline{} = pipeline, %Payload{metadata: metadata} = payload, events) do
+  defp respond_with_success(%Pipeline{} = pipeline, payload, events) do
     response =
       case payload do
         %{include_execution_result: true} ->
@@ -122,7 +123,7 @@ defmodule Commanded.Commands.Dispatcher do
               aggregate_uuid: pipeline.assigns.aggregate_uuid,
               aggregate_version: pipeline.assigns.aggregate_version,
               events: events,
-              metadata: metadata,
+              metadata: pipeline.metadata,
             }
           }
         %{include_aggregate_version: true} -> {:ok, pipeline.assigns.aggregate_version}
