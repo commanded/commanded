@@ -39,6 +39,10 @@ defmodule Commanded.Helpers.CommandAuditMiddleware do
     pipeline
   end
 
+  def reset do
+    Agent.update(__MODULE__, fn _ -> %AuditLog{} end)
+  end
+
   @doc """
   Get the counts of the dispatched, succeeded, and failed commands
   """

@@ -15,6 +15,9 @@ defmodule Commanded.ExampleDomain.BankRouter do
     WithdrawMoney,
   }
   alias MoneyTransfer.Commands.TransferMoney
+  alias Commanded.Helpers.CommandAuditMiddleware
+  
+  middleware CommandAuditMiddleware
 
   identify BankAccount, by: :account_number
   identify MoneyTransfer, by: :transfer_uuid
