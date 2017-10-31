@@ -251,30 +251,30 @@ defmodule Commanded.Commands.Router do
 
         Options:
 
-          - `:causation_id` - an optional UUID used to identify the cause of the
+          - `causation_id` - an optional UUID used to identify the cause of the
             command being dispatched.
 
-          - `:correlation_id` - an optional UUID used to correlate related
+          - `correlation_id` - an optional UUID used to correlate related
             commands/events together.
 
-          - `:consistency` - one of `:eventual` (default) or `:strong`. By
+          - `consistency` - one of `:eventual` (default) or `:strong`. By
             setting the consistency to `:strong` a successful command dispatch
             will block until all strongly consistent event handlers and process
             managers have handled all events created by the command.
 
-          - `:timeout` - as described above.
+          - `timeout` - as described above.
 
-          - `:include_aggregate_version` - set to true to include the aggregate
+          - `include_aggregate_version` - set to true to include the aggregate
             stream version in the success response: `{:ok, aggregate_version}`
             The default is false, to return just `:ok`.
 
-          - `:include_execution_result` - set to true to include more
+          - `include_execution_result` - set to true to include more
             information about the dispatch, like the aggregate name, uuid, and
             the produced events. Overrides `include_aggregate_version`. The
             default is false to return `:ok`. See
             `Commanded.Commands.Dispatcher.ExecutionResult`.
 
-          - `:metadata` - an optional map containing key/value pairs comprising
+          - `metadata` - an optional map containing key/value pairs comprising
             the metadata to be associated with all events created by the
             command.
 

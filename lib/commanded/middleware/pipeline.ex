@@ -16,20 +16,20 @@ defmodule Commanded.Middleware.Pipeline do
     - `correlation_id` - an optional UUID used to correlate related
        commands/events together.
 
-    - `consistency` - requested dispatch consistency, either: `:eventual`
-       (default) or `:strong`.
-
     - `command` - command struct being dispatched.
 
     - `command_uuid` - UUID assigned to the command being dispatched.
+
+    - `consistency` - requested dispatch consistency, either: `:eventual`
+       (default) or `:strong`.
+
+    - `halted` - flag indicating whether the pipeline was halted.
 
     - `identity` - an atom specifying a field in the command containing the
        aggregate's identity or a one-arity function that returns an identity
        from the command being dispatched.
 
     - `identity_prefix` - an optional prefix to the aggregate's identity.
-
-    - `halted` - flag indicating whether the pipeline was halted.
 
     - `metadata` - the metadata map to be persisted along with the events.
 
@@ -41,12 +41,12 @@ defmodule Commanded.Middleware.Pipeline do
     assigns: %{},
     causation_id: nil,
     correlation_id: nil,
-    consistency: nil,
     command: nil,
     command_uuid: nil,
+    consistency: nil,
+    halted: false,
     identity: nil,
     identity_prefix: nil,
-    halted: false,
     metadata: nil,
     response: nil,
   ]
