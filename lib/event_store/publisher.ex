@@ -37,19 +37,24 @@ defmodule EventStore.Publisher do
     GenServer.cast(pid, {:notify_events, stream_uuid, events})
   end
 
-  def init(%Publisher{} = state), do: {:ok, state}
+  def init(%Publisher{} = state),
+    do: {:ok, state}
 
   def handle_cast(:notify_pending_events, %Publisher{last_published_event_id: last_published_event_id, pending_events: pending_events, serializer: serializer} = state) do
     next_event_id = last_published_event_id + 1
 
     state = case Map.get(pending_events, next_event_id) do
       %PendingEvents{stream_uuid: stream_uuid, events: events, last_event_id: last_event_id} ->
-        Subscriptions.notify_events(stream_uuid, events, serializer)
+        :ok = Subscriptions.notify_events(stream_uuid, events, serializer)
 
-        %Publisher{state |
+        state = %Publisher{state |
           last_published_event_id: last_event_id,
           pending_events: Map.delete(pending_events, next_event_id),
         }
+
+        :ok = notify_pending_events(state)
+
+        state
 
       nil ->
         state
@@ -66,14 +71,14 @@ defmodule EventStore.Publisher do
     state = case initial_event_id do
       ^expected_event_id ->
         # events are in expected order, immediately notify subscribers
-        Subscriptions.notify_events(stream_uuid, events, serializer)
+        :ok = Subscriptions.notify_events(stream_uuid, events, serializer)
 
         %Publisher{state |
           last_published_event_id: last_event_id,
         }
 
       initial_event_id ->
-        # events are out of order
+        # events are out of order, track pending events to be later published in order
         pending = %PendingEvents{
           initial_event_id: initial_event_id,
           last_event_id: last_event_id,
@@ -81,16 +86,22 @@ defmodule EventStore.Publisher do
           events: events
         }
 
-        # attempt to publish pending events
-        GenServer.cast(self(), :notify_pending_events)
-
         %Publisher{state |
           pending_events: Map.put(pending_events, initial_event_id, pending)
         }
     end
 
+    :ok = notify_pending_events(state)
+
     {:noreply, state}
   end
+
+  # Attempt to publish any pending events by sending a message to self.
+  defp notify_pending_events(%Publisher{pending_events: pending_events})
+    when pending_events == %{}, do: :ok
+
+  defp notify_pending_events(%Publisher{}),
+    do: GenServer.cast(self(), :notify_pending_events)
 
   defp first_event_id([first | _]), do: first.event_id
   defp last_event_id(events), do: List.last(events).event_id
