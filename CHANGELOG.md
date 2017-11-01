@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.1
+
+### Bug fixes
+
+- Publisher only notifies first pending event batch ([#81](https://github.com/slashdotdash/eventstore/issues/81)).
+
 ## v0.12.0
 
 ### Enhancements
