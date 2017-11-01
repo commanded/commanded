@@ -86,12 +86,14 @@ defmodule EventStore.Publisher do
           events: events
         }
 
-        %Publisher{state |
+        state = %Publisher{state |
           pending_events: Map.put(pending_events, initial_event_id, pending)
         }
-    end
 
-    :ok = notify_pending_events(state)
+        :ok = notify_pending_events(state)
+
+        state
+    end
 
     {:noreply, state}
   end
