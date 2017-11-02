@@ -4,29 +4,29 @@
 
 ### Enhancements
 
-- Process manager command dispatch error handling ([#93](https://github.com/slashdotdash/commanded/issues/93)).
+- Process manager command dispatch error handling ([#93](https://github.com/commanded/commanded/issues/93)).
 - Event handlers may define an `init/0` callback function to start any related processes. It must return `:ok`, otherwise the handler process will be stopped.
-- Add `include_execution_result` option to command dispatch ([#96](https://github.com/slashdotdash/commanded/pull/96)).
-- Add `Commanded.Aggregate.Multi` ([#98](https://github.com/slashdotdash/commanded/pull/98)).
+- Add `include_execution_result` option to command dispatch ([#96](https://github.com/commanded/commanded/pull/96)).
+- Add `Commanded.Aggregate.Multi` ([#98](https://github.com/commanded/commanded/pull/98)).
 
 ### Bug fixes
 
-- Adding a prefix to the aggregate in the router breaks the strong consistency of command dispatch ([#101](https://github.com/slashdotdash/commanded/issues/101)).
+- Adding a prefix to the aggregate in the router breaks the strong consistency of command dispatch ([#101](https://github.com/commanded/commanded/issues/101)).
 
 ## v0.14.0
 
 ### Enhancements
 
-- Dispatch command with `:eventual` or `:strong` consistency guarantee ([#82](https://github.com/slashdotdash/commanded/issues/82)).
-- Additional stream prefix per aggregate ([#77](https://github.com/slashdotdash/commanded/issues/77)).
-- Include custom metadata during command dispatch ([#61](https://github.com/slashdotdash/commanded/issues/61)).
-- Validate command dispatch registration in router ([59](https://github.com/slashdotdash/commanded/issues/59)).
+- Dispatch command with `:eventual` or `:strong` consistency guarantee ([#82](https://github.com/commanded/commanded/issues/82)).
+- Additional stream prefix per aggregate ([#77](https://github.com/commanded/commanded/issues/77)).
+- Include custom metadata during command dispatch ([#61](https://github.com/commanded/commanded/issues/61)).
+- Validate command dispatch registration in router ([59](https://github.com/commanded/commanded/issues/59)).
 
 ### Upgrading
 
 Please ensure you upgrade the following event store dependencies.
 
-Using the Elixir [EventStore](https://github.com/slashdotdash/eventstore):
+Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 
 - `eventstore` to [v0.11.0](https://hex.pm/packages/eventstore)
 - `commanded_eventstore_adapter` to [v0.2.0](https://hex.pm/packages/commanded_eventstore_adapter)
@@ -51,7 +51,7 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Shutdown idle aggregate processes ([#43](https://github.com/slashdotdash/commanded/issues/43)).
+- Shutdown idle aggregate processes ([#43](https://github.com/commanded/commanded/issues/43)).
 
 ## v0.10.0
 
@@ -61,9 +61,9 @@ Using Greg's [Event Store](https://eventstore.org/):
 
   By default, a `GenServer` in-memory event store adapter is used. This should **only be used for testing** as there is no persistence.
 
-  The existing PostgreSQL-based [eventstore](https://github.com/slashdotdash/eventstore) integration has been extracted as a separate package ([commanded_eventstore_adapter](https://github.com/slashdotdash/commanded-eventstore-adapter)). There is also a new adapter for Greg Young's Event Store using the Extreme library ([commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter)).
+  The existing PostgreSQL-based [eventstore](https://github.com/commanded/eventstore) integration has been extracted as a separate package ([commanded_eventstore_adapter](https://github.com/commanded/commanded-eventstore-adapter)). There is also a new adapter for Greg Young's Event Store using the Extreme library ([commanded_extreme_adapter](https://github.com/commanded/commanded-extreme-adapter)).
 
-  You must install the required event store adapter package and update your environment configuration to specify the `:event_store_adapter` module. See the [README](https://github.com/slashdotdash/commanded/blob/master/README.md) for details.
+  You must install the required event store adapter package and update your environment configuration to specify the `:event_store_adapter` module. See the [README](https://github.com/commanded/commanded/blob/master/README.md) for details.
 
 ## v0.9.0
 
@@ -81,8 +81,8 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Event handler and process manager subscriptions should be created from a given stream position ([#14](https://github.com/slashdotdash/commanded/issues/14)).
-- Stop process manager instance after reaching its final state ([#24](https://github.com/slashdotdash/commanded/issues/24)).
+- Event handler and process manager subscriptions should be created from a given stream position ([#14](https://github.com/commanded/commanded/issues/14)).
+- Stop process manager instance after reaching its final state ([#24](https://github.com/commanded/commanded/issues/24)).
 
 ## v0.8.3
 
@@ -94,19 +94,19 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Bug fixes
 
-- JsonSerializer should ensure event type atom exists when deserializing ([#28](https://github.com/slashdotdash/commanded/issues/28)).
+- JsonSerializer should ensure event type atom exists when deserializing ([#28](https://github.com/commanded/commanded/issues/28)).
 
 ## v0.8.1
 
 ### Enhancements
 
-- Command handlers should be optional by default ([#30](https://github.com/slashdotdash/commanded/issues/30)).
+- Command handlers should be optional by default ([#30](https://github.com/commanded/commanded/issues/30)).
 
 ## v0.8.0
 
 ### Enhancements
 
-- Simplify aggregate roots and process managers ([#31](https://github.com/slashdotdash/commanded/issues/31)).
+- Simplify aggregate roots and process managers ([#31](https://github.com/commanded/commanded/issues/31)).
 
 ## v0.7.1
 
@@ -118,7 +118,7 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Command handling middleware allows a command router to define middleware modules that are executed before, and after success or failure of each command dispatch ([#12](https://github.com/slashdotdash/commanded/issues/12)).
+- Command handling middleware allows a command router to define middleware modules that are executed before, and after success or failure of each command dispatch ([#12](https://github.com/commanded/commanded/issues/12)).
 
 ## v0.6.3
 
@@ -134,7 +134,7 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Bug fixes
 
-- Fix pending aggregates restarts: supervisor restarts aggregate process but it cannot accept commands ([#22](https://github.com/slashdotdash/commanded/pull/22)).
+- Fix pending aggregates restarts: supervisor restarts aggregate process but it cannot accept commands ([#22](https://github.com/commanded/commanded/pull/22)).
 
 ## v0.6.1
 
@@ -146,10 +146,10 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Confirm receipt of events in event handler and process manager router ([#19](https://github.com/slashdotdash/commanded/pull/19)).
+- Confirm receipt of events in event handler and process manager router ([#19](https://github.com/commanded/commanded/pull/19)).
 - Convert keys to atoms when decoding JSON using Poison decoder.
 - Prefix process manager instance snapshot uuid with process manager name.
-- Multi command dispatch registration in router ([#16](https://github.com/slashdotdash/commanded/issues/16)).
+- Multi command dispatch registration in router ([#16](https://github.com/commanded/commanded/issues/16)).
 
 ## v0.5.0
 
@@ -161,20 +161,20 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Macro to assist with building process managers ([README](https://github.com/slashdotdash/commanded/tree/feature/process-manager-macro#process-managers)).
+- Macro to assist with building process managers ([README](https://github.com/commanded/commanded/tree/feature/process-manager-macro#process-managers)).
 
 ## v0.3.1
 
 ### Enhancements
 
-- Include unit test event assertion function: `assert_receive_event/2` ([#13](https://github.com/slashdotdash/commanded/pull/13)).
+- Include unit test event assertion function: `assert_receive_event/2` ([#13](https://github.com/commanded/commanded/pull/13)).
 - Include top level application in mix config.
 
 ## v0.3.0
 
 ### Enhancements
 
-- Don't persist an aggregate's pending events when executing a command returns an error ([#10](https://github.com/slashdotdash/commanded/pull/10)).
+- Don't persist an aggregate's pending events when executing a command returns an error ([#10](https://github.com/commanded/commanded/pull/10)).
 
 ### Bug fixes
 
@@ -184,4 +184,4 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Support integer, atom or strings as an aggregate root UUID ([#7](https://github.com/slashdotdash/commanded/pull/7)).
+- Support integer, atom or strings as an aggregate root UUID ([#7](https://github.com/commanded/commanded/pull/7)).

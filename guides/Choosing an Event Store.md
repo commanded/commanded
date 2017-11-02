@@ -2,11 +2,11 @@
 
 You must decide which event store to use with Commanded. You have a choice between two existing event store adapters:
 
-- PostgreSQL-based Elixir [EventStore](https://github.com/slashdotdash/eventstore).
+- PostgreSQL-based Elixir [EventStore](https://github.com/commanded/eventstore).
 
 - Greg Young's [Event Store](https://geteventstore.com/).
 
-There is also an [in-memory event store adapter](https://github.com/slashdotdash/commanded/wiki/In-memory-event-store) for *test use only*.
+There is also an [in-memory event store adapter](https://github.com/commanded/commanded/wiki/In-memory-event-store) for *test use only*.
 
 Want to use a different event store? Then you will need to [write your own event store provider](#writing-your-own-event-store-provider).
 
@@ -14,7 +14,7 @@ Want to use a different event store? Then you will need to [write your own event
 
 ## PostgreSQL-based Elixir EventStore
 
-[EventStore](https://github.com/slashdotdash/eventstore) is an open-source event store using PostgreSQL for persistence, implemented in Elixir.
+[EventStore](https://github.com/commanded/eventstore) is an open-source event store using PostgreSQL for persistence, implemented in Elixir.
 
 1. Add `commanded_eventstore_adapter` to your list of dependencies in `mix.exs`:
 
@@ -123,4 +123,4 @@ Use the `--run-projections=all --start-standard-projections=true` flags when run
 
 To use an alternative event store with Commanded you will need to implement the `Commanded.EventStore` behaviour. This defines the contract to be implemented by an adapter module to allow an event store to be used with Commanded. Tests to verify an adapter conforms to the behaviour are provided in `test/event_store_adapter`.
 
-You can use one of the existing adapters ([commanded_eventstore_adapter](https://github.com/slashdotdash/commanded-eventstore-adapter) or [commanded_extreme_adapter](https://github.com/slashdotdash/commanded-extreme-adapter)) to understand what is required.
+You can use one of the existing adapters ([commanded_eventstore_adapter](https://github.com/commanded/commanded-eventstore-adapter) or [commanded_extreme_adapter](https://github.com/commanded/commanded-extreme-adapter)) to understand what is required.

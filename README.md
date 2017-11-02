@@ -11,7 +11,7 @@ Provides support for:
 
 You can use Commanded with one of the following event stores for persistence:
 
-- [EventStore](https://github.com/slashdotdash/eventstore) Elixir library, using PostgreSQL for persistence
+- [EventStore](https://github.com/commanded/eventstore) Elixir library, using PostgreSQL for persistence
 - Greg Young's [Event Store](https://geteventstore.com/).
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
@@ -19,13 +19,13 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 ---
 
 - [Changelog](CHANGELOG.md)
-- [Wiki](https://github.com/slashdotdash/commanded/wiki)
-- [Frequently asked questions](https://github.com/slashdotdash/commanded/wiki/FAQ)
-- [Getting help](https://github.com/slashdotdash/commanded/wiki/Getting-help)
+- [Wiki](https://github.com/commanded/commanded/wiki)
+- [Frequently asked questions](https://github.com/commanded/commanded/wiki/FAQ)
+- [Getting help](https://github.com/commanded/commanded/wiki/Getting-help)
 
 MIT License
 
-[![Build Status](https://travis-ci.org/slashdotdash/commanded.svg?branch=master)](https://travis-ci.org/slashdotdash/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://travis-ci.org/commanded/commanded.svg?branch=master)](https://travis-ci.org/commanded/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ---
 
@@ -80,7 +80,7 @@ Yes, Commanded is being used in production.
 
 ## Limitations
 
-Commanded is currently limited to running on a single node. Support for running on a cluster of nodes ([#39](https://github.com/slashdotdash/commanded/issues/39)) is under active development.
+Commanded is currently limited to running on a single node. Support for running on a cluster of nodes ([#39](https://github.com/commanded/commanded/issues/39)) is under active development.
 
 ## Contributing
 
@@ -93,21 +93,22 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 ### Contributors
 
 - [Andrey Akulov](https://github.com/astery)
+- [Andrzej Sliwa](https://github.com/andrzejsliwa)
+- [Ben Smith](https://github.com/slashdotdash)
 - [Brenton Annan](https://github.com/brentonannan)
-- [Olafur Arason](https://github.com/olafura)
 - [Chris Brodt](https://github.com/uberbrodt)
 - [David Carlin](https://github.com/davich)
-- [Patrick Detlefsen](https://github.com/patrickdet)
 - [Florian Ebeling](https://github.com/febeling)
-- [Leif Gensert](https://github.com/leifg)
 - [Henry Hazan](https://github.com/henry-hz)
-- [Raphaël Lustin](https://github.com/rlustin)
-- [Kok J Sam](https://github.com/sammkj)
-- [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Joan Zapata](https://github.com/JoanZapata)
+- [Kok J Sam](https://github.com/sammkj)
+- [Leif Gensert](https://github.com/leifg)
+- [Olafur Arason](https://github.com/olafura)
+- [Patrick Detlefsen](https://github.com/patrickdet)
+- [Raphaël Lustin](https://github.com/rlustin)
 
 ## Need help?
 
-Please [open an issue](https://github.com/slashdotdash/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the [Gitter chat room](https://gitter.im/commanded/Lobby) for Commanded.
+Please [open an issue](https://github.com/commanded/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the [Gitter chat room](https://gitter.im/commanded/Lobby) for Commanded.
 
 For commercial support, and consultancy, please contact [Ben Smith](mailto:ben@10consulting.com).

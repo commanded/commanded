@@ -4,7 +4,7 @@ Your read model can be built using a Commanded event handler and whichever stora
 
 ## Ecto projections
 
-You can use the [Commanded Ecto projections](https://github.com/slashdotdash/commanded-ecto-projections) library to build a read model using one of the databases supported by Ecto (PostgreSQL, MySQL, et al).
+You can use the [Commanded Ecto projections](https://github.com/commanded/commanded-ecto-projections) library to build a read model using one of the databases supported by Ecto (PostgreSQL, MySQL, et al).
 
 ### Example
 
