@@ -9,10 +9,12 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
     TransferMoneyProcessManager,
   }
   alias Commanded.ExampleDomain.BankAccount.Commands.{
+    DepositMoney,
     OpenAccount,
     WithdrawMoney,
   }
   alias Commanded.ExampleDomain.BankAccount.Events.{
+    BankAccountOpened,
     MoneyDeposited,
   }
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
@@ -28,6 +30,14 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
   end
 
   describe "`causation_id`" do
+    test "should be `nil` when not provided" do
+      open_account = %OpenAccount{account_number: "ACC123", initial_balance: 500}
+
+      :ok = BankRouter.dispatch(open_account, causation_id: nil)
+
+      assert [nil] = CommandAuditMiddleware.dispatched_commands(&(&1.causation_id))
+    end
+
     test "should be copied to dispatched command" do
       causation_id = UUID.uuid4()
       open_account = %OpenAccount{account_number: "ACC123", initial_balance: 500}
@@ -68,6 +78,16 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
   end
 
   describe "`correlation_id`" do
+    test "should default to a generated UUID when not provided" do
+      open_account = %OpenAccount{account_number: "ACC123", initial_balance: 500}
+
+      :ok = BankRouter.dispatch(open_account, correlation_id: nil)
+
+      assert [correlation_id] = CommandAuditMiddleware.dispatched_commands(&(&1.correlation_id))
+      refute is_nil(correlation_id)
+      assert correlation_id |> UUID.string_to_binary!() |> is_binary()
+    end
+
     test "should be copied to dispatched command" do
       correlation_id = UUID.uuid4()
 
@@ -109,6 +129,72 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
 
       event = EventStore.stream_forward(transfer_uuid) |> Enum.at(0)
       assert event.correlation_id == correlation_id
+    end
+  end
+
+  describe "event handler dispatch command" do
+    setup [:start_account_bonus_handler]
+
+    defmodule OpenAccountBonusHandler do
+      use Commanded.Event.Handler, name: "OpenAccountBonus"
+
+      def handle(
+        %BankAccountOpened{account_number: account_number},
+        %{event_id: causation_id, correlation_id: correlation_id})
+      do
+        deposit_welcome_bonus = %DepositMoney{
+          account_number: account_number,
+          transfer_uuid: UUID.uuid4(),
+          amount: 100,
+        }
+
+        BankRouter.dispatch(deposit_welcome_bonus,
+          causation_id: causation_id,
+          correlation_id: correlation_id,
+        )
+      end
+    end
+
+    test "should copy `correlation_id` from handled event" do
+      correlation_id = UUID.uuid4()
+
+      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500}, correlation_id: correlation_id)
+
+      assert_receive_event MoneyDeposited, fn event ->
+        assert event.account_number == "ACC123"
+        assert event.amount == 100
+      end
+
+      money_deposited = EventStore.stream_forward("ACC123") |> Enum.to_list() |> Enum.at(-1)
+
+      assert money_deposited.correlation_id == correlation_id
+    end
+
+    test "should copy `causation_id` from handled event" do
+      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500})
+
+      assert_receive_event MoneyDeposited, fn event ->
+        assert event.account_number == "ACC123"
+        assert event.amount == 100
+      end
+
+      [account_opened, money_deposited] = EventStore.stream_forward("ACC123") |> Enum.to_list()
+
+      # should set command causation id as handled event id
+      [_causation_id, causation_id] = CommandAuditMiddleware.dispatched_commands(&(&1.causation_id))
+      assert causation_id == account_opened.event_id
+
+      # should set created event causation id as the command uuid
+      [_command_uuid, command_uuid] = CommandAuditMiddleware.dispatched_commands(&(&1.command_uuid))
+      assert money_deposited.causation_id == command_uuid
+    end
+
+    def start_account_bonus_handler(_context) do
+      {:ok, handler} = OpenAccountBonusHandler.start_link()
+
+      on_exit fn ->
+        Commanded.Helpers.Process.shutdown(handler)
+      end
     end
   end
 end

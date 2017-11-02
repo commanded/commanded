@@ -299,7 +299,7 @@ defmodule Commanded.Commands.Router do
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
         causation_id = Keyword.get(opts, :causation_id)
-        correlation_id = Keyword.get(opts, :correlation_id)
+        correlation_id = Keyword.get(opts, :correlation_id) || UUID.uuid4()
         consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default_consistency
         metadata = Keyword.get(opts, :metadata) || @default_metadata
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default_dispatch_timeout
