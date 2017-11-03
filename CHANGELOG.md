@@ -7,7 +7,8 @@
 - Process manager command dispatch error handling ([#93](https://github.com/commanded/commanded/issues/93)).
 - Event handlers may define an `init/0` callback function to start any related processes. It must return `:ok`, otherwise the handler process will be stopped.
 - Add `include_execution_result` option to command dispatch ([#96](https://github.com/commanded/commanded/pull/96)).
-- Add `Commanded.Aggregate.Multi` ([#98](https://github.com/commanded/commanded/pull/98)).
+- Add `Commanded.Aggregate.Multi` ([#98](https://github.com/commanded/commanded/pull/98)) as a way to return multiple events from a command dispatch that require aggregate state to be updated after each event.
+- Correlation and causation ids ([#105](https://github.com/commanded/commanded/pull/105)).
 
 ### Bug fixes
 

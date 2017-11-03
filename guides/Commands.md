@@ -229,7 +229,7 @@ To assist with monitoring and debugging your deployed application it is useful t
 You can set causation and correlation ids when dispatching a command:
 
 ```elixir
-{:ok, aggregate_version} = BankRouter.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
+:ok = ExampleRouter.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
 ```
 
 When dispatching a command in an event handler, you should copying these values from the event your are processing:
@@ -239,7 +239,7 @@ defmodule ExampleHandler do
   use Commanded.Event.Handler, name: "ExampleHandler"
 
   def handle(%AnEvent{..}, %{event_id: causation_id, correlation_id: correlation_id}) do
-    :ok = Command.dispatch(%ExampleCommand{..},
+    ExampleRouter.dispatch(%ExampleCommand{..},
       causation_id: causation_id,
       correlation_id: correlation_id,
     )
