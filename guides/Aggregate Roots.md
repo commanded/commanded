@@ -67,7 +67,7 @@ defmodule BankAccount do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
-  def execute(%BankAccount{} = account, %OpenAccount{initial_balance: initial_balance})
+  def execute(%BankAccount{} = account, %OpenAccount{initial_balance: initial_balance}),
     do: {:error, :initial_balance_must_be_above_zero}
 
   # state mutators
