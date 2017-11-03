@@ -12,6 +12,9 @@ defmodule Commanded.Commands.Dispatcher do
     @moduledoc false
     defstruct [
       command: nil,
+      command_uuid: nil,
+      causation_id: nil,
+      correlation_id: nil,
       consistency: nil,
       handler_module: nil,
       handler_function: nil,
@@ -51,15 +54,8 @@ defmodule Commanded.Commands.Dispatcher do
     end
   end
 
-  defp to_pipeline(%Payload{command: command, consistency: consistency, identity: identity, identity_prefix: identity_prefix, metadata: metadata}) do
-    %Pipeline{
-      command: command,
-      consistency: consistency,
-      identity: identity,
-      identity_prefix: identity_prefix,
-      metadata: metadata
-    }
-  end
+  defp to_pipeline(%Payload{} = payload),
+    do: struct(Pipeline, Map.from_struct(payload))
 
   defp execute(
     %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline,
@@ -101,11 +97,13 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp to_execution_context(
-    %Pipeline{command: command, metadata: metadata},
-    %Payload{handler_module: handler_module, handler_function: handler_function, lifespan: lifespan})
+    %Pipeline{command: command, command_uuid: command_uuid, metadata: metadata},
+    %Payload{correlation_id: correlation_id, handler_module: handler_module, handler_function: handler_function, lifespan: lifespan})
   do
     %ExecutionContext{
       command: command,
+      causation_id: command_uuid,
+      correlation_id: correlation_id,
       metadata: metadata,
       handler: handler_module,
       function: handler_function,

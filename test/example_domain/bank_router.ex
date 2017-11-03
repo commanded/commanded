@@ -1,14 +1,30 @@
 defmodule Commanded.ExampleDomain.BankRouter do
   use Commanded.Commands.Router
 
-  alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,TransferMoneyHandler,WithdrawMoneyHandler}
-  alias Commanded.ExampleDomain.{BankAccount,MoneyTransfer}
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney,WithdrawMoney}
-  alias Commanded.ExampleDomain.MoneyTransfer.Commands.{TransferMoney}
+  alias Commanded.ExampleDomain.{
+    BankAccount,
+    DepositMoneyHandler,
+    MoneyTransfer,
+    OpenAccountHandler,
+    TransferMoneyHandler,
+    WithdrawMoneyHandler,
+  }
+  alias BankAccount.Commands.{
+    DepositMoney,
+    OpenAccount,
+    WithdrawMoney,
+  }
+  alias MoneyTransfer.Commands.TransferMoney
+  alias Commanded.Helpers.CommandAuditMiddleware
+  
+  middleware CommandAuditMiddleware
 
-  dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, identity: :account_number
-  dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, identity: :account_number
-  dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount, identity: :account_number
+  identify BankAccount, by: :account_number
+  identify MoneyTransfer, by: :transfer_uuid
 
-  dispatch TransferMoney, to: TransferMoneyHandler, aggregate: MoneyTransfer, identity: :transfer_uuid
+  dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount
+  dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount
+  dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount
+
+  dispatch TransferMoney, to: TransferMoneyHandler, aggregate: MoneyTransfer
 end

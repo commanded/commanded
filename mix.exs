@@ -17,7 +17,7 @@ defmodule Commanded.Mixfile do
       start_permanent: Mix.env == :prod,
       consolidate_protocols: Mix.env == :prod,
       name: "Commanded",
-      source_url: "https://github.com/slashdotdash/commanded",
+      source_url: "https://github.com/commanded/commanded",
     ]
   end
 
@@ -80,7 +80,7 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/slashdotdash/commanded",
+      links: %{"GitHub" => "https://github.com/commanded/commanded",
                "Docs" => "https://hexdocs.pm/commanded/"}
     ]
   end

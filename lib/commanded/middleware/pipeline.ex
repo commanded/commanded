@@ -8,28 +8,46 @@ defmodule Commanded.Middleware.Pipeline do
 
   ## Pipeline fields
 
-    * `assigns` - Shared user data as a map.
-    * `command` - Command struct being dispatched.
-    * `consistency` - Requested dispatch consistency, either: `:eventual`
-       (default) or `:strong`
-    * `identity` - An atom specifying a field in the command containing the
-       aggregate's identity or a one-arity function that returns
-       an identity from the command being dispatched.
-    * `metadata` - the metadata map to be persisted along with the events.
-    * `identity_prefix` - An optional prefix to the aggregate's identity.
-    * `halted` - Boolean status on whether the pipeline was halted
-    * `response` - Set the response to send back to the caller
+    - `assigns` - shared user data as a map.
+
+    - `causation_id` - an optional UUID used to identify the cause of the
+       command being dispatched.
+
+    - `correlation_id` - an optional UUID used to correlate related
+       commands/events together.
+
+    - `command` - command struct being dispatched.
+
+    - `command_uuid` - UUID assigned to the command being dispatched.
+
+    - `consistency` - requested dispatch consistency, either: `:eventual`
+       (default) or `:strong`.
+
+    - `halted` - flag indicating whether the pipeline was halted.
+
+    - `identity` - an atom specifying a field in the command containing the
+       aggregate's identity or a one-arity function that returns an identity
+       from the command being dispatched.
+
+    - `identity_prefix` - an optional prefix to the aggregate's identity.
+
+    - `metadata` - the metadata map to be persisted along with the events.
+
+    - `response` - sets the response to send back to the caller.
 
   """
 
   defstruct [
     assigns: %{},
+    causation_id: nil,
+    correlation_id: nil,
     command: nil,
+    command_uuid: nil,
     consistency: nil,
+    halted: false,
     identity: nil,
     identity_prefix: nil,
     metadata: nil,
-    halted: false,
     response: nil,
   ]
 
@@ -47,7 +65,7 @@ defmodule Commanded.Middleware.Pipeline do
   @doc """
   Puts the `key` with value equal to `value` into `metadata` map
   """
-  def assign_metadata(%Pipeline{metadata: metadata, response: response} = pipeline, key, value) when is_atom(key) do
+  def assign_metadata(%Pipeline{metadata: metadata} = pipeline, key, value) when is_atom(key) do
     %Pipeline{pipeline | metadata: Map.put(metadata, key, value)}
   end
 

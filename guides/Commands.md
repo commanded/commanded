@@ -55,7 +55,7 @@ defmodule OpenAccountHandler do
 end
 ```
 
-Command handlers execute in the context of the dispatch call, as such they are limited to the timeout period specified. The default time is five seconds, the same as a `GenServer` call. You can increase the timeout value for individual commands as required - see the section on [Timeouts](#timeouts) below.
+Command handlers execute in the context of the dispatch call, as such they are limited to the timeout period specified. The default timeout is five seconds, the same as a `GenServer` call. You can increase the timeout value for individual commands as required - see the section on [Timeouts](#timeouts) below.
 
 ### Dispatch directly to aggregate
 
@@ -219,6 +219,38 @@ You can optionally choose to include the aggregate's version as part of the disp
 
 This is useful when you need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
 
+### Correlation and causation ids
+
+To assist with monitoring and debugging your deployed application it is useful to track the causation and correlation ids for your commands and events.
+
+- `causation_id` - the UUID of the command causing an event, or the event causing a command dispatch.
+- `correlation_id` - a UUID used to correlate related commands/events.
+
+You can set causation and correlation ids when dispatching a command:
+
+```elixir
+:ok = ExampleRouter.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
+```
+
+When dispatching a command in an event handler, you should copying these values from the event your are processing:
+
+```elixir
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: "ExampleHandler"
+
+  def handle(%AnEvent{..}, %{event_id: causation_id, correlation_id: correlation_id}) do
+    ExampleRouter.dispatch(%ExampleCommand{..},
+      causation_id: causation_id,
+      correlation_id: correlation_id,
+    )
+  end
+end
+```
+
+Commands dispatched by a process manager will be automatically assigned the appropriate causation and correlation ids from the source domain event.
+
+You can use [Commanded audit middleware](https://github.com/commanded/commanded-audit-middleware) to record every dispatched command. This allows you to follow the chain of commands and events by using the causation id. The correlation id can be used to find all related commands and events.
+
 ### Aggregate lifespan
 
 By default an aggregate instance process will run indefinitely once started. You can control this by implementing the `Commanded.Aggregates.AggregateLifespan` behaviour in a module.
@@ -239,8 +271,7 @@ defmodule BankRouter do
   use Commanded.Commands.Router
 
   dispatch [OpenAccount,CloseAccount],
-    to: BankAccountHandler,
-    aggregate: BankAccount,
+    to: BankAccount,
     lifespan: BankAccountLifespan,
     identity: :account_number
 end

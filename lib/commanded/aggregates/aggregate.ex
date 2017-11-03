@@ -169,7 +169,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp execute_command(
-    %ExecutionContext{handler: handler, function: function, command: command, metadata: metadata},
+    %ExecutionContext{handler: handler, function: function, command: command} = context,
     %Aggregate{aggregate_module: aggregate_module, aggregate_version: expected_version, aggregate_state: aggregate_state} = state)
   do
     case Kernel.apply(handler, function, [aggregate_state, command]) do
@@ -185,14 +185,14 @@ defmodule Commanded.Aggregates.Aggregate do
             {reply, state}
 
           {aggregate_state, pending_events} ->
-            persist_events(pending_events, aggregate_state, metadata, state)
+            persist_events(pending_events, aggregate_state, context, state)
         end
 
       events ->
         pending_events = List.wrap(events)
         aggregate_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-        persist_events(pending_events, aggregate_state, metadata, state)
+        persist_events(pending_events, aggregate_state, context, state)
     end
   end
 
@@ -200,8 +200,8 @@ defmodule Commanded.Aggregates.Aggregate do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events(pending_events, aggregate_state, metadata, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version} = state) do
-    with {:ok, stream_version} <- append_to_stream(pending_events, aggregate_uuid, expected_version, metadata) do
+  defp persist_events(pending_events, aggregate_state, context, %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version} = state) do
+    with {:ok, stream_version} <- append_to_stream(pending_events, aggregate_uuid, expected_version, context) do
       state = %Aggregate{state |
         aggregate_state: aggregate_state,
         aggregate_version: stream_version,
@@ -213,10 +213,9 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp append_to_stream([], _stream_uuid, expected_version, _metadata), do: {:ok, expected_version}
-  defp append_to_stream(pending_events, stream_uuid, expected_version, metadata) do
-    correlation_id = UUID.uuid4()
-    event_data = Mapper.map_to_event_data(pending_events, correlation_id, nil, metadata)
+  defp append_to_stream([], _stream_uuid, expected_version, _context), do: {:ok, expected_version}
+  defp append_to_stream(pending_events, stream_uuid, expected_version, %ExecutionContext{causation_id: causation_id, correlation_id: correlation_id, metadata: metadata}) do
+    event_data = Mapper.map_to_event_data(pending_events, causation_id, correlation_id, metadata)
 
     EventStore.append_to_stream(stream_uuid, expected_version, event_data)
   end

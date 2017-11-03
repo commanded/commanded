@@ -7,6 +7,10 @@ defmodule Commanded.Aggregates.ExecutionContext do
     - `command` - the command to execute, typically a struct
       (e.g. `%OpenBankAccount{...}`).
 
+    - `causation_id` - the UUID assigned to the dispatched command.
+
+    - `correlation_id` - a UUID used to correlate related commands/events.
+
     - `metadata` - a map of key/value pairs containing the metadata to be
       associated with all events created by the command.
 
@@ -29,6 +33,8 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
   defstruct [
     command: nil,
+    causation_id: nil,
+    correlation_id: nil,
     metadata: %{},
     handler: nil,
     function: nil,

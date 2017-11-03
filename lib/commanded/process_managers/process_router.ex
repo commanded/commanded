@@ -223,8 +223,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   defp do_ack_event(event, %State{consistency: consistency, process_manager_name: name, subscription: subscription}) do
-    EventStore.ack_event(subscription, event)
-    Subscriptions.ack_event(name, consistency, event)
+    :ok = EventStore.ack_event(subscription, event)
+    :ok = Subscriptions.ack_event(name, consistency, event)
   end
 
   defp delegate_event(nil, _event), do: :ok
@@ -232,7 +232,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     ProcessManagerInstance.process_event(process_manager, event, self())
   end
 
-  defp describe(%State{process_manager_module: process_manager_module}) do
-    inspect(process_manager_module)
-  end
+  defp describe(%State{process_manager_module: process_manager_module}),
+    do: inspect(process_manager_module)
 end
