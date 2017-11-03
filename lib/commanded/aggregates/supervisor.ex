@@ -27,7 +27,7 @@ defmodule Commanded.Aggregates.Supervisor do
 
     Logger.debug(fn -> "Locating aggregate process for `#{inspect aggregate_module}` with UUID #{inspect aggregate_uuid}" end)
 
-    name = Aggregate.name(aggregate_uuid)
+    name = Aggregate.name(aggregate_module, aggregate_uuid)
 
     case Registration.start_child(name, __MODULE__, [aggregate_module, aggregate_uuid]) do
       {:ok, _pid} -> {:ok, aggregate_uuid}

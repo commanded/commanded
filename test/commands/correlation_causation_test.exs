@@ -18,14 +18,14 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
     MoneyDeposited,
   }
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
-  alias Commanded.Helpers.CommandAuditMiddleware
+  alias Commanded.Helpers.{CommandAuditMiddleware,ProcessHelper}
 
   setup do
     CommandAuditMiddleware.reset()
     {:ok, process_manager} = TransferMoneyProcessManager.start_link()
 
     on_exit fn ->
-      Commanded.Helpers.Process.shutdown(process_manager)
+      ProcessHelper.shutdown(process_manager)
     end
   end
 
@@ -193,7 +193,7 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       {:ok, handler} = OpenAccountBonusHandler.start_link()
 
       on_exit fn ->
-        Commanded.Helpers.Process.shutdown(handler)
+        ProcessHelper.shutdown(handler)
       end
     end
   end

@@ -4,9 +4,10 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
   import Commanded.Enumerable, only: [pluck: 2]
 
   alias Commanded.Aggregates.{Aggregate,AppendItemsHandler,ExampleAggregate}
-  alias Commanded.Aggregates.ExampleAggregate.Commands.AppendItems
+  alias Commanded.Aggregates.ExampleAggregate.Commands.{AppendItems,NoOp}
   alias Commanded.EventStore
   alias Commanded.Helpers.ProcessHelper
+  alias Commanded.Aggregates.ExecutionContext
 
   test "should persist pending events in order applied" do
     aggregate_uuid = UUID.uuid4

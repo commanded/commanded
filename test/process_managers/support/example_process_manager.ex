@@ -1,12 +1,12 @@
 defmodule Commanded.ProcessManagers.ExampleProcessManager do
   @moduledoc false
-  use Commanded.ProcessManagers.ProcessManager,
-    name: "ExampleProcessManager",
-    router: Router
-
   alias Commanded.ProcessManagers.{ExampleProcessManager,ExampleRouter}
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
-  alias Commanded.ProcessManagers.ExampleAggregate.Events.{Started,Interested,Stopped}
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.{Errored,Started,Interested,Stopped}
+
+  use Commanded.ProcessManagers.ProcessManager,
+    name: "ExampleProcessManager",
+    router: ExampleRouter
 
   defstruct [
     status: nil,

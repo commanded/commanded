@@ -12,6 +12,7 @@ defmodule Commanded.Supervisor do
     children = [
       Supervisor.child_spec({Task.Supervisor, [name: Commanded.Commands.TaskDispatcher]}, []),
       {Commanded.Aggregates.Supervisor, []},
+      {Commanded.Subscriptions, []},
     ] ++ Registration.child_spec()
 
     Supervisor.init(children, strategy: :one_for_one)

@@ -1,7 +1,7 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
 
-  alias Commanded.Aggregates.{Aggregate,BankRouter}
+  alias Commanded.Aggregates.BankRouter
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.{
     OpenAccount,

@@ -7,7 +7,7 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
   alias Commanded.EventStore
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.{ExampleRouter,ExampleProcessManager,ProcessRouter,ProcessManagerInstance}
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Publish,Start}
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Error,Publish,Start}
   alias Commanded.ProcessManagers.ExampleAggregate.Events.{Interested,Started,Stopped,Uninterested}
 
   test "should start process manager instance and successfully dispatch command" do
@@ -131,8 +131,8 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
     Process.unlink(process_router)
     ref = Process.monitor(process_router)
 
-    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
-    :ok = Router.dispatch(%Error{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Error{aggregate_uuid: aggregate_uuid})
 
     # should shutdown process
     assert_receive {:DOWN, ^ref, _, _, _}

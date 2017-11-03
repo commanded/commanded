@@ -42,7 +42,8 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def name(aggregate_uuid), do: {Aggregate, aggregate_uuid}
+  def name(aggregate_module, aggregate_uuid),
+    do: {aggregate_module, aggregate_uuid}
 
   def init(%Aggregate{} = state) do
     # initial aggregate state is populated by loading events from event store
@@ -214,9 +215,6 @@ defmodule Commanded.Aggregates.Aggregate do
 
     EventStore.append_to_stream(stream_uuid, expected_version, event_data)
   end
-
-  def name(aggregate_module, aggregate_uuid),
-    do: {aggregate_module, aggregate_uuid}
 
   defp via_name(aggregate_module, aggregate_uuid),
     do: name(aggregate_module, aggregate_uuid) |> via_tuple()

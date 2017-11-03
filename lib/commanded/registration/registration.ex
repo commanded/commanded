@@ -2,9 +2,12 @@ defmodule Commanded.Registration do
   @moduledoc """
   Defines a behaviour for a process registry to be used by Commanded.
 
-  By default, Commanded will use a local process registry, defined in `Commanded.Registration.LocalRegistry`, that uses Elixir's `Registry` module for local process registration.
-  This limits Commanded to only run on a single node.
-  However the `Commanded.Registration` behaviour can be implemented by a library to provide distributed process registration to support running on a cluster of nodes.
+  By default, Commanded will use a local process registry, defined in
+  `Commanded.Registration.LocalRegistry`, that uses Elixir's `Registry` module
+  for local process registration. This limits Commanded to only run on a single
+  node. However the `Commanded.Registration` behaviour can be implemented by a
+  library to provide distributed process registration to support running on a
+  cluster of nodes.
   """
 
   @doc """
@@ -13,7 +16,8 @@ defmodule Commanded.Registration do
   @callback child_spec() :: [:supervisor.child_spec()]
 
   @doc """
-  Starts a uniquely named child process of a supervisor using the given module and args.
+  Starts a uniquely named child process of a supervisor using the given module
+  and args.
 
   Registers the pid with the given name.
   """
@@ -89,13 +93,16 @@ defmodule Commanded.Registration do
   defmacro __before_compile__(_env) do
     quote location: :keep do
       @doc false
-      def handle_call(request, from, state), do: registry_provider().handle_call(request, from, state)
+      def handle_call(request, from, state),
+        do: registry_provider().handle_call(request, from, state)
 
       @doc false
-      def handle_cast(request, state), do: registry_provider().handle_cast(request, state)
+      def handle_cast(request, state),
+        do: registry_provider().handle_cast(request, state)
 
       @doc false
-      def handle_info(msg, state), do: registry_provider().handle_info(msg, state)
+      def handle_info(msg, state),
+        do: registry_provider().handle_info(msg, state)
     end
   end
 end

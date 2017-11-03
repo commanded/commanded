@@ -1,6 +1,7 @@
 defmodule Commanded.Registration.LocalRegistry do
   @moduledoc """
-  Local process registration, restricted to a single node, using Elixir's [Registry](https://hexdocs.pm/elixir/Registry.html)
+  Local process registration, restricted to a single node, using Elixir's
+  [Registry](https://hexdocs.pm/elixir/Registry.html).
   """
 
   @behaviour Commanded.Registration
@@ -12,12 +13,16 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def child_spec do
     [
-      Supervisor.child_spec({Registry, [keys: :unique, name: __MODULE__]}, id: :commanded_local_registry),
+      Supervisor.child_spec({Registry, [
+        keys: :unique,
+        name: __MODULE__
+      ]}, id: :commanded_local_registry),
     ]
   end
 
   @doc """
-  Starts a uniquely named child process of a supervisor using the given module and args.
+  Starts a uniquely named child process of a supervisor using the given module
+  and args.
 
   Registers the pid with the given name.
   """
@@ -69,4 +74,26 @@ defmodule Commanded.Registration.LocalRegistry do
   @spec via_tuple(name :: term()) :: {:via, module(), name :: term()}
   @impl Commanded.Registration
   def via_tuple(name), do: {:via, Registry, {__MODULE__, name}}
+
+  @doc false
+  def handle_call(_request, _from, _state) do
+    raise "attempted to call GenServer #{inspect proc()} but no handle_call/3 clause was provided"
+  end
+
+  @doc false
+  def handle_cast(_request, _state) do
+    raise "attempted to cast GenServer #{inspect proc()} but no handle_cast/2 clause was provided"
+  end
+
+  @doc false
+  def handle_info(_msg, state) do
+    {:noreply, state}
+  end
+
+  defp proc do
+    case Process.info(self(), :registered_name) do
+      {_, []}   -> self()
+      {_, name} -> name
+    end
+  end
 end
