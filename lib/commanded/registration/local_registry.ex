@@ -45,7 +45,7 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @spec start_link(name :: term(), module :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @spec start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
   @impl Commanded.Registration
   def start_link(name, module, args) do
     case whereis_name(name) do

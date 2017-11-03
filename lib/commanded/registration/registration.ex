@@ -28,7 +28,7 @@ defmodule Commanded.Registration do
 
   Registers the pid with the given name.
   """
-  @callback start_link(name :: term(), module :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @callback start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
 
   @doc """
   Get the pid of a registered name.
@@ -51,7 +51,7 @@ defmodule Commanded.Registration do
   def start_child(name, supervisor, args), do: registry_provider().start_child(name, supervisor, args)
 
   @doc false
-  @spec start_link(name :: term(), module :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @spec start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
   def start_link(name, module, args), do: registry_provider().start_link(name, module, args)
 
   @doc false

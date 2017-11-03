@@ -46,11 +46,22 @@ end
 
 You can implement the `Commanded.EventStore.Serializer` behaviour to use an alternative serialization format if preferred.
 
-Configure your own serializer in `config/config.exs`:
+Configure your own serializer in `config/config.exs` for the event store you are using.
 
-```elixir
-config :commanded,
-  serializer: MyApp.MessagePackSerializer
-```
+- Elixir EventStore:
+
+    ```elixir
+    config :eventstore, EventStore.Storage,
+      serializer: MyApp.MessagePackSerializer,
+      # ...
+    ```
+
+- Greg Young's Event Store:
+
+    ```elixir
+    config :commanded_extreme_adapter,
+      serializer: Commanded.Serialization.JsonSerializer,
+      # ...
+    ```
 
 You *should not* change serialization format once your app has been deployed to production since Commanded will not be able to deserialize any existing events or snapshot data. In this scenario, to change serialization format you would need to also migrate your event store to the new format.
