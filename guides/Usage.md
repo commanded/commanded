@@ -39,10 +39,11 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
       # public command API
 
-      def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
-        when initial_balance > 0
+      # ensure account has not already been opened
+      def execute(%BankAccount{account_number: existing_account_number} = account, %OpenBankAccount{}) 
+        when not is_nil(existing_account_number)
       do
-        %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
+        {:error, :account_already_opened}
       end
 
       # ensure initial balance is never negative
@@ -52,9 +53,15 @@ Here's an example bank account opening feature built using Commanded to demonstr
         {:error, :initial_balance_must_be_above_zero}
       end
 
-      # ensure account has not already been opened
-      def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{}) do
-        {:error, :account_already_opened}
+      # ensure a nil account isn't being open
+      def execute(%BankAccount{} = account, %OpenBankAccount{account_number: nil})
+      do
+        {:error, :account_number_cannot_be_nil}
+      end
+
+      def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
+      do
+        %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
       end
 
       # state mutators
