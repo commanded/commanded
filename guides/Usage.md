@@ -53,9 +53,8 @@ Here's an example bank account opening feature built using Commanded to demonstr
       end
 
       # ensure account has not already been opened
-      def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{}) do
-        {:error, :account_already_opened}
-      end
+      def execute(%BankAccount{} = account, %OpenBankAccount{}),
+        do: {:error, :account_already_opened}
 
       # state mutators
 
