@@ -1,4 +1,5 @@
 defmodule Commanded.ExampleDomain.BankAccount do
+  @moduledoc false
   defstruct [
     account_number: nil,
     balance: 0,

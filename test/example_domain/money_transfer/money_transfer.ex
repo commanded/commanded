@@ -1,4 +1,5 @@
 defmodule Commanded.ExampleDomain.MoneyTransfer do
+  @moduledoc false
   defstruct [
     transfer_uuid: nil,
     debit_account: nil,

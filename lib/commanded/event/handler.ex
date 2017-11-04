@@ -7,6 +7,30 @@ defmodule Commanded.Event.Handler do
   You should start your event handlers using a [Supervisor](supervision.html) to
   ensure they are restarted on error.
 
+  ## Example
+
+      defmodule AccountBalanceHandler do
+        use Commanded.Event.Handler, name: __MODULE__
+
+        def init do
+          with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
+            :ok
+          end
+        end
+
+        def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
+          Agent.update(__MODULE__, fn _ -> initial_balance end)
+        end
+
+        def current_balance do
+          Agent.get(__MODULE__, fn balance -> balance end)
+        end
+      end
+
+  Start your event handler process (or use a [Supervisor](supervision.html)):
+
+      {:ok, _handler} = AccountBalanceHandler.start_link()
+
   # Event handler name
 
   The name you specify is used when subscribing to the event store. Therefore you
@@ -74,6 +98,7 @@ defmodule Commanded.Event.Handler do
   """
 
   use GenServer
+  use Commanded.Registration
 
   require Logger
 
@@ -82,9 +107,9 @@ defmodule Commanded.Event.Handler do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
 
-  @type domain_event :: struct
-  @type metadata :: struct
-  @type subscribe_from :: :origin | :current | non_neg_integer
+  @type domain_event :: struct()
+  @type metadata :: struct()
+  @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
 
   @doc """
@@ -101,7 +126,7 @@ defmodule Commanded.Event.Handler do
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the event, or `{:error, reason}` on failure.
   """
-  @callback handle(domain_event, metadata) :: :ok | {:error, reason :: any()}
+  @callback handle(domain_event, metadata) :: :ok | {:error, :already_seen_event} | {:error, reason :: any()}
 
   @doc """
   Macro as a convenience for defining an event handler.
@@ -111,14 +136,14 @@ defmodule Commanded.Event.Handler do
       defmodule ExampleHandler do
         use Commanded.Event.Handler, name: "ExampleHandler"
 
-        def init do
-          # ... optional initialisation
-          :ok
-        end
+      def init do
+        # optional initialisation
+        :ok
+      end
 
-        def handle(%AnEvent{...}, _metadata) do
-          # ...
-        end
+      def handle(%AnEvent{..}, _metadata) do
+        # ... process the event
+        :ok
       end
 
   Start event handler process (or configure as a worker inside a [supervisor](supervision.html)):
@@ -133,7 +158,7 @@ defmodule Commanded.Event.Handler do
       @behaviour Commanded.Event.Handler
 
       @opts unquote(opts) || []
-      @name @opts[:name] || raise "#{inspect __MODULE__} expects :name to be given"
+      @name Commanded.Event.Handler.parse_name(__MODULE__, @opts[:name])
 
       @doc false
       def start_link(opts \\ []) do
@@ -145,12 +170,38 @@ defmodule Commanded.Event.Handler do
         Commanded.Event.Handler.start_link(@name, __MODULE__, opts)
       end
 
+      @doc """
+      Provides a child specification to allow the event handler to be easily supervised
+
+      ## Example
+
+          Supervisor.start_link([
+            {ExampleHandler, []}
+          ], strategy: :one_for_one)
+
+      """
+      def child_spec(opts) do
+        default = %{
+          id: {__MODULE__, @name},
+          start: {Commanded.Event.Handler, :start_link, [@name, __MODULE__, opts]},
+          restart: :permanent,
+          type: :worker,
+        }
+
+        Supervisor.child_spec(default, [])
+      end
+
       @doc false
       def init, do: :ok
 
       defoverridable [init: 0]
     end
   end
+
+  @doc false
+  def parse_name(module, name) when name in [nil, ""], do: raise "#{inspect module} expects `:name` to be given"
+  def parse_name(_module, name) when is_bitstring(name), do: name
+  def parse_name(_module, name), do: inspect(name)
 
   # include default fallback function at end, with lowest precedence
   @doc false
@@ -161,6 +212,7 @@ defmodule Commanded.Event.Handler do
     end
   end
 
+  @doc false
   defstruct [
     consistency: nil,
     handler_name: nil,
@@ -172,14 +224,21 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def start_link(handler_name, handler_module, opts \\ []) do
-    GenServer.start_link(__MODULE__, %Handler{
+    name = name(handler_name)
+    handler = %Handler{
       handler_name: handler_name,
       handler_module: handler_module,
       consistency: opts[:consistency] || :eventual,
       subscribe_from: opts[:start_from] || :origin,
-    })
+    }
+
+    Registration.start_link(name, __MODULE__, handler)
   end
 
+  @doc false
+  def name(name), do: {__MODULE__, name}
+
+  @doc false
   def init(%Handler{handler_module: handler_module} = state) do
     GenServer.cast(self(), :subscribe_to_events)
 
@@ -192,10 +251,17 @@ defmodule Commanded.Event.Handler do
     {reply, state}
   end
 
+  @doc false
+  def handle_call(:last_seen_event, _from, %Handler{last_seen_event: last_seen_event} = state) do
+    {:reply, last_seen_event, state}
+  end
+
+  @doc false
   def handle_cast(:subscribe_to_events, %Handler{} = state) do
     {:noreply, subscribe_to_all_streams(state)}
   end
 
+  @doc false
   def handle_info({:events, events}, %Handler{} = state) do
     Logger.debug(fn -> describe(state) <> " received events: #{inspect events}" end)
 
@@ -232,6 +298,9 @@ defmodule Commanded.Event.Handler do
   defp handle_event(%RecordedEvent{data: data} = event, %Handler{handler_module: handler_module} = state) do
     case handler_module.handle(data, enrich_metadata(event)) do
       :ok ->
+        confirm_receipt(event, state)
+
+      {:error, :already_seen_event} ->
         confirm_receipt(event, state)
 
       {:error, reason} = error ->

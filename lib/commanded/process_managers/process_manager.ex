@@ -198,8 +198,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @behaviour Commanded.ProcessManagers.ProcessManager
 
       @opts unquote(opts) || []
-      @name @opts[:name] || raise "#{inspect __MODULE__} expects :name to be given"
-      @router @opts[:router] || raise "#{inspect __MODULE__} expects :router to be given"
+      @name Commanded.Event.Handler.parse_name(__MODULE__, @opts[:name])
+      @router @opts[:router] || raise "#{inspect __MODULE__} expects `:router` to be given"
 
       def start_link(opts \\ []) do
         opts =
@@ -212,9 +212,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     end
   end
 
-  # include default fallback functions at end, with lowest precedence
   @doc false
   defmacro __before_compile__(_env) do
+    # include default fallback functions at end, with lowest precedence
     quote do
       @doc false
       def interested?(_event), do: false

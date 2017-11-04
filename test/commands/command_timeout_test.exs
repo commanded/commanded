@@ -1,24 +1,7 @@
 defmodule Commanded.Commands.CommandTimeoutTest do
   use Commanded.StorageCase
-  doctest Commanded.Commands.Router
 
-  defmodule StubAggregateRoot, do: defstruct []
-  defmodule TimeoutCommand, do: defstruct [aggregate_uuid: nil, sleep_in_ms: nil]
-
-  defmodule TimeoutCommandHandler do
-    @behaviour Commanded.Commands.Handler
-
-    def handle(%StubAggregateRoot{}, %TimeoutCommand{sleep_in_ms: sleep_in_ms}) do
-      :timer.sleep(sleep_in_ms)
-      []
-    end
-  end
-
-  defmodule TimeoutRouter do
-    use Commanded.Commands.Router
-
-    dispatch TimeoutCommand, to: TimeoutCommandHandler, aggregate: StubAggregateRoot, identity: :aggregate_uuid, timeout: 1_000
-  end
+  alias Commanded.Commands.{TimeoutRouter,TimeoutCommand}
 
   test "should allow timeout to be specified during command registration" do
     # handler is set to take longer than the configured timeout

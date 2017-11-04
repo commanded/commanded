@@ -1,144 +1,24 @@
-defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
+defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
   use Commanded.StorageCase
-
-  alias Commanded.EventStore
 
   import Commanded.Assertions.EventAssertions
   import Commanded.Enumerable
 
-  alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
+  alias Commanded.EventStore
   alias Commanded.Helpers.Wait
-
-  defmodule ExampleAggregate do
-    defstruct [
-      uuid: nil,
-      state: nil,
-      items: [],
-    ]
-
-    defmodule Commands do
-      defmodule Start, do: defstruct [:aggregate_uuid]
-      defmodule Publish, do: defstruct [:aggregate_uuid, :interesting, :uninteresting]
-      defmodule Stop, do: defstruct [:aggregate_uuid]
-      defmodule Error, do: defstruct [:aggregate_uuid]
-    end
-
-    defmodule Events do
-      defmodule Started, do: defstruct [:aggregate_uuid]
-      defmodule Interested, do: defstruct [:aggregate_uuid, :index]
-      defmodule Uninterested, do: defstruct [:aggregate_uuid, :index]
-      defmodule Stopped, do: defstruct [:aggregate_uuid]
-      defmodule Errored, do: defstruct [:aggregate_uuid]
-    end
-
-    def start(%ExampleAggregate{}, aggregate_uuid) do
-      %Events.Started{aggregate_uuid: aggregate_uuid}
-    end
-
-    def publish(%ExampleAggregate{uuid: aggregate_uuid}, interesting, uninteresting) do
-      Enum.concat(
-        publish_interesting(aggregate_uuid, interesting, 1),
-        publish_uninteresting(aggregate_uuid, uninteresting, 1)
-      )
-    end
-
-    def stop(%ExampleAggregate{uuid: aggregate_uuid}) do
-      %Events.Stopped{aggregate_uuid: aggregate_uuid}
-    end
-
-    def error(%ExampleAggregate{uuid: aggregate_uuid}) do
-      %Events.Errored{aggregate_uuid: aggregate_uuid}
-    end
-
-    defp publish_interesting(_aggregate_uuid, 0, _index), do: []
-    defp publish_interesting(aggregate_uuid, interesting, index) do
-      [
-        %Events.Interested{aggregate_uuid: aggregate_uuid, index: index},
-      ] ++ publish_interesting(aggregate_uuid, interesting - 1, index + 1)
-    end
-
-    defp publish_uninteresting(_aggregate_uuid, 0, _index), do: []
-    defp publish_uninteresting(aggregate_uuid, interesting, index) do
-      [
-        %Events.Uninterested{aggregate_uuid: aggregate_uuid, index: index},
-      ] ++ publish_uninteresting(aggregate_uuid, interesting - 1, index + 1)
-    end
-
-    # state mutatators
-
-    def apply(%ExampleAggregate{} = state, %Events.Started{aggregate_uuid: aggregate_uuid}), do: %ExampleAggregate{state | uuid: aggregate_uuid, state: :started}
-    def apply(%ExampleAggregate{items: items} = state, %Events.Interested{index: index}), do: %ExampleAggregate{state | items: items ++ [index]}
-    def apply(%ExampleAggregate{} = state, %Events.Errored{}), do: %ExampleAggregate{state | state: :errored}
-    def apply(%ExampleAggregate{} = state, %Events.Uninterested{}), do: state
-    def apply(%ExampleAggregate{} = state, %Events.Stopped{}), do: %ExampleAggregate{state | state: :stopped}
-  end
-
-  alias ExampleAggregate.Commands.{Start,Publish,Stop,Error}
-  alias ExampleAggregate.Events.{Started,Interested,Uninterested,Stopped,Errored}
-
-  defmodule ExampleCommandHandler do
-    @behaviour Commanded.Commands.Handler
-
-    def handle(%ExampleAggregate{} = aggregate, %Start{aggregate_uuid: aggregate_uuid}), do: ExampleAggregate.start(aggregate, aggregate_uuid)
-    def handle(%ExampleAggregate{} = aggregate, %Publish{interesting: interesting, uninteresting: uninteresting}), do: ExampleAggregate.publish(aggregate, interesting, uninteresting)
-    def handle(%ExampleAggregate{} = aggregate, %Stop{}), do: ExampleAggregate.stop(aggregate)
-    def handle(%ExampleAggregate{} = aggregate, %Error{}), do: ExampleAggregate.error(aggregate)
-  end
-
-  defmodule Router do
-    use Commanded.Commands.Router
-
-    dispatch [Start,Publish,Stop,Error],
-      to: ExampleCommandHandler,
-      aggregate: ExampleAggregate,
-      identity: :aggregate_uuid
-  end
-
-  defmodule ExampleProcessManager do
-    use Commanded.ProcessManagers.ProcessManager,
-      name: "example_process_manager",
-      router: Router
-
-    defstruct [
-      status: nil,
-      items: [],
-    ]
-
-    def interested?(%Started{aggregate_uuid: aggregate_uuid}), do: {:start, aggregate_uuid}
-    def interested?(%Interested{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
-    def interested?(%Errored{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
-    def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:stop, aggregate_uuid}
-
-    def handle(%ExampleProcessManager{}, %Interested{index: 10, aggregate_uuid: aggregate_uuid}) do
-      %Stop{aggregate_uuid: aggregate_uuid}
-    end
-
-    def handle(%ExampleProcessManager{}, %Errored{}), do: {:error, :failed}
-
-    ## state mutators
-
-    def apply(%ExampleProcessManager{} = process_manager, %Started{}) do
-      %ExampleProcessManager{process_manager |
-        status: :started
-      }
-    end
-
-    def apply(%ExampleProcessManager{items: items} = process_manager, %Interested{index: index}) do
-      %ExampleProcessManager{process_manager |
-        items: items ++ [index]
-      }
-    end
-  end
+  alias Commanded.ProcessManagers.{ExampleRouter,ExampleProcessManager,ProcessRouter,ProcessManagerInstance}
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Error,Publish,Start}
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.{Interested,Started,Stopped,Uninterested}
 
   test "should start process manager instance and successfully dispatch command" do
     aggregate_uuid = UUID.uuid4
 
     {:ok, process_router} = ExampleProcessManager.start_link()
 
-    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
 
     # dispatch command to publish multiple events and trigger dispatch of the stop command
-    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 10, uninteresting: 1})
+    :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 10, uninteresting: 1})
 
     assert_receive_event Stopped, fn event ->
       assert event.aggregate_uuid == aggregate_uuid
@@ -174,20 +54,23 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   test "should ignore uninteresting events" do
     aggregate_uuid = UUID.uuid4
 
-    {:ok, process_router} = ProcessRouter.start_link("example_process_manager", ExampleProcessManager, Router)
+    {:ok, process_router} = ExampleProcessManager.start_link()
 
-    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
 
     # dispatch commands to publish a mix of interesting and uninteresting events for the process router
-    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 0, uninteresting: 2})
-    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 0, uninteresting: 2})
-    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 10, uninteresting: 0})
+    :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 0, uninteresting: 2})
+    :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 0, uninteresting: 2})
+    :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 10, uninteresting: 0})
 
     assert_receive_event Stopped, fn event ->
       assert event.aggregate_uuid == aggregate_uuid
     end
 
-    events = EventStore.stream_forward(aggregate_uuid) |> Enum.to_list()
+    events =
+      aggregate_uuid
+      |> EventStore.stream_forward()
+      |> Enum.to_list()
 
     assert pluck(events, :data) == [
       %Started{aggregate_uuid: aggregate_uuid},
@@ -217,22 +100,27 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
   test "should ignore past events when starting subscription from current" do
     aggregate_uuid = UUID.uuid4
 
-    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
-    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 4, uninteresting: 0})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 4, uninteresting: 0})
 
     wait_for_event Interested, fn event -> event.index == 4 end
 
     {:ok, process_router} = ExampleProcessManager.start_link(start_from: :current)
 
-    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
-    :ok = Router.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
+    assert ProcessRouter.process_instances(process_router) == []
+
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Publish{aggregate_uuid: aggregate_uuid, interesting: 6, uninteresting: 0})
 
     wait_for_event Interested, fn event -> event.index == 6 end
-    :timer.sleep 100
 
-    process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
-    %{items: items} = ProcessManagerInstance.process_state(process_instance)
-    assert items == [1, 2, 3, 4, 5, 6]
+    Wait.until(fn ->
+      process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
+      refute process_instance == {:error, :process_manager_not_found}
+
+      %{items: items} = ProcessManagerInstance.process_state(process_instance)
+      assert items == [1, 2, 3, 4, 5, 6]
+    end)
   end
 
   test "should stop process router when handling event errors" do
@@ -243,8 +131,8 @@ defmodule Commanded.ProcessManager.ProcessRouterProcessPendingEventsTest do
     Process.unlink(process_router)
     ref = Process.monitor(process_router)
 
-    :ok = Router.dispatch(%Start{aggregate_uuid: aggregate_uuid})
-    :ok = Router.dispatch(%Error{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Error{aggregate_uuid: aggregate_uuid})
 
     # should shutdown process
     assert_receive {:DOWN, ^ref, _, _, _}

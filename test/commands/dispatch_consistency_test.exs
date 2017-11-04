@@ -1,108 +1,29 @@
 defmodule Commanded.Commands.DispatchConsistencyTest do
   use Commanded.StorageCase
 
-  alias Commanded.Commands.ExecutionResult
+  alias Commanded.Commands.{
+    ConsistencyAggregateRoot,
+    ConsistencyRouter,
+    ConsistencyPrefixRouter,
+    EventuallyConsistentEventHandler,
+    ExecutionResult,
+    StronglyConsistentEventHandler,
+  }
   alias Commanded.EventStore
-
-  defmodule ConsistencyCommand do
-    defstruct [:uuid, :delay]
-  end
-
-  defmodule NoOpCommand do
-    defstruct [:uuid]
-  end
-
-  defmodule RequestDispatchCommand do
-    defstruct [:uuid, :delay]
-  end
-
-  defmodule ConsistencyEvent do
-    defstruct [:delay]
-  end
-
-  defmodule DispatchRequestedEvent do
-    defstruct [:uuid, :delay]
-  end
-
-  defmodule ConsistencyAggregateRoot do
-    defstruct [:delay]
-
-    def execute(%ConsistencyAggregateRoot{}, %ConsistencyCommand{delay: delay}) do
-      %ConsistencyEvent{delay: delay}
-    end
-
-    def execute(%ConsistencyAggregateRoot{}, %NoOpCommand{}), do: []
-
-    def execute(%ConsistencyAggregateRoot{}, %RequestDispatchCommand{uuid: uuid, delay: delay}) do
-      %DispatchRequestedEvent{uuid: uuid, delay: delay}
-    end
-
-    def apply(%ConsistencyAggregateRoot{} = aggregate, %ConsistencyEvent{delay: delay}) do
-      %ConsistencyAggregateRoot{aggregate | delay: delay}
-    end
-
-    def apply(%ConsistencyAggregateRoot{} = aggregate, _event), do: aggregate
-  end
-
-  defmodule ConsistencyRouter do
-    use Commanded.Commands.Router
-
-    dispatch [ConsistencyCommand,NoOpCommand,RequestDispatchCommand],
-      to: ConsistencyAggregateRoot,
-      identity: :uuid
-  end
-
-  defmodule ConsistencyPrefixRouter do
-    use Commanded.Commands.Router
-
-    identify ConsistencyAggregateRoot,
-        by: :uuid,
-        prefix: "example-prefix-"
-
-    dispatch [ConsistencyCommand,NoOpCommand,RequestDispatchCommand],
-      to: ConsistencyAggregateRoot
-  end
-
-  defmodule StronglyConsistentEventHandler do
-    use Commanded.Event.Handler,
-      name: "StronglyConsistentEventHandler",
-      consistency: :strong
-
-    def handle(%ConsistencyEvent{delay: delay}, _metadata) do
-      :timer.sleep(delay)
-      :ok
-    end
-
-    # handle event by dispatching a command
-    def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
-      :timer.sleep(delay)
-      ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: uuid, delay: delay}, consistency: :strong)
-    end
-  end
-
-  defmodule EventuallyConsistentEventHandler do
-    use Commanded.Event.Handler,
-      name: "EventuallyConsistentEventHandler",
-      consistency: :eventual
-
-    def handle(%ConsistencyEvent{}, _metadata) do
-      :timer.sleep(:infinity) # simulate slow event handler
-      :ok
-    end
-
-    # handle event by dispatching a command
-    def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
-      ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: uuid, delay: delay})
-    end
-  end
+  alias Commanded.Helpers.ProcessHelper
+  alias ConsistencyAggregateRoot.{
+    ConsistencyCommand,
+    NoOpCommand,
+    RequestDispatchCommand,
+  }
 
   setup do
     {:ok, handler1} = StronglyConsistentEventHandler.start_link()
     {:ok, handler2} = EventuallyConsistentEventHandler.start_link()
 
     on_exit fn ->
-      Commanded.Helpers.Process.shutdown(handler1)
-      Commanded.Helpers.Process.shutdown(handler2)
+      ProcessHelper.shutdown(handler1)
+      ProcessHelper.shutdown(handler2)
     end
 
     :ok

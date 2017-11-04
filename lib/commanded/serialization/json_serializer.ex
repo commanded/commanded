@@ -3,8 +3,6 @@ defmodule Commanded.Serialization.JsonSerializer do
   A serializer that uses the JSON format.
   """
 
-  @behaviour Commanded.EventStore.Serializer
-
   alias Commanded.EventStore.TypeProvider
   alias Commanded.Serialization.JsonDecoder
 

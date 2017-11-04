@@ -1,34 +1,14 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
 
+  alias Commanded.Aggregates.BankRouter
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.{
     OpenAccount,
     DepositMoney,
     WithdrawMoney,
   }
-  alias Commanded.ExampleDomain.{
-    OpenAccountHandler,
-    DepositMoneyHandler,
-    WithdrawMoneyHandler,
-  }
-
-  @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
-
-  defmodule BankAccountLifespan do
-    @behaviour Commanded.Aggregates.AggregateLifespan
-
-    def after_command(%OpenAccount{}), do: 5
-    def after_command(%DepositMoney{}), do: 20
-  end
-
-  defmodule BankRouter do
-    use Commanded.Commands.Router
-
-    dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount, lifespan: BankAccountLifespan, identity: :account_number
-    dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount, lifespan: BankAccountLifespan, identity: :account_number
-    dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount, identity: :account_number
-  end
+  alias Commanded.Registration
 
   describe "aggregate started" do
     setup do
@@ -36,7 +16,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, aggregate_uuid)
 
-      pid = apply(@registry_provider, :whereis_name, [{:aggregate_registry, {BankAccount, aggregate_uuid}}])
+      pid = Registration.whereis_name({BankAccount, aggregate_uuid})
       ref = Process.monitor(pid)
 
       %{aggregate_uuid: aggregate_uuid, ref: ref}

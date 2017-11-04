@@ -5,16 +5,16 @@ defmodule Commanded.Event.HandleEventTest do
   import Commanded.Assertions.EventAssertions
 
   alias Commanded.EventStore
-  alias Commanded.Event.AppendingEventHandler
+  alias Commanded.Event.{AppendingEventHandler,UninterestingEvent}
   alias Commanded.Helpers.EventFactory
-  alias Commanded.Helpers.Wait
-  alias Commanded.ExampleDomain.AccountBalanceHandler
+  alias Commanded.Helpers.{ProcessHelper,Wait}
+  alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
 
   setup do
     on_exit fn ->
-      Commanded.Helpers.Process.shutdown(AccountBalanceHandler)
-      Commanded.Helpers.Process.shutdown(AppendingEventHandler)
+      ProcessHelper.shutdown(AccountBalanceHandler)
+      ProcessHelper.shutdown(AppendingEventHandler)
     end
   end
 
@@ -34,10 +34,8 @@ defmodule Commanded.Event.HandleEventTest do
     end)
   end
 
-  defmodule UninterestingEvent, do: defstruct [field: nil]
-
   test "should ignore uninterested events" do
-    {:ok, handler} = AccountBalanceHandler.start_link
+    {:ok, handler} = AccountBalanceHandler.start_link()
 
     # include uninterested events within those the handler is interested in
     events = [
@@ -65,14 +63,16 @@ defmodule Commanded.Event.HandleEventTest do
 
     wait_for_event BankAccountOpened
 
-    {:ok, _} = AppendingEventHandler.start_link(start_from: :current)
+    {:ok, handler} = AppendingEventHandler.start_link(start_from: :current)
+
+    assert GenServer.call(handler, :last_seen_event) == nil
 
     {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
     wait_for_event MoneyDeposited
 
     Wait.until(fn ->
-      assert AppendingEventHandler.received_events == new_events
+      assert AppendingEventHandler.received_events() == new_events
 
       [ metadata ] = AppendingEventHandler.received_metadata()
 
@@ -80,6 +80,8 @@ defmodule Commanded.Event.HandleEventTest do
       assert Map.get(metadata, :stream_id) == stream_uuid
       assert Map.get(metadata, :stream_version) == 2
       assert %NaiveDateTime{} = Map.get(metadata, :created_at)
+
+      assert GenServer.call(handler, :last_seen_event) == 2
     end)
 	end
 
@@ -90,14 +92,14 @@ defmodule Commanded.Event.HandleEventTest do
 
     {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, Commanded.Event.Mapper.map_to_event_data(initial_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
-    {:ok, _} = AppendingEventHandler.start_link(start_from: :origin)
+    {:ok, _handler} = AppendingEventHandler.start_link(start_from: :origin)
 
     {:ok, 2} = EventStore.append_to_stream(stream_uuid, 1, Commanded.Event.Mapper.map_to_event_data(new_events, UUID.uuid4(), UUID.uuid4(), %{}))
 
     wait_for_event MoneyDeposited
 
     Wait.until(fn ->
-      assert AppendingEventHandler.received_events == initial_events ++ new_events
+      assert AppendingEventHandler.received_events() == initial_events ++ new_events
 
       received_metadata = AppendingEventHandler.received_metadata()
 
@@ -127,8 +129,52 @@ defmodule Commanded.Event.HandleEventTest do
     end)
 
     Wait.until(fn ->
-      assert AppendingEventHandler.received_events == events
-      assert pluck(AppendingEventHandler.received_metadata, :stream_version) == [1, 2]
+      assert AppendingEventHandler.received_events() == events
+      assert pluck(AppendingEventHandler.received_metadata(), :stream_version) == [1, 2]
     end)
 	end
+
+  describe "event handler name" do
+    test "should parse string" do
+      assert Commanded.Event.Handler.parse_name(__MODULE__, "foo") == "foo"
+    end
+
+    test "should parse atom to string" do
+      assert Commanded.Event.Handler.parse_name(__MODULE__, :foo) == ":foo"
+    end
+
+    test "should parse tuple to string" do
+      assert Commanded.Event.Handler.parse_name(__MODULE__, {:foo, :bar}) == "{:foo, :bar}"
+    end
+
+    test "should error when parsing empty string" do
+      assert_raise RuntimeError, fn ->
+        Commanded.Event.Handler.parse_name(__MODULE__, "")
+      end
+    end
+
+    test "should error when parsing `nil`" do
+      assert_raise RuntimeError, fn ->
+        Commanded.Event.Handler.parse_name(__MODULE__, nil)
+      end
+    end
+  end
+
+  test "should ensure an event handler name is provided" do
+    assert_raise RuntimeError, "UnnamedEventHandler expects `:name` to be given", fn ->
+      Code.eval_string """
+        defmodule UnnamedEventHandler do
+          use Commanded.Event.Handler
+        end
+      """
+    end
+  end
+
+  test "should allow using event handler module as name" do
+    Code.eval_string """
+      defmodule EventHandler do
+        use Commanded.Event.Handler, name: __MODULE__
+      end
+    """
+  end
 end

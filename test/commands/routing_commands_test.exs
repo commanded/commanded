@@ -1,14 +1,12 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
   use Commanded.StorageCase
 
-  alias Commanded.Commands.ExecutionResult
+  alias Commanded.Commands.{ExecutionResult,UnregisteredCommand}
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.{OpenAccountHandler,DepositMoneyHandler,WithdrawMoneyHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,CloseAccount,DepositMoney,WithdrawMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-
-  defmodule UnregisteredCommand, do: defstruct [aggregate_uuid: UUID.uuid4]
 
   describe "routing to command handler" do
     defmodule CommandHandlerRouter do
@@ -32,19 +30,8 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "routing to aggregate" do
-    defmodule Command, do: defstruct [uuid: nil]
-
-    defmodule AggregateRoot do
-      defstruct [uuid: nil]
-
-      def execute(%AggregateRoot{}, %Command{}), do: []
-    end
-
-    defmodule AggregateRouter do
-      use Commanded.Commands.Router
-
-      dispatch Command, to: AggregateRoot, identity: :uuid
-    end
+    alias Commanded.Commands.AggregateRouter
+    alias Commanded.Commands.AggregateRoot.Command
 
     test "should dispatch command to registered handler" do
       assert :ok = AggregateRouter.dispatch(%Command{uuid: UUID.uuid4})

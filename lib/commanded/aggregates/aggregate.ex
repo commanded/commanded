@@ -15,6 +15,7 @@ defmodule Commanded.Aggregates.Aggregate do
   """
 
   use GenServer
+  use Commanded.Registration
 
   require Logger
 
@@ -22,8 +23,6 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
 
-  @registry_provider Application.get_env(:commanded, :registry_provider, Registry)
-  @aggregate_registry_name :aggregate_registry
   @read_event_batch_size 100
 
   defstruct [
@@ -33,22 +32,19 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_version: 0,
   ]
 
-  def start_link(aggregate_module, aggregate_uuid)
-  def start_link(aggregate_module, aggregate_uuid) do
-    name = via_tuple(aggregate_module, aggregate_uuid)
-
-    GenServer.start_link(__MODULE__, %Aggregate{
+  def start_link(aggregate_module, aggregate_uuid, opts \\ []) do
+    aggregate = %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
-    },
-    name: name)
-  end
+    }
 
-  defp via_tuple(aggregate_module, aggregate_uuid) do
-    {:via, @registry_provider, {@aggregate_registry_name, {aggregate_module, aggregate_uuid}}}
+    GenServer.start_link(__MODULE__, aggregate, opts)
   end
 
   @doc false
+  def name(aggregate_module, aggregate_uuid),
+    do: {aggregate_module, aggregate_uuid}
+
   def init(%Aggregate{} = state) do
     # initial aggregate state is populated by loading events from event store
     GenServer.cast(self(), :populate_aggregate_state)
@@ -78,22 +74,22 @@ defmodule Commanded.Aggregates.Aggregate do
 
   """
   def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000) do
-    GenServer.call(via_tuple(aggregate_module, aggregate_uuid), {:execute_command, context}, timeout)
+    GenServer.call(via_name(aggregate_module, aggregate_uuid), {:execute_command, context}, timeout)
   end
 
   @doc false
   def aggregate_state(aggregate_module, aggregate_uuid) do
-    GenServer.call(via_tuple(aggregate_module, aggregate_uuid), :aggregate_state)
+    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state)
   end
 
   @doc false
   def aggregate_state(aggregate_module, aggregate_uuid, timeout) do
-    GenServer.call(via_tuple(aggregate_module, aggregate_uuid), :aggregate_state, timeout)
+    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state, timeout)
   end
 
   @doc false
   def aggregate_version(aggregate_module, aggregate_uuid) do
-    GenServer.call(via_tuple(aggregate_module, aggregate_uuid), :aggregate_version)
+    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_version)
   end
 
   @doc false
@@ -219,4 +215,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
     EventStore.append_to_stream(stream_uuid, expected_version, event_data)
   end
+
+  defp via_name(aggregate_module, aggregate_uuid),
+    do: name(aggregate_module, aggregate_uuid) |> via_tuple()
 end

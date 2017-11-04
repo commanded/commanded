@@ -1,11 +1,11 @@
 defmodule Commanded.Commands.Handler do
   @moduledoc """
-  Defines the behaviour a command handler must implement to support command dispatch.
+  Defines the behaviour a command handler module must implement to support command dispatch.
 
   ## Example
 
   An open account handler that delegates to a bank account aggregate root:
-
+  
       defmodule OpenAccountHandler do
         @behaviour Commanded.Commands.Handler
 

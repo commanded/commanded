@@ -13,7 +13,7 @@ defmodule Commanded.Subscriptions do
     subscribers: [],
   ]
 
-  def start_link do
+  def start_link(_arg) do
     GenServer.start_link(__MODULE__, %Subscriptions{}, name: __MODULE__)
   end
 

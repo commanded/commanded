@@ -1,4 +1,4 @@
-# Usage
+# Using Commanded
 
 Commanded provides the building blocks for you to create your own Elixir applications following the CQRS/ES pattern.
 
@@ -74,6 +74,28 @@ Here's an example bank account opening feature built using Commanded to demonstr
       use Commanded.Commands.Router
 
       dispatch OpenBankAccount, to: BankAccount, identity: :account_number
+    end
+    ```
+
+5. Create an event handler module that updates a bank account balance:
+
+    ```elixir
+    defmodule AccountBalanceHandler do
+      use Commanded.Event.Handler, name: __MODULE__
+
+      def init do
+        with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
+          :ok
+        end
+      end
+
+      def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
+        Agent.update(__MODULE__, fn _ -> initial_balance end)
+      end
+
+      def current_balance do
+        Agent.get(__MODULE__, fn balance -> balance end)
+      end
     end
     ```
 

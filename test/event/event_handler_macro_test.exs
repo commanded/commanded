@@ -1,18 +1,14 @@
 defmodule Commanded.Event.EventHandlerMacroTest do
   use Commanded.StorageCase
 
-  defmodule IgnoredEvent do
-    defstruct [name: nil]
-  end
-
-  alias Commanded.ExampleDomain.AccountBalanceHandler
+  alias Commanded.Event.IgnoredEvent
+  alias Commanded.Helpers.{EventFactory,ProcessHelper,Wait}
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened,MoneyDeposited}
-  alias Commanded.Helpers.EventFactory
-  alias Commanded.Helpers.Wait
+  alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
 
   setup do
     on_exit fn ->
-      Commanded.Helpers.Process.shutdown(AccountBalanceHandler)
+      ProcessHelper.shutdown(AccountBalanceHandler)
     end
   end
 

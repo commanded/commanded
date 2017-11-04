@@ -1,11 +1,13 @@
 defmodule Commanded.ProcessManagers.ProcessRouter do
   @moduledoc false
   use GenServer
+  use Commanded.Registration
 
   require Logger
 
   alias Commanded.ProcessManagers.{
     ProcessManagerInstance,
+    ProcessRouter,
     Supervisor,
   }
   alias Commanded.EventStore
@@ -13,6 +15,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   alias Commanded.Subscriptions
 
   defmodule State do
+    @moduledoc false
     defstruct [
       command_dispatcher: nil,
       consistency: nil,
@@ -28,13 +31,16 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   def start_link(process_manager_name, process_manager_module, command_dispatcher, opts \\ []) do
-    GenServer.start_link(__MODULE__, %State{
+    name = {ProcessRouter, process_manager_name}
+    state = %State{
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
       command_dispatcher: command_dispatcher,
       consistency: opts[:consistency] || :eventual,
       subscribe_from: opts[:start_from] || :origin,
-    }, [name: process_manager_module])
+    }
+
+    Registration.start_link(name, __MODULE__, state)
   end
 
   def init(%State{command_dispatcher: command_dispatcher} = state) do
@@ -59,6 +65,19 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   """
   def process_instance(process_router, process_uuid) do
     GenServer.call(process_router, {:process_instance, process_uuid})
+  end
+
+  @doc """
+  Fetch the `process_uuid` and pid of all process manager instances
+  """
+  def process_instances(process_router) do
+    GenServer.call(process_router, {:process_instances})
+  end
+
+  def handle_call({:process_instances}, _from, %State{process_managers: process_managers} = state) do
+    reply = Enum.map(process_managers, fn {process_uuid, pid} -> {process_uuid, pid} end)
+
+    {:reply, reply, state}
   end
 
   def handle_call({:process_instance, process_uuid}, _from, %State{process_managers: process_managers} = state) do

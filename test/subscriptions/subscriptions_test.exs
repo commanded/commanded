@@ -3,19 +3,14 @@ defmodule Commanded.SubscriptionsTest do
 
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
+  alias Commanded.Helpers.ProcessHelper
 
   setup do
-    Subscriptions.start_link()
-
-    # sleeping process used in tests that require a PID
-    pid = spawn(fn -> :timer.sleep(:infinity) end)
+    Subscriptions.start_link([])
 
     on_exit fn ->
-      Commanded.Helpers.Process.shutdown(Subscriptions)
-      Commanded.Helpers.Process.shutdown(pid)
+      ProcessHelper.shutdown(Subscriptions)
     end
-
-    [pid: pid]
   end
 
   describe "register event handler" do
