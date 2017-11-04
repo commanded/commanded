@@ -35,7 +35,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
     ```elixir
     defmodule BankAccount do
-      defstruct [account_number: nil, balance: nil]
+      defstruct [:account_number, :balance]
 
       # public command API
 
@@ -45,16 +45,17 @@ Here's an example bank account opening feature built using Commanded to demonstr
         %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
       end
 
-      # ensure initial balance is never negative
-      def execute(%BankAccount{} = account, %OpenBankAccount{initial_balance: initial_balance})
+      # ensure initial balance is never zero or negative
+      def execute(%BankAccount{}, %OpenBankAccount{initial_balance: initial_balance})
         when initial_balance <= 0
       do
         {:error, :initial_balance_must_be_above_zero}
       end
 
       # ensure account has not already been opened
-      def execute(%BankAccount{} = account, %OpenBankAccount{}),
-        do: {:error, :account_already_opened}
+      def execute(%BankAccount{}, %OpenBankAccount{}) do
+        {:error, :account_already_opened}
+      end
 
       # state mutators
 
