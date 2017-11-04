@@ -78,10 +78,6 @@ Yes, Commanded is being used in production.
 
 [Conduit](https://github.com/slashdotdash/conduit) is an open source, example Phoenix 1.3 web application implementing the CQRS/ES pattern in Elixir. It was built to demonstrate the implementation of Commanded in an Elixir application for the [Building Conduit](https://leanpub.com/buildingconduit) book.
 
-## Limitations
-
-Commanded is currently limited to running on a single node. Support for running on a cluster of nodes ([#39](https://github.com/commanded/commanded/issues/39)) is under active development.
-
 ## Contributing
 
 Pull requests to contribute new or improved features, and extend documentation are most welcome.

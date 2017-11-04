@@ -9,6 +9,7 @@
 - Add `include_execution_result` option to command dispatch ([#96](https://github.com/commanded/commanded/pull/96)).
 - Add `Commanded.Aggregate.Multi` ([#98](https://github.com/commanded/commanded/pull/98)) as a way to return multiple events from a command dispatch that require aggregate state to be updated after each event.
 - Correlation and causation ids ([#105](https://github.com/commanded/commanded/pull/105)).
+- Initial support for running on a cluster of nodes ([#80](https://github.com/commanded/commanded/pull/80)).
 
 ### Bug fixes
 
