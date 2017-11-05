@@ -12,6 +12,9 @@ defmodule BankAccountOpened do
 end
 ```
 
+Note, due serialization you should expect that only: strings, numbers and boolean values of defined event are preserved; other will be converted to string.
+How you can control this behaviour described in serialization section.
+
 ## Event handlers
 
 Use the `Commanded.Event.Handler` macro within your event handler module to implement the defined behaviour. This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique event number. It should return `:ok` on success or `{:error, :reason}` on failure. You can return `{:error, :already_seen_event}` to skip events that have already been handled, due to the at-least-once event delivery of the supported event stores.
@@ -65,7 +68,6 @@ end
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
 You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
-
 
 ### Consistency guarantee
 
