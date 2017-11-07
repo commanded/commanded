@@ -12,8 +12,7 @@ defmodule BankAccountOpened do
 end
 ```
 
-Note, due serialization you should expect that only: strings, numbers and boolean values of defined event are preserved; other will be converted to string.
-How you can control this behaviour described in serialization section.
+Note, due to event serialization you should expect that only: strings, numbers and boolean values defined in an event are preserved; any other value will be converted to a string. You can control this behaviour as described in serialization section.
 
 ## Event handlers
 
