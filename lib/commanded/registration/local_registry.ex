@@ -16,7 +16,7 @@ defmodule Commanded.Registration.LocalRegistry do
       Supervisor.child_spec({Registry, [
         keys: :unique,
         name: __MODULE__
-      ]}, id: :commanded_local_registry),
+      ]}, id: __MODULE__),
     ]
   end
 
