@@ -24,20 +24,24 @@ In this bank account example, the public function to open a new account is `open
 
 ```elixir
 defmodule BankAccount do
-  defstruct [account_number: nil, balance: nil]
+  defstruct [:account_number, :balance]
 
   # public command API
 
-  def open_account(%BankAccount{} = account, account_number, initial_balance)
+  def open_account(%BankAccount{account_number: nil}, account_number, initial_balance)
     when initial_balance > 0
   do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
-  def open_account(%BankAccount{} = account, account_number, initial_balance)
+  def open_account(%BankAccount{}, _account_number, initial_balance)
     when initial_balance <= 0
   do
     {:error, :initial_balance_must_be_above_zero}
+  end
+
+  def open_account(%BankAccount{account_number: account_number}, account_number, _initial_balance) do
+    {:error, :account_already_opened}
   end
 
   # state mutators
@@ -57,18 +61,25 @@ In this case the example function matches on the `OpenAccount` command module:
 
 ```elixir
 defmodule BankAccount do
-  defstruct [account_number: nil, balance: nil]
+  defstruct [:account_number, :balance]
 
   # public command API
 
-  def execute(%BankAccount{} = account, %OpenAccount{account_number: account_number, initial_balance: initial_balance})
+  def execute(%BankAccount{account_number: nil}, %OpenAccount{account_number: account_number, initial_balance: initial_balance})
     when initial_balance > 0
   do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
-  def execute(%BankAccount{} = account, %OpenAccount{initial_balance: initial_balance}),
-    do: {:error, :initial_balance_must_be_above_zero}
+  def execute(%BankAccount{}, %OpenAccount{initial_balance: initial_balance})
+    when initial_balance <= 0
+  do
+    {:error, :initial_balance_must_be_above_zero}
+  end
+
+  def open_account(%BankAccount{account_number: account_number}, %OpenAccount{account_number: account_number}) do
+    {:error, :account_already_opened}
+  end
 
   # state mutators
 

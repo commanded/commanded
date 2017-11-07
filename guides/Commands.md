@@ -49,8 +49,7 @@ defmodule OpenAccountHandler do
   @behaviour Commanded.Commands.Handler
 
   def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
-    aggregate
-    |> BankAccount.open_account(account_number, initial_balance)
+    BankAccount.open_account(aggregate, account_number, initial_balance)
   end
 end
 ```
@@ -73,7 +72,7 @@ The aggregate must implement an `execute/2` function that receives the aggregate
 
 ### Dispatching commands
 
-You can then dispatch a command using the router:
+You dispatch a command to its registered aggregate using the router:
 
 ```elixir
 :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
@@ -133,7 +132,9 @@ end
 You can override the timeout value during command dispatch. This example is dispatching the open account command with a timeout of 2 seconds:
 
 ```elixir
-:ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000}, timeout: 2_000)
+open_account = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+:ok = BankRouter.dispatch(open_account, timeout: 2_000)
 ```
 
 ### Multi-command registration
@@ -259,44 +260,9 @@ It's helpful for debugging to have additional metadata associated with events is
 :ok = ExampleRouter.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
 ```
 
-Note, due metadata serialization you should expect that only: strings, numbers and boolean values are preserved; any other value will be converted to a string.
+Note, due metadata serialization you should expect that only: strings, numbers, and boolean values are preserved; any other value will be converted to a string.
 
-You should always use string keys in your metadata map. If you use atom keys they will be converted to string.
-
-In addition to the metadata key/values you provide, the following system values will be included when metadata is passed to an event handler:
-
-- `event_id` - a globally unique UUID to identify the event.
-- `event_number` - a globally unique, monotonically incrementing and gapless integer used to order the event amongst all events.
-- `stream_id` - the stream identity for the event.
-- `stream_version` - the version of the stream for the event.
-- `causation_id` - an optional UUID identifier used to identify which command caused the event.
-- `correlation_id` - an optional UUID identifier used to correlate related commands/events.
-- `created_at` - the date/time, in UTC, indicating when the event was created.
-
-These key/value metadata pairs will use atom keys to differentiate them from the user provided metadata:
-
-```elixir
-defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: "ExampleHandler"
-
-  def handle(event, metadata) do
-    IO.inspect(metadata)
-    # %{
-    #   :causation_id => "db1ebd30-7d3c-40f7-87cd-12cd9966df32",
-    #   :correlation_id => "1599630b-9c38-433c-9548-0dd793108ba0",
-    #   :created_at => ~N[2017-10-30 11:19:56.178901],
-    #   :event_id => "5e4a0f38-385b-4d57-823b-a1bcf705b7bb",
-    #   :event_number => 12345,
-    #   :stream_id => "e42a588d-2cda-4314-a471-5d008cce01fc",
-    #   :stream_version => 1,
-    #   "issuer_id" => "0768d69a-d2b7-48f4-d0e9-083a97f7ebe0",
-    #   "user_id" => "user@example.com"
-    # }
-
-    :ok
-  end
-end
-```
+You should always use string keys in your metadata map; atom keys will be converted to strings.
 
 ### Aggregate lifespan
 
@@ -364,7 +330,7 @@ defmodule NoOpMiddleware do
   alias Commanded.Middleware.Pipeline
   import Pipeline
 
-  def before_dispatch(%Pipeline{command: command} = pipeline) do
+  def before_dispatch(%Pipeline{} = pipeline) do
     pipeline
   end
 
