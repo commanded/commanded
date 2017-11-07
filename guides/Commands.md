@@ -253,7 +253,7 @@ You can use [Commanded audit middleware](https://github.com/commanded/commanded-
 
 ### Event metadata
 
-It's helpful for debugging to have additional metadata associated with events issued by command. You can set it when dispatching a command:
+It's helpful for debugging to have additional metadata associated with events issued by a command. You can set it when dispatching a command:
 
 ```elixir
 :ok = ExampleRouter.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
