@@ -21,7 +21,9 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
   alias Commanded.Helpers.{CommandAuditMiddleware,ProcessHelper}
 
   setup do
+    CommandAuditMiddleware.start_link()
     CommandAuditMiddleware.reset()
+
     {:ok, process_manager} = TransferMoneyProcessManager.start_link()
 
     on_exit fn ->
