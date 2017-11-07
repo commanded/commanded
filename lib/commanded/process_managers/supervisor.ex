@@ -8,7 +8,7 @@ defmodule Commanded.ProcessManagers.Supervisor do
   end
 
   def start_process_manager(supervisor, process_manager_name, process_manager_module, process_uuid) do
-    Logger.debug(fn -> "starting process manager process for `#{process_manager_module}` with uuid #{process_uuid}" end)
+    Logger.debug(fn -> "Starting process manager process for `#{process_manager_module}` with uuid #{process_uuid}" end)
 
     Supervisor.start_child(supervisor, [process_manager_name, process_manager_module, process_uuid])
   end
