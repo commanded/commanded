@@ -2,13 +2,10 @@ defmodule Commanded.SubscriptionsTest do
 	use ExUnit.Case
 
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.Helpers.ProcessHelper
   alias Commanded.Subscriptions
 
   setup do
-    {:ok, pid} = restart_subscriptions()
-
-    [pid: pid]
+    Subscriptions.reset()
   end
 
   describe "register event handler" do
@@ -132,36 +129,28 @@ defmodule Commanded.SubscriptionsTest do
   end
 
   describe "expire stream acks" do
-    test "should expire stale acks", %{pid: pid} do
+    test "should expire stale acks" do
       :ok = Subscriptions.register("handler1", :strong)
       :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 1})
 
       assert Subscriptions.handled?("stream1", 1)
 
+      pid = Commanded.Registration.whereis_name(Subscriptions)
       send(pid, {:purge_expired_streams, 0})
 
       refute Subscriptions.handled?("stream1", 1)
     end
 
-    test "should not expire fresh acks", %{pid: pid} do
+    test "should not expire fresh acks" do
       :ok = Subscriptions.register("handler1", :strong)
       :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 1})
 
       assert Subscriptions.handled?("stream1", 1)
 
+      pid = Commanded.Registration.whereis_name(Subscriptions)
       send(pid, {:purge_expired_streams, 1_000})
 
       assert Subscriptions.handled?("stream1", 1)
-    end
-  end
-
-  defp restart_subscriptions do
-    Subscriptions |> Commanded.Registration.whereis_name() |> ProcessHelper.shutdown()
-
-    case Subscriptions.start_link([]) do
-      {:ok, pid} -> {:ok, pid}
-      {:error, {:already_started, pid}} -> {:ok, pid}
-      reply -> reply
     end
   end
 end

@@ -14,8 +14,8 @@ defmodule Commanded.Subscriptions do
     subscribers: [],
   ]
 
-  def start_link(_arg) do
-    Registration.start_link(__MODULE__, __MODULE__, %Subscriptions{})
+  def start_link(arg) do
+    Registration.start_link(__MODULE__, __MODULE__, arg)
   end
 
   @doc """
@@ -40,6 +40,11 @@ defmodule Commanded.Subscriptions do
   @doc false
   def all do
     GenServer.call(via_tuple(__MODULE__), :all_subscriptions)
+  end
+
+  @doc false
+  def reset do
+    GenServer.call(via_tuple(__MODULE__), :reset)
   end
 
   @doc """
@@ -69,21 +74,22 @@ defmodule Commanded.Subscriptions do
     end
   end
 
-  def init(%Subscriptions{} = state) do
+  def init(_arg) do
     schedule_purge_streams()
 
-    state = %Subscriptions{state |
-      subscriptions_table: :ets.new(:subscriptions, [:set, :private]),
-      streams_table: :ets.new(:streams, [:set, :private]),
-      started_at: now(),
-    }
-
-    {:ok, state}
+    {:ok, initial_state()}
   end
 
   def handle_call(:all_subscriptions, _from, %Subscriptions{} = state) do
     reply = subscriptions(state)
     {:reply, reply, state}
+  end
+
+  def handle_call(:reset, _from, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table}) do
+    :ets.delete(streams_table)
+    :ets.delete(subscriptions_table)
+    
+    {:reply, :ok, initial_state()}
   end
 
   def handle_call({:handled?, stream_uuid, stream_version, excluding}, _from, %Subscriptions{} = state) do
@@ -162,6 +168,14 @@ defmodule Commanded.Subscriptions do
     }
 
     {:noreply, state}
+  end
+
+  defp initial_state do
+    %Subscriptions{
+      subscriptions_table: :ets.new(:subscriptions, [:set, :private]),
+      streams_table: :ets.new(:streams, [:set, :private]),
+      started_at: now(),
+    }
   end
 
   # Have all subscriptions handled the event for the given stream and version
