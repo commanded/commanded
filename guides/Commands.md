@@ -251,6 +251,47 @@ Commands dispatched by a process manager will be automatically assigned the appr
 
 You can use [Commanded audit middleware](https://github.com/commanded/commanded-audit-middleware) to record every dispatched command. This allows you to follow the chain of commands and events by using the causation id. The correlation id can be used to find all related commands and events.
 
+### Events metadata
+
+It's helpful for debugging to have additional metadata associated with events issued by command. You can set it when dispatching a command:
+
+```elixir
+{
+  :ok,
+  %Commanded.Commands.ExecutionResult{
+    ...,
+    metadata: %{
+      command_id: "1c4d0e09-2958-41db-bce0-0fad4d644825",
+      issuer_id: "0768d69a-d2b7-48f4-d0e9-083a97f7ebe0",
+    }
+  }
+} = ExampleRouter.dispatch(command, metadata: %{issuer_id: issuer_id, command_id: command_id}, include_execution_result: true)
+```
+
+Note, due serialization you should expect that only: strings, numbers and boolean values are preserved; other will be converted to string.
+So even if you passed metadata map with atom keys as above, they would be converted, but system one are special:
+
+```
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: "ExampleHandler"
+
+  def handle(%AnEvent{...}, metadata) do
+    # IO.inspect(metadata)
+    # => %{
+    #   :created_at => ~N[2017-10-30 11:19:56.178901],
+    #   :event_number => 1,
+    #   :stream_id => "e42a588d-2cda-4314-a471-5d008cce01fc",
+    #   :stream_version => 1,
+
+    #   "command_id" => "1c4d0e09-2958-41db-bce0-0fad4d644825",
+    #   "issuer_id" => "0768d69a-d2b7-48f4-d0e9-083a97f7ebe0",
+    # }
+
+    ...
+  end
+end
+```
+
 ### Aggregate lifespan
 
 By default an aggregate instance process will run indefinitely once started. You can control this by implementing the `Commanded.Aggregates.AggregateLifespan` behaviour in a module.
