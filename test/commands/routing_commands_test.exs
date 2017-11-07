@@ -43,25 +43,8 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "identify aggregate" do
-    defmodule IdentityCommand, do: defstruct [:uuid]
-    defmodule IdentityEvent, do: defstruct [:uuid]
-
-    defmodule IdentityAggregateRoot do
-      defstruct [uuid: nil]
-
-      def execute(%__MODULE__{}, %IdentityCommand{uuid: uuid}), do: %IdentityEvent{uuid: uuid}
-      def apply(aggregate, _event), do: aggregate
-    end
-
-    defmodule IdentityAggregateRouter do
-      use Commanded.Commands.Router
-
-      identify IdentityAggregateRoot,
-        by: :uuid,
-        prefix: "prefix-"
-
-      dispatch IdentityCommand, to: IdentityAggregateRoot
-    end
+    alias Commanded.Commands.IdentityAggregateRouter
+    alias Commanded.Commands.IdentityAggregate.IdentityCommand
 
     test "should dispatch command to registered handler" do
       assert :ok = IdentityAggregateRouter.dispatch(%IdentityCommand{uuid: UUID.uuid4})
@@ -77,34 +60,16 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "identify aggregate using function" do
-    defmodule IdentityFunctionCommand, do: defstruct [:uuid]
-    defmodule IdentityFunctionEvent, do: defstruct [:uuid]
-
-    defmodule IdentityFunctionAggregateRoot do
-      defstruct [uuid: nil]
-
-      def execute(%__MODULE__{}, %IdentityFunctionCommand{uuid: uuid}), do: %IdentityFunctionEvent{uuid: uuid}
-      def apply(aggregate, _event), do: aggregate
-    end
-
-    defmodule IdentityFunctionAggregateRouter do
-      use Commanded.Commands.Router
-
-      identify IdentityFunctionAggregateRoot,
-        by: &IdentityFunctionAggregateRouter.aggregate_identity/1
-
-      dispatch IdentityFunctionCommand, to: IdentityFunctionAggregateRoot
-
-      def aggregate_identity(%{uuid: uuid}), do: "fun-prefix-" <> uuid
-    end
+    alias Commanded.Commands.IdentityFunctionRouter
+    alias Commanded.Commands.IdentityFunctionAggregate.IdentityFunctionCommand
 
     test "should dispatch command to registered handler" do
-      assert :ok = IdentityFunctionAggregateRouter.dispatch(%IdentityFunctionCommand{uuid: UUID.uuid4})
+      assert :ok = IdentityFunctionRouter.dispatch(%IdentityFunctionCommand{uuid: UUID.uuid4})
     end
 
     test "should append events to stream" do
       uuid = UUID.uuid4()
-      assert :ok = IdentityFunctionAggregateRouter.dispatch(%IdentityFunctionCommand{uuid: uuid})
+      assert :ok = IdentityFunctionRouter.dispatch(%IdentityFunctionCommand{uuid: uuid})
 
       recorded_events = EventStore.stream_forward("fun-prefix-" <> uuid, 0) |> Enum.to_list()
       assert length(recorded_events) == 1

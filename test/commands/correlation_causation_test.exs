@@ -3,18 +3,17 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.Commands.OpenAccountBonusHandler
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.{
     BankRouter,
     TransferMoneyProcessManager,
   }
   alias Commanded.ExampleDomain.BankAccount.Commands.{
-    DepositMoney,
     OpenAccount,
     WithdrawMoney,
   }
   alias Commanded.ExampleDomain.BankAccount.Events.{
-    BankAccountOpened,
     MoneyDeposited,
   }
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
@@ -136,26 +135,6 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
 
   describe "event handler dispatch command" do
     setup [:start_account_bonus_handler]
-
-    defmodule OpenAccountBonusHandler do
-      use Commanded.Event.Handler, name: "OpenAccountBonus"
-
-      def handle(
-        %BankAccountOpened{account_number: account_number},
-        %{event_id: causation_id, correlation_id: correlation_id})
-      do
-        deposit_welcome_bonus = %DepositMoney{
-          account_number: account_number,
-          transfer_uuid: UUID.uuid4(),
-          amount: 100,
-        }
-
-        BankRouter.dispatch(deposit_welcome_bonus,
-          causation_id: causation_id,
-          correlation_id: correlation_id,
-        )
-      end
-    end
 
     test "should copy `correlation_id` from handled event" do
       correlation_id = UUID.uuid4()
