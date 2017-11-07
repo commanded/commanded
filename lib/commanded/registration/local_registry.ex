@@ -13,10 +13,7 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def child_spec do
     [
-      Supervisor.child_spec({Registry, [
-        keys: :unique,
-        name: __MODULE__
-      ]}, id: __MODULE__),
+      {Registry, keys: :unique, name: __MODULE__},
     ]
   end
 

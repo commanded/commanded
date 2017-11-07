@@ -10,7 +10,7 @@ defmodule Commanded.Supervisor do
 
   def init(_) do
     children = Registration.child_spec() ++ [
-      Supervisor.child_spec({Task.Supervisor, [name: Commanded.Commands.TaskDispatcher]}, []),
+      {Task.Supervisor, name: Commanded.Commands.TaskDispatcher},
       {Commanded.Aggregates.Supervisor, []},
       {Commanded.Subscriptions, []},
     ]
