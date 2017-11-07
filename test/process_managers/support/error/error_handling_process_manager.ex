@@ -25,56 +25,56 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
 
   def handle(
     %ErrorHandlingProcessManager{},
-    %ProcessStarted{process_uuid: process_uuid, strategy: strategy, delay: delay, reply_to: reply_to})
+    %ProcessStarted{process_uuid: process_uuid, strategy: strategy, delay: delay})
   do
-    %AttemptProcess{process_uuid: process_uuid, strategy: strategy, delay: delay, reply_to: reply_to}
+    %AttemptProcess{process_uuid: process_uuid, strategy: strategy, delay: delay}
   end
 
-  def handle(%ErrorHandlingProcessManager{}, %ProcessContinued{reply_to: reply_to}) do
-    reply(reply_to, :process_continued)
+  def handle(%ErrorHandlingProcessManager{}, %ProcessContinued{}) do
+    reply(:process_continued)
     []
   end
 
   # stop after three attempts
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry", reply_to: reply_to}, _pending_commands, %{attempts: attempts} = context)
+  def error({:error, :failed}, %AttemptProcess{strategy: "retry"}, _pending_commands, %{attempts: attempts} = context)
     when attempts >= 2
   do
-    reply(reply_to, {:error, :too_many_attempts, record_attempt(context)})
+    reply({:error, :too_many_attempts, record_attempt(context)})
 
     {:stop, :too_many_attempts}
   end
 
   # retry command with delay
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry", delay: delay} = failed_command, _pending_commands, context)
+  def error({:error, :failed}, %AttemptProcess{strategy: "retry", delay: delay}, _pending_commands, context)
     when is_integer(delay)
   do
     context = record_attempt(context)
-    reply_failure(failed_command, Map.put(context, :delay, delay))
+    reply_failure(Map.put(context, :delay, delay))
 
     {:retry, delay, context}
   end
 
   # retry command
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry"} = failed_command, _pending_commands, context) do
+  def error({:error, :failed}, %AttemptProcess{strategy: "retry"}, _pending_commands, context) do
     context = record_attempt(context)
-    reply_failure(failed_command, context)
+    reply_failure(context)
 
     {:retry, context}
   end
 
   # skip failed command, continue pending
-  def error({:error, :failed}, %AttemptProcess{strategy: "skip", reply_to: reply_to}, _pending_commands, context) do
-    reply(reply_to, {:error, :failed, record_attempt(context)})
+  def error({:error, :failed}, %AttemptProcess{strategy: "skip"}, _pending_commands, context) do
+    reply({:error, :failed, record_attempt(context)})
 
     {:skip, :continue_pending}
   end
 
   # continue with modified command
-  def error({:error, :failed}, %AttemptProcess{strategy: "continue", process_uuid: process_uuid, reply_to: reply_to}, pending_commands, context) do
+  def error({:error, :failed}, %AttemptProcess{strategy: "continue", process_uuid: process_uuid}, pending_commands, context) do
     context = record_attempt(context)
-    reply(reply_to, {:error, :failed, context})
+    reply({:error, :failed, context})
 
-    continue = %ContinueProcess{process_uuid: process_uuid, reply_to: reply_to}
+    continue = %ContinueProcess{process_uuid: process_uuid}
 
     {:continue, [continue | pending_commands], context}
   end
@@ -83,11 +83,11 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
   end
 
-  defp reply_failure(%AttemptProcess{reply_to: reply_to}, context) do
-    reply(reply_to, {:error, :failed, context})
+  defp reply_failure(context) do
+    reply({:error, :failed, context})
   end
 
-  defp reply(reply_to, message) do
+  defp reply(message) do
     reply_to = Agent.get({:global, ErrorHandlingProcessManager}, fn reply_to -> reply_to end)
 
     send(reply_to, message)
