@@ -58,7 +58,7 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
         "guides/Getting Started.md",
         "guides/Choosing an Event Store.md",
         "guides/Usage.md",
-        "guides/Aggregate Roots.md",
+        "guides/Aggregates.md",
         "guides/Commands.md",
         "guides/Events.md",
         "guides/Process Managers.md",

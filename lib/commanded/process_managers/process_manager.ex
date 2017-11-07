@@ -2,9 +2,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @moduledoc """
   Behaviour to define a process manager.
 
-  A process manager is responsible for coordinating one or more aggregate roots.
+  A process manager is responsible for coordinating one or more aggregates.
   It handles events and dispatches commands in response. Process managers have
-  state that can be used to track which aggregate roots are being orchestrated.
+  state that can be used to track which aggregates are being orchestrated.
 
   Use the `Commanded.ProcessManagers.ProcessManager` macro in your process
   manager module and implement the callback functions defined in the behaviour:

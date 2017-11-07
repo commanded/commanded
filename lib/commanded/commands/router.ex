@@ -22,9 +22,9 @@ defmodule Commanded.Commands.Router do
   the aggregate's state and the command to execute. It should delegate the
   command to the aggregate.
 
-  ## Dispatch command directly to an aggregate root
+  ## Dispatch command directly to an aggregate
 
-  You can route a command directly to an aggregate root, without requiring an
+  You can route a command directly to an aggregate, without requiring an
   intermediate command handler.
 
   ### Example
@@ -35,7 +35,7 @@ defmodule Commanded.Commands.Router do
         dispatch OpenAccount, to: BankAccount, identity: :account_number
       end
 
-  The aggregate root must implement an `execute/2` function that receives the
+  The aggregate must implement an `execute/2` function that receives the
   aggregate's state and the command being executed.
 
   ## Define aggregate identity
@@ -175,7 +175,7 @@ defmodule Commanded.Commands.Router do
 
   @doc """
   Configure the command, or list of commands, to be dispatched to the
-  corresponding handler for a given aggregate root
+  corresponding handler for a given aggregate.
   """
   defmacro dispatch(command_module_or_modules, opts) do
     opts = parse_opts(opts, [])

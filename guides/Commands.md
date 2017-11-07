@@ -27,7 +27,7 @@ defmodule BankRouter do
 end
 ```
 
-This can be more succinctly configured by excluding command handlers and [dispatching directly to the aggregate root](#dispatch-directly-to-aggregate), using [multi-command registration](#multi-command-registration), and with the [`identify`](#define-aggregate-identity) helper macro:
+This can be more succinctly configured by excluding command handlers and [dispatching directly to the aggregate](#dispatch-directly-to-aggregate), using [multi-command registration](#multi-command-registration), and with the [`identify`](#define-aggregate-identity) helper macro:
 
 ```elixir
 defmodule BankRouter do
@@ -40,9 +40,9 @@ end
 
 ## Command handlers
 
-A command handler receives the aggregate root and the command being executed. It allows you to validate, authorize, and/or enrich the command with additional data before executing the appropriate aggregate root module function.
+A command handler receives the aggregate and the command being executed. It allows you to validate, authorize, and/or enrich the command with additional data before executing the appropriate aggregate module function.
 
-The command handler must implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate root state and the command to be handled. It must return the raised domain events from the aggregate root. It may return an `{:error, reason}` tuple on failure.
+The command handler must implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate state and the command to be handled. It must return the raised domain events from the aggregate. It may return an `{:error, reason}` tuple on failure.
 
 ```elixir
 defmodule OpenAccountHandler do
@@ -59,7 +59,7 @@ Command handlers execute in the context of the dispatch call, as such they are l
 
 ### Dispatch directly to aggregate
 
-It is also possible to route a command directly to an aggregate root, without requiring an intermediate command handler.
+It is also possible to route a command directly to an aggregate, without requiring an intermediate command handler.
 
 ```elixir
 defmodule BankRouter do
@@ -69,7 +69,7 @@ defmodule BankRouter do
 end
 ```
 
-The aggregate root must implement an `execute/2` function that receives the aggregate's state and the command to execute.
+The aggregate must implement an `execute/2` function that receives the aggregate's state and the command to execute.
 
 ### Dispatching commands
 

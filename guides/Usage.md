@@ -4,7 +4,7 @@ Commanded provides the building blocks for you to create your own Elixir applica
 
 A separate guide is provided for each of the components you can build:
 
-- Aggregate roots.
+- Aggregates.
 - Commands, registration and dispatch.
 - Events and handlers.
 - Process managers.
@@ -31,7 +31,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
     end
     ```
 
-3. Build a `BankAccount` aggregate root to handle the command, protect its business invariants, and return a domain event when successfully handled:
+3. Build a `BankAccount` aggregate to handle the command, protect its business invariants, and return a domain event when successfully handled:
 
     ```elixir
     defmodule BankAccount do

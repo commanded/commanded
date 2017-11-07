@@ -31,7 +31,7 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   @doc """
-  Dispatch the given command to the handler module for the aggregate root as identified
+  Dispatch the given command to the handler module for the aggregate as identified
 
   Returns `:ok` on success, or `{:error, reason}` on failure.
   """

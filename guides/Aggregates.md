@@ -1,24 +1,24 @@
-# Aggregate roots
+# Aggregates
 
-Build your aggregate roots using standard Elixir modules and functions, with structs to hold state. There is no external dependency requirement.
+Build your aggregates using standard Elixir modules and functions, with structs to hold state. There is no external dependency requirement.
 
-An aggregate root is comprised of its state, public command functions, and state mutators.
+An aggregate is comprised of its state, public command functions, and state mutators.
 
 ## Command functions
 
-A command function receives the aggregate root's state and the command to execute. It must return the resultant domain events. This may be none, one, or multiple events.
+A command function receives the aggregate's state and the command to execute. It must return the resultant domain events. This may be none, one, or multiple events.
 
 For business rule violations and errors you may return an `{:error, reason}` tagged tuple or raise an exception.
 
 ## State mutators
 
-The state of an aggregate root can only be mutated by applying a raised domain event to its state. This is achieved by an `apply/2` function that receives the state and the domain event. It returns the modified state.
+The state of an aggregate can only be mutated by applying a raised domain event to its state. This is achieved by an `apply/2` function that receives the state and the domain event. It returns the modified state.
 
 Pattern matching is used to invoke the respective `apply/2` function for an event. These functions *must never fail* as they are used when rebuilding the aggregate state from its history of raised domain events. You cannot reject the event once it has occurred.
 
-## Example aggregate root
+## Example aggregate
 
-You can write your aggregate root with public API functions using the language of your domain.
+You can write your aggregate with public API functions using the language of your domain.
 
 In this bank account example, the public function to open a new account is `open_account/3`:
 

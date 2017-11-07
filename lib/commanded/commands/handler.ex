@@ -4,8 +4,8 @@ defmodule Commanded.Commands.Handler do
 
   ## Example
 
-  An open account handler that delegates to a bank account aggregate root:
-  
+  An open account handler that delegates to a bank account aggregate:
+
       defmodule OpenAccountHandler do
         @behaviour Commanded.Commands.Handler
 
@@ -22,7 +22,7 @@ defmodule Commanded.Commands.Handler do
   @type reason :: term()
 
   @doc """
-  Apply the given command to the event sourced aggregate root.
+  Apply the given command to the event sourced aggregate.
 
   You must return a list containing the pending events, or `nil` / `[]` when no events produced.
 

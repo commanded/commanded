@@ -1,7 +1,7 @@
 defmodule Commanded.Aggregates.Aggregate do
   @moduledoc """
   Aggregate is a `GenServer` process used to provide access to an
-  instance of an event sourced aggregate root. It allows execution of commands
+  instance of an event sourced aggregate. It allows execution of commands
   against an aggregate instance, and handles persistence of created events to
   the configured event store.
 

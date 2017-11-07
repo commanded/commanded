@@ -108,7 +108,7 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Simplify aggregate roots and process managers ([#31](https://github.com/commanded/commanded/issues/31)).
+- Simplify aggregates and process managers ([#31](https://github.com/commanded/commanded/issues/31)).
 
 ## v0.7.1
 
@@ -186,4 +186,4 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 ### Enhancements
 
-- Support integer, atom or strings as an aggregate root UUID ([#7](https://github.com/commanded/commanded/pull/7)).
+- Support integer, atom or strings as an aggregate UUID ([#7](https://github.com/commanded/commanded/pull/7)).

@@ -5,7 +5,7 @@ defmodule Commanded do
   Provides support for:
 
   - [Command registration and dispatch](commands.html).
-  - [Hosting and delegation to aggregate roots](aggregate-roots.html).
+  - [Hosting and delegation to aggregates](aggregates.html).
   - [Event handling](events.html).
   - [Long running process managers](process-managers.html).
 

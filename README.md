@@ -5,7 +5,7 @@ Use Commanded to build your own Elixir applications following the [CQRS/ES](http
 Provides support for:
 
 - Command registration and dispatch.
-- Hosting and delegation to aggregate roots.
+- Hosting and delegation to aggregates.
 - Event handling.
 - Long running process managers.
 
@@ -36,9 +36,9 @@ MIT License
   - [PostgreSQL-based EventStore](guides/Choosing%20an%20Event%20Store.md#postgresql-based-elixir-eventstore)
   - [Greg Young's Event Store](guides/Choosing%20an%20Event%20Store.md#greg-youngs-event-store)
 - [Using Commanded](guides/Usage.md)
-  - [Aggregate roots](guides/Aggregate%20Roots.md)
-    - [Example aggregate root](guides/Aggregate%20Roots.md#example-aggregate-root)
-    - [`Commanded.Aggregate.Multi`](guides/Aggregate%20Roots.md#using-commandedaggregatemulti-to-return-multiple-events)
+  - [Aggregates](guides/Aggregates.md)
+    - [Example aggregate](guides/Aggregates.md#example-aggregate)
+    - [`Commanded.Aggregate.Multi`](guides/Aggregates.md#using-commandedaggregatemulti-to-return-multiple-events)
   - [Commands](guides/Commands.md)
     - [Command handlers](guides/Commands.md#command-handlers)
     - [Command dispatch and routing](guides/Commands.md#command-dispatch-and-routing)
