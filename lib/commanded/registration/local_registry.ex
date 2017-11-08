@@ -57,11 +57,14 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc """
-  Sends an asynchronous request to the `server` on the local node.
+  Sends a message to the given dest and returns `:ok`.
   """
-  @spec multi_cast(server :: atom(), request :: term()) :: :ok
+  @callback multi_send(dest :: atom(), message :: any()) :: :ok
   @impl Commanded.Registration
-  def multi_cast(server, request), do: GenServer.cast(server, request)
+  def multi_send(server, message) do
+    send(server, message)
+    :ok
+  end
 
   @doc """
   Get the pid of a registered name.

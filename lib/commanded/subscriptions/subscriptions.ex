@@ -24,7 +24,7 @@ defmodule Commanded.Subscriptions do
   def register(name, consistency)
   def register(_name, :eventual), do: :ok
   def register(name, :strong) do
-    Registration.multi_cast(__MODULE__, {:register_subscription, name, self()})
+    Registration.multi_send(__MODULE__, {:register_subscription, name, self()})
   end
 
   @doc """
@@ -34,7 +34,7 @@ defmodule Commanded.Subscriptions do
   def ack_event(name, consistency, event)
   def ack_event(_name, :eventual, _event), do: :ok
   def ack_event(name, :strong, %RecordedEvent{stream_id: stream_id, stream_version: stream_version}) do
-    Registration.multi_cast(__MODULE__, {:ack_event, name, stream_id, stream_version, self()})
+    Registration.multi_send(__MODULE__, {:ack_event, name, stream_id, stream_version, self()})
   end
 
   @doc false
@@ -130,13 +130,13 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_cast({:register_subscription, name, pid}, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
+  def handle_info({:register_subscription, name, pid}, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
     :ets.insert(subscriptions_table, {name, pid})
 
     {:noreply, state}
   end
 
-  def handle_cast({:ack_event, name, stream_uuid, stream_version, pid}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
+  def handle_info({:ack_event, name, stream_uuid, stream_version, pid}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
     # track insert date as milliseconds since the subscriptions process was
     # started to support expiry of stale acks
     inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :second)
