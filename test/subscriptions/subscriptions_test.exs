@@ -3,14 +3,9 @@ defmodule Commanded.SubscriptionsTest do
 
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
-  alias Commanded.Helpers.ProcessHelper
 
   setup do
-    Subscriptions.start_link([])
-
-    on_exit fn ->
-      ProcessHelper.shutdown(Subscriptions)
-    end
+    Subscriptions.reset()
   end
 
   describe "register event handler" do

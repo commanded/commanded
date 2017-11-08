@@ -12,6 +12,12 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankRouter
+  alias Commanded.Helpers.CommandAuditMiddleware
+
+  setup do
+    CommandAuditMiddleware.start_link()
+    :ok
+  end
 
   test "should stop event handler on error" do
     account_number = UUID.uuid4()

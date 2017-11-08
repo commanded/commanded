@@ -9,7 +9,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
   alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
+  alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.ProcessManagers.ProcessRouter
+
+  setup do
+    CommandAuditMiddleware.start_link()
+    :ok
+  end
 
   test "should start a process manager in response to an event" do
     account_number1 = UUID.uuid4

@@ -30,7 +30,16 @@ defmodule Commanded.Mixfile do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/aggregates", "test/commands", "test/event", "test/example_domain", "test/helpers", "test/process_managers"]
+  defp elixirc_paths(:test), do: [
+    "lib",
+    "test/aggregates",
+    "test/commands",
+    "test/event",
+    "test/example_domain",
+    "test/helpers",
+    "test/process_managers",
+    "test/subscriptions",
+  ]
   defp elixirc_paths(_), do: ["lib", "test/helpers"]
 
   defp deps do
@@ -80,6 +89,7 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
         "test/example_domain",
         "test/helpers",
         "test/process_managers",
+        "test/subscriptions",
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],

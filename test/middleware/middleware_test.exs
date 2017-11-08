@@ -61,6 +61,7 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
   end
 
   setup do
+    CommandAuditMiddleware.start_link()
     CommandAuditMiddleware.reset()
   end
 

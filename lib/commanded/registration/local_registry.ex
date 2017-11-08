@@ -13,10 +13,7 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def child_spec do
     [
-      Supervisor.child_spec({Registry, [
-        keys: :unique,
-        name: __MODULE__
-      ]}, id: :commanded_local_registry),
+      {Registry, keys: :unique, name: __MODULE__},
     ]
   end
 
@@ -57,6 +54,16 @@ defmodule Commanded.Registration.LocalRegistry do
       pid ->
         {:ok, pid}
     end
+  end
+
+  @doc """
+  Sends a message to the given dest and returns `:ok`.
+  """
+  @callback multi_send(dest :: atom(), message :: any()) :: :ok
+  @impl Commanded.Registration
+  def multi_send(server, message) do
+    send(server, message)
+    :ok
   end
 
   @doc """

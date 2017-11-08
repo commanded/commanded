@@ -31,6 +31,11 @@ defmodule Commanded.Registration do
   @callback start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
 
   @doc """
+  Sends a message to the given dest and returns `:ok`.
+  """
+  @callback multi_send(dest :: atom(), message :: any()) :: :ok
+
+  @doc """
   Get the pid of a registered name.
 
   Returns `:undefined` if the name is unregistered.
@@ -53,6 +58,10 @@ defmodule Commanded.Registration do
   @doc false
   @spec start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
   def start_link(name, module, args), do: registry_provider().start_link(name, module, args)
+
+  @doc false
+  @spec multi_send(server :: atom(), message :: any()) :: :ok
+  def multi_send(server, message), do: registry_provider().multi_send(server, message)
 
   @doc false
   @spec whereis_name(term()) :: pid() | :undefined
