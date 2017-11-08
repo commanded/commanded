@@ -60,7 +60,7 @@ Want to use a different event store? Then you will need to [write your own event
 5. Create the `eventstore` database and tables using the `mix` task:
 
     ```console
-    $ mix event_store.create
+    $ mix do event_store.create, event_store.init
     ```
 
 ---
