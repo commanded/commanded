@@ -135,7 +135,7 @@ defmodule Commanded.SubscriptionsTest do
 
       assert Subscriptions.handled?("stream1", 1)
 
-      pid = Commanded.Registration.whereis_name(Subscriptions)
+      pid = Process.whereis(Subscriptions)
       send(pid, {:purge_expired_streams, 0})
 
       refute Subscriptions.handled?("stream1", 1)
@@ -147,7 +147,7 @@ defmodule Commanded.SubscriptionsTest do
 
       assert Subscriptions.handled?("stream1", 1)
 
-      pid = Commanded.Registration.whereis_name(Subscriptions)
+      pid = Process.whereis(Subscriptions)
       send(pid, {:purge_expired_streams, 1_000})
 
       assert Subscriptions.handled?("stream1", 1)

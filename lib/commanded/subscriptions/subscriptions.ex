@@ -2,10 +2,10 @@ defmodule Commanded.Subscriptions do
   @moduledoc false
 
   use GenServer
-  use Commanded.Registration
 
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
+  alias Commanded.Registration
 
   defstruct [
     subscriptions_table: nil,
@@ -15,7 +15,7 @@ defmodule Commanded.Subscriptions do
   ]
 
   def start_link(arg) do
-    Registration.start_link(__MODULE__, __MODULE__, arg)
+    GenServer.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
   @doc """
@@ -24,7 +24,7 @@ defmodule Commanded.Subscriptions do
   def register(name, consistency)
   def register(_name, :eventual), do: :ok
   def register(name, :strong) do
-    GenServer.call(via_tuple(__MODULE__), {:register_subscription, name, self()})
+    Registration.multi_cast(__MODULE__, {:register_subscription, name, self()})
   end
 
   @doc """
@@ -34,17 +34,17 @@ defmodule Commanded.Subscriptions do
   def ack_event(name, consistency, event)
   def ack_event(_name, :eventual, _event), do: :ok
   def ack_event(name, :strong, %RecordedEvent{stream_id: stream_id, stream_version: stream_version}) do
-    GenServer.cast(via_tuple(__MODULE__), {:ack_event, name, stream_id, stream_version, self()})
+    Registration.multi_cast(__MODULE__, {:ack_event, name, stream_id, stream_version, self()})
   end
 
   @doc false
   def all do
-    GenServer.call(via_tuple(__MODULE__), :all_subscriptions)
+    GenServer.call(__MODULE__, :all_subscriptions)
   end
 
   @doc false
   def reset do
-    GenServer.call(via_tuple(__MODULE__), :reset)
+    GenServer.call(__MODULE__, :reset)
   end
 
   @doc """
@@ -52,7 +52,7 @@ defmodule Commanded.Subscriptions do
   """
   def handled?(stream_uuid, stream_version, exclude \\ [])
   def handled?(stream_uuid, stream_version, exclude) do
-    GenServer.call(via_tuple(__MODULE__), {:handled?, stream_uuid, stream_version, exclude})
+    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, exclude})
   end
 
   @doc """
@@ -63,13 +63,13 @@ defmodule Commanded.Subscriptions do
   """
   def wait_for(stream_uuid, stream_version, exclude \\ [], timeout \\ default_consistency_timeout())
   def wait_for(stream_uuid, stream_version, exclude, timeout) do
-    :ok = GenServer.call(via_tuple(__MODULE__), {:subscribe, stream_uuid, stream_version, exclude, self()})
+    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, exclude, self()})
 
     receive do
       {:ok, ^stream_uuid, ^stream_version} -> :ok
     after
       timeout ->
-        :ok = GenServer.call(via_tuple(__MODULE__), {:unsubscribe, self()})
+        :ok = GenServer.call(__MODULE__, {:unsubscribe, self()})
         {:error, :timeout}
     end
   end
@@ -88,7 +88,7 @@ defmodule Commanded.Subscriptions do
   def handle_call(:reset, _from, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table}) do
     :ets.delete(streams_table)
     :ets.delete(subscriptions_table)
-    
+
     {:reply, :ok, initial_state()}
   end
 
@@ -130,10 +130,10 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_call({:register_subscription, name, pid}, _from, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
+  def handle_cast({:register_subscription, name, pid}, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
     :ets.insert(subscriptions_table, {name, pid})
 
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
   def handle_cast({:ack_event, name, stream_uuid, stream_version, pid}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do

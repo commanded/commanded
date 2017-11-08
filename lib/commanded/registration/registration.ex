@@ -31,6 +31,11 @@ defmodule Commanded.Registration do
   @callback start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
 
   @doc """
+  Sends an asynchronous request to the `server` on each connected node.
+  """
+  @callback multi_cast(server :: atom(), request :: term()) :: :ok
+
+  @doc """
   Get the pid of a registered name.
 
   Returns `:undefined` if the name is unregistered.
@@ -53,6 +58,10 @@ defmodule Commanded.Registration do
   @doc false
   @spec start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
   def start_link(name, module, args), do: registry_provider().start_link(name, module, args)
+
+  @doc false
+  @spec multi_cast(server :: atom(), request :: term()) :: :ok
+  def multi_cast(server, request), do: registry_provider().multi_cast(server, request)
 
   @doc false
   @spec whereis_name(term()) :: pid() | :undefined
