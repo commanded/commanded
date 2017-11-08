@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v0.15.0
 
 ### Enhancements
 
@@ -14,6 +14,19 @@
 ### Bug fixes
 
 - Adding a prefix to the aggregate in the router breaks the strong consistency of command dispatch ([#101](https://github.com/commanded/commanded/issues/101)).
+
+### Upgrading
+
+Please ensure you upgrade the following event store dependencies.
+
+Using the Elixir [EventStore](https://github.com/commanded/eventstore):
+
+- `eventstore` to [v0.13.0](https://hex.pm/packages/eventstore)
+- `commanded_eventstore_adapter` to [v0.3.0](https://hex.pm/packages/commanded_eventstore_adapter)
+
+Using Greg's [Event Store](https://eventstore.org/):
+
+- `commanded_extreme_adapter` to [v0.4.0](https://hex.pm/packages/commanded_extreme_adapter)
 
 ## v0.14.0
 
