@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.15.1
+
+### Bug fixes
+
+- Event handler `child_spec/1` must include config options defined by use macro.
+
 ## v0.15.0
 
 ### Enhancements
