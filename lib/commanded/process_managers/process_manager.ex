@@ -128,7 +128,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `{:stop, process_uuid}` - stop an existing process manager and shutdown its process.
   - `false` - ignore the event.
   """
-  @callback interested?(domain_event) :: {:start, process_uuid} | {:continue, process_uuid} | {:stop, process_uuid} | false
+  @callback interested?(domain_event) :: {:start, process_uuid}
+    | {:continue, process_uuid}
+    | {:stop, process_uuid} | false
 
   @doc """
   Process manager instance handles the domain event, returning commands to dispatch.
@@ -202,12 +204,31 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @router @opts[:router] || raise "#{inspect __MODULE__} expects `:router` to be given"
 
       def start_link(opts \\ []) do
-        opts =
-          @opts
-          |> Keyword.take([:consistency, :start_from])
-          |> Keyword.merge(opts)
+        opts = Commanded.Event.Handler.start_opts(__MODULE__, Keyword.drop(@opts, [:name, :router]), opts)
 
         Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)
+      end
+
+      @doc """
+      Provides a child specification to allow the event handler to be easily
+      supervised.
+
+      ## Example
+
+          Supervisor.start_link([
+            {ExampleProcessManager, []}
+          ], strategy: :one_for_one)
+
+      """
+      def child_spec(opts) do
+        default = %{
+          id: {__MODULE__, @name},
+          start: {__MODULE__, :start_link, [opts]},
+          restart: :permanent,
+          type: :worker,
+        }
+
+        Supervisor.child_spec(default, [])
       end
     end
   end

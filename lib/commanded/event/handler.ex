@@ -33,17 +33,17 @@ defmodule Commanded.Event.Handler do
 
   # Event handler name
 
-  The name you specify is used when subscribing to the event store. Therefore you
-  *should not* change the name once the handler has been deployed. A new
+  The name you specify is used when subscribing to the event store. Therefore
+  you *should not* change the name once the handler has been deployed. A new
   subscription will be created when you change the name, and you event handler
   will receive already handled events.
 
   # Subscription options
 
   You can choose to start the event handler's event store subscription from
-  `:origin`, `:current` position, or an exact event number using the `start_from`
-  option. The default is to use the origin so your handler will receive *all*
-  events.
+  `:origin`, `:current` position, or an exact event number using the
+  `start_from` option. The default is to use the origin so your handler will
+  receive *all* events.
 
   Use the `:current` position when you don't want newly created event handlers
   to go through all previous events. An example would be adding an event handler
@@ -71,8 +71,8 @@ defmodule Commanded.Event.Handler do
   For each event handler you can define its consistency, as one of either
   `:strong` or `:eventual`.
 
-  This setting is used when dispatching commands and specifying the `consistency`
-  option.
+  This setting is used when dispatching commands and specifying the
+  `consistency` option.
 
   When you dispatch a command using `:strong` consistency, after successful
   command dispatch the process will block until all event handlers configured to
@@ -108,7 +108,7 @@ defmodule Commanded.Event.Handler do
   alias Commanded.Subscriptions
 
   @type domain_event :: struct()
-  @type metadata :: struct()
+  @type metadata :: map()
   @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
 
@@ -124,9 +124,12 @@ defmodule Commanded.Event.Handler do
   @doc """
   Event handler behaviour to handle a domain event and its metadata
 
-  Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the event, or `{:error, reason}` on failure.
+  Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the
+  event, or `{:error, reason}` on failure.
   """
-  @callback handle(domain_event, metadata) :: :ok | {:error, :already_seen_event} | {:error, reason :: any()}
+  @callback handle(domain_event, metadata) :: :ok
+    | {:error, :already_seen_event}
+    | {:error, reason :: any()}
 
   @doc """
   Macro as a convenience for defining an event handler.
@@ -146,7 +149,8 @@ defmodule Commanded.Event.Handler do
         :ok
       end
 
-  Start event handler process (or configure as a worker inside a [supervisor](supervision.html)):
+  Start event handler process (or configure as a worker inside a
+  [supervisor](supervision.html)):
 
       {:ok, handler} = ExampleHandler.start_link()
 
@@ -162,16 +166,14 @@ defmodule Commanded.Event.Handler do
 
       @doc false
       def start_link(opts \\ []) do
-        opts =
-          @opts
-          |> Keyword.take([:consistency, :start_from])
-          |> Keyword.merge(opts)
+        opts = Commanded.Event.Handler.start_opts(__MODULE__, Keyword.drop(@opts, [:name]), opts)
 
         Commanded.Event.Handler.start_link(@name, __MODULE__, opts)
       end
 
       @doc """
-      Provides a child specification to allow the event handler to be easily supervised
+      Provides a child specification to allow the event handler to be easily
+      supervised.
 
       ## Example
 
@@ -183,7 +185,7 @@ defmodule Commanded.Event.Handler do
       def child_spec(opts) do
         default = %{
           id: {__MODULE__, @name},
-          start: {Commanded.Event.Handler, :start_link, [@name, __MODULE__, opts]},
+          start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker,
         }
@@ -202,6 +204,20 @@ defmodule Commanded.Event.Handler do
   def parse_name(module, name) when name in [nil, ""], do: raise "#{inspect module} expects `:name` to be given"
   def parse_name(_module, name) when is_bitstring(name), do: name
   def parse_name(_module, name), do: inspect(name)
+
+  @doc false
+  def start_opts(module, module_opts, local_opts) do
+    {valid, invalid} =
+      module_opts
+      |> Keyword.merge(local_opts)
+      |> Keyword.split([:consistency, :start_from])
+
+    if Enum.any?(invalid) do
+      raise "#{inspect module} specifies invalid options: #{inspect Keyword.keys(invalid)}"
+    else
+      valid
+    end
+  end
 
   # include default fallback function at end, with lowest precedence
   @doc false
@@ -254,6 +270,11 @@ defmodule Commanded.Event.Handler do
   @doc false
   def handle_call(:last_seen_event, _from, %Handler{last_seen_event: last_seen_event} = state) do
     {:reply, last_seen_event, state}
+  end
+
+  @doc false
+  def handle_call(:config, _from, %Handler{consistency: consistency, subscribe_from: subscribe_from} = state) do
+    {:reply, [consistency: consistency, start_from: subscribe_from], state}
   end
 
   @doc false
