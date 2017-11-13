@@ -345,3 +345,24 @@ end
 ```
 
 Commanded provides a `Commanded.Middleware.Logger` middleware for logging the name of each dispatched command and its execution duration.
+
+## Composite command routers
+
+You can use the `Commanded.Commands.CompositeRouter` macro to define a router comprised of other router modules. This approach is useful if you prefer to construct a router per context and then combine them together to form a top level application router.
+
+By using `Commanded.Commands.CompositeRouter` in your own module you can include other routers via the `router` macro:
+
+```elixir
+defmodule ApplicationRouter do
+  use Commanded.Commands.CompositeRouter
+
+  router BankAccountRouter
+  router MoneyTransferRouter
+end
+```
+
+Command dispatch works the same as any other router:
+
+```elixir
+:ok = ApplicationRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+```

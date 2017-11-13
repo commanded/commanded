@@ -112,19 +112,25 @@ defmodule Commanded.Commands.Router do
   defmacro __using__(_) do
     quote do
       require Logger
+
       import unquote(__MODULE__)
       @before_compile unquote(__MODULE__)
+
       @registered_commands []
-      @registered_middleware []
       @registered_identities %{}
-      @default_middleware [
-        Commanded.Middleware.ExtractAggregateIdentity,
-        Commanded.Middleware.ConsistencyGuarantee,
+      @registered_middleware []
+
+      @default [
+        middleware: [
+          Commanded.Middleware.ExtractAggregateIdentity,
+          Commanded.Middleware.ConsistencyGuarantee,
+        ],
+        consistency: :eventual,
+        dispatch_timeout: 5_000,
+        lifespan: Commanded.Aggregates.DefaultLifespan,
+        metadata: %{},
       ]
-      @default_consistency :eventual
-      @default_dispatch_timeout 5_000
-      @default_lifespan Commanded.Aggregates.DefaultLifespan
-      @default_metadata %{}
+
       @include_aggregate_version false
       @include_execution_result false
     end
@@ -165,11 +171,17 @@ defmodule Commanded.Commands.Router do
   """
   defmacro identify(aggregate_module, opts) do
     quote location: :keep do
-      if Map.has_key?(@registered_identities, unquote(aggregate_module)) do
-        raise "aggregate #{inspect unquote(aggregate_module)} has already been identified by"
+      unless Keyword.has_key?(unquote(opts), :by) do
+        raise "#{inspect unquote(aggregate_module)} aggregate identity is missing the `by` option"
       end
 
-      @registered_identities Map.put(@registered_identities, unquote(aggregate_module), unquote(opts))
+      case Map.get(@registered_identities, unquote(aggregate_module)) do
+        nil ->
+          @registered_identities Map.put(@registered_identities, unquote(aggregate_module), unquote(opts))
+
+        [by: existing_identity] ->
+          raise "#{inspect unquote(aggregate_module)} aggregate has already been identified by: `#{inspect existing_identity}`"
+      end
     end
   end
 
@@ -233,7 +245,9 @@ defmodule Commanded.Commands.Router do
 
       Returns `:ok` on success, or `{:error, reason}` on failure.
       """
-      @spec dispatch(command :: struct) :: :ok | {:error, reason :: term}
+      @spec dispatch(command :: struct) :: :ok
+        | {:error, :consistency_timeout}
+        | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, [])
 
@@ -300,12 +314,12 @@ defmodule Commanded.Commands.Router do
       defp do_dispatch(%unquote(command_module){} = command, opts) do
         causation_id = Keyword.get(opts, :causation_id)
         correlation_id = Keyword.get(opts, :correlation_id) || UUID.uuid4()
-        consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default_consistency
-        metadata = Keyword.get(opts, :metadata) || @default_metadata
-        timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default_dispatch_timeout
+        consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default[:consistency]
+        metadata = Keyword.get(opts, :metadata) || @default[:metadata]
+        timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default[:dispatch_timeout]
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
         include_execution_result = Keyword.get(opts, :include_execution_result) || @include_execution_result
-        lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default_lifespan
+        lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
 
         default_identity = unquote(identity)
         default_identity_prefix = unquote(identity_prefix)
@@ -338,7 +352,7 @@ defmodule Commanded.Commands.Router do
           timeout: timeout,
           lifespan: lifespan,
           metadata: metadata,
-          middleware: @registered_middleware ++ @default_middleware,
+          middleware: @registered_middleware ++ @default[:middleware],
         })
       end
     end
@@ -346,6 +360,9 @@ defmodule Commanded.Commands.Router do
 
   defmacro __before_compile__(_env) do
     quote do
+      @doc false
+      def registered_commands, do: @registered_commands
+
       @doc """
       Return an error if an unregistered command is dispatched
       """

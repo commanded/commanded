@@ -48,6 +48,7 @@ MIT License
       - [Dispatch consistency guarantee](guides/Commands.md#command-dispatch-consistency-guarantee)
       - [Dispatch returning execution result](guides/Commands.md#dispatch-returning-execution-result)
       - [Aggregate lifespan](guides/Commands.md#aggregate-lifespan)
+      - [Composite command routers](guides/Commands.md#composite-command-routers)
     - [Middleware](guides/Commands.md#middleware)
       - [Example middleware](guides/Commands.md#example-middleware)
   - [Events](guides/Events.md)
