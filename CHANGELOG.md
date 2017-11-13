@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+- Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
+
 ## v0.15.1
 
 ### Bug fixes
