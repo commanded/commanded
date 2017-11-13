@@ -76,8 +76,36 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  test "should ensure identity field is present" do
+    assert_raise RuntimeError, "Commanded.ExampleDomain.BankAccount aggregate identity is missing the `by` option", fn ->
+      Code.eval_string """
+        alias Commanded.ExampleDomain.BankAccount
+
+        defmodule DuplicateRouter do
+          use Commanded.Commands.Router
+
+          identify BankAccount, prefix: "account-"
+        end
+      """
+    end
+  end
+
+  test "should prevent duplicate identity for an aggregate" do
+    assert_raise RuntimeError, "Commanded.ExampleDomain.BankAccount aggregate has already been identified by: `:account_number`", fn ->
+      Code.eval_string """
+        alias Commanded.ExampleDomain.BankAccount
+
+        defmodule DuplicateRouter do
+          use Commanded.Commands.Router
+
+          identify BankAccount, by: :account_number
+          identify BankAccount, by: :duplicate
+        end
+      """
+    end
+  end
+
   test "should prevent duplicate registrations for a command" do
-    # compile time safety net to prevent duplicate command registrations
     assert_raise RuntimeError, "duplicate command registration for: Commanded.ExampleDomain.BankAccount.Commands.OpenAccount", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount
@@ -98,7 +126,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent registration for a command handler without a `handle/2` function" do
-    # compile time safety net to prevent duplicate command registrations
     assert_raise RuntimeError, "command handler InvalidHandler does not define a function: handle/2", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount
