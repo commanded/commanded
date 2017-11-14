@@ -44,6 +44,11 @@ defmodule Commanded.Commands.CompositeRouter do
   defmacro __before_compile__(_env) do
     quote do
       @doc false
+      def registered_commands do
+        Enum.map(@registered_commands, fn {command, _router} -> command end)
+      end
+      
+      @doc false
       def dispatch(command), do: dispatch(command, [])
 
       Enum.map(@registered_commands, fn {command_module, router} ->

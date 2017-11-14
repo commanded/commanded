@@ -40,6 +40,15 @@ defmodule Commanded.Commands.CompositeRouterTest do
   end
 
   describe "composite router" do
+    test "should register all commands" do
+      assert ExampleCompositeRouter.registered_commands() |> Enum.sort() == [
+        DepositMoney,
+        OpenAccount,
+        WithdrawMoney,
+        TransferMoney,
+      ]
+    end
+
     test "should dispatch command to registered handler" do
       assert :ok = ExampleCompositeRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
       assert :ok = ExampleCompositeRouter.dispatch(%TransferMoney{transfer_uuid: UUID.uuid4(), debit_account: "ACC123", credit_account: "ACC456", amount: 500})
@@ -76,6 +85,29 @@ defmodule Commanded.Commands.CompositeRouterTest do
           end
         """
       end
+    end
+  end
+
+  describe "composite router composed of composite router" do
+    defmodule CompositeCompositeRouter do
+      @moduledoc false
+      use Commanded.Commands.CompositeRouter
+
+      router ExampleCompositeRouter
+    end
+
+    test "should register all commands" do
+      assert CompositeCompositeRouter.registered_commands() |> Enum.sort() == [
+        DepositMoney,
+        OpenAccount,
+        WithdrawMoney,
+        TransferMoney,
+      ]
+    end
+
+    test "should dispatch command to registered handler" do
+      assert :ok = CompositeCompositeRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+      assert :ok = CompositeCompositeRouter.dispatch(%TransferMoney{transfer_uuid: UUID.uuid4(), debit_account: "ACC123", credit_account: "ACC456", amount: 500})
     end
   end
 end
