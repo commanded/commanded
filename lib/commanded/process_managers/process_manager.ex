@@ -125,7 +125,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   - `{:start, process_uuid}` - create a new instance of the process manager.
   - `{:continue, process_uuid}` - continue execution of an existing process manager.
-  - `{:stop, process_uuid}` - stop an existing process manager and shutdown its process.
+  - `{:stop, process_uuid}` - stop an existing process manager, shutdown its
+    process, and delete its persisted state.
   - `false` - ignore the event.
   """
   @callback interested?(domain_event) :: {:start, process_uuid}
@@ -133,21 +134,28 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     | {:stop, process_uuid} | false
 
   @doc """
-  Process manager instance handles the domain event, returning commands to dispatch.
+  Process manager instance handles a domain event, returning any commands to
+  dispatch.
 
-  A `c:handle/2` function must exist for each `:start` and `:continue` tagged
-  event previously specified. It receives the process manager’s state and the
-  event to be handled. It must return the commands to be dispatched. This may be
-  none, a single command, or many commands.
+  A `c:handle/2` function can be defined for each `:start` and `:continue`
+  tagged event previously specified. It receives the process manager's state and
+  the event to be handled. It must return the commands to be dispatched. This
+  may be none, a single command, or many commands.
+
+  The `c:handle/2` function can be omitted if you do not need to dispatch a
+  command and are only mutating the process manager's state.
   """
   @callback handle(process_manager, domain_event) :: list(command)
 
   @doc """
   Mutate the process manager's state by applying the domain event.
 
-  The `c:apply/2` function is used to mutate the process manager’s state. It
-  receives its current state and the interested event. It must return the
-  modified state.
+  The `c:apply/2` function is used to mutate the process manager's state. It
+  receives the current state and the domain event, and must return the modified
+  state.
+
+  This callback function is optional, the default behaviour is to retain the
+  process manager's current state.
   """
   @callback apply(process_manager, domain_event) :: process_manager
 

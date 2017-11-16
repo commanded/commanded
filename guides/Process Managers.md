@@ -1,31 +1,35 @@
 # Process managers
 
-A process manager is responsible for coordinating one or more aggregates. It handles events and dispatches commands in response. Process managers have state that can be used to track which aggregates are being orchestrated.
+A process manager is responsible for coordinating one or more aggregates. It handles events and dispatches commands in response. You can think of a process manager as the opposite of an aggregate: aggregates handle commands and create events; process managers handle events and create commands. Process managers have state that can be used to track which aggregates are being orchestrated.
 
 Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the callback functions defined in the behaviour: `interested?/1`, `handle/2`, `apply/2`, and `error/4`.
 
 ## `interested?/1`
 
-The `interested?/1` function is used to indicate which events the process manager receives. The response is used to route the event to an existing instance or start a new process instance:
+The `interested?/1` function is used to indicate which events the process manager handles. The response is used to route the event to an existing instance or start a new process instance:
 
 - `{:start, process_uuid}` - create a new instance of the process manager.
 - `{:continue, process_uuid}` - continue execution of an existing process manager.
-- `{:stop, process_uuid}` - stop an existing process manager and shutdown its process.
+- `{:stop, process_uuid}` - stop an existing process manager, shutdown its process, and delete its persisted state.
 - `false` - ignore the event.
 
 ## `handle/2`
 
-A `handle/2` function must exist for each `:start` and `:continue` tagged event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
+A `handle/2` function can be defined for each `:start` and `:continue` tagged event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.
+
+The `handle/2` function can be omitted if you do not need to dispatch a command and are only mutating the process manager's state.
 
 ## `apply/2`
 
-The `apply/2` function is used to mutate the process manager's state. It receives its current state and the interested event. It must return the modified state.
+The `apply/2` function is used to mutate the process manager's state. It receives the current state and the domain event, and must return the modified state.
+
+This callback function is optional, the default behaviour is to retain the process manager's current state.
 
 ## `error/4`
 
 You can define an `error/4` callback function to handle any errors returned from command dispatch. The function is passed the command dispatch error (e.g. `{:error, :failure}`), the failed command, any pending commands, and a context map containing state passed between retries. Use pattern matching on the error and/or failed command to explicitly handle certain errors or commands.
 
-You can return one of the following responses depending upon the error severity:
+The `error/4` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
 
 - `{:retry, context}` - retry the failed command, provide a context map containing any state passed to subsequent failures. This could be used to count the number of retries, failing after too many attempts.
 
@@ -71,20 +75,20 @@ You should supervise process managers to ensure they are correctly restarted on 
 ```elixir
 defmodule TransferMoneyProcessManager do
   use Commanded.ProcessManagers.ProcessManager,
-    name: "transfer_money_process_manager",
+    name: "TransferMoneyProcessManager",
     router: BankRouter
 
   defstruct [
-    transfer_uuid: nil,
-    debit_account: nil,
-    credit_account: nil,
-    amount: nil,
-    status: nil
+    :transfer_uuid,
+    :debit_account,
+    :credit_account,
+    :amount,
+    :status
   ]
 
   def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}), do: {:start, transfer_uuid}
   def interested?(%MoneyWithdrawn{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
-  def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
+  def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:stop, transfer_uuid}
   def interested?(_event), do: false
 
   def handle(%TransferMoneyProcessManager{}, %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, amount: amount}) do
@@ -94,8 +98,6 @@ defmodule TransferMoneyProcessManager do
   def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid, credit_account: credit_account, amount: amount}, %MoneyWithdrawn{}) do
     %DepositMoney{account_number: credit_account, transfer_uuid: transfer_uuid, amount: amount}
   end
-
-  def handle(%TransferMoneyProcessManager{}, %MoneyDeposited{}), do: []
 
   ## state mutators
 
@@ -112,12 +114,6 @@ defmodule TransferMoneyProcessManager do
   def apply(%TransferMoneyProcessManager{} = transfer, %MoneyWithdrawn{}) do
     %TransferMoneyProcessManager{transfer |
       status: :deposit_money_in_credit_account
-    }
-  end
-
-  def apply(%TransferMoneyProcessManager{} = transfer, %MoneyDeposited{}) do
-    %TransferMoneyProcessManager{transfer |
-      status: :transfer_complete
     }
   end
 end
