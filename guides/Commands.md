@@ -233,7 +233,7 @@ You can set causation and correlation ids when dispatching a command:
 :ok = ExampleRouter.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
 ```
 
-When dispatching a command in an event handler, you should copying these values from the event your are processing:
+When dispatching a command in an event handler, you should copy these values from the event your are processing:
 
 ```elixir
 defmodule ExampleHandler do
