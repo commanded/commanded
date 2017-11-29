@@ -62,7 +62,6 @@ MIT License
   - [Read model projections](guides/Read%20Model%20Projections.md)
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
-- [Limitations](#limitations)
 - [Event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
 - [Contributing](#contributing)
 - [Need help?](#need-help)
