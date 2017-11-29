@@ -77,7 +77,7 @@ defmodule BankAccount do
     {:error, :initial_balance_must_be_above_zero}
   end
 
-  def open_account(%BankAccount{account_number: account_number}, %OpenAccount{account_number: account_number}) do
+  def execute(%BankAccount{account_number: account_number}, %OpenAccount{account_number: account_number}) do
     {:error, :account_already_opened}
   end
 
