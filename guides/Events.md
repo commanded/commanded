@@ -16,30 +16,19 @@ Note, due to event serialization you should expect that only: strings, numbers a
 
 ## Event handlers
 
+Event handlers allow you to execute code that reacts to domain events: to build read model projections; dispatch commands to other aggregates; and to interact with third-party systems such as sending emails.
+
 Use the `Commanded.Event.Handler` macro within your event handler module to implement the defined behaviour. This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique event number. It should return `:ok` on success or `{:error, :reason}` on failure. You can return `{:error, :already_seen_event}` to skip events that have already been handled, due to the at-least-once event delivery of the supported event stores.
 
 Use pattern matching to match on each type of event you are interested in. A catch-all `handle/2` function is included, so all other events will be ignored by default.
 
 ```elixir
-defmodule AccountBalanceHandler do
-  use Commanded.Event.Handler, name: "account_balance"
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: "ExampleHandler"
 
-  def init do
-    with {:ok, _} <- Agent.start_link(fn -> 0 end, name: AccountBalance) do
-      :ok
-    end
-  end
-
-  def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
-    Agent.update(AccountBalance, fn _ -> initial_balance end)
-  end
-
-  def handle(%MoneyDeposited{balance: balance}, _metadata) do
-    Agent.update(AccountBalance, fn _ -> balance end)
-  end
-
-  def current_balance do
-    Agent.get(AccountBalance, fn balance -> balance end)
+  def handle(%AnEvent{..}, _metadata) do
+    # ... process the event
+    :ok
   end
 end
 ```
@@ -47,26 +36,51 @@ end
 The name given to the event handler **must be** unique and remain unchanged between releases. It is used when subscribing to the event store to track which events the handler has seen during restarts.
 
 ```elixir
-{:ok, _handler} = AccountBalanceHandler.start_link()
+{:ok, _handler} = ExampleHandler.start_link()
 ```
 
-You can choose to start the event handler's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so your handler will receive all events.
+### Subscription options
+
+You can choose to start the event handler's event store subscription from the `:origin`, `:current` position, or an exact event number using the `start_from` option. The default is to use the origin so your handler will receive all events.
 
 ```elixir
 # start from :origin, :current, or an explicit event number (e.g. 1234)
-defmodule AccountBalanceHandler do
-  use Commanded.Event.Handler, name: "account_balance", start_from: :origin
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: "ExampleHandler", start_from: :origin
 
   # ...
 end
+```
 
-# You can optionally override :start_from by passing it as param
-{:ok, _handler} = AccountBalanceHandler.start_link(start_from: :current)
+You can optionally override `:start_from` by passing it as param:
+
+```elixir
+{:ok, _handler} = ExampleHandler.start_link(start_from: :current)
 ```
 
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
 You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
+
+### `init` callback
+
+You can define an `init/0` function in your handler to be called when it starts. This callback function must return `:ok`, any other return value will prevent the handler from starting.
+
+```elixir
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: "ExampleHandler"
+
+  def init do
+    # optional initialisation
+    :ok
+  end
+
+  def handle(%AnEvent{..}, _metadata) do
+    # ... process the event
+    :ok
+  end
+end
+```
 
 ### Metadata
 
@@ -116,9 +130,9 @@ end
 You can specify an event handler's consistency guarantee using the `consistency` option:
 
 ```elixir
-defmodule AccountBalanceHandler do
+defmodule ExampleHandler do
   use Commanded.Event.Handler,
-    name: "account_balance",
+    name: "ExampleHandler",
     consistency: :eventual
 ```
 

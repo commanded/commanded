@@ -9,36 +9,27 @@ defmodule Commanded.Event.Handler do
 
   ## Example
 
-      defmodule AccountBalanceHandler do
-        use Commanded.Event.Handler, name: __MODULE__
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler, name: "ExampleHandler"
 
-        def init do
-          with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
-            :ok
-          end
-        end
-
-        def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
-          Agent.update(__MODULE__, fn _ -> initial_balance end)
-        end
-
-        def current_balance do
-          Agent.get(__MODULE__, fn balance -> balance end)
+        def handle(%AnEvent{..}, _metadata) do
+          # ... process the event
+          :ok
         end
       end
 
   Start your event handler process (or use a [Supervisor](supervision.html)):
 
-      {:ok, _handler} = AccountBalanceHandler.start_link()
+      {:ok, _handler} = ExampleHandler.start_link()
 
-  # Event handler name
+  ## Event handler name
 
   The name you specify is used when subscribing to the event store. Therefore
   you *should not* change the name once the handler has been deployed. A new
   subscription will be created when you change the name, and you event handler
   will receive already handled events.
 
-  # Subscription options
+  ## Subscription options
 
   You can choose to start the event handler's event store subscription from
   `:origin`, `:current` position, or an exact event number using the
@@ -50,23 +41,43 @@ defmodule Commanded.Event.Handler do
   to send transactional emails to an already deployed system containing many
   historical events.
 
-  ## Example
+  ### Example
 
   Set the `start_from` option (`:origin`, `:current`, or an explicit event
   number) when using `Commanded.Event.Handler`:
 
-      defmodule AccountBalanceHandler do
+      defmodule ExampleHandler do
         use Commanded.Event.Handler,
-          name: "AccountBalanceHandler",
+          name: "ExampleHandler",
           start_from: :origin
       end
 
   You can optionally override `:start_from` by passing it as option when
   starting your handler:
 
-      {:ok, _handler} = AccountBalanceHandler.start_link(start_from: :current)
+      {:ok, _handler} = ExampleHandler.start_link(start_from: :current)
 
-  # Consistency
+  ## `c:init/0` callback
+
+  You can define an `c:init/0` function in your handler to be called when it
+  starts. This callback function must return `:ok`, any other return value will
+  prevent the handler from starting.
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler, name: "ExampleHandler"
+
+        def init do
+          # optional initialisation
+          :ok
+        end
+
+        def handle(%AnEvent{..}, _metadata) do
+          # ... process the event
+          :ok
+        end
+      end
+
+  ## Consistency
 
   For each event handler you can define its consistency, as one of either
   `:strong` or `:eventual`.
@@ -87,11 +98,11 @@ defmodule Commanded.Event.Handler do
   immediately upon confirmation of event persistence, not waiting for any event
   handlers.
 
-  ## Example
+  ### Example
 
-      defmodule AccountBalanceHandler do
+      defmodule ExampleHandler do
         use Commanded.Event.Handler,
-          name: "AccountBalanceHandler",
+          name: "ExampleHandler",
           consistency: :strong
       end
 
@@ -122,7 +133,7 @@ defmodule Commanded.Event.Handler do
   @callback init() :: :ok | {:stop, reason :: any()}
 
   @doc """
-  Event handler behaviour to handle a domain event and its metadata
+  Event handler behaviour to handle a domain event and its metadata.
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the
   event, or `{:error, reason}` on failure.
@@ -133,27 +144,6 @@ defmodule Commanded.Event.Handler do
 
   @doc """
   Macro as a convenience for defining an event handler.
-
-  ## Example
-
-      defmodule ExampleHandler do
-        use Commanded.Event.Handler, name: "ExampleHandler"
-
-      def init do
-        # optional initialisation
-        :ok
-      end
-
-      def handle(%AnEvent{..}, _metadata) do
-        # ... process the event
-        :ok
-      end
-
-  Start event handler process (or configure as a worker inside a
-  [supervisor](supervision.html)):
-
-      {:ok, handler} = ExampleHandler.start_link()
-
   """
   defmacro __using__(opts) do
     quote location: :keep do
