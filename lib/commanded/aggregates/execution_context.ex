@@ -22,6 +22,9 @@ defmodule Commanded.Aggregates.ExecutionContext do
       to the aggregate module. For command handlers the `:handle` function is
       used.
 
+    - `snapshot_every` - snapshot aggregate state every X events. Use `nil` to
+      disable snapshotting.
+
     - `lifespan` - a module implementing the `Commanded.Aggregates.AggregateLifespan`
       behaviour to control the aggregate instance process lifespan. The default
       value, `Commanded.Aggregates.DefaultLifespan`, keeps the process running
@@ -32,12 +35,13 @@ defmodule Commanded.Aggregates.ExecutionContext do
   alias Commanded.Aggregates.DefaultLifespan
 
   defstruct [
-    command: nil,
-    causation_id: nil,
-    correlation_id: nil,
-    metadata: %{},
-    handler: nil,
-    function: nil,
+    :command,
+    :causation_id,
+    :correlation_id,
+    :function,
+    :handler,
+    :snapshot_every,
     lifespan: DefaultLifespan,
+    metadata: %{},
   ]
 end

@@ -13,11 +13,11 @@ defmodule Commanded.EventStore.SnapshotData do
   }
 
   defstruct [
-    source_uuid: nil,
-    source_version: nil,
-    source_type: nil,
-    data: nil,
-    metadata: nil,
-    created_at: nil,
+    :source_uuid,
+    :source_version,
+    :source_type,
+    :data,
+    :metadata,
+    :created_at,
   ]
 end

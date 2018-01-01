@@ -107,6 +107,36 @@ defmodule Commanded.Commands.Router do
 
       :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
+  ## Aggregate state snapshots
+
+  A snapshot represents the aggregate state when all events to that point in
+  time have been replayed. By default snapshotting is disabled for all
+  aggregates.
+
+  You can optionally configure state snapshotting for individual aggregates in
+  the router. Instead of loading every event for an aggregate when rebuilding
+  its state, only the snapshot and any events appended since its creation are
+  read.
+
+  As an example, assume the snapshot was taken after persisting an event for the
+  aggregate at version 100. When the aggregate process is restarted we load and
+  deserialize the snapshot data as the aggregate's state. Then we fetch and
+  replay the aggregate's events after version 100.
+
+  This is a performance optimisation for aggregate's that have a long lifetime
+  or raise a large number of events.
+
+  You define how frequently snapshots must be taken by providing the `every`
+  option to the `snapshot` macro for an individual aggregate. It limits the
+  worst case scenario when rebuilding the aggregate state: it will need to read
+  at most this many events.
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        snapshot BankAccount, every: 100
+      end
+
   """
 
   defmacro __using__(_) do
@@ -119,6 +149,7 @@ defmodule Commanded.Commands.Router do
       @registered_commands []
       @registered_identities %{}
       @registered_middleware []
+      @registered_snapshots %{}
 
       @default [
         middleware: [
@@ -168,6 +199,17 @@ defmodule Commanded.Commands.Router do
   You can define the identity field for an aggregate using the `identify` macro.
   The configured identity will be used for all commands registered to the
   aggregate, unless overridden by a command registration.
+
+  ## Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        identify BankAccount,
+          by: :account_number,
+          prefix: "bank-account-"
+      end
+
   """
   defmacro identify(aggregate_module, opts) do
     quote location: :keep do
@@ -181,6 +223,39 @@ defmodule Commanded.Commands.Router do
 
         [by: existing_identity] ->
           raise "#{inspect unquote(aggregate_module)} aggregate has already been identified by: `#{inspect existing_identity}`"
+      end
+    end
+  end
+
+  @doc """
+  Configure an aggregate state snapshot interval.
+
+  You specify after how many events should a snapshot be recorded for an
+  individual aggregate's state. This will be used when rebuilding the state
+  instead of replaying all events from its historical event stream.
+
+  Snapshot frequency must be a positive integer.
+
+  ## Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        # snapshot every 100 events (100, 200, 300, 400, ...)
+        snapshot BankAccount, every: 100
+      end
+
+  """
+  defmacro snapshot(aggregate_module, every: frequency)
+    when is_integer(frequency) and frequency > 0
+  do
+    quote location: :keep do
+      case Map.get(@registered_snapshots, unquote(aggregate_module)) do
+        nil ->
+          @registered_snapshots Map.put(@registered_snapshots, unquote(aggregate_module), unquote(frequency))
+
+        _frequency ->
+          raise "#{inspect unquote(aggregate_module)} aggregate has already been configured for snapshotting"
       end
     end
   end

@@ -1,12 +1,12 @@
 defmodule Commanded.Aggregates.Aggregate do
   @moduledoc """
   Aggregate is a `GenServer` process used to provide access to an
-  instance of an event sourced aggregate. It allows execution of commands
-  against an aggregate instance, and handles persistence of created events to
-  the configured event store.
+  instance of an event sourced aggregate.
 
-  Concurrent commands sent to an aggregate instance are serialized and executed
-  in the order received.
+  It allows execution of commands against an aggregate instance, and handles
+  persistence of created events to the configured event store. Concurrent
+  commands sent to an aggregate instance are serialized and executed in the
+  order received.
 
   The `Commanded.Commands.Router` module will locate, or start, an aggregate
   instance when a command is dispatched. By default, an aggregate process will
@@ -22,6 +22,7 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Aggregates.{Aggregate,ExecutionContext}
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
+  alias Commanded.EventStore.SnapshotData
 
   @read_event_batch_size 100
 
@@ -30,6 +31,7 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_uuid: nil,
     aggregate_state: nil,
     aggregate_version: 0,
+    snapshot_version: 0,
   ]
 
   def start_link(aggregate_module, aggregate_uuid, opts \\ []) do
@@ -46,7 +48,8 @@ defmodule Commanded.Aggregates.Aggregate do
     do: {aggregate_module, aggregate_uuid}
 
   def init(%Aggregate{} = state) do
-    # initial aggregate state is populated by loading events from event store
+    # initial aggregate state is populated by loading state snapshot and/or
+    # events from event store
     GenServer.cast(self(), :populate_aggregate_state)
 
     {:ok, state}
@@ -55,13 +58,13 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc """
   Execute the given command against the aggregate.
 
-  - `aggregate_module` - the aggregate's module (e.g. `BankAccount`).
-  - `aggregate_uuid` - uniquely identifies an instance of the aggregate.
-  - `context` - includes command execution arguments
-    (see `Commanded.Aggregates.ExecutionContext` for details).
-  - `timeout` - an integer greater than zero which specifies how many
-    milliseconds to wait for a reply, or the atom :infinity to wait
-    indefinitely. The default value is five seconds (5,000ms).
+    - `aggregate_module` - the aggregate's module (e.g. `BankAccount`).
+    - `aggregate_uuid` - uniquely identifies an instance of the aggregate.
+    - `context` - includes command execution arguments
+      (see `Commanded.Aggregates.ExecutionContext` for details).
+    - `timeout` - an integer greater than zero which specifies how many
+      milliseconds to wait for a reply, or the atom :infinity to wait
+      indefinitely. The default value is five seconds (5,000ms).
 
   ## Return values
 
@@ -97,11 +100,27 @@ defmodule Commanded.Aggregates.Aggregate do
     {:noreply, populate_aggregate_state(state)}
   end
 
+  def handle_cast({:snapshot_state, lifespan}, %Aggregate{} = state) do
+    {:noreply, do_snapshot(state), lifespan}
+  end
+
   @doc false
-  def handle_call({:execute_command, %ExecutionContext{command: command, lifespan: lifespan} = context}, _from, %Aggregate{} = state) do
+  def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
+    %ExecutionContext{
+      command: command,
+      lifespan: lifespan,
+      snapshot_every: snapshot_every,
+    } = context
+
     {reply, state} = execute_command(context, state)
 
-    {:reply, reply, state, lifespan.after_command(command)}
+    timeout = lifespan.after_command(command)
+
+    if snapshot?(snapshot_every, state) do
+      GenServer.cast(self(), {:snapshot_state, timeout})
+    end
+
+    {:reply, reply, state, timeout}
   end
 
   @doc false
@@ -162,6 +181,38 @@ defmodule Commanded.Aggregates.Aggregate do
           state -> state
         end
     end
+  end
+
+  # snapshotting disabled
+  defp snapshot?(snapshot_every, _state)
+    when snapshot_every in [nil, 0], do: false
+
+  # do snapshot aggregate state
+  defp snapshot?(snapshot_every, %Aggregate{aggregate_version: aggregate_version, snapshot_version: snapshot_version})
+    when aggregate_version - snapshot_version >= snapshot_every, do: true
+
+  # not yet enough events to snapshot
+  defp snapshot?(_snapshot_every, _state), do: false
+
+  # snapshot aggregate state
+  defp do_snapshot(%Aggregate{} = state) do
+    %Aggregate{
+      aggregate_module: aggregate_module,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_version: aggregate_version,
+      aggregate_state: aggregate_state,
+    } = state
+
+    snapshot = %SnapshotData{
+      source_uuid: aggregate_uuid,
+      source_version: aggregate_version,
+      source_type: Atom.to_string(aggregate_module),
+      data: aggregate_state,
+    }
+
+    :ok = EventStore.record_snapshot(snapshot)
+
+    %Aggregate{state | snapshot_version: aggregate_version}
   end
 
   defp execute_command(
