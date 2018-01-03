@@ -143,3 +143,33 @@ defmodule BankAccount do
   defp check_balance(%BankAccount{}), do: []
 end
 ```
+
+## Aggregate state snapshots
+
+A snapshot represents the aggregate state when all events to that point in time have been replayed. By default snapshotting is disabled for all aggregates.
+
+You can optionally configure state snapshotting for individual aggregates in your app configuration. Instead of loading every event for an aggregate when rebuilding its state, only the snapshot and any events appended since its creation are read.
+
+As an example, assume the snapshot was taken after persisting an event for the aggregate at version 100. When the aggregate process is restarted we load and deserialize the snapshot data as the aggregate's state. Then we fetch and replay the aggregate's events after version 100.
+
+This is a performance optimisation for aggregate's that have a long lifetime or raise a large number of events. It limits the worst case scenario when rebuilding the aggregate state: it will need to read at most this many events.
+
+The following options are configure snapshots for an aggregate:
+
+  - `snapshot_every` - snapshot aggregate state every so many events. Use
+    `nil` to disable snapshotting, or exclude the configuration entirely.
+
+  - `snapshot_version` - a non-negative integer indicating the version of
+    the aggregate state snapshot. Incrementing this version forces any
+    earlier recorded snapshots to be ignored when rebuilding aggregate
+    state.
+
+### Example
+
+In `config/config.exs` enable snapshots for `ExampleAggregate` after every ten events:
+
+```elixir
+config :commanded, ExampleAggregate
+  snapshot_every: 10,
+  snapshot_version: 1
+```

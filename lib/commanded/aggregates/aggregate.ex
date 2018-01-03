@@ -12,6 +12,29 @@ defmodule Commanded.Aggregates.Aggregate do
   instance when a command is dispatched. By default, an aggregate process will
   run indefinitely once started. Its lifespan may be controlled by using the
   `Commanded.Aggregates.AggregateLifespan` behaviour.
+
+  ## Snapshotting
+
+  You can configure state snapshots for an aggregate in config. By default
+  snapshots are *not* taken for an aggregate. The following options are
+  available to enable snapshots:
+
+    - `snapshot_every` - snapshot aggregate state every so many events. Use
+      `nil` to disable snapshotting, or exclude the configuration entirely.
+
+    - `snapshot_version` - a non-negative integer indicating the version of
+      the aggregate state snapshot. Incrementing this version forces any
+      earlier recorded snapshots to be ignored when rebuilding aggregate
+      state.
+
+  ### Example
+
+  In `config/config.exs` enable snapshots for `ExampleAggregate` after every ten
+  events:
+
+      config :commanded, ExampleAggregate
+        snapshot_every: 10,
+        snapshot_version: 1
   """
 
   use GenServer
@@ -31,17 +54,24 @@ defmodule Commanded.Aggregates.Aggregate do
     aggregate_uuid: nil,
     aggregate_state: nil,
     aggregate_version: 0,
+    snapshot_every: nil,
+    snapshot_module_version: 1,
     snapshot_version: 0,
   ]
 
   def start_link(aggregate_module, aggregate_uuid, opts \\ []) do
+    snapshot_options = snapshot_options(aggregate_module)
+
     aggregate = %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
+      snapshot_every: Keyword.get(snapshot_options, :snapshot_every),
+      snapshot_module_version: Keyword.get(snapshot_options, :snapshot_version, 1),
     }
 
     GenServer.start_link(__MODULE__, aggregate, opts)
   end
+
 
   @doc false
   def name(aggregate_module, aggregate_uuid),
@@ -106,12 +136,12 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def handle_call({:execute_command, %ExecutionContext{snapshot_every: snapshot_every} = context}, _from, %Aggregate{} = state) do
+  def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(context, state)
 
     timeout = aggregate_lifespan_timeout(context)
 
-    if snapshot?(snapshot_every, state) do
+    if snapshotting_enabled?(state) && snapshot_required?(state) do
       GenServer.cast(self(), {:snapshot_state, timeout})
     end
 
@@ -139,16 +169,17 @@ defmodule Commanded.Aggregates.Aggregate do
   # the aggregate from the event store to rebuild its state from those events.
   defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid} = state) do
     aggregate =
-      case EventStore.read_snapshot(aggregate_uuid) do
-        {:ok, snapshot} ->
-          # populate initial state from snapshot
-          %Aggregate{state |
-            aggregate_version: snapshot.source_version,
-            aggregate_state: snapshot.data
-          }
-
-        {:error, :snapshot_not_found} ->
-          # no snapshot, use intial empty state
+      with true <- snapshotting_enabled?(state),
+           {:ok, snapshot} <- EventStore.read_snapshot(aggregate_uuid),
+           true <- snapshot_valid?(snapshot, state) do
+        # populate initial state from snapshot
+        %Aggregate{state |
+          aggregate_version: snapshot.source_version,
+          aggregate_state: snapshot.data
+        }
+      else
+        _ ->
+          # no snapshot (or outdated), use intial empty state
           %Aggregate{state |
             aggregate_version: 0,
             aggregate_state: struct(aggregate_module)
@@ -203,16 +234,21 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  # snapshotting disabled
-  defp snapshot?(snapshot_every, _state)
-    when snapshot_every in [nil, 0], do: false
+  # is snapshotting configured for the aggregate?
+  defp snapshotting_enabled?(%Aggregate{snapshot_every: snapshot_every}),
+    do: is_number(snapshot_every) && snapshot_every > 0
+
+  # was the snapshot taken at the current version?
+  defp snapshot_valid?(%SnapshotData{metadata: metadata}, %Aggregate{snapshot_module_version: expected_version}) do
+    Map.get(metadata, "snapshot_version", 1) == expected_version
+  end
 
   # do snapshot aggregate state
-  defp snapshot?(snapshot_every, %Aggregate{aggregate_version: aggregate_version, snapshot_version: snapshot_version})
+  defp snapshot_required?(%Aggregate{aggregate_version: aggregate_version, snapshot_every: snapshot_every, snapshot_version: snapshot_version})
     when aggregate_version - snapshot_version >= snapshot_every, do: true
 
   # not yet enough events to snapshot
-  defp snapshot?(_snapshot_every, _state), do: false
+  defp snapshot_required?(_state), do: false
 
   # snapshot aggregate state
   defp do_snapshot(%Aggregate{} = state) do
@@ -228,7 +264,10 @@ defmodule Commanded.Aggregates.Aggregate do
       source_version: aggregate_version,
       source_type: Atom.to_string(aggregate_module),
       data: aggregate_state,
+      metadata: %{"snapshot_version" => aggregate_version}
     }
+
+    Logger.debug(fn -> "Recording snapshot of aggregate state for: #{inspect aggregate_uuid}@#{aggregate_version} (#{inspect aggregate_module})" end)
 
     :ok = EventStore.record_snapshot(snapshot)
 
@@ -286,6 +325,10 @@ defmodule Commanded.Aggregates.Aggregate do
 
     EventStore.append_to_stream(stream_uuid, expected_version, event_data)
   end
+
+  # get the snapshot options for the aggregate defined in environment config.
+  defp snapshot_options(aggregate_module),
+    do: Application.get_env(:commanded, aggregate_module, [])
 
   defp via_name(aggregate_module, aggregate_uuid),
     do: name(aggregate_module, aggregate_uuid) |> via_tuple()
