@@ -81,11 +81,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def aggregate_state(aggregate_module, aggregate_uuid) do
-    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state)
-  end
-
-  @doc false
+  def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5_000)
   def aggregate_state(aggregate_module, aggregate_uuid, timeout) do
     GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state, timeout)
   end
@@ -93,6 +89,11 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   def aggregate_version(aggregate_module, aggregate_uuid) do
     GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_version)
+  end
+
+  @doc false
+  def shutdown(aggregate_module, aggregate_uuid) do
+    GenServer.stop(via_name(aggregate_module, aggregate_uuid))
   end
 
   @doc false
@@ -105,16 +106,10 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
-    %ExecutionContext{
-      command: command,
-      lifespan: lifespan,
-      snapshot_every: snapshot_every,
-    } = context
-
+  def handle_call({:execute_command, %ExecutionContext{snapshot_every: snapshot_every} = context}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(context, state)
 
-    timeout = lifespan.after_command(command)
+    timeout = aggregate_lifespan_timeout(context)
 
     if snapshot?(snapshot_every, state) do
       GenServer.cast(self(), {:snapshot_state, timeout})
@@ -138,29 +133,43 @@ defmodule Commanded.Aggregates.Aggregate do
     {:stop, :normal, state}
   end
 
-  # Load any existing events for the aggregate from storage and repopulate the
-  # state using those events
-  defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module} = state) do
-    aggregate = %Aggregate{state |
-      aggregate_version: 0,
-      aggregate_state: struct(aggregate_module)
-    }
+  # Attempt to fetch a snapshot for the aggregate to use as its initial state.
+  # If the snapshot exists, fetch any subsequent events to rebuild its state.
+  # Otherwise start with the aggregate struct and stream all existing events for
+  # the aggregate from the event store to rebuild its state from those events.
+  defp populate_aggregate_state(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid} = state) do
+    aggregate =
+      case EventStore.read_snapshot(aggregate_uuid) do
+        {:ok, snapshot} ->
+          # populate initial state from snapshot
+          %Aggregate{state |
+            aggregate_version: snapshot.source_version,
+            aggregate_state: snapshot.data
+          }
+
+        {:error, :snapshot_not_found} ->
+          # no snapshot, use intial empty state
+          %Aggregate{state |
+            aggregate_version: 0,
+            aggregate_state: struct(aggregate_module)
+          }
+      end
 
     rebuild_from_events(aggregate)
   end
 
   # Load events from the event store, in batches, to rebuild the aggregate state
-  defp rebuild_from_events(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid} = state) do
-    case EventStore.stream_forward(aggregate_uuid, 0, @read_event_batch_size) do
+  defp rebuild_from_events(%Aggregate{aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid, aggregate_version: aggregate_version} = state) do
+    case EventStore.stream_forward(aggregate_uuid, aggregate_version + 1, @read_event_batch_size) do
       {:error, :stream_not_found} ->
-        # aggregate does not exist so return empty state
+        # aggregate does not exist so return initial state
         state
 
       event_stream ->
         # rebuild aggregate state from event stream
         event_stream
         |> Stream.map(fn event ->
-          {Mapper.map_from_recorded_event(event), event.stream_version}
+          {event.data, event.stream_version}
         end)
         |> Stream.transform(state, fn ({event, stream_version}, state) ->
           case event do
@@ -180,6 +189,17 @@ defmodule Commanded.Aggregates.Aggregate do
           nil -> state
           state -> state
         end
+    end
+  end
+
+  defp aggregate_lifespan_timeout(%ExecutionContext{command: command, lifespan: lifespan}) do
+    case lifespan.after_command(command) do
+      :infinity -> :infinity
+      :hibernate -> :hibernate
+      timeout when is_integer(timeout) and timeout >= 0 -> timeout
+      invalid ->
+        Logger.warn(fn -> "Invalid timeout for aggregate lifespan #{inspect lifespan}, expected a non-negative integer, `:infinity`, or `:hibernate` but got: #{inspect invalid}" end)
+        :infinity
     end
   end
 
