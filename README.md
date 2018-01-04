@@ -39,6 +39,7 @@ MIT License
   - [Aggregates](guides/Aggregates.md)
     - [Example aggregate](guides/Aggregates.md#example-aggregate)
     - [`Commanded.Aggregate.Multi`](guides/Aggregates.md#using-commandedaggregatemulti-to-return-multiple-events)
+    - [Aggregate state snapshots](guides/Aggregates.md#aggregate-state-snapshots)
   - [Commands](guides/Commands.md)
     - [Command handlers](guides/Commands.md#command-handlers)
     - [Command dispatch and routing](guides/Commands.md#command-dispatch-and-routing)

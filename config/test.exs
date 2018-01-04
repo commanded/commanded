@@ -1,5 +1,7 @@
 use Mix.Config
 
+alias Commanded.EventStore.Adapters.InMemory
+
 config :logger, :console, level: :warn, format: "[$level] $message\n"
 
 config :ex_unit,
@@ -8,7 +10,7 @@ config :ex_unit,
 
 config :commanded,
   dispatch_consistency_timeout: 100,
-  event_store_adapter: Commanded.EventStore.Adapters.InMemory,
+  event_store_adapter: InMemory,
   reset_storage: fn ->
-    {:ok, _event_store} = Commanded.EventStore.Adapters.InMemory.start_link()
+    {:ok, _event_store} = InMemory.start_link(serializer: Commanded.Serialization.JsonSerializer)
   end

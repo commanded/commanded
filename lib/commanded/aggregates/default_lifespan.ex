@@ -10,5 +10,5 @@ defmodule Commanded.Aggregates.DefaultLifespan do
   @doc """
   Aggregate will run indefinitely once started
   """
-  def after_command(_), do: :infinity
+  def after_command(_command), do: :infinity
 end

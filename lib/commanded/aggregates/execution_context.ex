@@ -32,12 +32,12 @@ defmodule Commanded.Aggregates.ExecutionContext do
   alias Commanded.Aggregates.DefaultLifespan
 
   defstruct [
-    command: nil,
-    causation_id: nil,
-    correlation_id: nil,
-    metadata: %{},
-    handler: nil,
-    function: nil,
+    :command,
+    :causation_id,
+    :correlation_id,
+    :function,
+    :handler,
     lifespan: DefaultLifespan,
+    metadata: %{},
   ]
 end

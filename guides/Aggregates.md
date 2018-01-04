@@ -4,23 +4,52 @@ Build your aggregates using standard Elixir modules and functions, with structs 
 
 An aggregate is comprised of its state, public command functions, and state mutators.
 
+## Aggregate state
+
+Use the `defstruct` keyword to define the aggregate state and fields.
+
+```elixir
+defmodule ExampleAggregate do
+  defstruct [:uuid, :name]
+end
+```
+
 ## Command functions
 
-A command function receives the aggregate's state and the command to execute. It must return the resultant domain events. This may be none, one, or multiple events.
+A command function receives the aggregate's state and the command to execute. It must return the resultant domain events. This may be none, one, or many events.
 
 For business rule violations and errors you may return an `{:error, reason}` tagged tuple or raise an exception.
 
+Name your public command functions `execute/2` to dispatch commands directly to the aggregate without requiring an intermediate command handler.
+
+```elixir
+defmodule ExampleAggregate do
+  def execute(%ExampleAggregate{uuid: nil}, %Create{uuid: uuid, name: name}) do
+    %Created{uuid: uuid, name: name}
+  end
+
+  def execute(%ExampleAggregate{}, %Create{}),
+    do: {:error, :already_created}
+end
+```
+
 ## State mutators
 
-The state of an aggregate can only be mutated by applying a raised domain event to its state. This is achieved by an `apply/2` function that receives the state and the domain event. It returns the modified state.
+The state of an aggregate can only be mutated by applying a domain event to its state. This is achieved by an `apply/2` function that receives the state and the domain event. It returns the modified state.
 
-Pattern matching is used to invoke the respective `apply/2` function for an event. These functions *must never fail* as they are used when rebuilding the aggregate state from its history of raised domain events. You cannot reject the event once it has occurred.
+Pattern matching is used to invoke the respective `apply/2` function for an event. These functions *must never fail* as they are used when rebuilding the aggregate state from its history of domain events. You cannot reject the event once it has occurred.
+
+```elixir
+defmodule ExampleAggregate do
+  def apply(%ExampleAggregate{}, %Created{uuid: uuid, name: name}) do
+    %ExampleAggregate{uuid: uuid, name: name}
+  end
+end
+```
 
 ## Example aggregate
 
-You can write your aggregate with public API functions using the language of your domain.
-
-In this bank account example, the public function to open a new account is `open_account/3`:
+You can define your aggregate with public API functions using the language of your domain. In this bank account example, the public function to open a new account is `open_account/3`:
 
 ```elixir
 defmodule BankAccount do
@@ -40,7 +69,7 @@ defmodule BankAccount do
     {:error, :initial_balance_must_be_above_zero}
   end
 
-  def open_account(%BankAccount{account_number: account_number}, account_number, _initial_balance) do
+  def open_account(%BankAccount{}, _account_number, _initial_balance) do
     {:error, :account_already_opened}
   end
 
@@ -55,9 +84,24 @@ defmodule BankAccount do
 end
 ```
 
-An alternative approach is to expose one or more public command functions, `execute/2`, and use pattern matching on the command argument. With this approach you can route your commands directly to the aggregate, without requiring a command handler module.
+With this approach you must dispatch the command to a command handler:
 
-In this case the example function matches on the `OpenAccount` command module:
+```elixir
+defmodule Commanded.ExampleDomain.OpenAccountHandler do
+  alias BankAccount
+  alias Commands.OpenAccount
+
+  @behaviour Commanded.Commands.Handler
+
+  def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
+    BankAccount.open_account(aggregate, account_number, initial_balance)
+  end
+end
+```
+
+An alternative approach is to expose one or more public command functions, `execute/2`, and use pattern matching on the command argument. With this approach you can route your commands directly to the aggregate.
+
+In this example the `execute/2` function pattern matches on the `OpenAccount` command module:
 
 ```elixir
 defmodule BankAccount do
@@ -77,7 +121,7 @@ defmodule BankAccount do
     {:error, :initial_balance_must_be_above_zero}
   end
 
-  def execute(%BankAccount{account_number: account_number}, %OpenAccount{account_number: account_number}) do
+  def execute(%BankAccount{}, %OpenAccount{}) do
     {:error, :account_already_opened}
   end
 
@@ -114,7 +158,7 @@ defmodule BankAccount do
 
   # public command API
 
-  def withdraw(
+  def execute(
     %BankAccount{state: :active} = account,
     %WithdrawMoney{amount: amount})
     when is_number(amount) and amount > 0
@@ -124,6 +168,14 @@ defmodule BankAccount do
     |> Multi.execute(&withdraw_money(&1, amount))
     |> Multi.execute(&check_balance/1)
   end
+
+  # state mutatators
+
+  def apply(%BankAccount{} = state, %MoneyWithdrawn{balance: balance}),
+    do: %BankAccount{state | balance: balance}
+
+  def apply(%BankAccount{} = state, %AccountOverdrawn{}),
+    do: %BankAccount{state | state: :overdrawn}
 
   # private helpers
 
@@ -143,3 +195,56 @@ defmodule BankAccount do
   defp check_balance(%BankAccount{}), do: []
 end
 ```
+
+## Aggregate state snapshots
+
+A snapshot represents the aggregate state when all events to that point in time have been replayed. You can optionally configure state snapshotting for individual aggregates in your app configuration. Instead of loading every event for an aggregate when rebuilding its state, only the snapshot and any events appended since its creation are read. By default snapshotting is disabled for all aggregates.
+
+As an example, assume a snapshot was taken after persisting an event for the aggregate at version 100. When the aggregate process is restarted we load and deserialize the snapshot data as the aggregate's initial state. Then we fetch and replay the aggregate's events after version 100.
+
+This is a performance optimisation for aggregates that have a long lifetime or raise a large number of events. It limits the worst case scenario when rebuilding the aggregate state: it will need to read the snapshot and at most this many events from storage.
+
+Use the following options to configure snapshots for an aggregate:
+
+  - `snapshot_every` - snapshot aggregate state every so many events. Use
+    `nil` to disable snapshotting, or exclude the configuration entirely.
+
+  - `snapshot_version` - a non-negative integer indicating the version of
+    the aggregate state snapshot. Incrementing this version forces any
+    earlier recorded snapshots to be ignored when rebuilding aggregate
+    state.
+
+### Example
+
+In `config/config.exs` enable snapshots for `ExampleAggregate` after every ten events:
+
+```elixir
+config :commanded, ExampleAggregate
+  snapshot_every: 10,
+  snapshot_version: 1
+```
+
+### Snapshot serialization
+
+Aggregate state will be serialized using the configured event store serializer, by default this stores the data as JSON. You can use the `Commanded.Serialization.JsonDecoder` protocol to decode the parsed JSON data into the expected types.
+
+```elixir
+defmodule ExampleAggregate do
+  defstruct [:name, :date]
+end
+
+defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
+  @doc """
+  Parse the date included in the aggregate state
+  """
+  def decode(%ExampleAggregate{date: date} = state) do
+    %ExampleAggregate{state |
+      date: NaiveDateTime.from_iso8601!(date)
+    }
+  end
+end
+```
+
+### Rebuilding an aggregate snapshot
+
+Whenever you change the structure of an aggregate's state you *must* increment the `snapshot_version` number. The aggregate state will be rebuilt from its events, ignoring any existing snapshots. They will be overwritten when the next snapshot is taken.

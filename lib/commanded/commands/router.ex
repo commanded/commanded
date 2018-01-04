@@ -168,6 +168,17 @@ defmodule Commanded.Commands.Router do
   You can define the identity field for an aggregate using the `identify` macro.
   The configured identity will be used for all commands registered to the
   aggregate, unless overridden by a command registration.
+
+  ## Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        identify BankAccount,
+          by: :account_number,
+          prefix: "bank-account-"
+      end
+
   """
   defmacro identify(aggregate_module, opts) do
     quote location: :keep do
