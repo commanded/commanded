@@ -146,15 +146,13 @@ end
 
 ## Aggregate state snapshots
 
-A snapshot represents the aggregate state when all events to that point in time have been replayed. By default snapshotting is disabled for all aggregates.
+A snapshot represents the aggregate state when all events to that point in time have been replayed. You can optionally configure state snapshotting for individual aggregates in your app configuration. Instead of loading every event for an aggregate when rebuilding its state, only the snapshot and any events appended since its creation are read. By default snapshotting is disabled for all aggregates.
 
-You can optionally configure state snapshotting for individual aggregates in your app configuration. Instead of loading every event for an aggregate when rebuilding its state, only the snapshot and any events appended since its creation are read.
+As an example, assume a snapshot was taken after persisting an event for the aggregate at version 100. When the aggregate process is restarted we load and deserialize the snapshot data as the aggregate's initial state. Then we fetch and replay the aggregate's events after version 100.
 
-As an example, assume the snapshot was taken after persisting an event for the aggregate at version 100. When the aggregate process is restarted we load and deserialize the snapshot data as the aggregate's state. Then we fetch and replay the aggregate's events after version 100.
+This is a performance optimisation for aggregates that have a long lifetime or raise a large number of events. It limits the worst case scenario when rebuilding the aggregate state: it will need to read the snapshot and at most this many events from storage.
 
-This is a performance optimisation for aggregate's that have a long lifetime or raise a large number of events. It limits the worst case scenario when rebuilding the aggregate state: it will need to read at most this many events.
-
-The following options are configure snapshots for an aggregate:
+Use the following options to configure snapshots for an aggregate:
 
   - `snapshot_every` - snapshot aggregate state every so many events. Use
     `nil` to disable snapshotting, or exclude the configuration entirely.
@@ -173,3 +171,28 @@ config :commanded, ExampleAggregate
   snapshot_every: 10,
   snapshot_version: 1
 ```
+
+### Snapshot serialization
+
+Aggregate state will be serialized using the configured event store serializer, by default this stores the data as JSON. You can use the `Commanded.Serialization.JsonDecoder` protocol to decode the parsed JSON data into the expected types.
+
+```elixir
+defmodule ExampleAggregate do
+  defstruct [:name, :date]
+end
+
+defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
+  @doc """
+  Parse the date included in the aggregate state
+  """
+  def decode(%ExampleAggregate{date: date} = state) do
+    %ExampleAggregate{state |
+      date: NaiveDateTime.from_iso8601!(date)
+    }
+  end
+end
+```
+
+### Rebuilding an aggregate snapshot
+
+Whenever you change the structure of an aggregate's state you *must* increment the `snapshot_version` number. The aggregate state will be rebuilt from its events, ignoring any existing snapshots. They will be overwritten when the next snapshot is taken.

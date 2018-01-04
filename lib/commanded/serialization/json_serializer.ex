@@ -16,6 +16,7 @@ defmodule Commanded.Serialization.JsonSerializer do
   @doc """
   Deserialize given JSON binary data to the expected type.
   """
+  def deserialize(binary, config \\ [])
   def deserialize(binary, config) do
     type = case Keyword.get(config, :type) do
       nil -> nil

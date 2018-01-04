@@ -5,10 +5,12 @@ defmodule Commanded.Aggregates.SnapshottingTest do
     Aggregate,
     AppendItemsHandler,
     ExampleAggregate,
-    ExecutionContext
+    ExecutionContext,
+    SnapshotAggregate,
+    Supervisor,
   }
-
   alias Commanded.Aggregates.ExampleAggregate.Commands.AppendItems
+  alias Commanded.Aggregates.SnapshotAggregate.Commands.Create
   alias Commanded.EventStore
   alias Commanded.EventStore.SnapshotData
 
@@ -39,13 +41,13 @@ defmodule Commanded.Aggregates.SnapshottingTest do
         items: [],
       })
 
-      restart_aggregate(aggregate_uuid)
+      restart_aggregate(ExampleAggregate, aggregate_uuid)
 
-      assert_aggregate_state aggregate_uuid, %ExampleAggregate{
+      assert_aggregate_state ExampleAggregate, aggregate_uuid, %ExampleAggregate{
         items: [1, 2],
         last_index: 2,
       }
-      assert_aggregate_version aggregate_uuid, 2
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 2
     end
   end
 
@@ -78,7 +80,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       aggregate_uuid = UUID.uuid4()
       append_items(aggregate_uuid, 10)
 
-      assert_aggregate_version aggregate_uuid, 10
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 10
 
       assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
 
@@ -98,7 +100,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       aggregate_uuid = UUID.uuid4()
       append_items(aggregate_uuid, 11)
 
-      assert_aggregate_version aggregate_uuid, 11
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 11
 
       assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
 
@@ -118,17 +120,17 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       aggregate_uuid = UUID.uuid4()
 
       append_items(aggregate_uuid, 10)
-      assert_aggregate_version aggregate_uuid, 10
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 10
       assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
       assert snapshot.source_version == 10
 
       append_items(aggregate_uuid, 1)
-      assert_aggregate_version aggregate_uuid, 11
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 11
       assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
       assert snapshot.source_version == 10
 
       append_items(aggregate_uuid, 10)
-      assert_aggregate_version aggregate_uuid, 21
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 21
       assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
 
       assert snapshot == %SnapshotData{
@@ -152,13 +154,13 @@ defmodule Commanded.Aggregates.SnapshottingTest do
     test "should restore state from events when no snapshot" do
       aggregate_uuid = UUID.uuid4()
       append_items(aggregate_uuid, 1)
-      restart_aggregate(aggregate_uuid)
+      restart_aggregate(ExampleAggregate, aggregate_uuid)
 
-      assert_aggregate_state aggregate_uuid, %ExampleAggregate{
+      assert_aggregate_state ExampleAggregate, aggregate_uuid, %ExampleAggregate{
         items: [1],
         last_index: 1
       }
-      assert_aggregate_version aggregate_uuid, 1
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 1
     end
 
     test "should restore state from snapshot when present" do
@@ -170,12 +172,12 @@ defmodule Commanded.Aggregates.SnapshottingTest do
         items: [],
       })
 
-      restart_aggregate(aggregate_uuid)
+      restart_aggregate(ExampleAggregate, aggregate_uuid)
 
-      assert_aggregate_state aggregate_uuid, %ExampleAggregate{
+      assert_aggregate_state ExampleAggregate, aggregate_uuid, %ExampleAggregate{
         items: [],
       }
-      assert_aggregate_version aggregate_uuid, 2
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 2
     end
 
     test "should restore state from snapshot and any newer events when present" do
@@ -188,13 +190,13 @@ defmodule Commanded.Aggregates.SnapshottingTest do
         last_index: 2
       })
 
-      restart_aggregate(aggregate_uuid)
+      restart_aggregate(ExampleAggregate, aggregate_uuid)
 
-      assert_aggregate_state aggregate_uuid, %ExampleAggregate{
+      assert_aggregate_state ExampleAggregate, aggregate_uuid, %ExampleAggregate{
         items: [3, 4, 5],
         last_index: 5
       }
-      assert_aggregate_version aggregate_uuid, 5
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 5
     end
   end
 
@@ -212,32 +214,65 @@ defmodule Commanded.Aggregates.SnapshottingTest do
         items: [],
       }, %{"snapshot_version" => 1})
 
-      restart_aggregate(aggregate_uuid)
+      restart_aggregate(ExampleAggregate, aggregate_uuid)
 
       # aggregate state should ignore snapshot and rebuild from events
-      assert_aggregate_state aggregate_uuid, %ExampleAggregate{
+      assert_aggregate_state ExampleAggregate, aggregate_uuid, %ExampleAggregate{
         items: [1, 2],
         last_index: 2
       }
-      assert_aggregate_version aggregate_uuid, 2
+      assert_aggregate_version ExampleAggregate, aggregate_uuid, 2
+    end
+  end
+
+  describe "decode snapshot data" do
+    setup do
+      configure_snapshotting(SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)
+    end
+
+    test "should parse date" do
+      aggregate_uuid = UUID.uuid4()
+      now = NaiveDateTime.utc_now()
+
+      create_aggregate(aggregate_uuid, now)
+      restart_aggregate(SnapshotAggregate, aggregate_uuid)
+
+      # aggregate state should be decoded
+      assert_aggregate_state SnapshotAggregate, aggregate_uuid, %SnapshotAggregate{
+        name: "Example",
+        date: now
+      }
+      assert_aggregate_version SnapshotAggregate, aggregate_uuid, 1
+    end
+
+    defp create_aggregate(aggregate_uuid, %NaiveDateTime{} = date) do
+      execution_context = %ExecutionContext{
+        command: %Create{name: "Example", date: date},
+        handler: SnapshotAggregate,
+        function: :execute,
+      }
+
+      {:ok, ^aggregate_uuid} = Supervisor.open_aggregate(SnapshotAggregate, aggregate_uuid)
+
+      {:ok, _count, _events} = Aggregate.execute(SnapshotAggregate, aggregate_uuid, execution_context)
     end
   end
 
   # assert aggregate's state equals the given expected state
-  defp assert_aggregate_state(aggregate_uuid, expected_state) do
-    assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == expected_state
+  defp assert_aggregate_state(aggregate_module, aggregate_uuid, expected_state) do
+    assert Aggregate.aggregate_state(aggregate_module, aggregate_uuid) == expected_state
   end
 
   # assert aggregate's version equals the given expected version
-  defp assert_aggregate_version(aggregate_uuid, expected_version) do
-    assert Aggregate.aggregate_version(ExampleAggregate, aggregate_uuid) == expected_version
+  defp assert_aggregate_version(aggregate_module, aggregate_uuid, expected_version) do
+    assert Aggregate.aggregate_version(aggregate_module, aggregate_uuid) == expected_version
   end
 
   # restart the aggregate process
-  defp restart_aggregate(aggregate_uuid) do
-    assert :ok = Aggregate.shutdown(ExampleAggregate, aggregate_uuid)
+  defp restart_aggregate(aggregate_module, aggregate_uuid) do
+    assert :ok = Aggregate.shutdown(aggregate_module, aggregate_uuid)
 
-    assert {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    assert {:ok, ^aggregate_uuid} = Supervisor.open_aggregate(aggregate_module, aggregate_uuid)
   end
 
   defp configure_snapshotting(aggregate_module, opts) do
@@ -255,7 +290,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       function: :handle,
     }
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} = Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     {:ok, _count, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, execution_context)
   end
