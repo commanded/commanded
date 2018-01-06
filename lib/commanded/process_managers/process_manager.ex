@@ -255,6 +255,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       def apply(process_manager, _event), do: process_manager
 
       @doc false
+      def error({:error, reason}, failed, %{pending_commands: pending, context: context}) do
+        error({:error, reason}, failed, pending, context)
+      end
+
+      @doc false
       def error({:error, reason}, _failed_command, _pending_commands, _context),
         do: {:stop, reason}
     end
