@@ -204,6 +204,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   defmacro __using__(opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
+      @on_definition {unquote(__MODULE__), :emit_deprecated_warnings}
 
       @behaviour Commanded.ProcessManagers.ProcessManager
 
@@ -263,5 +264,25 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       def error({:error, reason}, _failed_command, _pending_commands, _context),
         do: {:stop, reason}
     end
+  end
+
+  def emit_deprecated_warnings(env, _kind, name, args, _guards, _body) do
+    arity = length args
+    mod = env.module
+    case {name, arity} do
+      {:error, 4} ->
+        if Module.defines?(mod, {name, arity}) do
+          mod
+          |> error_deprecation_message
+          |> :elixir_errors.warn
+        end
+      _ ->
+
+        nil
+    end
+  end
+
+  defp error_deprecation_message(mod) do
+    "Commanded Deprecation Warning:\nProcess manager #{mod} defined error/4 callback.\nThis is deprecated in favor of error/3"
   end
 end
