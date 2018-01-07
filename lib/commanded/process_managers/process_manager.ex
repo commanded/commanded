@@ -283,6 +283,6 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   end
 
   defp error_deprecation_message(mod) do
-    "Commanded Deprecation Warning:\nProcess manager #{mod} defined error/4 callback.\nThis is deprecated in favor of error/3"
+    "Commanded Deprecation Warning:\nProcess manager #{mod} defined error/4 callback.\nThis is deprecated in favor of error/3\nSee https://github.com/commanded/commanded/blob/master/guides/Process%20Managers.md#deprecated-error4"
   end
 end
