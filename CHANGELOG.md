@@ -4,6 +4,7 @@
 
 - Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
 - Aggregate state snapshots ([#121](https://github.com/commanded/commanded/pull/121)).
+- New `error/3` callback for process manager and deprecated `error/4` ([#124](https://github.com/commanded/commanded/pull/124))
 
 ## v0.15.1
 
