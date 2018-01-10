@@ -25,11 +25,11 @@ The `apply/2` function is used to mutate the process manager's state. It receive
 
 This callback function is optional, the default behaviour is to retain the process manager's current state.
 
-## `error/4`
+## `error/3`
 
-You can define an `error/4` callback function to handle any errors returned from command dispatch. The function is passed the command dispatch error (e.g. `{:error, :failure}`), the failed command, any pending commands, and a context map containing state passed between retries. Use pattern matching on the error and/or failed command to explicitly handle certain errors or commands.
+You can define an `error/3` callback function to handle any errors returned from command dispatch. The function is passed the command dispatch error (e.g. `{:error, :failure}`), the failed command, and a failure context. The failure context contains the process manager state, the last received event (which triggered the command that failed), all the pending commands and a context map (which contains a state that is passed between retries). Use pattern matching on the error and/or failed command to explicitly handle certain errors or commands.
 
-The `error/4` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
+The `error/3` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
 
 - `{:retry, context}` - retry the failed command, provide a context map containing any state passed to subsequent failures. This could be used to count the number of retries, failing after too many attempts.
 
@@ -42,6 +42,13 @@ The `error/4` callback function must return one of the following responses depen
 - `{:continue, commands, context}` - continue dispatching the given commands. This allows you to retry the failed command, modify it and retry, drop it, or drop all pending commands by passing an empty list `[]`.
 
 - `{:stop, reason}` - stop the process manager with the given reason.
+
+## Deprecated: `error/4`
+
+**WARNING: This will be removed in future versions.**
+
+If you received a warning `Process manager *** defined error/4 callback. This is deprecated in favor of error/3` it means one of your process managers implements the old `error/4` callback.
+That old version receives only the dispatch error, the failed command, the pending commands and the context map. You should change your implementation to the `error/3` callback instead.
 
 ### Error handling example
 

@@ -36,47 +36,47 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   end
 
   # stop after three attempts
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry"}, _pending_commands, %{attempts: attempts} = context)
+  def error({:error, :failed}, %AttemptProcess{strategy: "retry"}, %{context: %{attempts: attempts}} = failure_context)
     when attempts >= 2
   do
-    reply({:error, :too_many_attempts, record_attempt(context)})
+    reply({:error, :too_many_attempts, record_attempt(failure_context.context)})
 
     {:stop, :too_many_attempts}
   end
 
   # retry command with delay
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry", delay: delay}, _pending_commands, context)
+  def error({:error, :failed}, %AttemptProcess{strategy: "retry", delay: delay}, failure_context)
     when is_integer(delay)
   do
-    context = record_attempt(context)
+    context = record_attempt(failure_context.context)
     reply_failure(Map.put(context, :delay, delay))
 
     {:retry, delay, context}
   end
 
   # retry command
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry"}, _pending_commands, context) do
-    context = record_attempt(context)
+  def error({:error, :failed}, %AttemptProcess{strategy: "retry"}, failure_context) do
+    context = record_attempt(failure_context.context)
     reply_failure(context)
 
     {:retry, context}
   end
 
   # skip failed command, continue pending
-  def error({:error, :failed}, %AttemptProcess{strategy: "skip"}, _pending_commands, context) do
-    reply({:error, :failed, record_attempt(context)})
+  def error({:error, :failed}, %AttemptProcess{strategy: "skip"}, failure_context) do
+    reply({:error, :failed, record_attempt(failure_context.context)})
 
     {:skip, :continue_pending}
   end
 
   # continue with modified command
-  def error({:error, :failed}, %AttemptProcess{strategy: "continue", process_uuid: process_uuid}, pending_commands, context) do
-    context = record_attempt(context)
+  def error({:error, :failed}, %AttemptProcess{strategy: "continue", process_uuid: process_uuid}, failure_context) do
+    context = record_attempt(failure_context.context)
     reply({:error, :failed, context})
 
     continue = %ContinueProcess{process_uuid: process_uuid}
 
-    {:continue, [continue | pending_commands], context}
+    {:continue, [continue | failure_context.pending_commands], context}
   end
 
   defp record_attempt(context) do
