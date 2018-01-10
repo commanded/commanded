@@ -92,6 +92,7 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Ben Smith](https://github.com/slashdotdash)
+- [Bernardo Dornellas Cysneiros Gomes de Amorim](https://github.com/bamorim)
 - [Brenton Annan](https://github.com/brentonannan)
 - [Chris Brodt](https://github.com/uberbrodt)
 - [David Carlin](https://github.com/davich)
