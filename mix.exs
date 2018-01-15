@@ -74,6 +74,7 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
         "guides/Supervision.md",
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
+        "CHANGELOG.md",
       ],
     ]
   end

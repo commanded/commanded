@@ -5,11 +5,14 @@ defmodule Commanded.StorageCase do
   require Logger
 
   setup do
-    Application.stop(:commanded)
-
     reset_storage()
 
     Application.ensure_all_started(:commanded)
+
+    on_exit fn ->
+      Application.stop(:commanded)
+    end
+
     :ok
   end
 
