@@ -10,5 +10,5 @@ defmodule Commanded.Commands.IdentityFunctionRouter do
 
   dispatch IdentityFunctionCommand, to: IdentityFunctionAggregate
 
-  def aggregate_identity(%{uuid: uuid}), do: "fun-prefix-" <> uuid
+  def aggregate_identity(%{uuid: uuid}), do: "identityfun-" <> uuid
 end

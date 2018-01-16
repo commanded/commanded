@@ -29,7 +29,9 @@ defmodule Commanded.Middleware.Pipeline do
        aggregate's identity or a one-arity function that returns an identity
        from the command being dispatched.
 
-    - `identity_prefix` - an optional prefix to the aggregate's identity.
+    - `identity_prefix` - an optional prefix to the aggregate's identity. It may
+       be a string (e.g. "prefix-") or a zero arity function
+       (e.g. `&MyRouter.identity_prefix/0`).
 
     - `metadata` - the metadata map to be persisted along with the events.
 

@@ -24,7 +24,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
       assert {:error, :unregistered_command} = CommandHandlerRouter.dispatch(%UnregisteredCommand{})
     end
 
-    test "should fail to dispatch command with nil identity" do
+    test "should fail to dispatch command with `nil` identity" do
       assert {:error, :invalid_aggregate_identity} = CommandHandlerRouter.dispatch(%OpenAccount{account_number: nil, initial_balance: 1_000})
     end
   end
@@ -42,7 +42,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
-  describe "identify aggregate" do
+  describe "identify aggregate prefix by string" do
     alias Commanded.Commands.IdentityAggregateRouter
     alias Commanded.Commands.IdentityAggregate.IdentityCommand
 
@@ -59,6 +59,23 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
+  describe "identify aggregate prefix by function" do
+    alias Commanded.Commands.IdentityAggregatePrefixFunRouter
+    alias Commanded.Commands.IdentityAggregate.IdentityCommand
+
+    test "should dispatch command to registered handler" do
+      assert :ok = IdentityAggregatePrefixFunRouter.dispatch(%IdentityCommand{uuid: UUID.uuid4})
+    end
+
+    test "should append events to stream using identity prefix" do
+      uuid = UUID.uuid4()
+      assert :ok = IdentityAggregatePrefixFunRouter.dispatch(%IdentityCommand{uuid: uuid})
+
+      recorded_events = EventStore.stream_forward("funprefix-" <> uuid, 0) |> Enum.to_list()
+      assert length(recorded_events) == 1
+    end
+  end
+
   describe "identify aggregate using function" do
     alias Commanded.Commands.IdentityFunctionRouter
     alias Commanded.Commands.IdentityFunctionAggregate.IdentityFunctionCommand
@@ -71,7 +88,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
       uuid = UUID.uuid4()
       assert :ok = IdentityFunctionRouter.dispatch(%IdentityFunctionCommand{uuid: uuid})
 
-      recorded_events = EventStore.stream_forward("fun-prefix-" <> uuid, 0) |> Enum.to_list()
+      recorded_events = EventStore.stream_forward("identityfun-" <> uuid, 0) |> Enum.to_list()
       assert length(recorded_events) == 1
     end
   end

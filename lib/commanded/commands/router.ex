@@ -63,7 +63,8 @@ defmodule Commanded.Commands.Router do
   for each aggregate (e.g. "user-" and "user-preference-").
 
   The prefix is used as the stream identity when appending and reading the
-  aggregate's events: "<identity_prefix><aggregate_uuid>".
+  aggregate's events: "<identity_prefix><aggregate_uuid>". It can be a string or
+  a zero arity function returning a string.
 
   ## Consistency
 
@@ -181,17 +182,43 @@ defmodule Commanded.Commands.Router do
 
   """
   defmacro identify(aggregate_module, opts) do
-    quote location: :keep do
-      unless Keyword.has_key?(unquote(opts), :by) do
-        raise "#{inspect unquote(aggregate_module)} aggregate identity is missing the `by` option"
-      end
-
-      case Map.get(@registered_identities, unquote(aggregate_module)) do
+    quote location: :keep, bind_quoted: [aggregate_module: aggregate_module, opts: opts] do
+      case Map.get(@registered_identities, aggregate_module) do
         nil ->
-          @registered_identities Map.put(@registered_identities, unquote(aggregate_module), unquote(opts))
+          by =
+            case Keyword.get(opts, :by) do
+              nil ->
+                raise "#{inspect aggregate_module} aggregate identity is missing the `by` option"
 
-        [by: existing_identity] ->
-          raise "#{inspect unquote(aggregate_module)} aggregate has already been identified by: `#{inspect existing_identity}`"
+              by when is_atom(by) ->
+                by
+
+              by when is_function(by, 1) ->
+                by
+
+              invalid ->
+                raise "#{inspect aggregate_module} aggregate identity has an invalid `by` option: #{inspect invalid}"
+            end
+
+          prefix =
+            case Keyword.get(opts, :prefix) do
+              nil ->
+                nil
+
+              prefix when is_function(prefix, 0) ->
+                prefix
+
+              prefix when is_bitstring(prefix) ->
+                prefix
+
+              invalid ->
+                raise "#{inspect aggregate_module} aggregate has an invalid identity prefix: #{inspect invalid}"
+            end
+
+          @registered_identities Map.put(@registered_identities, aggregate_module, [by: by, prefix: prefix])
+
+        config ->
+          raise "#{inspect aggregate_module} aggregate has already been identified by: `#{inspect Keyword.get(config, :by)}`"
       end
     end
   end
@@ -332,17 +359,14 @@ defmodule Commanded.Commands.Router do
         include_execution_result = Keyword.get(opts, :include_execution_result) || @include_execution_result
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
 
-        default_identity = unquote(identity)
-        default_identity_prefix = unquote(identity_prefix)
-
         {identity, identity_prefix} =
           case Map.get(@registered_identities, unquote(aggregate)) do
             nil ->
-              {default_identity, default_identity_prefix}
+              {unquote(identity), unquote(identity_prefix)}
 
             config ->
-              identity = Keyword.get(config, :by, default_identity)
-              prefix = default_identity_prefix || Keyword.get(config, :prefix, default_identity_prefix)
+              identity = Keyword.get(config, :by) || unquote(identity)
+              prefix = Keyword.get(config, :prefix) || unquote(identity_prefix)
 
               {identity, prefix}
           end
