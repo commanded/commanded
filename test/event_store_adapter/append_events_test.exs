@@ -16,7 +16,27 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
     end
 
     test "should append events without checking expected version" do
-      assert {:ok, -1} == EventStore.append_to_stream("stream", :any_version, build_events(2))
+      assert {:ok, 2} == EventStore.append_to_stream("stream", :any_version, build_events(2))
+      assert {:ok, 4} == EventStore.append_to_stream("stream", :any_version, build_events(2))
+      assert {:ok, 5} == EventStore.append_to_stream("stream", :any_version, build_events(1))
+    end
+
+    test "should append events with :no_stream parameter" do
+      assert {:ok, 2} == EventStore.append_to_stream("stream", :no_stream, build_events(2))
+    end
+
+    test "should fail when stream aleady exists with :no_stream parameter" do
+      assert {:ok, 2} == EventStore.append_to_stream("stream", :no_stream, build_events(2))
+      assert {:error, :stream_exists} == EventStore.append_to_stream("stream", :no_stream, build_events(1))
+    end
+
+    test "should append events with :stream_exists parameter" do
+      assert {:ok, 2} == EventStore.append_to_stream("stream", :no_stream, build_events(2))
+      assert {:ok, 3} == EventStore.append_to_stream("stream", :stream_exists, build_events(1))
+    end
+
+    test "should fail when stream does not exists with :stream_exists parameter" do
+      assert {:error, :stream_does_not_exist} == EventStore.append_to_stream("stream", :stream_exists, build_events(1))
     end
 
     test "should fail to append to a stream because of wrong expected version when no previous events" do

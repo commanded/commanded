@@ -92,6 +92,34 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
+  def handle_call({:append_to_stream, stream_uuid, :stream_exists, events}, _from, %State{streams: streams} = state) do
+    case Map.get(streams, stream_uuid) do
+      nil ->
+        {:reply, {:error, :stream_does_not_exist}, state}
+      existing_events ->
+        {reply, state} = persist_events(stream_uuid, existing_events, events, state)
+        {:reply, reply, state}
+    end
+  end
+  def handle_call({:append_to_stream, stream_uuid, :no_stream, events}, _from, %State{streams: streams} = state) do
+    case Map.get(streams, stream_uuid) do
+      nil ->
+        {reply, state} = persist_events(stream_uuid, [], events, state)
+        {:reply, reply, state}
+      _existing_events ->
+        {:reply, {:error, :stream_exists}, state}
+    end
+  end
+  def handle_call({:append_to_stream, stream_uuid, :any_version, events}, _from, %State{streams: streams} = state) do
+    existing_events = case Map.get(streams, stream_uuid) do
+      nil -> []
+      other -> other
+    end
+
+    {reply, state} = persist_events(stream_uuid, existing_events, events, state)
+
+    {:reply, reply, state}
+  end
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %State{streams: streams} = state) do
     case Map.get(streams, stream_uuid) do
       nil ->
