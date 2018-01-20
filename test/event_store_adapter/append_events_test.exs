@@ -15,6 +15,10 @@ defmodule Commanded.EventStore.Adapter.AppendEventsTest do
       assert {:ok, 5} == EventStore.append_to_stream("stream", 4, build_events(1))
     end
 
+    test "should append events without checking expected version" do
+      assert {:ok, -1} == EventStore.append_to_stream("stream", :any_version, build_events(2))
+    end
+
     test "should fail to append to a stream because of wrong expected version when no previous events" do
       events = build_events(1)
 
