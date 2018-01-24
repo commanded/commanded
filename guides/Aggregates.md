@@ -169,7 +169,7 @@ defmodule BankAccount do
     |> Multi.execute(&check_balance/1)
   end
 
-  # state mutatators
+  # state mutators
 
   def apply(%BankAccount{} = state, %MoneyWithdrawn{balance: balance}),
     do: %BankAccount{state | balance: balance}
