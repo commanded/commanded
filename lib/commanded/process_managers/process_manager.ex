@@ -274,7 +274,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         if Module.defines?(mod, {name, arity}) do
           mod
           |> error_deprecation_message
-          |> :elixir_errors.warn
+          |> IO.warn
         end
       _ ->
 
