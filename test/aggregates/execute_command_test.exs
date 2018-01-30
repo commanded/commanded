@@ -1,11 +1,11 @@
 defmodule Commanded.Aggregates.ExecuteCommandTest do
   use Commanded.StorageCase
 
-  alias Commanded.Aggregates.{Aggregate,ExecutionContext}
+  alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.EventStore
-  alias Commanded.ExampleDomain.{BankAccount,OpenAccountHandler,DepositMoneyHandler}
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount,DepositMoney}
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.ExampleDomain.{BankAccount, OpenAccountHandler, DepositMoneyHandler}
+  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney}
+  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
   alias Commanded.Helpers.{ProcessHelper,Wait}
   alias Commanded.Registration
 
@@ -74,28 +74,69 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
     assert state_before == Aggregate.aggregate_state(BankAccount, account_number)
   end
 
-  test "executing a command against an aggregate with concurrency error should terminate aggregate process" do
-    account_number = UUID.uuid4
+  describe "concurrency error" do
+    setup [
+      :open_account,
+      :append_event_to_stream
+    ]
 
-    {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+    test "should retry command", context do
+      %{account_number: account_number} = context
 
-    # block until aggregate has loaded its initial (empty) state
-    Aggregate.aggregate_state(BankAccount, account_number)
+      command = %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4(), amount: 100}
+      context = %ExecutionContext{command: command, handler: DepositMoneyHandler, function: :handle, retry_attempts: 1}
 
-    # write an event to the aggregate's stream, bypassing the aggregate process (simulate concurrency error)
-    {:ok, _} = EventStore.append_to_stream(account_number, 0, [
-      %Commanded.EventStore.EventData{
-        event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened",
-        data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000}
+      assert {:ok, 3, _events} = Aggregate.execute(BankAccount, account_number, context)
+
+      assert Aggregate.aggregate_version(BankAccount, account_number) == 3
+      assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+        account_number: account_number,
+        balance: 1_600,
+        state: :active,
       }
-    ])
+    end
 
-    assert_aggregate_exit(BankAccount, account_number, fn ->
-      command = %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4, amount: 50}
-      context = %ExecutionContext{command: command, handler: DepositMoneyHandler, function: :handle}
+    test "should error after too many attempts", context do
+      %{account_number: account_number} = context
 
-      Aggregate.execute(BankAccount, account_number, context)
-    end)
+      command = %DepositMoney{account_number: account_number, transfer_uuid: UUID.uuid4(), amount: 100}
+      context = %ExecutionContext{command: command, handler: DepositMoneyHandler, function: :handle, retry_attempts: 0}
+
+      assert {:error, :too_many_attempts} = Aggregate.execute(BankAccount, account_number, context)
+    end
+
+    defp open_account(_context) do
+      account_number = UUID.uuid4()
+
+      {:ok, ^account_number} = Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+
+      command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+      context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle, retry_attempts: 1}
+
+      {:ok, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
+
+      [
+        account_number: account_number
+      ]
+    end
+
+    # Write an event to the aggregate's stream, bypassing the aggregate process
+    # to simulate a concurrency error.
+    defp append_event_to_stream(%{account_number: account_number}) do
+      {:ok, _} = EventStore.append_to_stream(account_number, 1, [
+        %Commanded.EventStore.EventData{
+          event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited",
+          data: %MoneyDeposited{
+            account_number: account_number,
+            transfer_uuid: UUID.uuid4(),
+            amount: 500,
+            balance: 1_500
+          }
+        }
+      ])
+
+      :ok
+    end
   end
 
   def assert_aggregate_exit(aggregate_module, aggregate_uuid, fun) do
