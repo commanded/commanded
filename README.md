@@ -9,6 +9,8 @@ Provides support for:
 - Event handling.
 - Long running process managers.
 
+Commanded provides a solid technical foundation for you to build on. It allows you to focus on modelling your domain, the most important part of your app, creating a better application at a faster pace.
+
 You can use Commanded with one of the following event stores for persistence:
 
 - [EventStore](https://github.com/commanded/eventstore) Elixir library, using PostgreSQL for persistence
