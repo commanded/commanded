@@ -1,5 +1,6 @@
 defmodule Commanded.Helpers.ProcessHelper do
   @moduledoc false
+  
   import ExUnit.Assertions
 
   alias Commanded.Registration

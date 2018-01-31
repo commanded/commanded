@@ -294,7 +294,7 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_state: aggregate_state,
     } = state
 
-    Logger.debug(fn -> inspect(state) <> " recording snapshot" end)
+    Logger.debug(fn -> describe(state) <> " recording snapshot" end)
 
     snapshot = %SnapshotData{
       source_uuid: aggregate_uuid,
@@ -326,7 +326,7 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_state: aggregate_state
     } = state
 
-    Logger.debug(fn -> inspect(state) <> " executing command: #{inspect command}" end)
+    Logger.debug(fn -> describe(state) <> " executing command: #{inspect command}" end)
 
     {reply, state} =
       case Kernel.apply(handler, function, [aggregate_state, command]) do
@@ -354,7 +354,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
     case reply do
       {:error, :wrong_expected_version} ->
-        Logger.debug(fn -> inspect(state) <> " wrong expected version, retrying command" end)
+        Logger.debug(fn -> describe(state) <> " wrong expected version, retrying command" end)
 
         # fetch missing events from event store
         state = rebuild_from_events(state)
@@ -406,4 +406,14 @@ defmodule Commanded.Aggregates.Aggregate do
 
   defp via_name(aggregate_module, aggregate_uuid),
     do: name(aggregate_module, aggregate_uuid) |> via_tuple()
+
+  defp describe(%Aggregate{} = aggregate) do
+    %Aggregate{
+      aggregate_module: aggregate_module,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_version: aggregate_version
+    } = aggregate
+
+    "#{inspect aggregate_module}<#{aggregate_uuid}@#{aggregate_version}>"
+  end
 end
