@@ -27,6 +27,7 @@ defmodule Commanded.Commands.Dispatcher do
       lifespan: nil,
       metadata: nil,
       middleware: [],
+      retry_attempts: nil
     ]
   end
 
@@ -96,10 +97,21 @@ defmodule Commanded.Commands.Dispatcher do
      end
   end
 
-  defp to_execution_context(
-    %Pipeline{command: command, command_uuid: command_uuid, metadata: metadata},
-    %Payload{correlation_id: correlation_id, handler_module: handler_module, handler_function: handler_function, lifespan: lifespan})
-  do
+  defp to_execution_context(%Pipeline{} = pipeline, %Payload{} = payload) do
+    %Pipeline{
+      command: command,
+      command_uuid: command_uuid,
+      metadata: metadata
+    } = pipeline
+
+    %Payload{
+      correlation_id: correlation_id,
+      handler_module: handler_module,
+      handler_function: handler_function,
+      lifespan: lifespan,
+      retry_attempts: retry_attempts
+    } = payload
+
     %ExecutionContext{
       command: command,
       causation_id: command_uuid,
@@ -108,6 +120,7 @@ defmodule Commanded.Commands.Dispatcher do
       handler: handler_module,
       function: handler_function,
       lifespan: lifespan,
+      retry_attempts: retry_attempts
     }
   end
 

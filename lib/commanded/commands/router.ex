@@ -109,7 +109,6 @@ defmodule Commanded.Commands.Router do
       :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
   """
-
   defmacro __using__(_) do
     quote do
       require Logger
@@ -130,6 +129,7 @@ defmodule Commanded.Commands.Router do
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
+        retry_attempts: 10
       ]
 
       @include_aggregate_version false
@@ -358,6 +358,7 @@ defmodule Commanded.Commands.Router do
         include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
         include_execution_result = Keyword.get(opts, :include_execution_result) || @include_execution_result
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
+        retry_attempts = Keyword.get(opts, :retry_attempts) || @default[:retry_attempts]
 
         {identity, identity_prefix} =
           case Map.get(@registered_identities, unquote(aggregate)) do
@@ -371,7 +372,10 @@ defmodule Commanded.Commands.Router do
               {identity, prefix}
           end
 
-        Commanded.Commands.Dispatcher.dispatch(%Commanded.Commands.Dispatcher.Payload{
+        alias Commanded.Commands.Dispatcher
+        alias Commanded.Commands.Dispatcher.Payload
+
+        payload = %Payload{
           command: command,
           command_uuid: UUID.uuid4(),
           causation_id: causation_id,
@@ -388,7 +392,10 @@ defmodule Commanded.Commands.Router do
           lifespan: lifespan,
           metadata: metadata,
           middleware: @registered_middleware ++ @default[:middleware],
-        })
+          retry_attempts: retry_attempts
+        }
+
+        Dispatcher.dispatch(payload)
       end
     end
   end

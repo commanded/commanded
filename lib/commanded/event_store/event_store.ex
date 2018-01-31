@@ -20,13 +20,17 @@ defmodule Commanded.EventStore do
   @doc """
   Append one or more events to a stream atomically.
   """
-  @callback append_to_stream(stream_uuid, expected_version :: non_neg_integer, events :: list(EventData.t)) :: {:ok, stream_version} | {:error, reason}
+  @callback append_to_stream(stream_uuid, expected_version :: non_neg_integer, events :: list(EventData.t)) :: {:ok, stream_version}
+    | {:error, :wrong_expected_version}
+    | {:error, reason}
 
   @doc """
   Streams events from the given stream, in the order in which they were
   originally written.
   """
-  @callback stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, :stream_not_found} | {:error, reason}
+  @callback stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t
+    | {:error, :stream_not_found}
+    | {:error, reason}
 
   @doc """
   Create a persistent subscription to all event streams.
@@ -72,20 +76,27 @@ defmodule Commanded.EventStore do
   """
   @callback delete_snapshot(source_uuid) :: :ok | {:error, reason}
 
-  @doc false
-  @spec append_to_stream(stream_uuid, expected_version :: non_neg_integer, events :: list(EventData.t)) :: {:ok, stream_version} | {:error, reason}
+  @doc """
+  Append one or more events to a stream atomically.
+  """
+  @spec append_to_stream(stream_uuid, expected_version :: non_neg_integer, events :: list(EventData.t)) :: {:ok, stream_version} | {:error, :wrong_expected_version} | {:error, reason}
   def append_to_stream(stream_uuid, expected_version, events) do
     event_store_adapter().append_to_stream(stream_uuid, expected_version, events)
   end
 
-  @doc false
+  @doc """
+  Streams events from the given stream, in the order in which they were
+  originally written.
+  """
   @spec stream_forward(stream_uuid, start_version :: non_neg_integer, read_batch_size :: non_neg_integer) :: Enumerable.t | {:error, :stream_not_found} | {:error, reason}
   def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000)
   def stream_forward(stream_uuid, start_version, read_batch_size) do
     event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size)
   end
 
-  @doc false
+  @doc """
+  Create a persistent subscription to all event streams.
+  """
   @spec subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) :: {:ok, subscription :: pid}
     | {:error, :subscription_already_exists}
     | {:error, reason}
@@ -93,31 +104,42 @@ defmodule Commanded.EventStore do
     event_store_adapter().subscribe_to_all_streams(subscription_name, subscriber, start_from)
   end
 
-  @doc false
+  @doc """
+  Acknowledge receipt and successful processing of the given event received from
+  a subscription to an event stream.
+  """
   @spec ack_event(pid, RecordedEvent.t) :: :ok
   def ack_event(pid, event) do
     event_store_adapter().ack_event(pid, event)
   end
 
-  @doc false
+  @doc """
+  Unsubscribe an existing subscriber from all event notifications.
+  """
   @spec unsubscribe_from_all_streams(subscription_name) :: :ok
   def unsubscribe_from_all_streams(subscription_name) do
     event_store_adapter().unsubscribe_from_all_streams(subscription_name)
   end
 
-  @doc false
+  @doc """
+  Read a snapshot, if available, for a given source.
+  """
   @spec read_snapshot(source_uuid) :: {:ok, snapshot} | {:error, :snapshot_not_found}
   def read_snapshot(source_uuid) do
     event_store_adapter().read_snapshot(source_uuid)
   end
 
-  @doc false
+  @doc """
+  Record a snapshot of the data and metadata for a given source
+  """
   @spec record_snapshot(snapshot) :: :ok | {:error, reason}
   def record_snapshot(snapshot) do
     event_store_adapter().record_snapshot(snapshot)
   end
 
-  @doc false
+  @doc """
+  Delete a previously recorded snapshop for a given source
+  """
   @spec delete_snapshot(source_uuid) :: :ok | {:error, reason}
   def delete_snapshot(source_uuid) do
     event_store_adapter().delete_snapshot(source_uuid)

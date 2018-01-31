@@ -7,6 +7,9 @@ defmodule Commanded.Aggregates.ExecutionContext do
     - `command` - the command to execute, typically a struct
       (e.g. `%OpenBankAccount{...}`).
 
+    - `retry_attempts` - the number of retries permitted if an
+      `{:error, :wrong_expected_version}` is encountered when appending events.
+
     - `causation_id` - the UUID assigned to the dispatched command.
 
     - `correlation_id` - a UUID used to correlate related commands/events.
@@ -33,6 +36,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
   defstruct [
     :command,
+    :retry_attempts,
     :causation_id,
     :correlation_id,
     :function,
