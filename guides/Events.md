@@ -62,7 +62,7 @@ Use the `:current` position when you don't want newly created event handlers to 
 
 You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
 
-### `init` callback
+### `init/0` callback
 
 You can define an `init/0` function in your handler to be called when it starts. This callback function must return `:ok`, any other return value will prevent the handler from starting.
 
@@ -78,6 +78,51 @@ defmodule ExampleHandler do
   def handle(%AnEvent{..}, _metadata) do
     # ... process the event
     :ok
+  end
+end
+```
+
+### `error/3` callback
+
+You can define an `error/3` callback function to handle any errors returned from your event handler's `handle/2` functions. The `error/3` function is passed the actual error (e.g. `{:error, :failure}`), the failed event, and a failure context.
+
+Use pattern matching on the error and/or failed event to explicitly handle certain errors or events. You can choose to retry, skip, or stop the event handler after an error.
+
+The default behaviour if you don't provide an `error/3` callback is to stop the event handler using the exact error reason returned from the `handle/2` function. You should supervise event handlers to ensure they are correctly restarted on error.
+
+#### Example error handling
+
+```elixir
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: __MODULE__
+
+  require Logger
+
+  alias Commanded.Event.FailureContext
+
+  def handle(%AnEvent{}, _metadata) do
+    # simulate event handling failure
+    {:error, :failed}
+  end
+
+  def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
+    context = record_failure(context)
+
+    case Map.get(context, :failures) do
+      too_many when too_many >= 3 ->
+        # skip bad event after third failure
+        Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
+
+        :skip
+
+      _ ->
+        # retry event, failure count is included in context map
+        {:retry, context}
+    end
+  end
+
+  defp record_failure(context) do
+    Map.update(context, :failures, 1, fn failures -> failures + 1 end)
   end
 end
 ```

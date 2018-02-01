@@ -1,35 +1,73 @@
 defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   use Commanded.StorageCase
 
-  defmodule ErrorEventHandler do
-    use Commanded.Event.Handler, name: "ErrorEventHandler"
-
-    alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-
-    def handle(%BankAccountOpened{}, _metadata), do: {:error, :failed}
-  end
-
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-  alias Commanded.ExampleDomain.BankRouter
-  alias Commanded.Helpers.CommandAuditMiddleware
+  alias Commanded.Event.{ErrorEventHandler, ErrorRouter}
+  alias Commanded.Event.ErrorAggregate.Commands.RaiseError
 
   setup do
-    CommandAuditMiddleware.start_link()
-    :ok
-  end
-
-  test "should stop event handler on error" do
-    account_number = UUID.uuid4()
-
     {:ok, handler} = ErrorEventHandler.start_link()
 
     Process.unlink(handler)
-    ref = Process.monitor(handler)
 
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number, initial_balance: 1_000})
+    [
+      handler: handler,
+      ref: Process.monitor(handler),
+      uuid: UUID.uuid4(),
+    ]
+  end
 
-    assert_receive {:DOWN, ^ref, _, _, _}
+  test "should stop event handler on error by default", %{handler: handler, ref: ref, uuid: uuid} do
+    :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "default", reply_to: reply_to()})
+
+    assert_receive {:error, :stopping}
+
+    assert_receive {:DOWN, ^ref, _, _, :failed}
     refute Process.alive?(handler)
   end
+
+  test "should stop event handler when invalid error response returned", %{handler: handler, ref: ref, uuid: uuid} do
+    :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "invalid", reply_to: reply_to()})
+
+    assert_receive {:error, :invalid}
+
+    assert_receive {:DOWN, ^ref, _, _, :failed}
+    refute Process.alive?(handler)
+  end
+
+  test "should retry event handler on error", %{handler: handler, ref: ref, uuid: uuid} do
+    :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "retry", reply_to: reply_to()})
+
+    assert_receive {:error, :failed, %{failures: 1}}
+    assert_receive {:error, :failed, %{failures: 2}}
+    assert_receive {:error, :too_many_failures, %{failures: 3}}
+
+    assert_receive {:DOWN, ^ref, _, _, :too_many_failures}
+    refute Process.alive?(handler)
+  end
+
+  test "should retry event handler after delay on error", %{handler: handler, ref: ref, uuid: uuid} do
+    :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "retry", delay: 10, reply_to: reply_to()})
+
+    assert_receive {:error, :failed, %{failures: 1, delay: 10}}
+    assert_receive {:error, :failed, %{failures: 2, delay: 10}}
+    assert_receive {:error, :too_many_failures, %{failures: 3, delay: 10}}
+
+    assert_receive {:DOWN, ^ref, _, _, :too_many_failures}
+    refute Process.alive?(handler)
+  end
+
+  test "should skip event on error", %{handler: handler, ref: ref, uuid: uuid} do
+    :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "skip", reply_to: reply_to()})
+
+    assert_receive {:error, :skipping}
+
+    # event handler should still be alive
+    refute_receive {:DOWN, ^ref, _, _, :too_many_failures}
+    assert Process.alive?(handler)
+
+    # should ack bad event
+    assert GenServer.call(handler, :last_seen_event) == 1
+  end
+
+  defp reply_to, do: self() |> :erlang.pid_to_list()
 end

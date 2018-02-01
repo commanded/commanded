@@ -29,6 +29,14 @@ defmodule Commanded.Event.Handler do
   subscription will be created when you change the name, and you event handler
   will receive already handled events.
 
+  You can use the module name of your event handler using the `__MODULE__`
+  special form:
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler,
+          name: __MODULE__
+      end
+
   ## Subscription options
 
   You can choose to start the event handler's event store subscription from
@@ -77,6 +85,57 @@ defmodule Commanded.Event.Handler do
         end
       end
 
+  ## `c:error/3` callback
+
+  You can define an `c:error/3` callback function to handle any errors returned
+  from your event handler's `handle/2` functions. The `c:error/3` function is
+  passed the actual error (e.g. `{:error, :failure}`), the failed event, and a
+  failure context.
+
+  Use pattern matching on the error and/or failed event to explicitly handle
+  certain errors or events. You can choose to retry, skip, or stop the event
+  handler after an error.
+
+  The default behaviour if you don't provide an `c:error/3` callback is to stop
+  the event handler using the exact error reason returned from the `handle/2`
+  function. You should supervise event handlers to ensure they are correctly
+  restarted on error.
+
+  ### Example error handling
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler, name: __MODULE__
+
+        require Logger
+
+        alias Commanded.Event.FailureContext
+
+        def handle(%AnEvent{}, _metadata) do
+          # simulate event handling failure
+          {:error, :failed}
+        end
+
+        def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
+          context = record_failure(context)
+
+          case Map.get(context, :failures) do
+            too_many when too_many >= 3 ->
+              # skip bad event after third failure
+              Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
+
+              :skip
+
+            _ ->
+              # retry event, failure count is included in context map
+              {:retry, context}
+          end
+        end
+
+        defp record_failure(context) do
+          Map.update(context, :failures, 1, fn failures -> failures + 1 end)
+        end
+      end
+
   ## Consistency
 
   For each event handler you can define its consistency, as one of either
@@ -113,7 +172,7 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
-  alias Commanded.Event.Handler
+  alias Commanded.Event.{FailureContext, Handler}
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
@@ -141,6 +200,36 @@ defmodule Commanded.Event.Handler do
   @callback handle(domain_event, metadata) :: :ok
     | {:error, :already_seen_event}
     | {:error, reason :: any()}
+
+  @doc """
+  Called when an event `handle/2` callback returns an error.
+
+  The `c:error/3` function allows you to control how event handling failures
+  are handled. The function is passed the error returned by the event handler
+  (e.g. `{:error, :failure}`), the event causing the error, and a context map
+  containing state passed between retries. Use the context map to track any
+  transient state you need to access between retried failures.
+
+  You can return one of the following responses depending upon the
+  error severity:
+
+  - `{:retry, context}` - retry the failed event, provide a context
+    map containing any state passed to subsequent failures. This could be used
+    to count the number of failures, stopping after too many.
+
+  - `{:retry, delay, context}` - retry the failed event, after sleeping for
+    the requested delay (in milliseconds). Context is a map as described in
+    `{:retry, context}` above.
+
+  - `:skip` - skip the failed event by acknowledging receipt.
+
+  - `{:stop, reason}` - stop the event handler with the given reason.
+
+  """
+  @callback error(error :: term(), failed_event :: domain_event, failure_context :: FailureContext.t()) :: {:retry, context :: map()}
+    | {:retry, delay :: non_neg_integer(), context :: map()}
+    | :skip
+    | {:stop, reason :: term()}
 
   @doc """
   Macro as a convenience for defining an event handler.
@@ -209,23 +298,27 @@ defmodule Commanded.Event.Handler do
     end
   end
 
-  # include default fallback function at end, with lowest precedence
+  # Include default `handle/2` and `error/3` callback functions in module
+
   @doc false
   defmacro __before_compile__(_env) do
     quote do
       @doc false
       def handle(_event, _metadata), do: :ok
+
+      @doc false
+      def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
     end
   end
 
   @doc false
   defstruct [
-    consistency: nil,
-    handler_name: nil,
-    handler_module: nil,
-    last_seen_event: nil,
-    subscribe_from: nil,
-    subscription: nil,
+    :consistency,
+    :handler_name,
+    :handler_module,
+    :last_seen_event,
+    :subscribe_from,
+    :subscription
   ]
 
   @doc false
@@ -287,7 +380,13 @@ defmodule Commanded.Event.Handler do
     end
   end
 
-  defp subscribe_to_all_streams(%Handler{consistency: consistency, handler_name: handler_name, subscribe_from: subscribe_from} = state) do
+  defp subscribe_to_all_streams(%Handler{} = state) do
+    %Handler{
+      consistency: consistency,
+      handler_name: handler_name,
+      subscribe_from: subscribe_from
+    } = state
+
     {:ok, subscription} = EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
 
     # register this event handler as a subscription with the given consistency
@@ -296,8 +395,10 @@ defmodule Commanded.Event.Handler do
     %Handler{state | subscription: subscription}
   end
 
+  defp handle_event(event, handler, context \\ %{})
+
   # ignore already seen events
-  defp handle_event(%RecordedEvent{event_number: event_number} = event, %Handler{last_seen_event: last_seen_event} = state)
+  defp handle_event(%RecordedEvent{event_number: event_number} = event, %Handler{last_seen_event: last_seen_event} = state, _context)
     when not is_nil(last_seen_event) and event_number <= last_seen_event
   do
     Logger.debug(fn -> describe(state) <> " has already seen event ##{inspect event_number}" end)
@@ -306,7 +407,7 @@ defmodule Commanded.Event.Handler do
   end
 
   # delegate event to handler module
-  defp handle_event(%RecordedEvent{data: data} = event, %Handler{handler_module: handler_module} = state) do
+  defp handle_event(%RecordedEvent{data: data} = event, %Handler{handler_module: handler_module} = state, context) do
     case handler_module.handle(data, enrich_metadata(event)) do
       :ok ->
         confirm_receipt(event, state)
@@ -317,7 +418,51 @@ defmodule Commanded.Event.Handler do
       {:error, reason} = error ->
         Logger.error(fn -> describe(state) <> " failed to handle event #{inspect event} due to: #{inspect reason}" end)
 
-        throw(error)
+        handle_event_error(error, event, state, context)
+    end
+  end
+
+  defp handle_event_error(error, %RecordedEvent{} = failed_event, %Handler{} = state, context) do
+    %RecordedEvent{data: data} = failed_event
+    %Handler{handler_module: handler_module} = state
+
+    failure_context = %FailureContext{
+      context: context,
+      metadata: enrich_metadata(failed_event)
+    }
+
+    case handler_module.error(error, data, failure_context) do
+      {:retry, context} when is_map(context) ->
+        # retry the failed event
+        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+
+        handle_event(failed_event, state, context)
+
+      {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
+        # retry the failed event after waiting for the given delay, in milliseconds
+        Logger.info(fn -> describe(state) <> " is retrying failed event after #{inspect delay}ms" end)
+
+        :timer.sleep(delay)
+
+        handle_event(failed_event, state, context)
+
+      :skip ->
+        # skip the failed event by confirming receipt
+        Logger.info(fn -> describe(state) <> " is skipping event" end)
+
+        confirm_receipt(failed_event, state)
+
+      {:stop, reason} ->
+        # stop event handler
+        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect reason}" end)
+
+        throw({:error, reason})
+
+       invalid ->
+         Logger.warn(fn -> describe(state) <> " returned an invalid error reponse: #{inspect invalid}" end)
+
+         # stop event handler with original error
+         throw(error)
     end
   end
 

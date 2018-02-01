@@ -44,6 +44,7 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
+      {:dialyxir, "~> 0.5", only: :dev, runtime: false},
       {:ex_doc, "~> 0.17", only: :dev},
       {:mix_test_watch, "~> 0.5", only: :dev},
       {:poison, "~> 3.1"},
