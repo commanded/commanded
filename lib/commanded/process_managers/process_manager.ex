@@ -12,7 +12,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:interested?/1`
   - `c:handle/2`
   - `c:apply/2`
-  - `c:error/4`
+  - `c:error/3`
 
   ## Example
 
@@ -33,7 +33,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           # ...
         end
 
-        def error({:error, failure}, %ExampleCommand{}, _pending_commands, %{} = context) do
+        def error({:error, failure}, %ExampleCommand{}, _failure_context) do
           # retry, skip, ignore, or stop process manager on error dispatching command
         end
       end
@@ -44,19 +44,19 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   # Error handling
 
-  You can define an `c:error/4` callback function to handle any errors returned
-  from command dispatch. The function is passed the command dispatch error (e.g.
-  `{:error, :failure}`), the failed command, any pending commands, and a context
-  map containing state passed between retries.
+  You can define an `c:error/3` callback function to handle any errors returned
+  by commands dispatched from your process manager. The function is passed the
+  command dispatch error (e.g. `{:error, :failure}`), the failed command, and a
+  failure context. See `Commanded.ProcessManagers.FailureContext` for details.
 
   Use pattern matching on the error and/or failed command to explicitly handle
   certain errors or commands. You can choose to retry, skip, ignore, or stop the
-  process manager after an error dispatching command.
+  process manager after a command dispatch error.
 
-  The default behaviour if you don't provide an `c:error/4` callback is to stop
-  the process manager using the exact error reason returned from the command
-  dispatch. You should supervise process managers to ensure they are correctly
-  restarted on error.
+  The default behaviour, if you don't provide an `c:error/3` callback, is to
+  stop the process manager using the exact error reason returned from the
+  command dispatch. You should supervise your process managers to ensure they
+  are restarted on error.
 
   ## Example
 
@@ -65,16 +65,17 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           name: "ExampleProcessManager",
           router: ExampleRouter
 
-        # stop process manager after three attempts
-        def error({:error, _failure}, _failed_command, _pending_commands, %{attempts: attempts} = context)
-          when attempts >= 2
+        # stop process manager after three failures
+        def error({:error, _failure}, _failed_command, %{context: %{failures: failures}})
+          when failures >= 2
         do
-          {:stop, :too_many_attempts}
+          {:stop, :too_many_failures}
         end
 
-        # retry command, record attempt count in context map
-        def error({:error, _failure}, _failed_command, _pending_commands, context) do
-          context = Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
+        # retry command, record failure count in context map
+        def error({:error, _failure}, _failed_command, %{context: context}) do
+          context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)
+
           {:retry, context}
         end
       end
@@ -109,6 +110,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   Please read the [Process managers](process-managers.html) guide for more details.
   """
+
+  alias Commanded.ProcessManagers.FailureContext
 
   @type domain_event :: struct
   @type command :: struct
@@ -162,11 +165,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Called when a command dispatch returns an error.
 
-  The `c:error/4` function allows you to control how command dispatch failures
+  The `c:error/3` function allows you to control how command dispatch failures
   are handled. The function is passed the command dispatch error (e.g. `{:error,
-  :failure}`), the failed command, any pending commands, and a context map
-  containing state passed between retries. The context may also be used to track
-  state between retried failures.
+  :failure}`), the failed command, and a failure context struct
+  (see `Commanded.ProcessManagers.FailureContext` for details). This contains a
+  context map you can use to pass transient state between failures. For example
+  it can be used to count the number of failures.
 
   You can return one of the following responses depending upon the
   error severity:
@@ -193,7 +197,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `{:stop, reason}` - stop the process manager with the given reason.
 
   """
-  @callback error(error :: term(), failed_command :: command, pending_commands :: list(command), context :: map()) :: {:retry, context :: map()}
+  @callback error(error :: term(), failed_command :: command, failure_context :: FailureContext.t()) :: {:retry, context :: map()}
     | {:retry, delay :: non_neg_integer(), context :: map()}
     | {:skip, :discard_pending}
     | {:skip, :continue_pending}
@@ -267,22 +271,29 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   end
 
   def emit_deprecated_warnings(env, _kind, name, args, _guards, _body) do
-    arity = length args
+    arity = length(args)
     mod = env.module
+
     case {name, arity} do
       {:error, 4} ->
         if Module.defines?(mod, {name, arity}) do
           mod
           |> error_deprecation_message
-          |> IO.warn
+          |> IO.warn()
         end
-      _ ->
 
+      _ ->
         nil
     end
   end
 
   defp error_deprecation_message(mod) do
-    "Commanded Deprecation Warning:\nProcess manager #{mod} defined error/4 callback.\nThis is deprecated in favor of error/3\nSee https://github.com/commanded/commanded/blob/master/guides/Process%20Managers.md#deprecated-error4"
+    """
+    Commanded Deprecation Warning:
+
+    Process manager #{mod} defined `error/4` callback, this has been deprecated in favor of `error/3`.
+
+    See https://github.com/commanded/commanded/blob/master/guides/Process%20Managers.md#deprecated-error4
+    """
   end
 end

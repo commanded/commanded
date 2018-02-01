@@ -85,6 +85,57 @@ defmodule Commanded.Event.Handler do
         end
       end
 
+  ## `c:error/3` callback
+
+  You can define an `c:error/3` callback function to handle any errors returned
+  from your event handler's `handle/2` functions. The `c:error/3` function is
+  passed the actual error (e.g. `{:error, :failure}`), the failed event, and a
+  failure context.
+
+  Use pattern matching on the error and/or failed event to explicitly handle
+  certain errors or events. You can choose to retry, skip, or stop the event
+  handler after an error.
+
+  The default behaviour if you don't provide an `c:error/3` callback is to stop
+  the event handler using the exact error reason returned from the `handle/2`
+  function. You should supervise event handlers to ensure they are correctly
+  restarted on error.
+
+  ### Example error handling
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler, name: __MODULE__
+
+        require Logger
+
+        alias Commanded.Event.FailureContext
+
+        def handle(%AnEvent{}, _metadata) do
+          # simulate event handling failure
+          {:error, :failed}
+        end
+
+        def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
+          context = record_failure(context)
+
+          case Map.get(context, :failures) do
+            too_many when too_many >= 3 ->
+              # skip bad event after third failure
+              Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
+
+              :skip
+
+            _ ->
+              # retry event, failure count is included in context map
+              {:retry, context}
+          end
+        end
+
+        defp record_failure(context) do
+          Map.update(context, :failures, 1, fn failures -> failures + 1 end)
+        end
+      end
+
   ## Consistency
 
   For each event handler you can define its consistency, as one of either
@@ -121,7 +172,7 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
-  alias Commanded.Event.Handler
+  alias Commanded.Event.{FailureContext, Handler}
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
@@ -175,7 +226,7 @@ defmodule Commanded.Event.Handler do
   - `{:stop, reason}` - stop the event handler with the given reason.
 
   """
-  @callback error(error :: term(), failed_event :: RecordedEvent.t(), context :: map()) :: {:retry, context :: map()}
+  @callback error(error :: term(), failed_event :: domain_event, failure_context :: FailureContext.t()) :: {:retry, context :: map()}
     | {:retry, delay :: non_neg_integer(), context :: map()}
     | :skip
     | {:stop, reason :: term()}
@@ -256,7 +307,7 @@ defmodule Commanded.Event.Handler do
       def handle(_event, _metadata), do: :ok
 
       @doc false
-      def error({:error, reason}, _failed_event, _context), do: {:stop, reason}
+      def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
     end
   end
 
@@ -375,14 +426,19 @@ defmodule Commanded.Event.Handler do
     %RecordedEvent{data: data} = failed_event
     %Handler{handler_module: handler_module} = state
 
-    case handler_module.error(error, data, context) do
-      {:retry, context} ->
+    failure_context = %FailureContext{
+      context: context,
+      metadata: enrich_metadata(failed_event)
+    }
+
+    case handler_module.error(error, data, failure_context) do
+      {:retry, context} when is_map(context) ->
         # retry the failed event
         Logger.info(fn -> describe(state) <> " is retrying failed event" end)
 
         handle_event(failed_event, state, context)
 
-      {:retry, delay, context} when is_integer(delay) and delay >= 0 ->
+      {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
         # retry the failed event after waiting for the given delay, in milliseconds
         Logger.info(fn -> describe(state) <> " is retrying failed event after #{inspect delay}ms" end)
 
@@ -401,6 +457,12 @@ defmodule Commanded.Event.Handler do
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect reason}" end)
 
         throw({:error, reason})
+
+       invalid ->
+         Logger.warn(fn -> describe(state) <> " returned an invalid error reponse: #{inspect invalid}" end)
+
+         # stop event handler with original error
+         throw(error)
     end
   end
 

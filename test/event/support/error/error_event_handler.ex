@@ -3,6 +3,7 @@ defmodule Commanded.Event.ErrorEventHandler do
 
   use Commanded.Event.Handler, name: __MODULE__
 
+  alias Commanded.Event.FailureContext
   alias Commanded.Event.ErrorAggregate.Events.ErrorEvent
 
   def handle(%ErrorEvent{}, _metadata) do
@@ -10,38 +11,45 @@ defmodule Commanded.Event.ErrorEventHandler do
     {:error, :failed}
   end
 
-  # stop error handler after third failure
-  def error({:error, :failed}, %ErrorEvent{strategy: "retry"} = event, %{failures: failures} = context)
-    when failures >= 2
-  do
-    context = record_failure(context)
+  def error({:error, :failed}, %ErrorEvent{strategy: "retry", delay: delay} = event, %FailureContext{
+        context: context
+      }) do
+    context = context |> record_failure() |> Map.put(:delay, delay)
 
-    send_reply({:error, :too_many_failures, context}, event)
+    case Map.get(context, :failures) do
+      too_many when too_many >= 3 ->
+        # stop error handler after third failure
+        send_reply({:error, :too_many_failures, context}, event)
 
-    {:stop, :too_many_failures}
-  end
+        {:stop, :too_many_failures}
 
-  # retry event, record failure count in context map
-  def error({:error, :failed}, %ErrorEvent{strategy: "retry"} = event, context) do
-    context = record_failure(context)
+      _ ->
+        # retry event, record failure count in context map
+        send_reply({:error, :failed, context}, event)
 
-    send_reply({:error, :failed, context}, event)
-
-    {:retry, context}
+        {:retry, context}
+    end
   end
 
   # skip event
-  def error({:error, :failed}, %ErrorEvent{strategy: "skip"} = event, _context) do
+  def error({:error, :failed}, %ErrorEvent{strategy: "skip"} = event, _failure_context) do
     send_reply({:error, :skipping}, event)
 
     :skip
   end
 
   # default behaviour is to stop the event handler with the given error reason
-  def error({:error, reason}, %ErrorEvent{strategy: "default"} = event, _context) do
+  def error({:error, reason}, %ErrorEvent{strategy: "default"} = event, _failure_context) do
     send_reply({:error, :stopping}, event)
 
     {:stop, reason}
+  end
+
+  # return an invalid response
+  def error({:error, :failed}, %ErrorEvent{strategy: "invalid"} = event, _failure_context) do
+    send_reply({:error, :invalid}, event)
+
+    :invalid
   end
 
   defp record_failure(context) do

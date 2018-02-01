@@ -58,16 +58,16 @@ defmodule ExampleProcessManager do
     name: "ExampleProcessManager",
     router: ExampleRouter
 
-  # stop process manager after three attempts
-  def error({:error, _failure}, _failed_command, _pending_commands, %{attempts: attempts} = context)
-    when attempts >= 2
+  # stop process manager after three failures
+  def error({:error, _failure}, _failed_command, %{context: %{failures: failures}})
+    when failures >= 2
   do
-    {:stop, :too_many_attempts}
+    {:stop, :too_many_failures}
   end
 
-  # retry command, record attempt count in context map
-  def error({:error, _failure}, _failed_command, _pending_commands, context) do
-    context = Map.update(context, :attempts, 1, fn attempts -> attempts + 1 end)
+  # retry command, record failure count in context map
+  def error({:error, _failure}, _failed_command, %{context: context}) do
+    context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)
     {:retry, context}
   end
 end
