@@ -139,8 +139,8 @@ defmodule Commanded.Subscriptions do
   def handle_info({:ack_event, name, stream_uuid, stream_version, pid}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
     # track insert date as seconds since the subscriptions process was started
     # to support expiry of stale acks
-    inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :second)
-
+    inserted_at_epoch = monotonic_time() - started_at
+    
     :ets.insert(subscriptions_table, {name, pid})
     :ets.insert(streams_table, {{name, stream_uuid}, stream_version, inserted_at_epoch})
 
@@ -174,7 +174,7 @@ defmodule Commanded.Subscriptions do
     %Subscriptions{
       subscriptions_table: :ets.new(:subscriptions, [:set, :private]),
       streams_table: :ets.new(:streams, [:set, :private]),
-      started_at: now(),
+      started_at: monotonic_time(),
     }
   end
 
@@ -235,21 +235,22 @@ defmodule Commanded.Subscriptions do
 
   # delete subscription ack's that are older than the configured ttl
   defp purge_expired_streams(ttl, %Subscriptions{streams_table: streams_table, started_at: started_at}) do
-    stale_epoch =
-      now()
-      |> NaiveDateTime.add(-ttl, :millisecond)
-      |> NaiveDateTime.diff(started_at, :second)
+    stale_epoch = monotonic_time() - started_at - (ttl / 1_000)
 
     streams_table
     |> :ets.select([{{:"$1", :"$2", :"$3"}, [{:"=<", :"$3", stale_epoch}], [:"$1"]}])
     |> Enum.each(&:ets.delete(streams_table, &1))
   end
 
-  defp now, do: DateTime.utc_now() |> DateTime.to_naive()
+  defp monotonic_time, do: System.monotonic_time(:seconds)
+
+  @default_ttl :timer.hours(1)
+  @default_consistency_timeout :timer.seconds(5)
 
   # time to live period for ack'd events before they can be safely purged in milliseconds
-  @default_ttl :timer.hours(1)
+  defp default_ttl,
+    do: Application.get_env(:commanded, :subscriptions_ttl, @default_ttl)
 
-  defp default_ttl, do: Application.get_env(:commanded, :subscriptions_ttl, @default_ttl)
-  defp default_consistency_timeout, do: Application.get_env(:commanded, :dispatch_consistency_timeout, 5_000)
+  defp default_consistency_timeout,
+    do: Application.get_env(:commanded, :dispatch_consistency_timeout, @default_consistency_timeout)
 end
