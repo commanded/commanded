@@ -1,12 +1,22 @@
 defmodule Commanded.PubSub.LocalPubSubTest do
   use ExUnit.Case
 
-  alias Commanded.PubSub.LocalRegistry
+  alias Commanded.PubSub.LocalPubSub
+
+  @topic "test"
+
+  setup do
+    Application.put_env(:commanded, :pubsub, :local)
+
+    on_exit(fn ->
+      Application.delete_env(:commanded, :pubsub)
+    end)
+  end
 
   describe "pub/sub" do
     test "should receive broadcast message" do
-      assert :ok = LocalRegistry.subscribe(:test)
-      assert :ok = LocalRegistry.broadcast(:test, :message)
+      assert :ok = LocalPubSub.subscribe(@topic)
+      assert :ok = LocalPubSub.broadcast(@topic, :message)
 
       assert_receive(:message)
     end
@@ -16,8 +26,8 @@ defmodule Commanded.PubSub.LocalPubSubTest do
     test "should list tracked processes" do
       self = self()
 
-      assert :ok = LocalRegistry.track(:test, :example)
-      assert [{:example, ^self}] = LocalRegistry.list(:test)
+      assert :ok = LocalPubSub.track(@topic, :example)
+      assert [{:example, ^self}] = LocalPubSub.list(@topic)
     end
   end
 end

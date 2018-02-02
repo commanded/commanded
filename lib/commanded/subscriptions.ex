@@ -6,6 +6,9 @@ defmodule Commanded.Subscriptions do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.{PubSub, Subscriptions}
 
+  @subscriptions_topic "subscriptions"
+  @ack_topic "ack_event"
+
   defstruct streams_table: nil,
             started_at: nil,
             subscribers: []
@@ -19,7 +22,7 @@ defmodule Commanded.Subscriptions do
   """
   def register(name, consistency)
   def register(_name, :eventual), do: :ok
-  def register(name, :strong), do: PubSub.track(:subscriptions, name)
+  def register(name, :strong), do: PubSub.track(@subscriptions_topic, name)
 
   @doc """
   Acknowledge receipt and sucessful processing of the given event by the named
@@ -28,7 +31,7 @@ defmodule Commanded.Subscriptions do
   def ack_event(name, consistency, event)
   def ack_event(_name, :eventual, _event), do: :ok
   def ack_event(name, :strong, %RecordedEvent{stream_id: stream_id, stream_version: stream_version}) do
-    PubSub.broadcast(__MODULE__, {:ack_event, name, stream_id, stream_version})
+    PubSub.broadcast(@ack_topic, {:ack_event, name, stream_id, stream_version})
   end
 
   @doc false
@@ -67,7 +70,7 @@ defmodule Commanded.Subscriptions do
   end
 
   def init(_arg) do
-    :ok = PubSub.subscribe(__MODULE__)
+    :ok = PubSub.subscribe(@ack_topic)
 
     schedule_purge_streams()
 
@@ -160,7 +163,7 @@ defmodule Commanded.Subscriptions do
     }
   end
 
-  defp subscriptions, do: PubSub.list(:subscriptions)
+  defp subscriptions, do: PubSub.list(@subscriptions_topic)
 
   # Have all subscriptions handled the event for the given stream and version
   defp handled_by_all?(stream_uuid, stream_version, exclude, %Subscriptions{} = state) do

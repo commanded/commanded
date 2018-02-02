@@ -1,7 +1,14 @@
-defmodule Commanded.PubSub.LocalRegistry do
+defmodule Commanded.PubSub.LocalPubSub do
   @moduledoc """
   Local pub/sub adapter, restricted to a single node, using Elixir's
   [Registry](https://hexdocs.pm/elixir/Registry.html) module.
+
+  You can configure this adapter in your environment config file:
+
+      # `config/config.exs`
+      config :commanded, pubsub: :local
+
+  This adapter will be used by default when none is specified in config.
   """
 
   @behaviour Commanded.PubSub
@@ -20,9 +27,9 @@ defmodule Commanded.PubSub.LocalRegistry do
   @doc """
   Subscribes the caller to the topic.
   """
-  @spec subscribe(atom) :: :ok | {:error, term}
+  @spec subscribe(String.t()) :: :ok | {:error, term}
   @impl Commanded.PubSub
-  def subscribe(topic) do
+  def subscribe(topic) when is_binary(topic) do
     {:ok, _} = Registry.register(__MODULE__, topic, [])
     :ok
   end
@@ -32,7 +39,7 @@ defmodule Commanded.PubSub.LocalRegistry do
   """
   @spec broadcast(String.t(), term) :: :ok | {:error, term}
   @impl Commanded.PubSub
-  def broadcast(topic, message) do
+  def broadcast(topic, message) when is_binary(topic) do
     Registry.dispatch(__MODULE__, topic, fn entries ->
       for {pid, _} <- entries, do: send(pid, message)
     end)
@@ -44,7 +51,7 @@ defmodule Commanded.PubSub.LocalRegistry do
   """
   @spec track(String.t(), term) :: :ok
   @impl Commanded.PubSub
-  def track(topic, key) do
+  def track(topic, key) when is_binary(topic) do
     {:ok, _} = Registry.register(__MODULE__, topic, key)
 
     :ok
@@ -55,7 +62,7 @@ defmodule Commanded.PubSub.LocalRegistry do
   """
   @spec list(String.t()) :: [{term, pid}]
   @impl Commanded.PubSub
-  def list(topic) do
+  def list(topic) when is_binary(topic) do
     Registry.match(__MODULE__, topic, :_) |> Enum.map(fn {pid, key} -> {key, pid} end)
   end
 end

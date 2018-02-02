@@ -22,18 +22,18 @@ defmodule Commanded.PubSub do
     * `message` - The payload of the broadcast
 
   """
-  @callback broadcast(String.t, term) :: :ok | {:error, term}
+  @callback broadcast(String.t(), term) :: :ok | {:error, term}
 
   @doc """
   Track the current process under the given `topic`, uniquely identified by
   `key`.
   """
-  @callback track(String.t, term) :: :ok | {:error, term}
+  @callback track(String.t(), term) :: :ok | {:error, term}
 
   @doc """
   List tracked PIDs for a given topic.
   """
-  @callback list(String.t) :: [{term, pid}]
+  @callback list(String.t()) :: [{term, pid}]
 
   @doc """
   Return an optional supervisor spec for pub/sub.
@@ -45,26 +45,27 @@ defmodule Commanded.PubSub do
   Subscribes the caller to the PubSub adapter's topic.
   """
   @callback subscribe(atom) :: :ok | {:error, term}
-  def subscribe(topic), do: pubsub_provider().subscribe(topic)
+  def subscribe(topic) when is_binary(topic), do: pubsub_provider().subscribe(topic)
 
   @doc """
   Broadcasts message on given topic.
   """
-  @callback broadcast(String.t, term) :: :ok | {:error, term}
-  def broadcast(topic, message), do: pubsub_provider().broadcast(topic, message)
+  @callback broadcast(String.t(), term) :: :ok | {:error, term}
+  def broadcast(topic, message) when is_binary(topic),
+    do: pubsub_provider().broadcast(topic, message)
 
   @doc """
   Track the current process under the given `topic`, uniquely identified by
   `key`.
   """
-  @spec track(String.t, term) :: :ok
-  def track(topic, key), do: pubsub_provider().track(topic, key)
+  @spec track(String.t(), term) :: :ok
+  def track(topic, key) when is_binary(topic), do: pubsub_provider().track(topic, key)
 
   @doc """
   List tracked PIDs for a given topic.
   """
-  @spec list(String.t) :: [{term, pid}]
-  def list(topic), do: pubsub_provider().list(topic)
+  @spec list(String.t()) :: [{term, pid}]
+  def list(topic) when is_binary(topic), do: pubsub_provider().list(topic)
 
   @doc """
   Get the configured pub/sub adapter.
@@ -74,8 +75,24 @@ defmodule Commanded.PubSub do
   @spec pubsub_provider() :: module()
   def pubsub_provider do
     case Application.get_env(:commanded, :pubsub, :local) do
-      :local -> Commanded.PubSub.LocalRegistry
-      other -> other
+      :local ->
+        Commanded.PubSub.LocalPubSub
+
+      provider when is_atom(provider) ->
+        provider
+
+      config ->
+        if Keyword.keyword?(config) do
+          case Keyword.get(config, :phoenix_pubsub) do
+            nil ->
+              raise "Unsupported pubsub adapter: #{inspect(config)}"
+
+            phoenix_pubsub ->
+              Commanded.PubSub.PhoenixPubSub
+          end
+        else
+          raise "Unsupported pubsub adapter: #{inspect(config)}"
+        end
     end
   end
 end
