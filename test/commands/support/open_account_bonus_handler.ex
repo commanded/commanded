@@ -17,7 +17,7 @@ defmodule Commanded.Commands.OpenAccountBonusHandler do
 
     BankRouter.dispatch(deposit_welcome_bonus,
       causation_id: causation_id,
-      correlation_id: correlation_id,
+      correlation_id: correlation_id
     )
   end
 end

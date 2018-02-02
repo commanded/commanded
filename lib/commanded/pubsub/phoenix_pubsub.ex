@@ -4,7 +4,17 @@ defmodule Commanded.PubSub.PhoenixPubSub do
 
   [1] https://hex.pm/packages/phoenix_pubsub
 
-  You must configure this adapter in your environment config file:
+  To use Phoenix pub/sub you must add it as a dependency in your project's
+  `mix.exs` file:
+
+      defp deps do
+        [
+          {:phoenix_pubsub, "~> 1.0"}
+        ]
+      end
+
+  Fetch mix deps and configure the pubsub settings in your environment config
+  file:
 
       # `config/config.exs`
       config :commanded, pubsub: [

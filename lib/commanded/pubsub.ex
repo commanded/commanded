@@ -3,8 +3,6 @@ defmodule Commanded.PubSub do
   Pub/sub behaviour for use by Commanded to subcribe to and broadcast messages.
   """
 
-  @behaviour Commanded.PubSub
-
   @doc """
   Return an optional supervisor spec for pub/sub.
   """
@@ -87,7 +85,7 @@ defmodule Commanded.PubSub do
             nil ->
               raise "Unsupported pubsub adapter: #{inspect(config)}"
 
-            phoenix_pubsub ->
+            _phoenix_pubsub ->
               Commanded.PubSub.PhoenixPubSub
           end
         else
