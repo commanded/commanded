@@ -49,6 +49,9 @@ defmodule Commanded.Mixfile do
       {:mix_test_watch, "~> 0.5", only: :dev},
       {:poison, "~> 3.1"},
       {:uuid, "~> 1.1"},
+
+      # optional deps
+      {:phoenix_pubsub, "~> 1.0", optional: true}
     ]
   end
 

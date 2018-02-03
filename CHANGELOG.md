@@ -8,6 +8,7 @@
 - Router support for identity prefix function.
 - Retry command execution on concurrency error ([#132](https://github.com/commanded/commanded/pull/132)).
 - Event handler `error/3` callback ([#133](https://github.com/commanded/commanded/pull/133)).
+- Support distributed dispatch consistency ([#135](https://github.com/commanded/commanded/pull/135)).
 
 ## v0.15.1
 

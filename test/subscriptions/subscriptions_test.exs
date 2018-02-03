@@ -41,15 +41,6 @@ defmodule Commanded.SubscriptionsTest do
       assert Subscriptions.handled?("stream1", 2)
     end
 
-    test "should register handler during ack event if unknown" do
-      assert Subscriptions.all() == []
-
-      :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
-
-      assert Subscriptions.all() == [{"handler1", self()}]
-      assert Subscriptions.handled?("stream1", 2)
-    end
-
     test "should ignore current process as handler" do
       :ok = Subscriptions.register("handler1", :strong)
 

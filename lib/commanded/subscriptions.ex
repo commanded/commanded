@@ -4,43 +4,38 @@ defmodule Commanded.Subscriptions do
   use GenServer
 
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.Subscriptions
-  alias Commanded.Registration
+  alias Commanded.{PubSub, Subscriptions}
 
-  defstruct [
-    subscriptions_table: nil,
-    streams_table: nil,
-    started_at: nil,
-    subscribers: [],
-  ]
+  @subscriptions_topic "subscriptions"
+  @ack_topic "ack_event"
+
+  defstruct streams_table: nil,
+            started_at: nil,
+            subscribers: []
 
   def start_link(arg) do
     GenServer.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
   @doc """
-  Register an event store subscription with the given consistency guarantee
+  Register an event store subscription with the given consistency guarantee.
   """
   def register(name, consistency)
   def register(_name, :eventual), do: :ok
-  def register(name, :strong) do
-    Registration.multi_send(__MODULE__, {:register_subscription, name, self()})
-  end
+  def register(name, :strong), do: PubSub.track(@subscriptions_topic, name)
 
   @doc """
   Acknowledge receipt and sucessful processing of the given event by the named
-  handler
+  handler.
   """
   def ack_event(name, consistency, event)
   def ack_event(_name, :eventual, _event), do: :ok
   def ack_event(name, :strong, %RecordedEvent{stream_id: stream_id, stream_version: stream_version}) do
-    Registration.multi_send(__MODULE__, {:ack_event, name, stream_id, stream_version, self()})
+    PubSub.broadcast(@ack_topic, {:ack_event, name, stream_id, stream_version})
   end
 
   @doc false
-  def all do
-    GenServer.call(__MODULE__, :all_subscriptions)
-  end
+  def all, do: subscriptions()
 
   @doc false
   def reset do
@@ -75,19 +70,15 @@ defmodule Commanded.Subscriptions do
   end
 
   def init(_arg) do
+    :ok = PubSub.subscribe(@ack_topic)
+
     schedule_purge_streams()
 
     {:ok, initial_state()}
   end
 
-  def handle_call(:all_subscriptions, _from, %Subscriptions{} = state) do
-    reply = subscriptions(state)
-    {:reply, reply, state}
-  end
-
-  def handle_call(:reset, _from, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table}) do
+  def handle_call(:reset, _from, %Subscriptions{streams_table: streams_table}) do
     :ets.delete(streams_table)
-    :ets.delete(subscriptions_table)
 
     {:reply, :ok, initial_state()}
   end
@@ -130,18 +121,13 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, state}
   end
 
-  def handle_info({:register_subscription, name, pid}, %Subscriptions{subscriptions_table: subscriptions_table} = state) do
-    :ets.insert(subscriptions_table, {name, pid})
+  def handle_info({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{} = state) do
+    %Subscriptions{streams_table: streams_table, started_at: started_at} = state
 
-    {:noreply, state}
-  end
-
-  def handle_info({:ack_event, name, stream_uuid, stream_version, pid}, %Subscriptions{streams_table: streams_table, subscriptions_table: subscriptions_table, started_at: started_at} = state) do
     # track insert date as seconds since the subscriptions process was started
     # to support expiry of stale acks
-    inserted_at_epoch = NaiveDateTime.diff(now(), started_at, :second)
+    inserted_at_epoch = monotonic_time() - started_at
 
-    :ets.insert(subscriptions_table, {name, pid})
     :ets.insert(streams_table, {{name, stream_uuid}, stream_version, inserted_at_epoch})
 
     state = %Subscriptions{state |
@@ -172,16 +158,16 @@ defmodule Commanded.Subscriptions do
 
   defp initial_state do
     %Subscriptions{
-      subscriptions_table: :ets.new(:subscriptions, [:set, :private]),
       streams_table: :ets.new(:streams, [:set, :private]),
-      started_at: now(),
+      started_at: monotonic_time(),
     }
   end
 
+  defp subscriptions, do: PubSub.list(@subscriptions_topic)
+
   # Have all subscriptions handled the event for the given stream and version
   defp handled_by_all?(stream_uuid, stream_version, exclude, %Subscriptions{} = state) do
-    state
-    |> subscriptions()
+    subscriptions()
     |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclude, pid) end)
     |> Enum.all?(fn {name, _pid} -> handled_by?(name, stream_uuid, stream_version, state) end)
   end
@@ -192,10 +178,6 @@ defmodule Commanded.Subscriptions do
       [{{^name, ^stream_uuid}, last_seen, _inserted_at}] when last_seen >= stream_version -> true
       _ -> false
     end
-  end
-
-  defp subscriptions(%Subscriptions{subscriptions_table: subscriptions_table}) do
-    :ets.tab2list(subscriptions_table)
   end
 
   defp remove_by_pid(subscribers, pid) do
@@ -235,21 +217,22 @@ defmodule Commanded.Subscriptions do
 
   # delete subscription ack's that are older than the configured ttl
   defp purge_expired_streams(ttl, %Subscriptions{streams_table: streams_table, started_at: started_at}) do
-    stale_epoch =
-      now()
-      |> NaiveDateTime.add(-ttl, :millisecond)
-      |> NaiveDateTime.diff(started_at, :second)
+    stale_epoch = monotonic_time() - started_at - (ttl / 1_000)
 
     streams_table
     |> :ets.select([{{:"$1", :"$2", :"$3"}, [{:"=<", :"$3", stale_epoch}], [:"$1"]}])
     |> Enum.each(&:ets.delete(streams_table, &1))
   end
 
-  defp now, do: DateTime.utc_now() |> DateTime.to_naive()
+  defp monotonic_time, do: System.monotonic_time(:seconds)
+
+  @default_ttl :timer.hours(1)
+  @default_consistency_timeout :timer.seconds(5)
 
   # time to live period for ack'd events before they can be safely purged in milliseconds
-  @default_ttl :timer.hours(1)
+  defp default_ttl,
+    do: Application.get_env(:commanded, :subscriptions_ttl, @default_ttl)
 
-  defp default_ttl, do: Application.get_env(:commanded, :subscriptions_ttl, @default_ttl)
-  defp default_consistency_timeout, do: Application.get_env(:commanded, :dispatch_consistency_timeout, 5_000)
+  defp default_consistency_timeout,
+    do: Application.get_env(:commanded, :dispatch_consistency_timeout, @default_consistency_timeout)
 end

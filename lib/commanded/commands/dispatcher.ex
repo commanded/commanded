@@ -1,6 +1,6 @@
 defmodule Commanded.Commands.Dispatcher do
   @moduledoc false
-  use GenServer
+
   require Logger
 
   alias Commanded.Aggregates
@@ -10,6 +10,7 @@ defmodule Commanded.Commands.Dispatcher do
 
   defmodule Payload do
     @moduledoc false
+
     defstruct [
       command: nil,
       command_uuid: nil,
