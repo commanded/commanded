@@ -9,6 +9,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defmodule State do
     @moduledoc false
+
     defstruct [
       serializer: nil,
       persisted_events: [],
@@ -22,6 +23,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defmodule Subscription do
     @moduledoc false
+
     defstruct [
       name: nil,
       subscriber: nil,
@@ -34,6 +36,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     State,
     Subscription,
   }
+
   alias Commanded.EventStore.{
     EventData,
     RecordedEvent,
@@ -149,6 +152,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
       _subscription -> {{:error, :subscription_already_exists}, state}
     end
+
+    send(subscriber, {:subscribed, subscriber})
 
     {:reply, reply, state}
   end

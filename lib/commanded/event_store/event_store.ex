@@ -39,6 +39,10 @@ defmodule Commanded.EventStore do
   Restarting the named subscription will resume from the next event following
   the last seen.
 
+  Once subscribed, the subscriber process should be sent a
+  `{:subscribed, subscription}` message to allow it to defer initialisation
+  until the subscription has started.
+
   The subscriber process will be sent all events persisted to any stream. It
   will receive a `{:events, events}` message for each batch of events persisted
   for a single aggregate.
