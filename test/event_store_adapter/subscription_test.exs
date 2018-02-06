@@ -82,6 +82,8 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       {:ok, 1} = EventStore.append_to_stream("stream1", 0, build_events(1))
       {:ok, 2} = EventStore.append_to_stream("stream2", 0, build_events(2))
 
+      wait_for_event_store()
+
       {:ok, subscription} = EventStore.subscribe_to_all_streams("subscriber", self(), :current)
 
       assert_receive {:subscribed, ^subscription}
@@ -106,6 +108,8 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     test "should receive any existing events" do
       {:ok, 1} = EventStore.append_to_stream("stream1", 0, build_events(1))
       {:ok, 2} = EventStore.append_to_stream("stream2", 0, build_events(2))
+
+      wait_for_event_store()
 
       {:ok, subscription} = EventStore.subscribe_to_all_streams("subscriber", self(), :origin)
 
@@ -157,6 +161,8 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       :timer.sleep(event_store_wait(200))
 
       ProcessHelper.shutdown(subscriber)
+
+      wait_for_event_store()
 
       {:ok, subscriber} = Subscriber.start_link()
 
@@ -219,5 +225,13 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     for account_number <- 1..count, do: build_event(account_number)
   end
 
-  defp event_store_wait(default), do: Application.get_env(:commanded, :event_store_wait, default)
+  defp wait_for_event_store do
+    case event_store_wait() do
+      nil -> :ok
+      wait -> :timer.sleep(wait)
+    end
+  end
+
+  defp event_store_wait(default \\ nil),
+    do: Application.get_env(:commanded, :event_store_wait, default)
 end
