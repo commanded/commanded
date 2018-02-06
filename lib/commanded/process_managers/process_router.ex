@@ -1,5 +1,6 @@
 defmodule Commanded.ProcessManagers.ProcessRouter do
   @moduledoc false
+
   use GenServer
   use Commanded.Registration
 
@@ -16,6 +17,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   defmodule State do
     @moduledoc false
+
     defstruct [
       command_dispatcher: nil,
       consistency: nil,
@@ -43,12 +45,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     Registration.start_link(name, __MODULE__, state)
   end
 
-  def init(%State{command_dispatcher: command_dispatcher} = state) do
-    {:ok, supervisor} = Supervisor.start_link(command_dispatcher)
-
-    state = %State{state | supervisor: supervisor}
-
-    GenServer.cast(self(), :subscribe_to_events)
+  def init(%State{} = state) do
+    :ok = GenServer.cast(self(), :subscribe_to_events)
 
     {:ok, state}
   end
@@ -118,26 +116,39 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, %State{state | pending_events: pending_events}}
   end
 
+  @doc false
+  # Subscription to event store has successfully subscribed, init process router
+  def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
+    Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
+
+    %State{command_dispatcher: command_dispatcher} = state
+
+    {:ok, supervisor} = Supervisor.start_link(command_dispatcher)
+
+    {:noreply, %State{state | supervisor: supervisor}}
+  end
+
   def handle_info({:events, events}, %State{pending_events: pending_events} = state) do
     Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
 
     unseen_events = Enum.reject(events, &event_already_seen?(&1, state))
 
-    state = case {pending_events, unseen_events} do
-      {[], []} ->
-        # no pending or unseen events, so state is unmodified
-        state
+    state =
+      case {pending_events, unseen_events} do
+        {[], []} ->
+          # no pending or unseen events, so state is unmodified
+          state
 
-      {[], _} ->
-        # no pending events, but some unseen events so start processing them
-        GenServer.cast(self(), :process_pending_events)
+        {[], _} ->
+          # no pending events, but some unseen events so start processing them
+          GenServer.cast(self(), :process_pending_events)
 
-        %State{state | pending_events: unseen_events}
+          %State{state | pending_events: unseen_events}
 
-      {_, _} ->
-        # already processing pending events, append the unseen events so they are processed afterwards
-        %State{state | pending_events: pending_events ++ unseen_events}
-    end
+        {_, _} ->
+          # already processing pending events, append the unseen events so they are processed afterwards
+          %State{state | pending_events: pending_events ++ unseen_events}
+      end
 
     {:noreply, state}
   end

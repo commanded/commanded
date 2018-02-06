@@ -64,7 +64,9 @@ You should start your event handlers using a [supervisor](#supervision) to ensur
 
 ### `init/0` callback
 
-You can define an `init/0` function in your handler to be called when it starts. This callback function must return `:ok`, any other return value will prevent the handler from starting.
+You can define an `init/0` function in your handler to be called once it has started and successfully subscribed to the event store.
+
+This callback function must return `:ok`, any other return value will terminate the event handler with an error.
 
 ```elixir
 defmodule ExampleHandler do

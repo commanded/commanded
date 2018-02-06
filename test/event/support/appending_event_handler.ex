@@ -16,6 +16,14 @@ defmodule Commanded.Event.AppendingEventHandler do
     end)
   end
 
+  def subscribed? do
+    try do
+      Agent.get(@agent_name, fn _ -> true end)
+    catch
+      :exit, _reason -> false
+    end
+  end
+
   def received_events do
     try do
       Agent.get(@agent_name, fn %{events: events} -> events end)

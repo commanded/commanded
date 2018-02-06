@@ -9,6 +9,7 @@
 - Retry command execution on concurrency error ([#132](https://github.com/commanded/commanded/pull/132)).
 - Event handler `error/3` callback ([#133](https://github.com/commanded/commanded/pull/133)).
 - Support distributed dispatch consistency ([#135](https://github.com/commanded/commanded/pull/135)).
+- Defer event handler and process router init until after subscribed ([#138](https://github.com/commanded/commanded/pull/138)).
 
 ## v0.15.1
 

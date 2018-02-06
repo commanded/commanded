@@ -9,6 +9,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defmodule State do
     @moduledoc false
+
     defstruct [
       serializer: nil,
       persisted_events: [],
@@ -22,6 +23,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defmodule Subscription do
     @moduledoc false
+
     defstruct [
       name: nil,
       subscriber: nil,
@@ -34,6 +36,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     State,
     Subscription,
   }
+
   alias Commanded.EventStore.{
     EventData,
     RecordedEvent,
@@ -260,6 +263,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp subscribe(%Subscription{name: subscription_name, subscriber: subscriber} = subscription, %State{persistent_subscriptions: subscriptions, persisted_events: persisted_events} = state) do
     Process.monitor(subscriber)
+
+    send(subscriber, {:subscribed, subscriber})
 
     catch_up(subscription, persisted_events, state)
 
