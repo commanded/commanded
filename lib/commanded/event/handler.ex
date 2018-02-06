@@ -67,9 +67,11 @@ defmodule Commanded.Event.Handler do
 
   ## `c:init/0` callback
 
-  You can define an `c:init/0` function in your handler to be called when it
-  starts. This callback function must return `:ok`, any other return value will
-  prevent the handler from starting.
+  You can define an `c:init/0` function in your handler to be called once it has
+  started and successfully subscribed to the event store.
+
+  This callback function must return `:ok`, any other return value will
+  terminate the event handler with an error.
 
       defmodule ExampleHandler do
         use Commanded.Event.Handler, name: "ExampleHandler"
@@ -338,31 +340,54 @@ defmodule Commanded.Event.Handler do
   def name(name), do: {__MODULE__, name}
 
   @doc false
-  def init(%Handler{handler_module: handler_module} = state) do
-    GenServer.cast(self(), :subscribe_to_events)
+  def init(%Handler{} = state) do
+    :ok = GenServer.cast(self(), :subscribe_to_events)
 
-    reply =
-      case handler_module.init() do
-        :ok -> :ok
-        {:stop, _reason} = reply -> reply
-      end
-
-    {reply, state}
+    {:ok, state}
   end
 
   @doc false
-  def handle_call(:last_seen_event, _from, %Handler{last_seen_event: last_seen_event} = state) do
+  def handle_call(:last_seen_event, _from, %Handler{} = state) do
+    %Handler{last_seen_event: last_seen_event} = state
+
     {:reply, last_seen_event, state}
   end
 
   @doc false
-  def handle_call(:config, _from, %Handler{consistency: consistency, subscribe_from: subscribe_from} = state) do
+  def handle_call(:config, _from, %Handler{} = state) do
+    %Handler{consistency: consistency, subscribe_from: subscribe_from} = state
+
     {:reply, [consistency: consistency, start_from: subscribe_from], state}
   end
 
   @doc false
   def handle_cast(:subscribe_to_events, %Handler{} = state) do
     {:noreply, subscribe_to_all_streams(state)}
+  end
+
+  @doc false
+  # Subscription to event store has successfully subscribed, init event handler
+  def handle_info({:subscribed, subscription}, %Handler{subscription: subscription} = state) do
+    Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
+
+    %Handler{
+      consistency: consistency,
+      handler_module: handler_module,
+      handler_name: handler_name
+    } = state
+
+    case handler_module.init() do
+      :ok ->
+        # register this event handler as a subscription with the given consistency
+        :ok = Subscriptions.register(handler_name, consistency)
+
+        {:noreply, state}
+
+      {:stop, reason} ->
+        Logger.debug(fn -> describe(state) <> " `init/0` callback has requested to stop" end)
+
+        {:stop, reason, state}
+    end
   end
 
   @doc false
@@ -388,9 +413,6 @@ defmodule Commanded.Event.Handler do
     } = state
 
     {:ok, subscription} = EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
-
-    # register this event handler as a subscription with the given consistency
-    :ok = Subscriptions.register(handler_name, consistency)
 
     %Handler{state | subscription: subscription}
   end

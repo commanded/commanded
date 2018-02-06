@@ -39,16 +39,20 @@ defmodule Commanded.Mixfile do
     "test/helpers",
     "test/process_managers",
     "test/subscriptions",
+    "test/support"
   ]
   defp elixirc_paths(_), do: ["lib", "test/helpers"]
 
   defp deps do
     [
+      {:poison, "~> 3.1"},
+      {:uuid, "~> 1.1"},
+
+      # build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
       {:ex_doc, "~> 0.17", only: :dev},
       {:mix_test_watch, "~> 0.5", only: :dev},
-      {:poison, "~> 3.1"},
-      {:uuid, "~> 1.1"},
+      {:mox, "~> 0.3", only: :test},
 
       # optional deps
       {:phoenix_pubsub, "~> 1.0", optional: true}

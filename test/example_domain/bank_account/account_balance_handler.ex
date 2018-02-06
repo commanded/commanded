@@ -1,11 +1,12 @@
 defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
   @moduledoc false
+
   use Commanded.Event.Handler, name: __MODULE__
 
   alias Commanded.ExampleDomain.BankAccount.Events.{
     BankAccountOpened,
     MoneyDeposited,
-    MoneyWithdrawn,
+    MoneyWithdrawn
   }
 
   @agent_name {:global, __MODULE__}
@@ -28,12 +29,21 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
     Agent.update(@agent_name, fn _ -> balance end)
   end
 
+  def subscribed? do
+    try do
+      Agent.get(@agent_name, fn _ -> true end)
+    catch
+      :exit, _reason -> false
+    end
+  end
+
   def current_balance do
     try do
       Agent.get(@agent_name, fn balance -> balance end)
     catch
       # catch agent not started exits, return `nil` balance
-      :exit, _reason -> nil
+      :exit, _reason ->
+        nil
     end
   end
 end

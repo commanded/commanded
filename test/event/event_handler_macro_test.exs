@@ -15,6 +15,10 @@ defmodule Commanded.Event.EventHandlerMacroTest do
   test "should handle published events" do
     {:ok, handler} = AccountBalanceHandler.start_link()
 
+    Wait.until(fn ->
+      assert AccountBalanceHandler.subscribed?()
+    end)
+
     recorded_events =
       [
         %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},

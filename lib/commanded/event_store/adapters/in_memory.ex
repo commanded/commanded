@@ -153,8 +153,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       _subscription -> {{:error, :subscription_already_exists}, state}
     end
 
-    send(subscriber, {:subscribed, subscriber})
-
     {:reply, reply, state}
   end
 
@@ -265,6 +263,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp subscribe(%Subscription{name: subscription_name, subscriber: subscriber} = subscription, %State{persistent_subscriptions: subscriptions, persisted_events: persisted_events} = state) do
     Process.monitor(subscriber)
+
+    send(subscriber, {:subscribed, subscriber})
 
     catch_up(subscription, persisted_events, state)
 
