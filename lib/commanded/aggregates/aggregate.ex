@@ -45,7 +45,7 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
-  alias Commanded.EventStore.SnapshotData
+  alias Commanded.EventStore.{RecordedEvent, SnapshotData}
 
   @read_event_batch_size 100
 
@@ -53,6 +53,7 @@ defmodule Commanded.Aggregates.Aggregate do
             aggregate_uuid: nil,
             aggregate_state: nil,
             aggregate_version: 0,
+            lifespan_timeout: nil,
             snapshot_every: nil,
             snapshot_module_version: 1,
             snapshot_version: 0
@@ -77,6 +78,10 @@ defmodule Commanded.Aggregates.Aggregate do
     # initial aggregate state is populated by loading its state snapshot and/or
     # events from the event store
     :ok = GenServer.cast(self(), :populate_aggregate_state)
+
+    # subscribe to aggregate's events to catch any events appended to its stream
+    # by another process, such as directly appended to the event store.
+    :ok = GenServer.cast(self(), :subscribe_to_events)
 
     {:ok, state}
   end
@@ -133,7 +138,18 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def handle_cast({:snapshot_state, lifespan_timeout}, %Aggregate{} = state) do
+  def handle_cast(:subscribe_to_events, %Aggregate{} = state) do
+    %Aggregate{aggregate_uuid: aggregate_uuid} = state
+
+    :ok = EventStore.subscribe(aggregate_uuid, self())
+
+    {:noreply, state}
+  end
+
+  @doc false
+  def handle_cast(:snapshot_state, %Aggregate{} = state) do
+    %Aggregate{lifespan_timeout: lifespan_timeout} = state
+
     {:noreply, do_snapshot(state), lifespan_timeout}
   end
 
@@ -155,8 +171,10 @@ defmodule Commanded.Aggregates.Aggregate do
         {:stop, :normal, reply, state}
 
       _ ->
+        state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
+
         if snapshotting_enabled?(state) && snapshot_required?(state) do
-          :ok = GenServer.cast(self(), {:snapshot_state, lifespan_timeout})
+          :ok = GenServer.cast(self(), :snapshot_state)
 
           {:reply, reply, state}
         else
@@ -180,10 +198,65 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  def handle_info({:events, events}, %Aggregate{} = state) do
+    Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
+
+    try do
+      state = Enum.reduce(events, state, &handle_event/2)
+
+      %Aggregate{lifespan_timeout: lifespan_timeout} = state
+
+      {:noreply, state, lifespan_timeout}
+    catch
+      {:error, reason} ->
+        # stop after event handling returned an error
+        {:stop, reason, state}
+    end
+  end
+
+  @doc false
   def handle_info(:timeout, %Aggregate{} = state) do
     {:stop, :normal, state}
   end
 
+  # Handle events appended to the aggregate's stream, received by its
+  # event store subscription, by applying any missed events to its state.
+  defp handle_event(%RecordedEvent{} = event, %Aggregate{} = state) do
+    %RecordedEvent{data: data, stream_version: stream_version} = event
+
+    %Aggregate{
+      aggregate_module: aggregate_module,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version
+    } = state
+
+    expected_version = aggregate_version + 1
+
+    case stream_version do
+      ^expected_version ->
+        # apply event to aggregate's state
+        %Aggregate{
+          state
+          | aggregate_version: stream_version,
+            aggregate_state: aggregate_module.apply(aggregate_state, data)
+        }
+
+      already_seen_version when already_seen_version <= aggregate_version ->
+        # ignore events already applied to aggregate state
+        state
+
+      unexpected_version ->
+        Logger.debug(fn ->
+          describe(state) <> " received an unexpected event: #{inspect(event)}"
+        end)
+
+        # throw an error when an unexpected event is received
+        throw({:error, :unexpected_event_received})
+    end
+  end
+
+  # Populate the aggregate's state from a snapshot, if present, and it's events.
+  #
   # Attempt to fetch a snapshot for the aggregate to use as its initial state.
   # If the snapshot exists, fetch any subsequent events to rebuild its state.
   # Otherwise start with the aggregate struct and stream all existing events for

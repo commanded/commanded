@@ -1,5 +1,6 @@
 defmodule Commanded.StorageCase do
   @moduledoc false
+  
   use ExUnit.CaseTemplate
 
   require Logger
