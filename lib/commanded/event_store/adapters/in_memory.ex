@@ -14,7 +14,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       serializer: nil,
       persisted_events: [],
       streams: %{},
-      transient_subscribers: [],
+      transient_subscribers: %{},
       persistent_subscriptions: %{},
       snapshots: %{},
       next_event_number: 1
@@ -52,49 +52,61 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
+  @impl GenServer
   def init(%State{} = state) do
     {:ok, state}
   end
 
+  @impl Commanded.EventStore
   def append_to_stream(stream_uuid, expected_version, events) do
     GenServer.call(__MODULE__, {:append_to_stream, stream_uuid, expected_version, events})
   end
 
+  @impl Commanded.EventStore
   def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000)
+
   def stream_forward(stream_uuid, start_version, _read_batch_size) do
     GenServer.call(__MODULE__, {:stream_forward, stream_uuid, start_version})
   end
 
-  def subscribe(subscriber) do
-    GenServer.call(__MODULE__, {:subscribe, subscriber})
+  @impl Commanded.EventStore
+  def subscribe(stream_uuid, subscriber) do
+    GenServer.call(__MODULE__, {:subscribe, stream_uuid, subscriber})
   end
 
+  @impl Commanded.EventStore
   def subscribe_to_all_streams(subscription_name, subscriber, start_from) do
     subscription = %Subscription{name: subscription_name, subscriber: subscriber, start_from: start_from}
 
     GenServer.call(__MODULE__, {:subscribe_to_all_streams, subscription})
   end
 
+  @impl Commanded.EventStore
   def ack_event(pid, event) do
     GenServer.cast(__MODULE__, {:ack_event, event, pid})
   end
 
+  @impl Commanded.EventStore
   def unsubscribe_from_all_streams(subscription_name) do
     GenServer.call(__MODULE__, {:unsubscribe_from_all_streams, subscription_name})
   end
 
+  @impl Commanded.EventStore
   def read_snapshot(source_uuid) do
     GenServer.call(__MODULE__, {:read_snapshot, source_uuid})
   end
 
+  @impl Commanded.EventStore
   def record_snapshot(snapshot) do
     GenServer.call(__MODULE__, {:record_snapshot, snapshot})
   end
 
+  @impl Commanded.EventStore
   def delete_snapshot(source_uuid) do
     GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
+  @impl GenServer
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %State{streams: streams} = state) do
     case Map.get(streams, stream_uuid) do
       nil ->
@@ -116,6 +128,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end
   end
 
+  @impl GenServer
   def handle_call({:stream_forward, stream_uuid, start_version}, _from, %State{streams: streams} = state) do
     reply = case Map.get(streams, stream_uuid) do
       nil -> {:error, :stream_not_found}
@@ -128,25 +141,30 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe, subscriber}, _from, %State{transient_subscribers: subscribers} = state) do
+  @impl GenServer
+  def handle_call({:subscribe, stream_uuid, subscriber}, _from, %State{} = state) do
+    %State{transient_subscribers: transient_subscribers} = state
+
     Process.monitor(subscriber)
 
-    state = %State{state |
-      transient_subscribers: [subscriber | subscribers],
-    }
+    transient_subscribers =
+      Map.update(transient_subscribers, stream_uuid, [subscriber], fn transient ->
+        [subscriber | transient]
+      end)
 
-    {:reply, :ok, state}
+    {:reply, :ok, %State{state | transient_subscribers: transient_subscribers}}
   end
 
+  @impl GenServer
   def handle_call({:subscribe_to_all_streams, %Subscription{name: subscription_name, subscriber: subscriber} = subscription}, _from, %State{persistent_subscriptions: subscriptions} = state) do
     {reply, state} = case Map.get(subscriptions, subscription_name) do
       nil ->
-        state = subscribe(subscription, state)
+        state = persistent_subscription(subscription, state)
 
         {{:ok, subscriber}, state}
 
       %Subscription{subscriber: nil} = subscription ->
-        state = subscribe(%Subscription{subscription | subscriber: subscriber}, state)
+        state = persistent_subscription(%Subscription{subscription | subscriber: subscriber}, state)
 
         {{:ok, subscriber}, state}
 
@@ -156,6 +174,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, reply, state}
   end
 
+  @impl GenServer
   def handle_call({:unsubscribe_from_all_streams, subscription_name}, _from, %State{persistent_subscriptions: subscriptions} = state) do
     state = %State{state |
       persistent_subscriptions: Map.delete(subscriptions, subscription_name),
@@ -164,6 +183,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, :ok, state}
   end
 
+  @impl GenServer
   def handle_call({:read_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
     reply = case Map.get(snapshots, source_uuid, nil) do
       nil -> {:error, :snapshot_not_found}
@@ -173,6 +193,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, reply, state}
   end
 
+  @impl GenServer
   def handle_call({:record_snapshot, %SnapshotData{source_uuid: source_uuid} = snapshot}, _from, %State{snapshots: snapshots} = state) do
     state = %State{state |
       snapshots: Map.put(snapshots, source_uuid, serialize(snapshot, state)),
@@ -181,6 +202,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, :ok, state}
   end
 
+  @impl GenServer
   def handle_call({:delete_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
     state = %State{state |
       snapshots: Map.delete(snapshots, source_uuid)
@@ -189,6 +211,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:reply, :ok, state}
   end
 
+  @impl GenServer
   def handle_cast({:ack_event, event, subscriber}, %State{persistent_subscriptions: subscriptions} = state) do
     state = %State{state |
       persistent_subscriptions: ack_subscription_by_pid(subscriptions, event, subscriber),
@@ -197,10 +220,13 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:noreply, state}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, _reason}, %State{persistent_subscriptions: subscriptions, transient_subscribers: subscribers} = state) do
+  @impl GenServer
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, %State{} = state) do
+    %State{persistent_subscriptions: persistent, transient_subscribers: transient} = state
+
     state = %State{state |
-      persistent_subscriptions: remove_subscriber_by_pid(subscriptions, pid),
-      transient_subscribers: subscribers -- [pid],
+      persistent_subscriptions: remove_subscriber_by_pid(persistent, pid),
+      transient_subscribers: remove_transient_subscriber_by_pid(transient, pid)
     }
 
     {:noreply, state}
@@ -261,7 +287,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
-  defp subscribe(%Subscription{name: subscription_name, subscriber: subscriber} = subscription, %State{persistent_subscriptions: subscriptions, persisted_events: persisted_events} = state) do
+  defp persistent_subscription(%Subscription{} = subscription, %State{} = state) do
+    %Subscription{name: subscription_name, subscriber: subscriber} = subscription
+    %State{persistent_subscriptions: subscriptions, persisted_events: persisted_events} = state
+
     Process.monitor(subscriber)
 
     send(subscriber, {:subscribed, subscriber})
@@ -287,6 +316,13 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end)
   end
 
+  defp remove_transient_subscriber_by_pid(transient_subscriptions, pid) do
+    Enum.reduce(transient_subscriptions, transient_subscriptions, fn
+      {stream_uuid, subscribers}, transient ->
+        Map.put(transient, stream_uuid, subscribers -- [pid])
+    end)
+  end
+
   defp catch_up(%Subscription{subscriber: nil}, _persisted_events, _state), do: :ok
   defp catch_up(%Subscription{start_from: :current}, _persisted_events, _state), do: :ok
   defp catch_up(%Subscription{subscriber: subscriber, start_from: :origin, last_seen_event_number: last_seen_event_number}, persisted_events, %State{} = state) do
@@ -299,9 +335,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       do: send(subscriber, {:events, Enum.map(events, &deserialize(&1, state))})
   end
 
-  defp publish_to_transient_subscribers(stream_uuid, events, %State{transient_subscribers: subscribers}) do
+  defp publish_to_transient_subscribers(stream_uuid, events, %State{transient_subscribers: transient}) do
+    subscribers = Map.get(transient, stream_uuid, [])
+
     for subscriber <- subscribers |> Enum.filter(&is_pid/1) do
-      send(subscriber, {:events, stream_uuid, events})
+      send(subscriber, {:events, events})
     end
   end
 

@@ -55,6 +55,46 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     end
   end
 
+  describe "transient subscription to single stream" do
+    test "should receive events appended to the stream" do
+      stream_uuid = UUID.uuid4()
+
+      assert :ok = EventStore.subscribe(stream_uuid, self())
+
+      {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, build_events(1))
+
+      assert_receive {:events, received_events}
+      assert Enum.map(received_events, &(&1.stream_id)) == [stream_uuid]
+      assert Enum.map(received_events, &(&1.stream_version)) == [1]
+
+      {:ok, 3} = EventStore.append_to_stream(stream_uuid, 1, build_events(2))
+
+      assert_receive {:events, received_events}
+      assert Enum.map(received_events, &(&1.stream_id)) == [stream_uuid, stream_uuid]
+      assert Enum.map(received_events, &(&1.stream_version)) == [2, 3]
+
+      {:ok, 6} = EventStore.append_to_stream(stream_uuid, 3, build_events(3))
+
+      assert_receive {:events, received_events}
+      assert Enum.map(received_events, &(&1.stream_id)) == [stream_uuid, stream_uuid, stream_uuid]
+      assert Enum.map(received_events, &(&1.stream_version)) == [4, 5, 6]
+
+      refute_receive {:events, _received_events}
+    end
+
+    test "should not receive events appended to another stream" do
+      stream_uuid = UUID.uuid4()
+      another_stream_uuid = UUID.uuid4()
+
+      assert :ok = EventStore.subscribe(stream_uuid, self())
+
+      {:ok, 1} = EventStore.append_to_stream(another_stream_uuid, 0, build_events(1))
+      {:ok, 3} = EventStore.append_to_stream(another_stream_uuid, 1, build_events(2))
+
+      refute_receive {:events, _received_events}
+    end
+  end
+
   describe "subscribe to all streams" do
     test "should receive `:subscribed` message once subscribed" do
       {:ok, subscription} = EventStore.subscribe_to_all_streams("subscriber", self(), :origin)

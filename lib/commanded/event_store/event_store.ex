@@ -33,6 +33,16 @@ defmodule Commanded.EventStore do
     | {:error, reason}
 
   @doc """
+  Create a transient subscription to a single event stream.
+
+  The event store will publish any events appended to the given stream to the
+  `subscriber` process as an `{:events, events}` message.
+
+  The subscriber does not need to acknowledge receipt of the events.
+  """
+  @callback subscribe(stream_uuid, subscriber :: pid) :: :ok | {:error, reason}
+
+  @doc """
   Create a persistent subscription to all event streams.
 
   The event store will remember the subscribers last acknowledged event.
@@ -96,6 +106,14 @@ defmodule Commanded.EventStore do
   def stream_forward(stream_uuid, start_version \\ 0, read_batch_size \\ 1_000)
   def stream_forward(stream_uuid, start_version, read_batch_size) do
     event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size)
+  end
+
+  @doc """
+  Create a transient subscription to a single event stream.
+  """
+  @spec subscribe(stream_uuid, subscriber :: pid) :: :ok | {:error, reason}
+  def subscribe(stream_uuid, subscriber) do
+    event_store_adapter().subscribe(stream_uuid, subscriber)
   end
 
   @doc """
