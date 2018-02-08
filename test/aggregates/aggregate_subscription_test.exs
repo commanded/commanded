@@ -3,7 +3,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Aggregates.Supervisor, as: AggregateSupervisor
-  alias Commanded.EventStore
+  alias Commanded.{EventStore, Registration}
   alias Commanded.ExampleDomain.{BankAccount, OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
@@ -24,6 +24,51 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
                balance: 1_500,
                state: :active
              }
+    end
+
+    test "should ignore already seen events", context do
+      %{account_number: account_number} = context
+
+      pid = Registration.whereis_name({BankAccount, account_number})
+      events = account_number |> EventStore.stream_forward() |> Enum.to_list()
+
+      # send already seen events multiple times, they should be ignored
+      send(pid, {:events, events})
+      send(pid, {:events, events})
+      send(pid, {:events, events})
+      send(pid, {:events, events})
+
+      assert Aggregate.aggregate_version(BankAccount, account_number) == 2
+
+      assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+               account_number: account_number,
+               balance: 1_500,
+               state: :active
+             }
+    end
+
+    test "should stop aggregate process when unexpected event received", context do
+      %{account_number: account_number} = context
+
+      pid = Registration.whereis_name({BankAccount, account_number})
+      ref = Process.monitor(pid)
+
+      events =
+        account_number
+        |> EventStore.stream_forward()
+        |> Enum.to_list()
+        |> Enum.map(fn recorded_event ->
+          # specify invalid stream version
+          %EventStore.RecordedEvent{
+            recorded_event
+            | stream_version: 999
+          }
+        end)
+
+      # send invalid events, should stop the aggregate process
+      send(pid, {:events, events})
+
+      assert_receive {:DOWN, ^ref, :process, _, :unexpected_event_received}
     end
 
     defp open_account(_context) do
