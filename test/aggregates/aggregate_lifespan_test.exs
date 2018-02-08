@@ -1,7 +1,7 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
 
-  alias Commanded.Aggregates.BankRouter
+  alias Commanded.Aggregates.{Aggregate, BankRouter}
   alias Commanded.ExampleDomain.BankAccount
 
   alias Commanded.ExampleDomain.BankAccount.Commands.{
@@ -10,6 +10,8 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
     DepositMoney,
     WithdrawMoney
   }
+
+  alias Commanded.EventStore
 
   alias Commanded.Registration
 
@@ -23,7 +25,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       pid = Registration.whereis_name({BankAccount, aggregate_uuid})
       ref = Process.monitor(pid)
 
-      %{aggregate_uuid: aggregate_uuid, ref: ref}
+      %{aggregate_uuid: aggregate_uuid, pid: pid, ref: ref}
     end
 
     test "should shutdown after timeout", %{aggregate_uuid: aggregate_uuid, ref: ref} do
@@ -53,7 +55,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       refute_receive {:DOWN, ^ref, :process, _, :normal}, 30
     end
 
-    test "should stop process when requested" , %{
+    test "should stop process when requested", %{
       aggregate_uuid: aggregate_uuid,
       ref: ref
     } do
@@ -61,6 +63,46 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       :ok = BankRouter.dispatch(%CloseAccount{account_number: aggregate_uuid})
 
       assert_receive {:DOWN, ^ref, :process, _, :normal}
+    end
+
+    test "should adhere to aggregate lifespan when taking snapshot after receiving published event", %{
+      aggregate_uuid: aggregate_uuid,
+      pid: pid,
+      ref: ref
+    } do
+      :ok = BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 10})
+
+      events = aggregate_uuid |> EventStore.stream_forward() |> Enum.to_list()
+
+      assert Process.alive?(pid)
+
+      # publish events to aggregate before taking snapshot
+      send(pid, {:events, events})
+
+      :ok = Aggregate.take_snapshot(BankAccount, aggregate_uuid)
+
+      assert_receive {:DOWN, ^ref, :process, _, :normal}
+      assert {:ok, _snapshot} = EventStore.read_snapshot(aggregate_uuid)
+    end
+
+    test "should adhere to aggregate lifespan when receiving published events after taking snapshot", %{
+      aggregate_uuid: aggregate_uuid,
+      pid: pid,
+      ref: ref
+    } do
+      :ok = BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 10})
+
+      events = aggregate_uuid |> EventStore.stream_forward() |> Enum.to_list()
+
+      :ok = Aggregate.take_snapshot(BankAccount, aggregate_uuid)
+
+      assert Process.alive?(pid)
+
+      # publish events to aggregate after taking snapshot
+      send(pid, {:events, events})
+
+      assert_receive {:DOWN, ^ref, :process, _, :normal}
+      assert {:ok, _snapshot} = EventStore.read_snapshot(aggregate_uuid)
     end
   end
 

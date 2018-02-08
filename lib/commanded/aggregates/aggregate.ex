@@ -128,6 +128,11 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  def take_snapshot(aggregate_module, aggregate_uuid) do
+    GenServer.cast(via_name(aggregate_module, aggregate_uuid), :take_snapshot)
+  end
+
+  @doc false
   def shutdown(aggregate_module, aggregate_uuid) do
     GenServer.stop(via_name(aggregate_module, aggregate_uuid))
   end
@@ -147,7 +152,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def handle_cast(:snapshot_state, %Aggregate{} = state) do
+  def handle_cast(:take_snapshot, %Aggregate{} = state) do
     %Aggregate{lifespan_timeout: lifespan_timeout} = state
 
     {:noreply, do_snapshot(state), lifespan_timeout}
@@ -174,7 +179,7 @@ defmodule Commanded.Aggregates.Aggregate do
         state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
         if snapshotting_enabled?(state) && snapshot_required?(state) do
-          :ok = GenServer.cast(self(), :snapshot_state)
+          :ok = GenServer.cast(self(), :take_snapshot)
 
           {:reply, reply, state}
         else
@@ -199,16 +204,18 @@ defmodule Commanded.Aggregates.Aggregate do
 
   @doc false
   def handle_info({:events, events}, %Aggregate{} = state) do
+    %Aggregate{lifespan_timeout: lifespan_timeout} = state
+
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
       state = Enum.reduce(events, state, &handle_event/2)
 
-      %Aggregate{lifespan_timeout: lifespan_timeout} = state
-
       {:noreply, state, lifespan_timeout}
     catch
       {:error, reason} ->
+        Logger.debug(fn -> describe(state) <> " stopping due to: #{inspect(reason)}" end)
+
         # stop after event handling returned an error
         {:stop, reason, state}
     end
@@ -216,6 +223,8 @@ defmodule Commanded.Aggregates.Aggregate do
 
   @doc false
   def handle_info(:timeout, %Aggregate{} = state) do
+    Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
+
     {:stop, :normal, state}
   end
 
