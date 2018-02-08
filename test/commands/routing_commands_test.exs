@@ -123,7 +123,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent duplicate registrations for a command" do
-    assert_raise RuntimeError, "duplicate command registration for: Commanded.ExampleDomain.BankAccount.Commands.OpenAccount", fn ->
+    assert_raise ArgumentError, "Command `Commanded.ExampleDomain.BankAccount.Commands.OpenAccount` has already been registered in router `DuplicateRouter`", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount
         alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
@@ -143,7 +143,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent registration for a command handler without a `handle/2` function" do
-    assert_raise RuntimeError, "command handler InvalidHandler does not define a function: handle/2", fn ->
+    assert_raise ArgumentError, "Command handler `InvalidHandler` does not define a `handle/2` function", fn ->
       Code.eval_string """
         alias Commanded.ExampleDomain.BankAccount
         alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount

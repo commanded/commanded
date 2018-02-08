@@ -268,12 +268,15 @@ You should always use string keys in your metadata map; atom keys will be conver
 
 By default an aggregate instance process will run indefinitely once started. You can control this by implementing the `Commanded.Aggregates.AggregateLifespan` behaviour in a module.
 
+Define a module that implements the `Commanded.Aggregates.AggregateLifespan` behaviour:
+
 ```elixir
 defmodule BankAccountLifespan do
   @behaviour Commanded.Aggregates.AggregateLifespan
 
-  def after_command(%OpenAccount{}), do: :infinity
-  def after_command(%CloseAccount{}), do: 0
+  def after_event(%BankAccountOpened{}), do: :infinity
+  def after_event(%MoneyDeposited{}), do: 60_000
+  def after_event(%BankAccountClosed{}), do: :stop
 end
 ```
 
@@ -290,11 +293,11 @@ defmodule BankRouter do
 end
 ```
 
-The timeout is specified in milliseconds, after which time the aggregate process will be stopped if no other messages are received.
+The inactivity timeout is specified in milliseconds, after which time the aggregate process will be stopped if no other messages are received.
+
+Return `:stop` to immediately shutdown the aggregate process. Return `:infinity` to prevent the aggregate instance from shutting down.
 
 You can also return `:hibernate` and the process is hibernated, it will continue its loop once a message is in its message queue. Hibernating an aggregate causes garbage collection and minimises the memory used by the process. Hibernating should not be used aggressively as too much time could be spent garbage collecting.
-
-Return `:infinity` to keep the aggregate instance process running indefinitely.
 
 ## Middleware
 

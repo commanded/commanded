@@ -263,17 +263,35 @@ defmodule Commanded.Commands.Router do
   do
     quote location: :keep do
       if Enum.member?(@registered_commands, unquote(command_module)) do
-        raise "duplicate command registration for: #{inspect unquote(command_module)}"
+        raise ArgumentError,
+          message: "Command `#{inspect unquote(command_module)}` has already been registered in router `#{inspect __MODULE__}`"
       end
 
       # sanity check the configured modules exist
+      ensure_module_exists(unquote(aggregate))
       ensure_module_exists(unquote(command_module))
       ensure_module_exists(unquote(handler))
-      ensure_module_exists(unquote(aggregate))
 
-      handler_functions = unquote(handler).__info__(:functions)
-      unless Keyword.get(handler_functions, unquote(function)) == 2 do
-        raise "command handler #{inspect unquote(handler)} does not define a function: #{unquote(function)}/2"
+      case unquote(lifespan) do
+        nil ->
+          :ok
+
+        module when is_atom(module) ->
+          ensure_module_exists(unquote(lifespan))
+
+          unless function_exported?(unquote(lifespan), :after_event, 1) do
+            raise ArgumentError,
+              message: "Aggregate lifespan `#{inspect unquote(lifespan)}` does not define a callback function: `after_event/1`"
+          end
+
+        invalid ->
+          raise ArgumentError,
+            message: "Invalid `lifespan` configured for #{inspect unquote(aggregate)}: #{inspect invalid}"
+      end
+
+      unless function_exported?(unquote(handler), unquote(function), 2) do
+        raise ArgumentError,
+          message: "Command handler `#{inspect unquote(handler)}` does not define a `#{unquote(function)}/2` function"
       end
 
       @registered_commands [unquote(command_module) | @registered_commands]

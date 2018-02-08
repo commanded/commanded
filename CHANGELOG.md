@@ -10,6 +10,11 @@
 - Event handler `error/3` callback ([#133](https://github.com/commanded/commanded/pull/133)).
 - Support distributed dispatch consistency ([#135](https://github.com/commanded/commanded/pull/135)).
 - Defer event handler and process router init until after subscribed ([#138](https://github.com/commanded/commanded/pull/138)).
+- Replace aggregate lifespan `after_command/1` callback with `after_event/1` ([#139](https://github.com/commanded/commanded/issues/139)).
+
+### Breaking changes
+
+- The `Commanded.Aggregates.AggregateLifespan` behaviour has been changed from `after_command/1` to `after_event/1`. You will need to update your own lifespan modules to use events instead of commands to shutdown an aggregate process after an inactivity timeout.
 
 ## v0.15.1
 

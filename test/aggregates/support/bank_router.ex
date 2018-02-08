@@ -3,16 +3,19 @@ defmodule Commanded.Aggregates.BankRouter do
   use Commanded.Commands.Router
 
   alias Commanded.Aggregates.BankAccountLifespan
+
   alias Commanded.ExampleDomain.{
     BankAccount,
     OpenAccountHandler,
     DepositMoneyHandler,
-    WithdrawMoneyHandler,
+    WithdrawMoneyHandler
   }
+
   alias BankAccount.Commands.{
-    OpenAccount,
+    CloseAccount,
     DepositMoney,
-    WithdrawMoney,
+    OpenAccount,
+    WithdrawMoney
   }
 
   dispatch OpenAccount,
@@ -30,5 +33,11 @@ defmodule Commanded.Aggregates.BankRouter do
   dispatch WithdrawMoney,
     to: WithdrawMoneyHandler,
     aggregate: BankAccount,
+    identity: :account_number
+
+  dispatch CloseAccount,
+    to: OpenAccountHandler,
+    aggregate: BankAccount,
+    lifespan: BankAccountLifespan,
     identity: :account_number
 end
