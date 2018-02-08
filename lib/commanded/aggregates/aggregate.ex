@@ -42,22 +42,20 @@ defmodule Commanded.Aggregates.Aggregate do
 
   require Logger
 
-  alias Commanded.Aggregates.{Aggregate,ExecutionContext}
+  alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
   alias Commanded.EventStore.SnapshotData
 
   @read_event_batch_size 100
 
-  defstruct [
-    aggregate_module: nil,
-    aggregate_uuid: nil,
-    aggregate_state: nil,
-    aggregate_version: 0,
-    snapshot_every: nil,
-    snapshot_module_version: 1,
-    snapshot_version: 0,
-  ]
+  defstruct aggregate_module: nil,
+            aggregate_uuid: nil,
+            aggregate_state: nil,
+            aggregate_version: 0,
+            snapshot_every: nil,
+            snapshot_module_version: 1,
+            snapshot_version: 0
 
   def start_link(aggregate_module, aggregate_uuid, opts \\ []) do
     snapshot_options = snapshot_options(aggregate_module)
@@ -66,16 +64,14 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
       snapshot_every: Keyword.get(snapshot_options, :snapshot_every),
-      snapshot_module_version: Keyword.get(snapshot_options, :snapshot_version, 1),
+      snapshot_module_version: Keyword.get(snapshot_options, :snapshot_version, 1)
     }
 
     GenServer.start_link(__MODULE__, aggregate, opts)
   end
 
-
   @doc false
-  def name(aggregate_module, aggregate_uuid),
-    do: {aggregate_module, aggregate_uuid}
+  def name(aggregate_module, aggregate_uuid), do: {aggregate_module, aggregate_uuid}
 
   def init(%Aggregate{} = state) do
     # initial aggregate state is populated by loading its state snapshot and/or
@@ -107,11 +103,16 @@ defmodule Commanded.Aggregates.Aggregate do
 
   """
   def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000) do
-    GenServer.call(via_name(aggregate_module, aggregate_uuid), {:execute_command, context}, timeout)
+    GenServer.call(
+      via_name(aggregate_module, aggregate_uuid),
+      {:execute_command, context},
+      timeout
+    )
   end
 
   @doc false
   def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5_000)
+
   def aggregate_state(aggregate_module, aggregate_uuid, timeout) do
     GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state, timeout)
   end
@@ -140,14 +141,27 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
     {reply, state} = execute_command(context, state)
 
-    lifespan_timeout = aggregate_lifespan_timeout(context)
+    lifespan_timeout =
+      case reply do
+        {:ok, _stream_version, events} ->
+          aggregate_lifespan_timeout(context, events)
 
-    if snapshotting_enabled?(state) && snapshot_required?(state) do
-      :ok = GenServer.cast(self(), {:snapshot_state, lifespan_timeout})
+        _ ->
+          :infinity
+      end
 
-      {:reply, reply, state}
-    else
-      {:reply, reply, state, lifespan_timeout}
+    case lifespan_timeout do
+      :stop ->
+        {:stop, :normal, reply, state}
+
+      _ ->
+        if snapshotting_enabled?(state) && snapshot_required?(state) do
+          :ok = GenServer.cast(self(), {:snapshot_state, lifespan_timeout})
+
+          {:reply, reply, state}
+        else
+          {:reply, reply, state, lifespan_timeout}
+        end
     end
   end
 
@@ -185,17 +199,15 @@ defmodule Commanded.Aggregates.Aggregate do
            {:ok, snapshot} <- EventStore.read_snapshot(aggregate_uuid),
            true <- snapshot_valid?(snapshot, state) do
         # populate initial state from snapshot
-        %Aggregate{state |
-          aggregate_version: snapshot.source_version,
-          aggregate_state: snapshot.data
+        %Aggregate{
+          state
+          | aggregate_version: snapshot.source_version,
+            aggregate_state: snapshot.data
         }
       else
         _ ->
           # no snapshot (or outdated), use intial empty state
-          %Aggregate{state |
-            aggregate_version: 0,
-            aggregate_state: struct(aggregate_module)
-          }
+          %Aggregate{state | aggregate_version: 0, aggregate_state: struct(aggregate_module)}
       end
 
     rebuild_from_events(aggregate)
@@ -249,38 +261,51 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp aggregate_lifespan_timeout(%ExecutionContext{command: command, lifespan: lifespan}) do
-    case lifespan.after_command(command) do
-      :infinity ->
-        :infinity
+  defp aggregate_lifespan_timeout(_context, []), do: :infinity
 
-      :hibernate ->
-        :hibernate
+  defp aggregate_lifespan_timeout(%ExecutionContext{} = context, [event]) do
+    %ExecutionContext{lifespan: lifespan} = context
+
+    case lifespan.after_event(event) do
+      timeout when timeout in [:infinity, :hibernate, :stop] ->
+        timeout
 
       timeout when is_integer(timeout) and timeout >= 0 ->
         timeout
 
       invalid ->
         Logger.warn(fn ->
-          "Invalid timeout for aggregate lifespan #{inspect lifespan}, expected a non-negative integer, `:infinity`, or `:hibernate` but got: #{inspect invalid}"
+          "Invalid timeout for aggregate lifespan #{inspect(lifespan)}, expected a non-negative integer, `:infinity`, or `:hibernate` but got: #{
+            inspect(invalid)
+          }"
         end)
 
         :infinity
     end
   end
 
+  defp aggregate_lifespan_timeout(context, [_event | events]),
+    do: aggregate_lifespan_timeout(context, events)
+
   # is snapshotting configured for the aggregate?
   defp snapshotting_enabled?(%Aggregate{snapshot_every: snapshot_every}),
     do: is_number(snapshot_every) && snapshot_every > 0
 
   # was the snapshot taken at the current version?
-  defp snapshot_valid?(%SnapshotData{metadata: metadata}, %Aggregate{snapshot_module_version: expected_version}) do
+  defp snapshot_valid?(%SnapshotData{metadata: metadata}, %Aggregate{
+         snapshot_module_version: expected_version
+       }) do
     Map.get(metadata, "snapshot_version", 1) == expected_version
   end
 
   # take a snapshot now?
-  defp snapshot_required?(%Aggregate{aggregate_version: aggregate_version, snapshot_every: snapshot_every, snapshot_version: snapshot_version})
-    when aggregate_version - snapshot_version >= snapshot_every, do: true
+  defp snapshot_required?(%Aggregate{
+         aggregate_version: aggregate_version,
+         snapshot_every: snapshot_every,
+         snapshot_version: snapshot_version
+       })
+       when aggregate_version - snapshot_version >= snapshot_every,
+       do: true
 
   # not yet enough events to snapshot
   defp snapshot_required?(_state), do: false
@@ -291,7 +316,7 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
       aggregate_version: aggregate_version,
-      aggregate_state: aggregate_state,
+      aggregate_state: aggregate_state
     } = state
 
     Logger.debug(fn -> describe(state) <> " recording snapshot" end)
@@ -310,7 +335,8 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp execute_command(%ExecutionContext{retry_attempts: retry_attempts}, %Aggregate{} = state)
-    when retry_attempts < 0, do: {{:error, :too_many_attempts}, state}
+       when retry_attempts < 0,
+       do: {{:error, :too_many_attempts}, state}
 
   defp execute_command(%ExecutionContext{} = context, %Aggregate{} = state) do
     %ExecutionContext{
@@ -326,7 +352,7 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_state: aggregate_state
     } = state
 
-    Logger.debug(fn -> describe(state) <> " executing command: #{inspect command}" end)
+    Logger.debug(fn -> describe(state) <> " executing command: #{inspect(command)}" end)
 
     {reply, state} =
       case Kernel.apply(handler, function, [aggregate_state, command]) do
@@ -374,10 +400,12 @@ defmodule Commanded.Aggregates.Aggregate do
   defp persist_events(pending_events, aggregate_state, context, %Aggregate{} = state) do
     %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version} = state
 
-    with {:ok, stream_version} <- append_to_stream(pending_events, aggregate_uuid, expected_version, context) do
-      state = %Aggregate{state |
-        aggregate_state: aggregate_state,
-        aggregate_version: stream_version,
+    with {:ok, stream_version} <-
+           append_to_stream(pending_events, aggregate_uuid, expected_version, context) do
+      state = %Aggregate{
+        state
+        | aggregate_state: aggregate_state,
+          aggregate_version: stream_version
       }
 
       {{:ok, stream_version, pending_events}, state}
@@ -388,6 +416,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp append_to_stream([], _stream_uuid, expected_version, _context), do: {:ok, expected_version}
+
   defp append_to_stream(pending_events, stream_uuid, expected_version, context) do
     %ExecutionContext{
       causation_id: causation_id,
@@ -414,6 +443,6 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_version: aggregate_version
     } = aggregate
 
-    "#{inspect aggregate_module}<#{aggregate_uuid}@#{aggregate_version}>"
+    "#{inspect(aggregate_module)}<#{aggregate_uuid}@#{aggregate_version}>"
   end
 end
