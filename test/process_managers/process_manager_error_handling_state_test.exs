@@ -7,7 +7,6 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
   }
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess
 
-  @tag :bamorim
   test "should receive the aggregate state in the context" do
     process_uuid = UUID.uuid4()
     command = %StartProcess{

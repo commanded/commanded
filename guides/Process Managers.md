@@ -13,6 +13,8 @@ The `interested?/1` function is used to indicate which events the process manage
 - `{:stop, process_uuid}` - stop an existing process manager, shutdown its process, and delete its persisted state.
 - `false` - ignore the event.
 
+You can return a list of process identifiers when a single domain event must be handled by multiple process instances.
+
 ## `handle/2`
 
 A `handle/2` function can be defined for each `:start` and `:continue` tagged event previously specified. It receives the process manager's state and the event to be handled. It must return the commands to be dispatched. This may be none, a single command, or many commands.

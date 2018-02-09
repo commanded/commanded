@@ -11,6 +11,7 @@
 - Support distributed dispatch consistency ([#135](https://github.com/commanded/commanded/pull/135)).
 - Defer event handler and process router init until after subscribed ([#138](https://github.com/commanded/commanded/pull/138)).
 - Replace aggregate lifespan `after_command/1` callback with `after_event/1` ([#139](https://github.com/commanded/commanded/issues/139)).
+Support process manager routing to multiple instances ([#141](https://github.com/commanded/commanded/pull/141)).
 
 ### Breaking changes
 
