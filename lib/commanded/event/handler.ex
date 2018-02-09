@@ -404,10 +404,9 @@ defmodule Commanded.Event.Handler do
         {:stop, reason, state}
     end
   end
-
+  
   defp subscribe_to_all_streams(%Handler{} = state) do
     %Handler{
-      consistency: consistency,
       handler_name: handler_name,
       subscribe_from: subscribe_from
     } = state

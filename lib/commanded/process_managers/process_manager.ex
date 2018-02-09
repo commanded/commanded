@@ -116,7 +116,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @type domain_event :: struct
   @type command :: struct
   @type process_manager :: struct
-  @type process_uuid :: String.t
+  @type process_uuid :: String.t() | [String.t()]
   @type consistency :: :eventual | :strong
 
   @doc """
@@ -131,6 +131,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `{:stop, process_uuid}` - stop an existing process manager, shutdown its
     process, and delete its persisted state.
   - `false` - ignore the event.
+
+  You can return a list of process identifiers when a single domain event must
+  be handled by multiple process instances.
   """
   @callback interested?(domain_event) :: {:start, process_uuid}
     | {:continue, process_uuid}

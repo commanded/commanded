@@ -26,9 +26,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       subscribe_from: nil,
       process_managers: %{},
       supervisor: nil,
-      last_seen_event: nil,
-      pending_events: [],
       subscription: nil,
+      last_seen_event: nil,
+      pending_acks: [],
+      pending_events: [],
     ]
   end
 
@@ -54,12 +55,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   @doc """
   Acknowledge successful handling of the given event by a process manager instance
   """
-  def ack_event(process_router, %RecordedEvent{} = event) do
-    GenServer.cast(process_router, {:ack_event, event})
+  def ack_event(process_router, %RecordedEvent{} = event, instance) do
+    GenServer.cast(process_router, {:ack_event, event, instance})
   end
 
   @doc """
-  Fetch the pid of an individual process manager instance identified by the given `process_uuid`
+  Fetch the pid of an individual process manager instance identified by the
+  given `process_uuid`
   """
   def process_instance(process_router, process_uuid) do
     GenServer.call(process_router, {:process_instance, process_uuid})
@@ -69,31 +71,46 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   Fetch the `process_uuid` and pid of all process manager instances
   """
   def process_instances(process_router) do
-    GenServer.call(process_router, {:process_instances})
+    GenServer.call(process_router, :process_instances)
   end
 
-  def handle_call({:process_instances}, _from, %State{process_managers: process_managers} = state) do
+  def handle_call(:process_instances, _from, %State{} = state) do
+    %State{process_managers: process_managers} = state
+
     reply = Enum.map(process_managers, fn {process_uuid, pid} -> {process_uuid, pid} end)
 
     {:reply, reply, state}
   end
 
-  def handle_call({:process_instance, process_uuid}, _from, %State{process_managers: process_managers} = state) do
-    reply = case Map.get(process_managers, process_uuid) do
-      nil -> {:error, :process_manager_not_found}
-      process_manager -> process_manager
-    end
+  def handle_call({:process_instance, process_uuid}, _from, %State{} = state) do
+    %State{process_managers: process_managers} = state
+
+    reply =
+      case Map.get(process_managers, process_uuid) do
+        nil -> {:error, :process_manager_not_found}
+        process_manager -> process_manager
+      end
 
     {:reply, reply, state}
   end
 
-  def handle_cast({:ack_event, event}, %State{} = state) do
-    state = confirm_receipt(event, state)
+  def handle_cast({:ack_event, event, instance}, %State{} = state) do
+    %State{pending_acks: pending_acks} = state
 
-    # continue processing any pending events
-    GenServer.cast(self(), :process_pending_events)
+    case List.delete(pending_acks, instance) do
+      [] ->
+        # no pending acks so confirm receipt of event
+        state = confirm_receipt(event, %State{state | pending_acks: []})
 
-    {:noreply, state}
+        # continue processing any pending events
+        GenServer.cast(self(), :process_pending_events)
+
+        {:noreply, state}
+
+      pending ->
+        # pending acks, don't ack event but wait for outstanding instances
+        {:noreply, %State{state | pending_acks: pending}}
+    end
   end
 
   @doc """
@@ -178,32 +195,53 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     not is_nil(last_seen_event) and event_number <= last_seen_event
   end
 
-  defp handle_event(%RecordedEvent{event_number: event_number, data: data, stream_id: stream_id, stream_version: stream_version} = event, %State{process_manager_module: process_manager_module, process_managers: process_managers} = state) do
-    {process_uuid, process_manager} = case process_manager_module.interested?(data) do
-      {:start, process_uuid} -> {process_uuid, start_process_manager(process_uuid, state)}
-      {:continue, process_uuid} -> {process_uuid, continue_process_manager(process_uuid, state)}
-      {:stop, process_uuid} -> {:stopped, stop_process_manager(process_uuid, state)}
-      false -> {nil, nil}
-    end
+  defp handle_event(%RecordedEvent{} = event, %State{} = state) do
+    %RecordedEvent{
+      event_number: event_number,
+      data: data,
+      stream_id: stream_id,
+      stream_version: stream_version
+    } = event
 
-    case process_uuid do
-      nil ->
+    %State{process_manager_module: process_manager_module} = state
+
+    case process_manager_module.interested?(data) do
+      {:start, process_uuid} ->
+        Logger.debug(fn -> describe(state) <> " is interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
+
+        process_uuid
+        |> List.wrap()
+        |> Enum.reduce(state, fn (process_uuid, state) ->
+          {process_instance, state} = start_process_manager(process_uuid, state)
+
+          delegate_event(process_instance, event, state)
+        end)
+
+      {:continue, process_uuid} ->
+        Logger.debug(fn -> describe(state) <> " is interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
+
+        process_uuid
+        |> List.wrap()
+        |> Enum.reduce(state, fn (process_uuid, state) ->
+          {process_instance, state} = continue_process_manager(process_uuid, state)
+
+          delegate_event(process_instance, event, state)
+        end)
+
+      {:stop, process_uuid} ->
+        Logger.debug(fn -> describe(state) <> " has been stopped by event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
+
+        state =
+          process_uuid
+          |> List.wrap()
+          |> Enum.reduce(state, &stop_process_manager/2)
+
+        ack_and_continue(event, state)
+
+      false ->
         Logger.debug(fn -> describe(state) <> " is not interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
 
         ack_and_continue(event, state)
-
-      :stopped ->
-        Logger.debug(fn -> describe(state) <> " has been stopped by event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
-
-        ack_and_continue(event, state)
-
-      _ ->
-        Logger.debug(fn -> describe(state) <> " is interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
-
-        # delegate event to process instance who will ack event processing on success
-        :ok = delegate_event(process_manager, event)
-
-        %State{state | process_managers: Map.put(process_managers, process_uuid, process_manager)}
     end
   end
 
@@ -223,43 +261,85 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     %State{state | last_seen_event: event_number}
   end
 
-  defp start_process_manager(process_uuid, %State{process_manager_name: process_manager_name, process_manager_module: process_manager_module, supervisor: supervisor}) do
-    {:ok, process_manager} = Supervisor.start_process_manager(supervisor, process_manager_name, process_manager_module, process_uuid)
+  defp start_process_manager(process_uuid, %State{} = state) do
+    %State{
+      process_managers: process_managers,
+      process_manager_name: process_manager_name,
+      process_manager_module: process_manager_module,
+      supervisor: supervisor
+    } = state
+
+    {:ok, process_manager} =
+      Supervisor.start_process_manager(
+        supervisor,
+        process_manager_name,
+        process_manager_module,
+        process_uuid
+      )
+
     Process.monitor(process_manager)
-    process_manager
+
+    state = %State{
+      state
+      | process_managers: Map.put(process_managers, process_uuid, process_manager)
+    }
+
+    {process_manager, state}
   end
 
-  defp continue_process_manager(process_uuid, %State{process_managers: process_managers} = state) do
+  defp continue_process_manager(process_uuid, %State{} = state) do
+    %State{process_managers: process_managers} = state
+
     case Map.get(process_managers, process_uuid) do
-      nil -> start_process_manager(process_uuid, state)
-      process_manager -> process_manager
+      nil ->
+        start_process_manager(process_uuid, state)
+
+      process_manager ->
+        {process_manager, state}
     end
   end
 
-  defp stop_process_manager(process_uuid, %State{process_managers: process_managers}) do
+  defp stop_process_manager(process_uuid, %State{} = state) do
+    %State{process_managers: process_managers} = state
+
     case Map.get(process_managers, process_uuid) do
-      nil -> nil
+      nil ->
+        state
+
       process_manager ->
         :ok = ProcessManagerInstance.stop(process_manager)
-        nil
+
+        %State{state | process_managers: Map.delete(process_managers, process_uuid)}
     end
   end
 
   defp remove_process_manager(process_managers, pid) do
     Enum.reduce(process_managers, process_managers, fn
-      ({process_uuid, process_manager_pid}, acc) when process_manager_pid == pid -> Map.delete(acc, process_uuid)
+      ({process_uuid, process_manager_pid}, acc) when process_manager_pid == pid ->
+        Map.delete(acc, process_uuid)
+
       (_, acc) -> acc
     end)
   end
 
-  defp do_ack_event(event, %State{consistency: consistency, process_manager_name: name, subscription: subscription}) do
+  defp do_ack_event(event, %State{} = state) do
+    %State{
+      consistency: consistency,
+      process_manager_name: name,
+      subscription: subscription
+    } = state
+
     :ok = EventStore.ack_event(subscription, event)
     :ok = Subscriptions.ack_event(name, consistency, event)
   end
 
-  defp delegate_event(nil, _event), do: :ok
-  defp delegate_event(process_manager, %RecordedEvent{} = event) do
-    ProcessManagerInstance.process_event(process_manager, event, self())
+  # Delegate event to process instance who will ack event processing on success
+  defp delegate_event(process_instance, %RecordedEvent{} = event, %State{} = state) do
+    %State{pending_acks: pending_acks} = state
+
+    :ok = ProcessManagerInstance.process_event(process_instance, event, self())
+
+    %State{state | pending_acks: [process_instance | pending_acks]}
   end
 
   defp describe(%State{process_manager_module: process_manager_module}),

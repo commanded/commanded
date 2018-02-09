@@ -234,9 +234,19 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     })
   end
 
-  defp delete_state(%ProcessManagerInstance{} = state), do: EventStore.delete_snapshot(process_state_uuid(state))
+  defp delete_state(%ProcessManagerInstance{} = state),
+    do: EventStore.delete_snapshot(process_state_uuid(state))
 
-  defp ack_event(%RecordedEvent{} = event, process_router), do: ProcessRouter.ack_event(process_router, event)
+  defp ack_event(%RecordedEvent{} = event, process_router) do
+    ProcessRouter.ack_event(process_router, event, self())
+  end
 
-  defp process_state_uuid(%ProcessManagerInstance{process_manager_name: process_manager_name, process_uuid: process_uuid}), do: "#{process_manager_name}-#{process_uuid}"
+  defp process_state_uuid(%ProcessManagerInstance{} = state) do
+    %ProcessManagerInstance{
+      process_manager_name: process_manager_name,
+      process_uuid: process_uuid
+    } = state
+
+    "#{process_manager_name}-#{process_uuid}"
+  end
 end

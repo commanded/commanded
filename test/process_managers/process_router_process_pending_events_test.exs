@@ -67,10 +67,7 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
       assert event.aggregate_uuid == aggregate_uuid
     end
 
-    events =
-      aggregate_uuid
-      |> EventStore.stream_forward()
-      |> Enum.to_list()
+    events = aggregate_uuid |> EventStore.stream_forward() |> Enum.to_list()
 
     assert pluck(events, :data) == [
       %Started{aggregate_uuid: aggregate_uuid},
