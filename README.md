@@ -63,6 +63,7 @@ MIT License
   - [Supervision](guides/Supervision.md)
   - [Serialization](guides/Serialization.md)
   - [Read model projections](guides/Read%20Model%20Projections.md)
+- [Testing with Commanded](guides/testing.md)
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
 - [Event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
