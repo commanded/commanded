@@ -41,6 +41,19 @@ defmodule Commanded.Assertions.EventAssertions do
     end)
   end
 
+  @doc """
+  Assert that events matching their respective predicates have a matching correlation id.
+  Useful when there is a chain of events that is connected through event handlers.
+
+  ## Examples
+
+      id_one = 1
+      id_two = 2
+      assert_correlated(
+        BankAccountOpened, fn opened -> opened.id == id_one end,
+        InitialAmountDeposited, fn deposited -> deposited.id == id_two end
+      )
+  """
   def assert_correlated(event_type_a, predicate_a, event_type_b, predicate_b) do
     assert_receive_event(event_type_a, predicate_a, fn(event_b, metadata_a) ->
       assert_receive_event(event_type_b, predicate_b, fn(event_b, metadata_b) ->
