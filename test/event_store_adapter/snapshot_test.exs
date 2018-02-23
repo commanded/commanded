@@ -4,7 +4,7 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
   alias Commanded.EventStore
   alias Commanded.EventStore.SnapshotData
 
-  defmodule BankAccountOpened, do: defstruct [:account_number, :initial_balance]
+  defmodule(BankAccountOpened, do: defstruct([:account_number, :initial_balance]))
 
   describe "record a snapshot" do
     test "should record the snapshot" do
@@ -25,7 +25,7 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
       assert :ok == EventStore.record_snapshot(snapshot3)
 
       {:ok, snapshot} = EventStore.read_snapshot(snapshot3.source_uuid)
-      assert build_snapshot_created_at_seconds_to_zero(snapshot) == build_snapshot_created_at_seconds_to_zero(snapshot3)
+      assert snapshot_timestamps_within_delta?(snapshot, snapshot3, 60)
     end
 
     test "should error when snapshot does not exist" do
@@ -39,8 +39,8 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
 
       assert :ok == EventStore.record_snapshot(snapshot1)
       {:ok, snapshot} = EventStore.read_snapshot(snapshot1.source_uuid)
-      assert build_snapshot_created_at_seconds_to_zero(snapshot) == build_snapshot_created_at_seconds_to_zero(snapshot1)
 
+      assert snapshot_timestamps_within_delta?(snapshot, snapshot1, 60)
       assert :ok == EventStore.delete_snapshot(snapshot1.source_uuid)
       assert {:error, :snapshot_not_found} == EventStore.read_snapshot(snapshot1.source_uuid)
     end
@@ -48,7 +48,7 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
 
   defp build_snapshot_data(account_number) do
     %SnapshotData{
-      source_uuid: UUID.uuid4,
+      source_uuid: UUID.uuid4(),
       source_version: account_number,
       source_type: "Elixir.Commanded.EventStore.Adapter.SnapshotTest.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
@@ -57,10 +57,7 @@ defmodule Commanded.EventStore.Adapter.SnapshotTest do
     }
   end
 
-  defp build_snapshot_created_at_seconds_to_zero(snapshot) do
-    %NaiveDateTime{year: year, month: month, day: day, hour: hour, minute: min} = snapshot.created_at
-    {:ok, zeroed_created_at} = NaiveDateTime.new(year, month, day, hour, min, 0, 0)
-
-    %SnapshotData{snapshot | created_at: zeroed_created_at}
+  defp snapshot_timestamps_within_delta?(snapshot, other_snapshot, delta_seconds) do
+    NaiveDateTime.diff(snapshot.created_at, other_snapshot.created_at, :second) < delta_seconds
   end
 end
