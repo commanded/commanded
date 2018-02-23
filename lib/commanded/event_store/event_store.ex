@@ -40,7 +40,7 @@ defmodule Commanded.EventStore do
 
   The subscriber does not need to acknowledge receipt of the events.
   """
-  @callback subscribe(stream_uuid, subscriber :: pid) :: :ok | {:error, reason}
+  @callback subscribe(stream_uuid) :: :ok | {:error, reason}
 
   @doc """
   Create a persistent subscription to all event streams.
@@ -111,9 +111,9 @@ defmodule Commanded.EventStore do
   @doc """
   Create a transient subscription to a single event stream.
   """
-  @spec subscribe(stream_uuid, subscriber :: pid) :: :ok | {:error, reason}
-  def subscribe(stream_uuid, subscriber) do
-    event_store_adapter().subscribe(stream_uuid, subscriber)
+  @spec subscribe(stream_uuid) :: :ok | {:error, reason}
+  def subscribe(stream_uuid) do
+    event_store_adapter().subscribe(stream_uuid)
   end
 
   @doc """

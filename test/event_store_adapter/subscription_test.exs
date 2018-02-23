@@ -59,7 +59,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     test "should receive events appended to the stream" do
       stream_uuid = UUID.uuid4()
 
-      assert :ok = EventStore.subscribe(stream_uuid, self())
+      assert :ok = EventStore.subscribe(stream_uuid)
 
       {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, build_events(1))
 
@@ -86,7 +86,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       stream_uuid = UUID.uuid4()
       another_stream_uuid = UUID.uuid4()
 
-      assert :ok = EventStore.subscribe(stream_uuid, self())
+      assert :ok = EventStore.subscribe(stream_uuid)
 
       {:ok, 1} = EventStore.append_to_stream(another_stream_uuid, 0, build_events(1))
       {:ok, 3} = EventStore.append_to_stream(another_stream_uuid, 1, build_events(2))

@@ -70,8 +70,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def subscribe(stream_uuid, subscriber) do
-    GenServer.call(__MODULE__, {:subscribe, stream_uuid, subscriber})
+  def subscribe(stream_uuid) do
+    GenServer.call(__MODULE__, {:subscribe, stream_uuid, self()})
   end
 
   @impl Commanded.EventStore

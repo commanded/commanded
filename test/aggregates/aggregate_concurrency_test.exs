@@ -12,7 +12,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       {:ok, handler}
     end)
 
-    expect(MockEventStore, :subscribe, fn _aggregate_uuid, _subscriber -> :ok end)
+    expect(MockEventStore, :subscribe, fn _aggregate_uuid -> :ok end)
 
     :ok
   end

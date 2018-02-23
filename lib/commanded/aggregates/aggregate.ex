@@ -146,7 +146,7 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_cast(:subscribe_to_events, %Aggregate{} = state) do
     %Aggregate{aggregate_uuid: aggregate_uuid} = state
 
-    :ok = EventStore.subscribe(aggregate_uuid, self())
+    :ok = EventStore.subscribe(aggregate_uuid)
 
     {:noreply, state}
   end
@@ -254,7 +254,7 @@ defmodule Commanded.Aggregates.Aggregate do
         # ignore events already applied to aggregate state
         state
 
-      unexpected_version ->
+      _unexpected_version ->
         Logger.debug(fn ->
           describe(state) <> " received an unexpected event: #{inspect(event)}"
         end)

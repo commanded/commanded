@@ -26,5 +26,5 @@ defmodule Commanded.ProcessManagers.TodoProcessManager do
     %TodoProcessManager{state | todo_uuid: todo_uuid}
   end
 
-  def apply(%TodoProcessManager{} = state, event), do: state
+  def apply(%TodoProcessManager{} = state, _event), do: state
 end
