@@ -56,7 +56,7 @@ defmodule Commanded.PubSub.PhoenixPubSub do
   end
 
   @doc """
-  Start a `Registry` for local pub/sub.
+  Start the configured Phoenix pub/sub adapter and a presence tracker.
   """
   @spec child_spec() :: [:supervisor.child_spec()]
   @impl Commanded.PubSub

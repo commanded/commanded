@@ -47,7 +47,7 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
     def handle_info({:events, events}, %State{} = state) do
       %State{received_events: received_events, subscription: subscription} = state
 
-      state = %State{state | received_events: Enum.concat(received_events, events)}
+      state = %State{state | received_events: received_events ++ events}
 
       EventStore.ack_event(subscription, List.last(events))
 
@@ -63,19 +63,19 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, 1} = EventStore.append_to_stream(stream_uuid, 0, build_events(1))
 
-      assert_receive {:events, received_events}
+      received_events = assert_receive_events(1, from: 1)
       assert Enum.map(received_events, &(&1.stream_id)) == [stream_uuid]
       assert Enum.map(received_events, &(&1.stream_version)) == [1]
 
       {:ok, 3} = EventStore.append_to_stream(stream_uuid, 1, build_events(2))
 
-      assert_receive {:events, received_events}
+      received_events = assert_receive_events(2, from: 2)
       assert Enum.map(received_events, &(&1.stream_id)) == [stream_uuid, stream_uuid]
       assert Enum.map(received_events, &(&1.stream_version)) == [2, 3]
 
       {:ok, 6} = EventStore.append_to_stream(stream_uuid, 3, build_events(3))
 
-      assert_receive {:events, received_events}
+      received_events = assert_receive_events(3, from: 4)
       assert Enum.map(received_events, &(&1.stream_id)) == [stream_uuid, stream_uuid, stream_uuid]
       assert Enum.map(received_events, &(&1.stream_version)) == [4, 5, 6]
 
@@ -206,13 +206,16 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
       {:ok, subscriber} = Subscriber.start_link()
 
+      wait_until(fn ->
+        assert Subscriber.subscribed?(subscriber)
+      end)
+
       received_events = Subscriber.received_events(subscriber)
       assert length(received_events) == 0
 
       {:ok, 1} = EventStore.append_to_stream("stream3", 0, build_events(1))
 
       wait_until(fn ->
-        assert Subscriber.subscribed?(subscriber)
         received_events = Subscriber.received_events(subscriber)
         assert length(received_events) == 1
       end)
@@ -224,6 +227,10 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
   end
 
   defp assert_receive_events(subscription, expected_count, opts) do
+    assert_receive_events(expected_count, Keyword.put(opts, :subscription, subscription))
+  end
+
+  defp assert_receive_events(expected_count, opts) do
     from_event_number = Keyword.get(opts, :from, 1)
 
     assert_receive {:events, received_events}
@@ -234,18 +241,21 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
       assert received_event.event_number == expected_event_number
     end)
 
-    EventStore.ack_event(subscription, List.last(received_events))
+    case Keyword.get(opts, :subscription) do
+      nil -> :ok
+      subscription -> EventStore.ack_event(subscription, List.last(received_events))
+    end
 
     case expected_count - length(received_events) do
       0 ->
-        :ok
+        received_events
 
       remaining when remaining > 0 ->
-        assert_receive_events(
-          subscription,
-          remaining,
-          from: from_event_number + length(received_events)
-        )
+        received_events ++
+          assert_receive_events(
+            remaining,
+            Keyword.put(opts, :from, from_event_number + length(received_events))
+          )
 
       remaining when remaining < 0 ->
         flunk("Received #{remaining} more event(s) than expected")
@@ -254,10 +264,11 @@ defmodule Commanded.EventStore.Adapter.SubscriptionTest do
 
   defp build_event(account_number) do
     %EventData{
+      causation_id: UUID.uuid4(),
       correlation_id: UUID.uuid4(),
       event_type: "Elixir.Commanded.EventStore.Adapter.SubscriptionTest.BankAccountOpened",
       data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
-      metadata: %{}
+      metadata: %{"user_id" => "test"}
     }
   end
 

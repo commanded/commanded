@@ -4,21 +4,21 @@ defmodule Commanded.EventStore.EventData do
   storage.
   """
 
-  @type uuid :: String.t
+  @type uuid :: String.t()
 
   @type t :: %Commanded.EventStore.EventData{
-    causation_id: uuid(),
-    correlation_id: uuid(),
-    event_type: String.t,
-    data: binary(),
-    metadata: binary(),
-  }
+          causation_id: uuid(),
+          correlation_id: uuid(),
+          event_type: String.t(),
+          data: binary(),
+          metadata: binary()
+        }
 
   defstruct [
     :causation_id,
     :correlation_id,
-    :event_type ,
+    :event_type,
     :data,
-    :metadata,
+    :metadata
   ]
 end
