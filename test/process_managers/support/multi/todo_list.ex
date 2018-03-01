@@ -28,5 +28,5 @@ defmodule Commanded.ProcessManagers.TodoList do
   def apply(%TodoList{} = state, %TodoListCreated{todo_uuids: todo_uuids}),
     do: %TodoList{state | todo_uuids: todo_uuids}
 
-  def apply(%TodoList{} = state, event), do: state
+  def apply(%TodoList{} = state, _event), do: state
 end
