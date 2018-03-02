@@ -125,7 +125,7 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ExtractAggregateIdentity,
           Commanded.Middleware.ConsistencyGuarantee,
         ],
-        consistency: :eventual,
+        consistency: Application.get_env(:commanded, :default_consistency, :eventual),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},

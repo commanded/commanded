@@ -329,7 +329,7 @@ defmodule Commanded.Event.Handler do
     handler = %Handler{
       handler_name: handler_name,
       handler_module: handler_module,
-      consistency: opts[:consistency] || :eventual,
+      consistency: opts[:consistency] || Application.get_env(:commanded, :default_consistency, :eventual),
       subscribe_from: opts[:start_from] || :origin,
     }
 

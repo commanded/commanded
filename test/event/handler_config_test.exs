@@ -12,6 +12,17 @@ defmodule Commanded.Event.HandlerConfigTest do
     assert_config handler, [consistency: :eventual, start_from: :origin]
   end
 
+  describe "global config change to default consistency" do
+    test "should default to `:eventual` consistency and start from `:origin`" do
+      Mix.Config.persist(commanded: [default_consistency: :strong])
+      {:ok, handler} = DefaultConfigHandler.start_link()
+
+      assert_config handler, [consistency: :strong, start_from: :origin]
+
+      Mix.Config.persist(commanded: [default_consistency: :eventual])
+    end
+  end
+
   defmodule ExampleHandler do
     use Commanded.Event.Handler,
       name: __MODULE__,
