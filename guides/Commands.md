@@ -171,6 +171,16 @@ Use `:strong` consistency when you want to query a read model immediately after 
 
 Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers. The handlers run independently and asynchronously in the background, therefore you will need to deal with potentially stale read model data.
 
+#### Configure default consistency
+
+You may override the default consistency (`:eventual`) by setting `default_consistency` in environment config (e.g. `config/config.exs`):
+
+```elixir
+config :commanded, default_consistency: :strong
+```
+
+This will effect command dispatch, event handlers, and process managers where a consistency is not explicitly defined.
+
 #### Consistency failures
 
 By opting-in to strong consistency you may encounter an additional error reply from command dispatch:
