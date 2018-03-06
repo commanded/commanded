@@ -13,6 +13,10 @@ defmodule Commanded.ProcessManagers.Supervisor do
     Supervisor.start_child(supervisor, [process_manager_name, process_manager_module, process_uuid])
   end
 
+  def stop(supervisor) do
+    Supervisor.stop(supervisor)
+  end
+
   def init(command_dispatcher) do
     children = [
       worker(Commanded.ProcessManagers.ProcessManagerInstance, [command_dispatcher], restart: :temporary),

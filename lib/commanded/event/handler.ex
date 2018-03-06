@@ -404,7 +404,13 @@ defmodule Commanded.Event.Handler do
         {:stop, reason, state}
     end
   end
-  
+
+  def handle_info(:reset, %Handler{} = state) do
+    :ok = GenServer.cast(self(), :subscribe_to_events)
+
+    {:noreply, %Handler{state | last_seen_event: nil, subscription: nil}}
+  end
+
   defp subscribe_to_all_streams(%Handler{} = state) do
     %Handler{
       handler_name: handler_name,

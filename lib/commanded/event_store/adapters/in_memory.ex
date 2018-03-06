@@ -43,8 +43,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     SnapshotData,
   }
 
-  def start_link(opts \\ [])
-  def start_link(opts) do
+  def start_link(opts \\ []) do
     state = %State{
       serializer: Keyword.get(opts, :serializer),
     }
@@ -52,9 +51,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
-  @impl GenServer
-  def init(%State{} = state) do
-    {:ok, state}
+  @doc """
+  Reset the event store, including all appended events and shutdown all active
+  subscriptions.
+  """
+  def reset do
+    GenServer.call(__MODULE__, :reset)
   end
 
   @impl Commanded.EventStore
@@ -104,6 +106,25 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   @impl Commanded.EventStore
   def delete_snapshot(source_uuid) do
     GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
+  end
+
+  @impl GenServer
+  def init(%State{} = state) do
+    {:ok, state}
+  end
+
+  @impl GenServer
+  def handle_call(:reset, _from, %State{} = state) do
+    %State{
+      persistent_subscriptions: persistent_subscriptions,
+      serializer: serializer
+    } = state
+
+    for {_name, %Subscription{subscriber: subscriber}} <- persistent_subscriptions do
+      send(subscriber, :reset)
+    end
+
+    {:reply, :ok, %State{serializer: serializer}}
   end
 
   @impl GenServer

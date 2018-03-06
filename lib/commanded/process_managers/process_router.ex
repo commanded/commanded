@@ -52,6 +52,24 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:ok, state}
   end
 
+  def handle_info(:reset, %State{} = state) do
+    %State{supervisor: supervisor} = state
+
+    :ok = Supervisor.stop(supervisor)
+
+    :ok = GenServer.cast(self(), :subscribe_to_events)
+
+    state = %State{state |
+      last_seen_event: nil,
+      process_managers: %{},
+      supervisor: nil,
+      pending_acks: [],
+      pending_events: []
+    }
+
+    {:noreply, state}
+  end
+
   @doc """
   Acknowledge successful handling of the given event by a process manager instance
   """
