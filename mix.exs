@@ -1,46 +1,48 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "0.15.1"
+  @version "0.16.0-rc.0"
 
   def project do
     [
       app: :commanded,
       version: @version,
       elixir: "~> 1.5",
-      elixirc_paths: elixirc_paths(Mix.env),
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       description: description(),
       docs: docs(),
       package: package(),
-      build_embedded: Mix.env == :prod,
-      start_permanent: Mix.env == :prod,
-      consolidate_protocols: Mix.env == :prod,
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      consolidate_protocols: Mix.env() == :prod,
       name: "Commanded",
-      source_url: "https://github.com/commanded/commanded",
+      source_url: "https://github.com/commanded/commanded"
     ]
   end
 
   def application do
     [
       extra_applications: [
-        :logger,
+        :logger
       ],
       mod: {Commanded.Application, []}
     ]
   end
 
-  defp elixirc_paths(:test), do: [
-    "lib",
-    "test/aggregates",
-    "test/commands",
-    "test/event",
-    "test/example_domain",
-    "test/helpers",
-    "test/process_managers",
-    "test/subscriptions",
-    "test/support"
-  ]
+  defp elixirc_paths(:test),
+    do: [
+      "lib",
+      "test/aggregates",
+      "test/commands",
+      "test/event",
+      "test/example_domain",
+      "test/helpers",
+      "test/process_managers",
+      "test/subscriptions",
+      "test/support"
+    ]
+
   defp elixirc_paths(_), do: ["lib", "test/helpers"]
 
   defp deps do
@@ -60,9 +62,9 @@ defmodule Commanded.Mixfile do
   end
 
   defp description do
-"""
-Use Commanded to build your own Elixir applications following the CQRS/ES pattern.
-"""
+    """
+    Use Commanded to build your own Elixir applications following the CQRS/ES pattern.
+    """
   end
 
   defp docs do
@@ -82,15 +84,19 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
         "guides/Supervision.md",
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
-        "CHANGELOG.md",
-      ],
+        "guides/Deployment.md",
+        "CHANGELOG.md"
+      ]
     ]
   end
 
   defp package do
     [
       files: [
-        "lib", "mix.exs", "README*", "LICENSE*",
+        "lib",
+        "mix.exs",
+        "README*",
+        "LICENSE*",
         "test/aggregates",
         "test/commands",
         "test/event",
@@ -98,12 +104,14 @@ Use Commanded to build your own Elixir applications following the CQRS/ES patter
         "test/example_domain",
         "test/helpers",
         "test/process_managers",
-        "test/subscriptions",
+        "test/subscriptions"
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/commanded/commanded",
-               "Docs" => "https://hexdocs.pm/commanded/"}
+      links: %{
+        "GitHub" => "https://github.com/commanded/commanded",
+        "Docs" => "https://hexdocs.pm/commanded/"
+      }
     ]
   end
 end

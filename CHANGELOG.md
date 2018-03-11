@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v0.16.0-rc.0
 
 - Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
 - Aggregate state snapshots ([#121](https://github.com/commanded/commanded/pull/121)).
