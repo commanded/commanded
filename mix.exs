@@ -33,13 +33,13 @@ defmodule Commanded.Mixfile do
   defp elixirc_paths(:test),
     do: [
       "lib",
-      "test/aggregates",
-      "test/commands",
-      "test/event",
+      "test/aggregates/support",
+      "test/commands/support",
+      "test/event/support",
       "test/example_domain",
       "test/helpers",
-      "test/process_managers",
-      "test/subscriptions",
+      "test/process_managers/support",
+      "test/registration/support",
       "test/support"
     ]
 
@@ -97,14 +97,11 @@ defmodule Commanded.Mixfile do
         "mix.exs",
         "README*",
         "LICENSE*",
-        "test/aggregates",
-        "test/commands",
-        "test/event",
+        "CHANGELOG*",
         "test/event_store_adapter",
         "test/example_domain",
         "test/helpers",
-        "test/process_managers",
-        "test/subscriptions"
+        "test/registration"
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],

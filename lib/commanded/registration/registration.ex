@@ -21,19 +21,16 @@ defmodule Commanded.Registration do
 
   Registers the pid with the given name.
   """
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+              {:ok, pid} | {:error, term}
 
   @doc """
   Starts a uniquely named `GenServer` process for the given module and args.
 
   Registers the pid with the given name.
   """
-  @callback start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
-
-  @doc """
-  Sends a message to the given dest and returns `:ok`.
-  """
-  @callback multi_send(dest :: atom(), message :: any()) :: :ok
+  @callback start_link(name :: term(), module :: module(), args :: any()) ::
+              {:ok, pid} | {:error, term}
 
   @doc """
   Get the pid of a registered name.
@@ -52,16 +49,15 @@ defmodule Commanded.Registration do
   def child_spec, do: registry_provider().child_spec()
 
   @doc false
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
-  def start_child(name, supervisor, args), do: registry_provider().start_child(name, supervisor, args)
+  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+              {:ok, pid()} | {:error, reason :: term()}
+  def start_child(name, supervisor, args),
+    do: registry_provider().start_child(name, supervisor, args)
 
   @doc false
-  @spec start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
+  @spec start_link(name :: term(), module :: module(), args :: any()) ::
+          {:ok, pid()} | {:error, reason :: term()}
   def start_link(name, module, args), do: registry_provider().start_link(name, module, args)
-
-  @doc false
-  @spec multi_send(server :: atom(), message :: any()) :: :ok
-  def multi_send(server, message), do: registry_provider().multi_send(server, message)
 
   @doc false
   @spec whereis_name(term()) :: pid() | :undefined
@@ -85,7 +81,7 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Use the `Commanded.Registration` module to import the registry and via tuple functions.
+  Use the `Commanded.Registration` module to import the registry provider and via tuple functions.
   """
   defmacro __using__(_) do
     quote location: :keep do

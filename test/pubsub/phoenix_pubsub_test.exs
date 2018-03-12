@@ -2,7 +2,6 @@ defmodule Commanded.PubSub.PhoenixPubSubTest do
   use ExUnit.Case
 
   alias Commanded.PubSub.PhoenixPubSub
-  alias Commanded.Helpers.ProcessHelper
 
   @topic "test"
 
@@ -16,14 +15,10 @@ defmodule Commanded.PubSub.PhoenixPubSubTest do
       ]
     )
 
-    children = PhoenixPubSub.child_spec()
-
-    {:ok, pid} = Supervisor.start_link(children, strategy: :one_for_one)
+    {:ok, _pid} = Supervisor.start_link(PhoenixPubSub.child_spec(), strategy: :one_for_one)
 
     on_exit(fn ->
       Application.delete_env(:commanded, :pubsub)
-
-      ProcessHelper.shutdown(pid)
     end)
   end
 

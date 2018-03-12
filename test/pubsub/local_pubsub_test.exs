@@ -8,6 +8,8 @@ defmodule Commanded.PubSub.LocalPubSubTest do
   setup do
     Application.put_env(:commanded, :pubsub, :local)
 
+    {:ok, _pid} = Supervisor.start_link(LocalPubSub.child_spec(), strategy: :one_for_one)
+
     on_exit(fn ->
       Application.delete_env(:commanded, :pubsub)
     end)

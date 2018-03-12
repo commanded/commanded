@@ -13,7 +13,7 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def child_spec do
     [
-      {Registry, keys: :unique, name: __MODULE__},
+      {Registry, keys: :unique, name: __MODULE__}
     ]
   end
 
@@ -23,17 +23,15 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @spec start_child(name :: term(), supervisor :: module(), args :: [any()]) :: {:ok, pid()} | {:error, reason :: term()}
+  @spec start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+          {:ok, pid} | {:error, term}
   @impl Commanded.Registration
   def start_child(name, supervisor, args) do
-    case whereis_name(name) do
-      :undefined ->
-        via_name = {:via, Registry, {__MODULE__, name}}
+    via_name = {:via, Registry, {__MODULE__, name}}
 
-        Supervisor.start_child(supervisor, args ++ [[name: via_name]])
-
-      pid ->
-        {:ok, pid}
+    case Supervisor.start_child(supervisor, args ++ [[name: via_name]]) do
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      reply -> reply
     end
   end
 
@@ -42,28 +40,16 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @spec start_link(name :: term(), module :: module(), args :: any()) :: {:ok, pid()} | {:error, reason :: term()}
+  @spec start_link(name :: term(), module :: module(), args :: any()) ::
+          {:ok, pid} | {:error, term}
   @impl Commanded.Registration
   def start_link(name, module, args) do
-    case whereis_name(name) do
-      :undefined ->
-        via_name = {:via, Registry, {__MODULE__, name}}
+    via_name = {:via, Registry, {__MODULE__, name}}
 
-        GenServer.start_link(module, args, [name: via_name])
-
-      pid ->
-        {:ok, pid}
+    case GenServer.start_link(module, args, name: via_name) do
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      reply -> reply
     end
-  end
-
-  @doc """
-  Sends a message to the given dest and returns `:ok`.
-  """
-  @callback multi_send(dest :: atom(), message :: any()) :: :ok
-  @impl Commanded.Registration
-  def multi_send(server, message) do
-    send(server, message)
-    :ok
   end
 
   @doc """
@@ -84,12 +70,12 @@ defmodule Commanded.Registration.LocalRegistry do
 
   @doc false
   def handle_call(_request, _from, _state) do
-    raise "attempted to call GenServer #{inspect proc()} but no handle_call/3 clause was provided"
+    raise "attempted to call GenServer #{inspect(proc())} but no handle_call/3 clause was provided"
   end
 
   @doc false
   def handle_cast(_request, _state) do
-    raise "attempted to cast GenServer #{inspect proc()} but no handle_cast/2 clause was provided"
+    raise "attempted to cast GenServer #{inspect(proc())} but no handle_cast/2 clause was provided"
   end
 
   @doc false
@@ -99,7 +85,7 @@ defmodule Commanded.Registration.LocalRegistry do
 
   defp proc do
     case Process.info(self(), :registered_name) do
-      {_, []}   -> self()
+      {_, []} -> self()
       {_, name} -> name
     end
   end
