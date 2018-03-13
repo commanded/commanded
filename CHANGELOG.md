@@ -18,6 +18,19 @@
 
 - The `Commanded.Aggregates.AggregateLifespan` behaviour has been changed from `after_command/1` to `after_event/1`. You will need to update your own lifespan modules to use events instead of commands to shutdown an aggregate process after an inactivity timeout.
 
+### Upgrading
+
+Please ensure you upgrade the following event store dependencies.
+
+Using the Elixir [EventStore](https://github.com/commanded/eventstore):
+
+- `eventstore` to [v0.14.0-rc.0](https://hex.pm/packages/eventstore)
+- `commanded_eventstore_adapter` to [v0.4.0-rc.0](https://hex.pm/packages/commanded_eventstore_adapter)
+
+Using Greg Young's [Event Store](https://eventstore.org/):
+
+- `commanded_extreme_adapter` to [v0.5.0-rc.0](https://hex.pm/packages/commanded_extreme_adapter)
+
 ## v0.15.1
 
 ### Bug fixes
