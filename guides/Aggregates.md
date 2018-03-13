@@ -16,9 +16,11 @@ end
 
 ## Command functions
 
-A command function receives the aggregate's state and the command to execute. It must return the resultant domain events. This may be none, one, or many events.
+A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events.
 
-For business rule violations and errors you may return an `{:error, reason}` tagged tuple or raise an exception.
+To respond without returning an event you can return `nil` or an empty list `[]`.
+
+For business rule violations and errors you may return an `{:error, error}` tagged tuple or raise an exception.
 
 Name your public command functions `execute/2` to dispatch commands directly to the aggregate without requiring an intermediate command handler.
 
