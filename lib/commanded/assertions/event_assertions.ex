@@ -14,6 +14,7 @@ defmodule Commanded.Assertions.EventAssertions do
   import ExUnit.Assertions
 
   alias Commanded.EventStore
+  alias Commanded.EventStore.TypeProvider
 
   @doc """
   Wait for an event of the given event type to be published
@@ -121,7 +122,7 @@ defmodule Commanded.Assertions.EventAssertions do
 
     ack_events(subscription, received_events)
 
-    expected_type = Atom.to_string(event_type)
+    expected_type = TypeProvider.to_string(event_type.__struct__)
 
     expected_event =
       Enum.find(received_events, fn received_event ->
@@ -156,7 +157,7 @@ defmodule Commanded.Assertions.EventAssertions do
 
     ack_events(subscription, received_events)
 
-    expected_type = Atom.to_string(event_type)
+    expected_type = TypeProvider.to_string(event_type.__struct__)
 
     expected_event =
       Enum.find(received_events, fn received_event ->
