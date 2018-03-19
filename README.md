@@ -70,6 +70,7 @@ MIT License
 - [Testing with Commanded](guides/Testing.md)
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
+- [Learn Commanded in 20 minutes](#learn-commanded-in-20-minutes)
 - [Event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
 - [Contributing](#contributing)
 - [Need help?](#need-help)
@@ -86,6 +87,10 @@ Yes, Commanded is being used in production.
 
 [Conduit](https://github.com/slashdotdash/conduit) is an open source, example Phoenix 1.3 web application implementing the CQRS/ES pattern in Elixir. It was built to demonstrate the implementation of Commanded in an Elixir application for the [Building Conduit](https://leanpub.com/buildingconduit) book.
 
+## Learn Commanded in 20 minutes
+
+[Watch Bernardo Amorim introduce CQRS and event sourcing](https://www.youtube.com/watch?v=S3f6sAXa3-c) at Code Beam SF 2018. Including a tutorial on how to implement an Elixir application using these concepts with Commanded.
+
 ## Contributing
 
 Pull requests to contribute new or improved features, and extend documentation are most welcome.
@@ -99,7 +104,7 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Ben Smith](https://github.com/slashdotdash)
-- [Bernardo Dornellas Cysneiros Gomes de Amorim](https://github.com/bamorim)
+- [Bernardo Amorim](https://github.com/bamorim)
 - [Brenton Annan](https://github.com/brentonannan)
 - [Chris Brodt](https://github.com/uberbrodt)
 - [David Carlin](https://github.com/davich)
