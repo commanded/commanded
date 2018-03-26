@@ -22,7 +22,7 @@ defmodule Commanded.ProcessManager.MultiRoutingTest do
     # mark list done should mark individual TODOs as done via process manager
     :ok = TodoRouter.dispatch(%MarkAllDone{list_uuid: list_uuid})
 
-    assert_receive_event(ListAllDone, fn done -> done.list_uuid == list_uuid end)
+    assert_receive_event(ListAllDone, fn done -> assert done.list_uuid == list_uuid end)
 
     assert_receive_event(TodoDone, fn done -> done.todo_uuid == todo1_uuid end, fn done ->
       assert done.todo_uuid == todo1_uuid
