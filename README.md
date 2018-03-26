@@ -67,7 +67,7 @@ MIT License
   - [Single node deployment](guides/Deployment.md#single-node-deployment)
   - [Multi node cluster deployment](guides/Deployment.md#multi-node-cluster-deployment)
   - [Multi node, but not clustered deployment](guides/Deployment.md#multi-node-but-not-clustered-deployment)
-- [Testing with Commanded](guides/Testing.md)
+- [Testing with Commanded](guides/testing.md)
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
 - [Learn Commanded in 20 minutes](#learn-commanded-in-20-minutes)
