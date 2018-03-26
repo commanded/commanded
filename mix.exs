@@ -84,6 +84,7 @@ defmodule Commanded.Mixfile do
         "guides/Supervision.md",
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
+        "guides/Testing.md",
         "guides/Deployment.md",
         "CHANGELOG.md"
       ]
