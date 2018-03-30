@@ -1,10 +1,10 @@
 # Choosing an event store
 
-You must decide which event store to use with Commanded. You have a choice between two existing event store adapters:
+You must decide which event store to use with Commanded. You have a choice between two existing event stores:
 
-- PostgreSQL-based Elixir [EventStore](https://github.com/commanded/eventstore).
+- PostgreSQL-based Elixir [EventStore](https://github.com/commanded/eventstore) ([adapter](https://github.com/commanded/commanded-eventstore-adapter)).
 
-- Greg Young's [Event Store](https://geteventstore.com/).
+- Greg Young's [Event Store](https://geteventstore.com/) ([adapter](https://github.com/commanded/commanded-extreme-adapter)).
 
 There is also an [in-memory event store adapter](https://github.com/commanded/commanded/wiki/In-memory-event-store) for *test use only*.
 
@@ -14,21 +14,17 @@ Want to use a different event store? Then you will need to [write your own event
 
 ## PostgreSQL-based Elixir EventStore
 
-[EventStore](https://github.com/commanded/eventstore) is an open-source event store using PostgreSQL for persistence, implemented in Elixir.
-
-Please follow the [Getting started](https://github.com/commanded/commanded-eventstore-adapter#getting-started) guide to install and configure the EventStore adapter.
+Use [EventStore Adapter](https://github.com/commanded/commanded-eventstore-adapter) to persist events to a PostgreSQL database. As the name implies, this is an adapter for [EventStore](https://github.com/commanded/eventstore), which is open-source and implemented in Elixir.
 
 ---
 
 ## Greg Young's Event Store
 
-[Event Store](https://geteventstore.com/) is an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
+Use [Extreme Adapter](https://github.com/commanded/commanded-extreme-adapter) to persist events to [Event Store](https://geteventstore.com/): an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
 
-The quickest way to get started with the Event Store is by using their official [Event Store Docker container](https://store.docker.com/community/images/eventstore/eventstore).
+The quickest way to get started with Event Store is by using their official [Event Store Docker container](https://store.docker.com/community/images/eventstore/eventstore).
 
 The Commanded adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir TCP client to connect to the Event Store.
-
-Please follow the [Getting started](https://github.com/commanded/commanded-extreme-adapter#getting-started) guide to install and configure the EventStore adapter.
 
 ### Running the Event Store
 
