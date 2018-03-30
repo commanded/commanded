@@ -1,6 +1,6 @@
 # Choosing an event store
 
-You must decide which event store to use with Commanded. You have a choice between two existing event store adapters:
+You must decide which event store to use with Commanded. You have a choice between two existing event stores:
 
 - PostgreSQL-based Elixir [EventStore](https://github.com/commanded/eventstore) ([adapter](https://github.com/commanded/commanded-eventstore-adapter)).
 
