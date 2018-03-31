@@ -45,9 +45,9 @@ defmodule Commanded.Subscriptions do
   @doc """
   Have all the registered handlers processed the given event?
   """
-  def handled?(stream_uuid, stream_version, exclude \\ [])
-  def handled?(stream_uuid, stream_version, exclude) do
-    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, exclude})
+  def handled?(stream_uuid, stream_version, consistency \\ :strong, exclude \\ [])
+  def handled?(stream_uuid, stream_version, consistency, exclude) do
+    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, consistency, MapSet.new(exclude)})
   end
 
   @doc """
@@ -56,9 +56,14 @@ defmodule Commanded.Subscriptions do
 
   Returns `:ok` on success, or `{:error, :timeout}` on failure due to timeout.
   """
-  def wait_for(stream_uuid, stream_version, exclude \\ [], timeout \\ default_consistency_timeout())
-  def wait_for(stream_uuid, stream_version, exclude, timeout) do
-    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, exclude, self()})
+  def wait_for(stream_uuid, stream_version, opts \\ [], timeout \\ default_consistency_timeout())
+  def wait_for(stream_uuid, stream_version, opts, timeout) do
+    consistency = Keyword.get(opts, :consistency, :strong)
+    exclusions = opts |> Keyword.get(:exclude, []) |> List.wrap() |> MapSet.new()
+
+    opts = [consistency: consistency, exclusions: exclusions]
+
+    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, opts, self()})
 
     receive do
       {:ok, ^stream_uuid, ^stream_version} -> :ok
@@ -83,16 +88,18 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, initial_state()}
   end
 
-  def handle_call({:handled?, stream_uuid, stream_version, excluding}, _from, %Subscriptions{} = state) do
-    reply = handled_by_all?(stream_uuid, stream_version, MapSet.new(excluding), state)
+  def handle_call({:handled?, stream_uuid, stream_version, consistency, exclude}, _from, %Subscriptions{} = state) do
+    reply = handled_by_all?(stream_uuid, stream_version, consistency, exclude, state)
 
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe, stream_uuid, stream_version, exclude, pid}, _from, %Subscriptions{subscribers: subscribers} = state) do
-    exclusions = MapSet.new(exclude)
+  def handle_call({:subscribe, stream_uuid, stream_version, opts, pid}, _from, %Subscriptions{} = state) do
+    [consistency: consistency, exclusions: exclusions] = opts
+    %Subscriptions{subscribers: subscribers} = state
+
     state =
-      case handled_by_all?(stream_uuid, stream_version, exclusions, state) do
+      case handled_by_all?(stream_uuid, stream_version, consistency, exclusions, state) do
         true ->
           # immediately notify subscriber since all handlers have already
           # processed the requested event
@@ -105,9 +112,9 @@ defmodule Commanded.Subscriptions do
           # processed by all handlers
           Process.monitor(pid)
 
-          %Subscriptions{state |
-            subscribers: [{pid, stream_uuid, stream_version, exclusions} | subscribers]
-          }
+          subscription = {pid, stream_uuid, stream_version, consistency, exclusions}
+
+          %Subscriptions{state | subscribers: [subscription | subscribers]}
       end
 
     {:reply, :ok, state}
@@ -166,9 +173,16 @@ defmodule Commanded.Subscriptions do
   defp subscriptions, do: PubSub.list(@subscriptions_topic)
 
   # Have all subscriptions handled the event for the given stream and version
-  defp handled_by_all?(stream_uuid, stream_version, exclude, %Subscriptions{} = state) do
+  defp handled_by_all?(stream_uuid, stream_version, consistency, exclude, %Subscriptions{} = state) do
     subscriptions()
     |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclude, pid) end)
+    |> Enum.filter(fn {name, _pid} ->
+      # Optionally filter subscriptions to those provided by the `consistency` option
+      case consistency do
+        :strong -> true
+        consistency when is_list(consistency) -> Enum.member?(consistency, name)
+      end
+    end)
     |> Enum.all?(fn {name, _pid} -> handled_by?(name, stream_uuid, stream_version, state) end)
   end
 
@@ -182,7 +196,7 @@ defmodule Commanded.Subscriptions do
 
   defp remove_by_pid(subscribers, pid) do
     Enum.reduce(subscribers, subscribers, fn
-     ({^pid, _, _, _} = subscriber, subscribers) -> subscribers -- [subscriber]
+     ({^pid, _, _, _, _} = subscriber, subscribers) -> subscribers -- [subscriber]
      (_subscriber, subscribers) -> subscribers
     end)
   end
@@ -190,8 +204,8 @@ defmodule Commanded.Subscriptions do
   # notify any subscribers waiting on a given stream if it is at the expected version
   defp notify_subscribers(stream_uuid, %Subscriptions{subscribers: subscribers} = state) do
     Enum.reduce(subscribers, subscribers, fn
-      ({pid, ^stream_uuid, expected_stream_version, exclude} = subscriber, subscribers) ->
-        case handled_by_all?(stream_uuid, expected_stream_version, exclude, state) do
+      ({pid, ^stream_uuid, expected_stream_version, consistency, exclude} = subscriber, subscribers) ->
+        case handled_by_all?(stream_uuid, expected_stream_version, consistency, exclude, state) do
           true ->
             notify_subscriber(pid, stream_uuid, expected_stream_version)
 

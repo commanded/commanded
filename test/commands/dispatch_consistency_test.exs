@@ -7,6 +7,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     ConsistencyPrefixRouter,
     EventuallyConsistentEventHandler,
     ExecutionResult,
+    OptionalStronglyConsistentEventHandler,
     StronglyConsistentEventHandler,
   }
   alias Commanded.EventStore
@@ -53,6 +54,33 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   test "should timeout waiting for strongly consistent handler dispatching a command" do
     command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 5_000}
     assert {:error, :consistency_timeout} = ConsistencyRouter.dispatch(command, consistency: :strong)
+  end
+
+  describe "optional `:strong` consistency" do
+    setup do
+      {:ok, handler3} = OptionalStronglyConsistentEventHandler.start_link()
+
+      on_exit fn ->
+        ProcessHelper.shutdown(handler3)
+      end
+
+      :ok
+    end
+
+    test "should only wait for opt-in strongly consistent event handler to handle event" do
+      command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 100}
+      opts = [consistency: [OptionalStronglyConsistentEventHandler.name()]]
+
+      assert :ok = ConsistencyRouter.dispatch(command, opts)
+    end
+
+    # default consistency timeout set to 100ms test config
+    test "should timeout waiting for strongly consistent event handler to handle event" do
+      command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}
+      opts = [consistency: ["OptionalStronglyConsistentEventHandler"]]
+
+      assert {:error, :consistency_timeout} = ConsistencyRouter.dispatch(command, opts)
+    end
   end
 
   describe "aggregate identity prefix" do

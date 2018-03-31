@@ -274,6 +274,8 @@ defmodule Commanded.Event.Handler do
         Supervisor.child_spec(default, [])
       end
 
+      def name, do: @name
+
       @doc false
       def init, do: :ok
 
@@ -404,7 +406,7 @@ defmodule Commanded.Event.Handler do
         {:stop, reason, state}
     end
   end
-  
+
   defp subscribe_to_all_streams(%Handler{} = state) do
     %Handler{
       handler_name: handler_name,

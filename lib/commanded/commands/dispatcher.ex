@@ -138,8 +138,11 @@ defmodule Commanded.Commands.Dispatcher do
               metadata: pipeline.metadata,
             }
           }
-        %{include_aggregate_version: true} -> {:ok, pipeline.assigns.aggregate_version}
-        _ -> :ok
+        %{include_aggregate_version: true} ->
+          {:ok, pipeline.assigns.aggregate_version}
+          
+        _ ->
+          :ok
       end
 
     Pipeline.respond(pipeline, response)

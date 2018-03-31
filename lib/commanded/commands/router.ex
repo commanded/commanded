@@ -68,17 +68,32 @@ defmodule Commanded.Commands.Router do
 
   ## Consistency
 
-  You can choose to dispatch commands using either `:eventual` or `:strong`
-  consistency:
+  You can choose the consistency guarantee when dispatching a command. The
+  available options are:
 
-      :ok = BankRouter.dispatch(command, consistency: :strong)
+    - `:eventual` (default) - don't block command dispatch while waiting for
+      event handlers
 
-  Using `:strong` consistency will block command dispatch until all strongly
-  consistent event handlers and process managers have successfully process all
-  events created by the command.
+        :ok = BankRouter.dispatch(command)
+        :ok = BankRouter.dispatch(command, consistency: :eventual)
 
-  Use this when you have event handlers that update read models you need to
-  query immediately after dispatching the command.
+    - `:strong` - block command dispatch until all strongly
+      consistent event handlers and process managers have successfully processed
+      all events created by the command.
+
+      Use this when you have event handlers that update read models you need to
+      query immediately after dispatching the command.
+
+        :ok = BankRouter.dispatch(command, consistency: :strong)
+
+    - Provide an explicit list of event handler names, containing only those
+      handlers you'd like to wait for. No other handlers will be awaited on,
+      regardless of their own configured consistency setting.
+
+        :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+
+      Note you cannot opt-in to strong consistency for a handler that has been
+      configured as eventually consistent.
 
   ## Aggregate version
 

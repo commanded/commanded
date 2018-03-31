@@ -33,4 +33,8 @@ defmodule Commanded.Event.EventHandlerMacroTest do
       assert AccountBalanceHandler.current_balance == 1_050
     end)
   end
+
+  test "should provide handler name function" do
+    assert AccountBalanceHandler.name() == "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler"
+  end
 end
