@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v0.16.0-rc.1
 
 - Command dispatch consistency using explicit handler names ([#161](https://github.com/commanded/commanded/pull/161)).
 
