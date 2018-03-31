@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+- Command dispatch consistency using explicit handler names ([#161](https://github.com/commanded/commanded/pull/161)).
+
 ## v0.16.0-rc.0
 
 - Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
