@@ -16,20 +16,34 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
 
   import Pipeline
 
-  def before_dispatch(%Pipeline{consistency: :eventual} = pipeline), do: pipeline
-  def before_dispatch(%Pipeline{consistency: :strong} = pipeline) do
+  def before_dispatch(%Pipeline{} = pipeline) do
     Pipeline.assign(pipeline, :dispatcher_pid, self())
   end
 
   def after_dispatch(%Pipeline{consistency: :eventual} = pipeline), do: pipeline
-  def after_dispatch(%Pipeline{consistency: :strong, assigns: %{events: []}} = pipeline), do: pipeline
-  def after_dispatch(%Pipeline{consistency: :strong, assigns: %{aggregate_uuid: aggregate_uuid, aggregate_version: aggregate_version, dispatcher_pid: dispatcher_pid}} = pipeline) do
-    case Subscriptions.wait_for(aggregate_uuid, aggregate_version, [dispatcher_pid]) do
+
+  def after_dispatch(%Pipeline{assigns: %{events: []}} = pipeline), do: pipeline
+
+  def after_dispatch(%Pipeline{consistency: consistency, assigns: assigns} = pipeline) do
+    %{
+      aggregate_uuid: aggregate_uuid,
+      aggregate_version: aggregate_version,
+      dispatcher_pid: dispatcher_pid
+    } = assigns
+
+    opts = [consistency: consistency, exclude: dispatcher_pid]
+    
+    case Subscriptions.wait_for(aggregate_uuid, aggregate_version, opts) do
       :ok ->
         pipeline
 
       {:error, :timeout} ->
-        Logger.warn(fn -> "Consistency timeout waiting for aggregate #{inspect aggregate_uuid} at version #{inspect aggregate_version}" end)
+        Logger.warn(fn ->
+          "Consistency timeout waiting for aggregate #{inspect(aggregate_uuid)} at version #{
+            inspect(aggregate_version)
+          }"
+        end)
+
         respond(pipeline, {:error, :consistency_timeout})
     end
   end

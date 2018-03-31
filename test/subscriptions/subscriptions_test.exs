@@ -45,7 +45,7 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.register("handler1", :strong)
 
       # current process should not block handler
-      assert Subscriptions.handled?("stream1", 1, [self()])
+      assert Subscriptions.handled?("stream1", 1, exclude: [self()])
     end
   end
 
@@ -66,7 +66,7 @@ defmodule Commanded.SubscriptionsTest do
     test "should immediately succeed when excluding handler process" do
       :ok = Subscriptions.register("handler", :strong)
 
-      assert :ok == Subscriptions.wait_for("stream1", 2, [self()])
+      assert :ok == Subscriptions.wait_for("stream1", 2, exclude: [self()])
     end
 
     test "should succeed when waited event is ack'd" do
@@ -116,6 +116,34 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.ack_event("handler", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 4})
 
       assert Subscriptions.handled?("stream1", 2)
+    end
+
+    test "should allow per-handler consistency" do
+      :ok = Subscriptions.register("handler1", :strong)
+      :ok = Subscriptions.register("handler2", :strong)
+
+      :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
+
+      refute Subscriptions.handled?("stream1", 2)
+      assert :ok == Subscriptions.wait_for("stream1", 2, consistency: ["handler1"])
+    end
+
+    test "should wait for each configured handler consistency" do
+      :ok = Subscriptions.register("handler1", :strong)
+      :ok = Subscriptions.register("handler2", :strong)
+      :ok = Subscriptions.register("handler3", :strong)
+      :ok = Subscriptions.register("handler3", :eventual)
+
+      :ok = Subscriptions.ack_event("handler1", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
+      :ok = Subscriptions.ack_event("handler2", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
+
+      refute Subscriptions.handled?("stream1", 2)
+      assert Subscriptions.handled?("stream1", 2, consistency: ["handler1", "handler2"])
+      refute Subscriptions.handled?("stream1", 2, consistency: ["handler1", "handler2", "handler3"])
+      assert Subscriptions.handled?("stream1", 2, consistency: ["handler1", "handler2", "handler4"])
+
+      assert :ok == Subscriptions.wait_for("stream1", 2, consistency: ["handler1", "handler2"])
+      assert {:error, :timeout} == Subscriptions.wait_for("stream1", 2, [consistency: ["handler1", "handler2", "handler3"]], 100)
     end
   end
 

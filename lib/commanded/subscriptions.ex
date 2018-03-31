@@ -29,8 +29,12 @@ defmodule Commanded.Subscriptions do
   handler.
   """
   def ack_event(name, consistency, event)
+
   def ack_event(_name, :eventual, _event), do: :ok
-  def ack_event(name, :strong, %RecordedEvent{stream_id: stream_id, stream_version: stream_version}) do
+
+  def ack_event(name, :strong, %RecordedEvent{} = event) do
+    %RecordedEvent{stream_id: stream_id, stream_version: stream_version} = event
+
     PubSub.broadcast(@ack_topic, {:ack_event, name, stream_id, stream_version})
   end
 
@@ -45,20 +49,25 @@ defmodule Commanded.Subscriptions do
   @doc """
   Have all the registered handlers processed the given event?
   """
-  def handled?(stream_uuid, stream_version, exclude \\ [])
-  def handled?(stream_uuid, stream_version, exclude) do
-    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, exclude})
+  def handled?(stream_uuid, stream_version, opts \\ []) do
+    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, opts})
   end
 
   @doc """
   Wait until all strongly consistent event store subscriptions have received
   and successfully handled the given event, by stream identity and version.
 
+  Options:
+
+    - `:consistency` - override the default consistency (`:strong`), by
+      providing an explicit list of handler modules, or their configured names,
+      to wait for.
+    - `:exclude` - a PID, or list of PIDs, to exclude from waiting.
+
   Returns `:ok` on success, or `{:error, :timeout}` on failure due to timeout.
   """
-  def wait_for(stream_uuid, stream_version, exclude \\ [], timeout \\ default_consistency_timeout())
-  def wait_for(stream_uuid, stream_version, exclude, timeout) do
-    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, exclude, self()})
+  def wait_for(stream_uuid, stream_version, opts \\ [], timeout \\ default_consistency_timeout()) do
+    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, opts, self()})
 
     receive do
       {:ok, ^stream_uuid, ^stream_version} -> :ok
@@ -83,16 +92,21 @@ defmodule Commanded.Subscriptions do
     {:reply, :ok, initial_state()}
   end
 
-  def handle_call({:handled?, stream_uuid, stream_version, excluding}, _from, %Subscriptions{} = state) do
-    reply = handled_by_all?(stream_uuid, stream_version, MapSet.new(excluding), state)
+  def handle_call({:handled?, stream_uuid, stream_version, opts}, _from, %Subscriptions{} = state) do
+    {consistency, exclude} = parse_opts(opts)
+
+    reply = handled_by_all?(stream_uuid, stream_version, consistency, exclude, state)
 
     {:reply, reply, state}
   end
 
-  def handle_call({:subscribe, stream_uuid, stream_version, exclude, pid}, _from, %Subscriptions{subscribers: subscribers} = state) do
-    exclusions = MapSet.new(exclude)
+  def handle_call({:subscribe, stream_uuid, stream_version, opts, pid}, _from, %Subscriptions{} = state) do
+    {consistency, exclude} = parse_opts(opts)
+
+    %Subscriptions{subscribers: subscribers} = state
+
     state =
-      case handled_by_all?(stream_uuid, stream_version, exclusions, state) do
+      case handled_by_all?(stream_uuid, stream_version, consistency, exclude, state) do
         true ->
           # immediately notify subscriber since all handlers have already
           # processed the requested event
@@ -105,9 +119,9 @@ defmodule Commanded.Subscriptions do
           # processed by all handlers
           Process.monitor(pid)
 
-          %Subscriptions{state |
-            subscribers: [{pid, stream_uuid, stream_version, exclusions} | subscribers]
-          }
+          subscription = {pid, stream_uuid, stream_version, consistency, exclude}
+
+          %Subscriptions{state | subscribers: [subscription | subscribers]}
       end
 
     {:reply, :ok, state}
@@ -166,9 +180,16 @@ defmodule Commanded.Subscriptions do
   defp subscriptions, do: PubSub.list(@subscriptions_topic)
 
   # Have all subscriptions handled the event for the given stream and version
-  defp handled_by_all?(stream_uuid, stream_version, exclude, %Subscriptions{} = state) do
+  defp handled_by_all?(stream_uuid, stream_version, consistency, exclude, %Subscriptions{} = state) do
     subscriptions()
     |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclude, pid) end)
+    |> Enum.filter(fn {name, _pid} ->
+      # Optionally filter subscriptions to those provided by the `consistency` option
+      case consistency do
+        :strong -> true
+        consistency when is_list(consistency) -> Enum.member?(consistency, name)
+      end
+    end)
     |> Enum.all?(fn {name, _pid} -> handled_by?(name, stream_uuid, stream_version, state) end)
   end
 
@@ -182,20 +203,20 @@ defmodule Commanded.Subscriptions do
 
   defp remove_by_pid(subscribers, pid) do
     Enum.reduce(subscribers, subscribers, fn
-     ({^pid, _, _, _} = subscriber, subscribers) -> subscribers -- [subscriber]
+     ({^pid, _, _, _, _} = subscriber, subscribers) -> subscribers -- [subscriber]
      (_subscriber, subscribers) -> subscribers
     end)
   end
 
-  # notify any subscribers waiting on a given stream if it is at the expected version
+  # Notify any subscribers waiting on a given stream if it is at the expected version
   defp notify_subscribers(stream_uuid, %Subscriptions{subscribers: subscribers} = state) do
     Enum.reduce(subscribers, subscribers, fn
-      ({pid, ^stream_uuid, expected_stream_version, exclude} = subscriber, subscribers) ->
-        case handled_by_all?(stream_uuid, expected_stream_version, exclude, state) do
+      ({pid, ^stream_uuid, expected_stream_version, consistency, exclude} = subscriber, subscribers) ->
+        case handled_by_all?(stream_uuid, expected_stream_version, consistency, exclude, state) do
           true ->
             notify_subscriber(pid, stream_uuid, expected_stream_version)
 
-            # remove subscriber
+            # Remove subscriber
             subscribers -- [subscriber]
 
           false ->
@@ -210,12 +231,12 @@ defmodule Commanded.Subscriptions do
     send(pid, {:ok, stream_uuid, stream_version})
   end
 
-  # send an info message to the process to purge expired stream ack's
+  # Send an info message to the process to purge expired stream ack's
   defp schedule_purge_streams(ttl \\ default_ttl()) do
     Process.send_after(self(), {:purge_expired_streams, ttl}, ttl)
   end
 
-  # delete subscription ack's that are older than the configured ttl
+  # Delete subscription ack's that are older than the configured ttl
   defp purge_expired_streams(ttl, %Subscriptions{streams_table: streams_table, started_at: started_at}) do
     stale_epoch = monotonic_time() - started_at - (ttl / 1_000)
 
@@ -223,6 +244,34 @@ defmodule Commanded.Subscriptions do
     |> :ets.select([{{:"$1", :"$2", :"$3"}, [{:"=<", :"$3", stale_epoch}], [:"$1"]}])
     |> Enum.each(&:ets.delete(streams_table, &1))
   end
+
+  defp parse_opts(opts) do
+    consistency = opts |> Keyword.get(:consistency, :strong) |> parse_consistency()
+    exclude = opts |> Keyword.get(:exclude, []) |> parse_exclude()
+
+    {consistency, exclude}
+  end
+
+  defp parse_consistency(consistency) when consistency in [:eventual, :strong], do: consistency
+  defp parse_consistency(consistency) when is_list(consistency) do
+    Enum.map(consistency, fn
+      name when is_bitstring(name) ->
+        name
+
+      module when is_atom(module) ->
+        if function_exported?(module, :__name__, 0) do
+          apply(module, :__name__, [])
+        else
+          raise "Expected module #{module} to contain a public `__name__/0` function"
+        end
+
+      invalid ->
+        raise "Invalid consistency: #{inspect invalid}"
+    end)
+  end
+  defp parse_consistency(invalid), do: raise "Invalid consistency: #{inspect invalid}"
+
+  defp parse_exclude(exclude), do: exclude |> List.wrap() |> MapSet.new()
 
   defp monotonic_time, do: System.monotonic_time(:seconds)
 

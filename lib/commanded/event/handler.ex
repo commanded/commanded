@@ -275,6 +275,9 @@ defmodule Commanded.Event.Handler do
       end
 
       @doc false
+      def __name__, do: @name
+
+      @doc false
       def init, do: :ok
 
       defoverridable [init: 0]
@@ -404,7 +407,7 @@ defmodule Commanded.Event.Handler do
         {:stop, reason, state}
     end
   end
-  
+
   defp subscribe_to_all_streams(%Handler{} = state) do
     %Handler{
       handler_name: handler_name,

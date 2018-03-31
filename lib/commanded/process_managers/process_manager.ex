@@ -246,6 +246,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
         Supervisor.child_spec(default, [])
       end
+
+      @doc false
+      def __name__, do: @name
     end
   end
 

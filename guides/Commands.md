@@ -154,22 +154,44 @@ end
 
 ### Command dispatch consistency guarantee
 
-You can choose the consistency guarantee provided by a command dispatch using the `consistency` option:
-
-```elixir
-:ok = BankRouter.dispatch(command, consistency: :strong)
-```
-
-The available options are `:eventual` (default) and `:strong`.
+You can choose the consistency guarantee when dispatching a command.
 
 - *Strong consistency* offers up-to-date data but at the cost of high latency.
 - *Eventual consistency* offers low latency but read model queries may reply with stale data since they may not have processed the persisted events.
 
-When dispatching a command using `consistency: :strong` the dispatch will block until all of the strongly consistent event handlers and process managers have handled all events created by the command. This guarantees that when you receive the `:ok` response from dispatch your strongly consistent read models will have been updated and can safely be queried. Strong consistency helps to alleviate problems and workarounds you would otherwise encounter when dealing with eventual consistency in your own application.
+In Commanded, the available options during command dispatch are:
 
-Use `:strong` consistency when you want to query a read model immediately after dispatching a command. You *must* also configure the event handler to use `:strong` consistency. Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
+  - `:eventual` (default) - don't block command dispatch and don't wait for any event handlers, regardless of their own consistency configuration.
 
-Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers. The handlers run independently and asynchronously in the background, therefore you will need to deal with potentially stale read model data.
+    ```elixir
+    :ok = BankRouter.dispatch(command)
+    :ok = BankRouter.dispatch(command, consistency: :eventual)
+    ```
+
+  - `:strong` - block command dispatch until all strongly consistent event handlers and process managers have successfully processed all events created by the command.
+
+    ```elixir
+    :ok = BankRouter.dispatch(command, consistency: :strong)
+    ```
+
+    Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
+
+  - Provide an explicit list of event handler and process manager modules (or their configured names), containing only those handlers you'd like to wait for. No other handlers will be awaited on, regardless of their own configured consistency setting.
+
+    ```elixir
+    :ok = BankRouter.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
+    :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+    ```
+
+    Note you cannot opt-in to strong consistency for a handler that has been configured as eventually consistent.
+
+#### Which consistency guarantee should I use?
+
+When dispatching a command using `consistency: :strong` the dispatch will block until all of the strongly consistent event handlers and process managers have handled all events created by the command. This guarantees that when you receive the `:ok` response from dispatch, your strongly consistent read models will have been updated and can safely be queried.
+
+Strong consistency helps to alleviate problems and workarounds you would otherwise encounter when dealing with eventual consistency in your own application. Use `:strong` consistency when you want to query a read model immediately after dispatching a command. You *must* also configure the event handler to use `:strong` consistency.
+
+Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers or process managers. The handlers run independently, and asynchronously, in the background, therefore you will need to deal with potentially stale read model data.
 
 #### Configure default consistency
 
