@@ -174,15 +174,14 @@ In Commanded, the available options during command dispatch are:
     :ok = BankRouter.dispatch(command, consistency: :strong)
     ```
 
-  Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
+    Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
 
-  - Provide an explicit list of event handler names, containing only those handlers you'd like to wait for. No other handlers will be awaited on, regardless of their own configured consistency setting.
+  - Provide an explicit list of event handler and process manager modules (or their configured names), containing only those handlers you'd like to wait for. No other handlers will be awaited on, regardless of their own configured consistency setting.
 
-    ```elixir      
+    ```elixir
+    :ok = BankRouter.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
     :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
     ```
-
-    You should use the `name/0` function provided by the event handler macro, such as `ExampleHandler.name()`, to use the correct name.
 
     Note you cannot opt-in to strong consistency for a handler that has been configured as eventually consistent.
 

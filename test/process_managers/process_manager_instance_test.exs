@@ -4,15 +4,21 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.ProcessManagers.{ProcessManagerInstance,NullRouter}
+  alias Commanded.ProcessManagers.{ProcessManagerInstance, NullRouter}
   alias Commanded.Helpers.ProcessHelper
 
   test "process manager handles an event" do
-    transfer_uuid = UUID.uuid4
-    account1_uuid = UUID.uuid4
-    account2_uuid = UUID.uuid4
+    transfer_uuid = UUID.uuid4()
+    account1_uuid = UUID.uuid4()
+    account2_uuid = UUID.uuid4()
 
-    {:ok, process_manager} = ProcessManagerInstance.start_link(NullRouter, "TransferMoneyProcessManager", TransferMoneyProcessManager, transfer_uuid)
+    {:ok, process_manager} =
+      ProcessManagerInstance.start_link(
+        NullRouter,
+        "TransferMoneyProcessManager",
+        TransferMoneyProcessManager,
+        transfer_uuid
+      )
 
     event = %RecordedEvent{
       event_number: 1,
@@ -22,8 +28,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
         transfer_uuid: transfer_uuid,
         debit_account: account1_uuid,
         credit_account: account2_uuid,
-        amount: 100,
-      },
+        amount: 100
+      }
     }
 
     :ok = ProcessManagerInstance.process_event(process_manager, event, self())
@@ -34,35 +40,39 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
     ProcessHelper.shutdown(process_manager)
   end
 
+  test "should provide `__name__/0` function" do
+    assert TransferMoneyProcessManager.__name__() == "transfer_money_process_manager"
+  end
+
   test "should ensure a process manager name is provided" do
     assert_raise RuntimeError, "UnnamedProcessManager expects `:name` to be given", fn ->
-      Code.eval_string """
+      Code.eval_string("""
         defmodule UnnamedProcessManager do
           use Commanded.ProcessManagers.ProcessManager,
             router: Commanded.ExampleDomain.BankRouter
         end
-      """
+      """)
     end
   end
 
   test "should ensure a process manager router is provided" do
     assert_raise RuntimeError, "NoRouterProcessManager expects `:router` to be given", fn ->
-      Code.eval_string """
+      Code.eval_string("""
         defmodule NoRouterProcessManager do
           use Commanded.ProcessManagers.ProcessManager,
             name: "MyProcessManager"
         end
-      """
+      """)
     end
   end
 
   test "should allow using process manager module as name" do
-    Code.eval_string """
+    Code.eval_string("""
       defmodule MyProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
           name: __MODULE__,
           router: Commanded.ExampleDomain.BankRouter
       end
-    """
+    """)
   end
 end

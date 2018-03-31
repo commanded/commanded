@@ -45,7 +45,7 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.register("handler1", :strong)
 
       # current process should not block handler
-      assert Subscriptions.handled?("stream1", 1, [self()])
+      assert Subscriptions.handled?("stream1", 1, exclude: [self()])
     end
   end
 
@@ -138,9 +138,9 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.ack_event("handler2", :strong, %RecordedEvent{stream_id: "stream1", stream_version: 2})
 
       refute Subscriptions.handled?("stream1", 2)
-      assert Subscriptions.handled?("stream1", 2, ["handler1", "handler2"])
-      refute Subscriptions.handled?("stream1", 2, ["handler1", "handler2", "handler3"])
-      assert Subscriptions.handled?("stream1", 2, ["handler1", "handler2", "handler4"])
+      assert Subscriptions.handled?("stream1", 2, consistency: ["handler1", "handler2"])
+      refute Subscriptions.handled?("stream1", 2, consistency: ["handler1", "handler2", "handler3"])
+      assert Subscriptions.handled?("stream1", 2, consistency: ["handler1", "handler2", "handler4"])
 
       assert :ok == Subscriptions.wait_for("stream1", 2, consistency: ["handler1", "handler2"])
       assert {:error, :timeout} == Subscriptions.wait_for("stream1", 2, [consistency: ["handler1", "handler2", "handler3"]], 100)

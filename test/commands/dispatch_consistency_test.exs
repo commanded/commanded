@@ -69,7 +69,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
     test "should only wait for opt-in strongly consistent event handler to handle event" do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 100}
-      opts = [consistency: [OptionalStronglyConsistentEventHandler.name()]]
+      opts = [consistency: [OptionalStronglyConsistentEventHandler]]
 
       assert :ok = ConsistencyRouter.dispatch(command, opts)
     end

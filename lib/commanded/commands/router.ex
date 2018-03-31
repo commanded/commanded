@@ -86,11 +86,15 @@ defmodule Commanded.Commands.Router do
 
         :ok = BankRouter.dispatch(command, consistency: :strong)
 
-    - Provide an explicit list of event handler names, containing only those
-      handlers you'd like to wait for. No other handlers will be awaited on,
-      regardless of their own configured consistency setting.
+    - Provide an explicit list of event handler and process manager modules (or
+      their configured names), containing only those handlers you'd like to wait
+      for. No other handlers will be awaited on, regardless of their own
+      configured consistency setting.
 
-        :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+      ```elixir
+      :ok = BankRouter.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
+      :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+      ```
 
       Note you cannot opt-in to strong consistency for a handler that has been
       configured as eventually consistent.

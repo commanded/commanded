@@ -274,7 +274,8 @@ defmodule Commanded.Event.Handler do
         Supervisor.child_spec(default, [])
       end
 
-      def name, do: @name
+      @doc false
+      def __name__, do: @name
 
       @doc false
       def init, do: :ok

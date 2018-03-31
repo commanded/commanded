@@ -15,13 +15,13 @@ defmodule Commanded.Commands.OptionalStronglyConsistentEventHandler do
   }
 
   def handle(%ConsistencyEvent{delay: delay}, _metadata) do
-    :timer.sleep(round(delay / 4))
+    :timer.sleep(round(delay / 10))
     :ok
   end
 
   # handle event by dispatching a command
   def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
-    :timer.sleep(round(delay / 4))
+    :timer.sleep(round(delay / 10))
 
     ConsistencyRouter.dispatch(
       %ConsistencyCommand{uuid: uuid, delay: delay},
