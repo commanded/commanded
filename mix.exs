@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "0.16.0-rc.1"
+  @version "0.16.0"
 
   def project do
     [
@@ -50,13 +50,13 @@ defmodule Commanded.Mixfile do
       {:poison, "~> 3.1"},
       {:uuid, "~> 1.1"},
 
-      # build & test tools
+      # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
       {:ex_doc, "~> 0.17", only: :dev},
-      {:mix_test_watch, "~> 0.5", only: :dev},
+      {:mix_test_watch, "~> 0.6", only: :dev},
       {:mox, "~> 0.3", only: :test},
 
-      # optional deps
+      # Optional dependencies
       {:phoenix_pubsub, "~> 1.0", optional: true}
     ]
   end

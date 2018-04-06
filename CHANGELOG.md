@@ -1,10 +1,6 @@
 # Changelog
 
-## v0.16.0-rc.1
-
-- Command dispatch consistency using explicit handler names ([#161](https://github.com/commanded/commanded/pull/161)).
-
-## v0.16.0-rc.0
+## v0.16.0
 
 - Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
 - Aggregate state snapshots ([#121](https://github.com/commanded/commanded/pull/121)).
@@ -17,6 +13,7 @@
 - Replace aggregate lifespan `after_command/1` callback with `after_event/1` ([#139](https://github.com/commanded/commanded/issues/139)).
 - Support process manager routing to multiple instances ([#141](https://github.com/commanded/commanded/pull/141)).
 - Allow a default consistency to be set via the application env ([#150](https://github.com/commanded/commanded/pull/150)).
+- Command dispatch consistency using explicit handler names ([#161](https://github.com/commanded/commanded/pull/161)).
 
 ### Breaking changes
 
@@ -28,12 +25,12 @@ Please ensure you upgrade the following event store dependencies.
 
 Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 
-- `eventstore` to [v0.14.0-rc.0](https://hex.pm/packages/eventstore)
-- `commanded_eventstore_adapter` to [v0.4.0-rc.0](https://hex.pm/packages/commanded_eventstore_adapter)
+- `eventstore` to [v0.14.0](https://hex.pm/packages/eventstore)
+- `commanded_eventstore_adapter` to [v0.4.0](https://hex.pm/packages/commanded_eventstore_adapter)
 
 Using Greg Young's [Event Store](https://eventstore.org/):
 
-- `commanded_extreme_adapter` to [v0.5.0-rc.0](https://hex.pm/packages/commanded_extreme_adapter)
+- `commanded_extreme_adapter` to [v0.5.0](https://hex.pm/packages/commanded_extreme_adapter)
 
 ## v0.15.1
 
