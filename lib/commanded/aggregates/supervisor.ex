@@ -46,6 +46,13 @@ defmodule Commanded.Aggregates.Supervisor do
     end
   end
 
+  def open_aggregate(aggregate_module, aggregate_uuid) do
+    case String.Chars.impl_for(aggregate_uuid) do
+      nil -> {:error, :unsupported_uuid_type}
+      _ -> open_aggregate(aggregate_module, to_string(aggregate_uuid))
+    end
+  end
+
   def init(_) do
     children = [
       worker(Commanded.Aggregates.Aggregate, [], restart: :temporary)
