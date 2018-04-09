@@ -395,7 +395,7 @@ defmodule Commanded.Aggregates.Aggregate do
   # snapshot aggregate state
   defp do_snapshot(%Aggregate{} = state) do
     %Aggregate{
-      aggregate_module: aggregate_module,
+      aggregate_module: _aggregate_module,
       aggregate_uuid: aggregate_uuid,
       aggregate_version: aggregate_version,
       aggregate_state: aggregate_state
@@ -406,7 +406,7 @@ defmodule Commanded.Aggregates.Aggregate do
     snapshot = %SnapshotData{
       source_uuid: aggregate_uuid,
       source_version: aggregate_version,
-      source_type: TypeProvider.to_string(aggregate_module),
+      source_type: TypeProvider.to_string(aggregate_state),
       data: aggregate_state,
       metadata: %{"snapshot_version" => aggregate_version}
     }
