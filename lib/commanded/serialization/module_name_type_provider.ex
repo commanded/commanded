@@ -11,8 +11,6 @@ defmodule Commanded.Serialization.ModuleNameTypeProvider do
 
   def to_string(struct) when is_map(struct), do: Atom.to_string(struct.__struct__)
 
-  def to_string(module), do: Atom.to_string(module)
-
   def to_struct(type) do
     type |> String.to_existing_atom() |> struct()
   end
