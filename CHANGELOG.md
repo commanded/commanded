@@ -1,5 +1,11 @@
 # Changelog
 
+## Next release
+
+- Ability to globally override `include_execution_result` and `include_aggregate_version` in environment config ([#168](https://github.com/commanded/commanded/pull/168)).
+- Handle custom type serialization in snapshot source type ([#165](https://github.com/commanded/commanded/pull/165)).
+- Fix compiler warnings in generated code (routers, event handlers, and process managers).
+
 ## v0.16.0
 
 - Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
