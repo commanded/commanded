@@ -9,7 +9,7 @@ defmodule Commanded.Serialization.ModuleNameTypeProvider do
 
   @behaviour Commanded.EventStore.TypeProvider
 
-  def to_string(struct), do: Atom.to_string(struct.__struct__)
+  def to_string(struct) when is_map(struct), do: Atom.to_string(struct.__struct__)
 
   def to_struct(type) do
     type |> String.to_existing_atom() |> struct()
