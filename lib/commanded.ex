@@ -12,7 +12,7 @@ defmodule Commanded do
   Use Commanded with one of the following event stores for persistence:
 
   - [EventStore](hex.pm/packages/eventstore) Elixir library, using PostgreSQL for persistence
-  - Greg Young's [Event Store](https://geteventstore.com/).
+  - Greg Young's [Event Store](https://eventstore.org/).
 
   Please check the [Getting Started](getting-started.html) and [Usage](usage.html) guides to learn more.
   """

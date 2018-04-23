@@ -14,7 +14,7 @@ Commanded provides a solid technical foundation for you to build on. It allows y
 You can use Commanded with one of the following event stores for persistence:
 
 - [EventStore](https://github.com/commanded/eventstore) Elixir library, using PostgreSQL for persistence
-- Greg Young's [Event Store](https://geteventstore.com/).
+- Greg Young's [Event Store](https://eventstore.org/).
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
@@ -114,6 +114,7 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Kok J Sam](https://github.com/sammkj)
 - [Leif Gensert](https://github.com/leifg)
 - [Luís Ferreira](https://github.com/zamith)
+- [Nigel Thorne](https://github.com/nigelthorne)
 - [Olafur Arason](https://github.com/olafura)
 - [Patrick Detlefsen](https://github.com/patrickdet)
 - [Raphaël Lustin](https://github.com/rlustin)

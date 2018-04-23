@@ -145,14 +145,13 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ConsistencyGuarantee,
         ],
         consistency: Application.get_env(:commanded, :default_consistency, :eventual),
+        include_aggregate_version: Application.get_env(:commanded, :include_aggregate_version, false),
+        include_execution_result: Application.get_env(:commanded, :incldue_execution_result, false),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
         retry_attempts: 10
       ]
-
-      @include_aggregate_version false
-      @include_execution_result false
     end
   end
 
@@ -392,8 +391,8 @@ defmodule Commanded.Commands.Router do
         consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default[:consistency]
         metadata = Keyword.get(opts, :metadata) || @default[:metadata]
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default[:dispatch_timeout]
-        include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
-        include_execution_result = Keyword.get(opts, :include_execution_result) || @include_execution_result
+        include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @default[:include_aggregate_version]
+        include_execution_result = Keyword.get(opts, :include_execution_result) || @default[:include_execution_result]
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
         retry_attempts = Keyword.get(opts, :retry_attempts) || @default[:retry_attempts]
 
