@@ -255,7 +255,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc false
   defmacro __before_compile__(_env) do
     # include default fallback functions at end, with lowest precedence
-    quote do
+    quote generated: true do
       @doc false
       def interested?(_event), do: false
 
