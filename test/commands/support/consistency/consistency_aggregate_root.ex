@@ -5,13 +5,13 @@ defmodule Commanded.Commands.ConsistencyAggregateRoot do
   defmodule ConsistencyCommand, do: defstruct [:uuid, :delay]
   defmodule NoOpCommand, do: defstruct [:uuid]
   defmodule RequestDispatchCommand, do: defstruct [:uuid, :delay]
-  defmodule ConsistencyEvent, do: defstruct [:delay]
+  defmodule ConsistencyEvent, do: defstruct [:uuid, :delay]
   defmodule DispatchRequestedEvent, do: defstruct [:uuid, :delay]
 
   alias Commanded.Commands.ConsistencyAggregateRoot
-  
-  def execute(%ConsistencyAggregateRoot{}, %ConsistencyCommand{delay: delay}) do
-    %ConsistencyEvent{delay: delay}
+
+  def execute(%ConsistencyAggregateRoot{}, %ConsistencyCommand{uuid: uuid, delay: delay}) do
+    %ConsistencyEvent{uuid: uuid, delay: delay}
   end
 
   def execute(%ConsistencyAggregateRoot{}, %NoOpCommand{}), do: []
