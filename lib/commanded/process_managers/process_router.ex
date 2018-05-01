@@ -28,7 +28,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       supervisor: nil,
       subscription: nil,
       last_seen_event: nil,
-      pending_acks: [],
+      pending_acks: %{},
       pending_events: [],
     ]
   end
@@ -96,21 +96,25 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   def handle_cast({:ack_event, event, instance}, %State{} = state) do
     %State{pending_acks: pending_acks} = state
+    %RecordedEvent{event_number: event_number} = event
 
-    case List.delete(pending_acks, instance) do
-      [] ->
-        # no pending acks so confirm receipt of event
-        state = confirm_receipt(event, %State{state | pending_acks: []})
+    state =
+      case pending_acks |> Map.get(event_number, []) |> List.delete(instance) do
+        [] ->
+          # Enqueue a message to continue processing any pending events
+          GenServer.cast(self(), :process_pending_events)
 
-        # continue processing any pending events
-        GenServer.cast(self(), :process_pending_events)
+          state = %State{state | pending_acks: Map.delete(pending_acks, event_number)}
 
-        {:noreply, state}
+          # no pending acks so confirm receipt of event
+          confirm_receipt(event, state)
 
-      pending ->
-        # pending acks, don't ack event but wait for outstanding instances
-        {:noreply, %State{state | pending_acks: pending}}
-    end
+        pending ->
+          # pending acks, don't ack event but wait for outstanding instances
+          %State{state | pending_acks: Map.put(pending_acks, event_number, pending)}
+      end
+
+    {:noreply, state}
   end
 
   @doc """
@@ -336,10 +340,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   # Delegate event to process instance who will ack event processing on success
   defp delegate_event(process_instance, %RecordedEvent{} = event, %State{} = state) do
     %State{pending_acks: pending_acks} = state
+    %RecordedEvent{event_number: event_number} = event
 
     :ok = ProcessManagerInstance.process_event(process_instance, event, self())
 
-    %State{state | pending_acks: [process_instance | pending_acks]}
+    %State{state |
+      pending_acks: Map.update(pending_acks, event_number, [process_instance], fn
+        pending -> [process_instance | pending]
+      end)
+    }
   end
 
   defp describe(%State{process_manager_module: process_manager_module}),
