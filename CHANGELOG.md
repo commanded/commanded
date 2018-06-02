@@ -2,9 +2,16 @@
 
 ## Next release
 
+### Enhancements
+
 - Ability to globally override `include_execution_result` and `include_aggregate_version` in environment config ([#168](https://github.com/commanded/commanded/pull/168)).
 - Handle custom type serialization in snapshot source type ([#165](https://github.com/commanded/commanded/pull/165)).
 - Fix compiler warnings in generated code (routers, event handlers, and process managers).
+- Add `InMemory.reset!/0` for testing purposes ([#175](https://github.com/commanded/commanded/pull/175)).
+
+### Bug fixes
+
+- Ensure process managers can be configured with `:strong` consistency.
 
 ## v0.16.0
 
