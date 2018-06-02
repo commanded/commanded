@@ -106,6 +106,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
   end
 
+  def reset! do
+    GenServer.call(__MODULE__, :reset!)
+  end
+
   @impl GenServer
   def handle_call({:append_to_stream, stream_uuid, expected_version, events}, _from, %State{streams: streams} = state) do
     case Map.get(streams, stream_uuid) do
@@ -209,6 +213,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
 
     {:reply, :ok, state}
+  end
+
+  def handle_call(:reset!, _from, %State{serializer: serializer}) do
+    {:reply, :ok, %State{serializer: serializer}}
   end
 
   @impl GenServer
