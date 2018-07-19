@@ -83,7 +83,7 @@ defmodule Commanded.Registration do
   @doc """
   Use the `Commanded.Registration` module to import the registry provider and via tuple functions.
   """
-  defmacro __using__(_) do
+  defmacro __using__(_opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
 
@@ -96,7 +96,7 @@ defmodule Commanded.Registration do
   Allow a registry provider to handle the standard `GenServer` callback functions
   """
   defmacro __before_compile__(_env) do
-    quote location: :keep do
+    quote generated: true, location: :keep do
       @doc false
       def handle_call(request, from, state),
         do: registry_provider().handle_call(request, from, state)

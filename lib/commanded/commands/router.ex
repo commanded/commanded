@@ -128,7 +128,7 @@ defmodule Commanded.Commands.Router do
       :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
   """
-  defmacro __using__(_) do
+  defmacro __using__(_opts) do
     quote do
       require Logger
 
@@ -145,14 +145,13 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ConsistencyGuarantee,
         ],
         consistency: Application.get_env(:commanded, :default_consistency, :eventual),
+        include_aggregate_version: Application.get_env(:commanded, :include_aggregate_version, false),
+        include_execution_result: Application.get_env(:commanded, :incldue_execution_result, false),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
         retry_attempts: 10
       ]
-
-      @include_aggregate_version false
-      @include_execution_result false
     end
   end
 
@@ -392,8 +391,8 @@ defmodule Commanded.Commands.Router do
         consistency = Keyword.get(opts, :consistency) || unquote(consistency) || @default[:consistency]
         metadata = Keyword.get(opts, :metadata) || @default[:metadata]
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default[:dispatch_timeout]
-        include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @include_aggregate_version
-        include_execution_result = Keyword.get(opts, :include_execution_result) || @include_execution_result
+        include_aggregate_version = Keyword.get(opts, :include_aggregate_version) || @default[:include_aggregate_version]
+        include_execution_result = Keyword.get(opts, :include_execution_result) || @default[:include_execution_result]
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
         retry_attempts = Keyword.get(opts, :retry_attempts) || @default[:retry_attempts]
 
@@ -438,7 +437,7 @@ defmodule Commanded.Commands.Router do
   end
 
   defmacro __before_compile__(_env) do
-    quote do
+    quote generated: true do
       @doc false
       def registered_commands, do: @registered_commands
 
@@ -446,7 +445,7 @@ defmodule Commanded.Commands.Router do
       Return an error if an unregistered command is dispatched
       """
       def dispatch(command), do: unregistered_command(command)
-      def dispatch(command, opts), do: unregistered_command(command)
+      def dispatch(command, _opts), do: unregistered_command(command)
 
       defp unregistered_command(command) do
         Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)

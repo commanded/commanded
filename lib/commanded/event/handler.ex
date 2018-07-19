@@ -307,7 +307,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   defmacro __before_compile__(_env) do
-    quote do
+    quote generated: true do
       @doc false
       def handle(_event, _metadata), do: :ok
 

@@ -5,22 +5,27 @@ defmodule Commanded.Commands.StronglyConsistentEventHandler do
 
   alias Commanded.Commands.{
     ConsistencyAggregateRoot,
-    ConsistencyRouter,
+    ConsistencyRouter
   }
+
   alias ConsistencyAggregateRoot.{
     ConsistencyCommand,
     ConsistencyEvent,
-    DispatchRequestedEvent,
+    DispatchRequestedEvent
   }
-
-  def handle(%ConsistencyEvent{delay: delay}, _metadata) do
-    :timer.sleep(delay)
-    :ok
-  end
 
   # handle event by dispatching a command
   def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
     :timer.sleep(delay)
-    ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: uuid, delay: delay}, consistency: :strong)
+
+    command = %ConsistencyCommand{uuid: uuid, delay: delay}
+
+    ConsistencyRouter.dispatch(command, consistency: :strong)
+  end
+
+  def handle(%ConsistencyEvent{delay: delay}, _metadata) do
+    :timer.sleep(delay)
+
+    :ok
   end
 end
