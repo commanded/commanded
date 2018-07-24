@@ -35,8 +35,6 @@ defmodule Commanded.PubSub.PhoenixPubSub do
 
   @behaviour Commanded.PubSub
 
-  alias Phoenix.PubSub
-
   defmodule Tracker do
     @behaviour Phoenix.Tracker
 
@@ -88,7 +86,7 @@ defmodule Commanded.PubSub.PhoenixPubSub do
   @spec subscribe(atom) :: :ok | {:error, term}
   @impl Commanded.PubSub
   def subscribe(topic) when is_binary(topic) do
-    PubSub.subscribe(__MODULE__, topic)
+    Phoenix.PubSub.subscribe(__MODULE__, topic)
   end
 
   @doc """
@@ -97,7 +95,7 @@ defmodule Commanded.PubSub.PhoenixPubSub do
   @spec broadcast(String.t(), term) :: :ok | {:error, term}
   @impl Commanded.PubSub
   def broadcast(topic, message) when is_binary(topic) do
-    PubSub.broadcast(__MODULE__, topic, message)
+    Phoenix.PubSub.broadcast(__MODULE__, topic, message)
   end
 
   @doc """
@@ -107,8 +105,11 @@ defmodule Commanded.PubSub.PhoenixPubSub do
   @spec track(String.t(), term) :: :ok
   @impl Commanded.PubSub
   def track(topic, key) when is_binary(topic) do
-    {:ok, _ref} = Phoenix.Tracker.track(Tracker, self(), topic, key, %{pid: self()})
-    :ok
+    case Phoenix.Tracker.track(Tracker, self(), topic, key, %{pid: self()}) do
+      {:ok, _ref} -> :ok
+      {:error, {:already_tracked, _pid, _topic, _key}} -> :ok
+      reply -> reply
+    end
   end
 
   @doc """

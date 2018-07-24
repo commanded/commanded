@@ -142,7 +142,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
-    %State{command_dispatcher: command_dispatcher} = state
+    %State{
+      consistency: consistency,
+      command_dispatcher: command_dispatcher,
+      process_manager_name: process_manager_name
+    } = state
+
+    # Register this process manager as a subscription with the given consistency
+    :ok = Subscriptions.register(process_manager_name, consistency)
 
     {:ok, supervisor} = Supervisor.start_link(command_dispatcher)
 
@@ -185,11 +192,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:stop, reason, state}
   end
 
-  defp subscribe_to_all_streams(%State{consistency: consistency, process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state) do
-    {:ok, subscription} = EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
+  defp subscribe_to_all_streams(%State{} = state) do
+    %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state
 
-    # register this event handler as a subscription with the given consistency
-    :ok = Subscriptions.register(process_manager_name, consistency)
+    {:ok, subscription} = EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
 
     %State{state | subscription: subscription}
   end
