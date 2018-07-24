@@ -39,6 +39,7 @@ defmodule Commanded.Mixfile do
       "test/example_domain",
       "test/helpers",
       "test/process_managers/support",
+      "test/pubsub/support",
       "test/registration/support",
       "test/support"
     ]

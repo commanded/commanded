@@ -60,9 +60,14 @@ defmodule Commanded.PubSub.LocalPubSub do
   @spec track(String.t(), term) :: :ok
   @impl Commanded.PubSub
   def track(topic, key) when is_binary(topic) do
-    {:ok, _} = Registry.register(LocalPubSub.Tracker, topic, key)
+    case Registry.match(LocalPubSub.Tracker, topic, key) do
+      [] ->
+        {:ok, _pid} = Registry.register(LocalPubSub.Tracker, topic, key)
+        :ok
 
-    :ok
+      _matches ->
+        :ok
+    end
   end
 
   @doc """
