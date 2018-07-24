@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "0.16.0"
+  @version "0.17.0"
 
   def project do
     [
@@ -39,6 +39,7 @@ defmodule Commanded.Mixfile do
       "test/example_domain",
       "test/helpers",
       "test/process_managers/support",
+      "test/pubsub/support",
       "test/registration/support",
       "test/support"
     ]

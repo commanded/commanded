@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v0.17.0
 
 ### Enhancements
 
@@ -12,6 +12,7 @@
 ### Bug fixes
 
 - Ensure process managers can be configured with `:strong` consistency.
+- Fix error when subscription process already tracked ([#180](https://github.com/commanded/commanded/pull/180)).
 
 ## v0.16.0
 
