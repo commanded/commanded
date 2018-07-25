@@ -8,6 +8,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
+  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.ProcessManagers.ProcessRouter
@@ -59,5 +60,27 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
     end
 
     assert [{^transfer_uuid, _}] = ProcessRouter.process_instances(process_router)
+  end
+
+  test "should not create entirely new instance when process manager expected to continue" do
+    account_number1 = UUID.uuid4
+    transfer_uuid = UUID.uuid4
+
+    {:ok, process_router} = TransferMoneyProcessManager.start_link()
+
+    assert ProcessRouter.process_instances(process_router) == []
+
+    :timer.sleep 500
+
+    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number1, initial_balance: 1_000})
+    :ok = BankRouter.dispatch(%WithdrawMoney{
+      transfer_uuid: transfer_uuid,
+      account_number: account_number1,
+      amount: 100,
+    })
+
+    :timer.sleep 300
+
+    assert [] = ProcessRouter.process_instances(process_router)
   end
 end

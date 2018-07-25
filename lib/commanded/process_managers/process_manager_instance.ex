@@ -40,6 +40,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
+  Checks whether or not the process manager has already processed events
+  """
+  def new?(process_manager) do
+    GenServer.call(process_manager, :new?)
+  end
+
+  @doc """
   Handle the given event by delegating to the process manager module
   """
   def process_event(process_manager, %RecordedEvent{} = event, process_router) do
@@ -73,6 +80,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc false
   def handle_call(:process_state, _from, %ProcessManagerInstance{process_state: process_state} = state) do
     {:reply, process_state, state}
+  end
+
+  @doc false
+  def handle_call(:new?, _from, %ProcessManagerInstance{last_seen_event: last_seen_event} = state) do
+    {:reply, is_nil(last_seen_event), state}
   end
 
   @doc """

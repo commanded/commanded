@@ -235,7 +235,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
         |> Enum.reduce(state, fn (process_uuid, state) ->
           {process_instance, state} = continue_process_manager(process_uuid, state)
 
-          delegate_event(process_instance, event, state)
+          case ProcessManagerInstance.new?(process_instance) do
+            false -> delegate_event(process_instance, event, state)
+            true ->
+              Logger.debug(fn -> describe(state) <> " is not interested in event: #{inspect event_number} (#{inspect stream_id}@#{inspect stream_version})" end)
+              stop_process_manager(process_uuid, state)
+
+              ack_and_continue(event, state)
+          end
         end)
 
       {:stop, process_uuid} ->
