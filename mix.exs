@@ -53,9 +53,9 @@ defmodule Commanded.Mixfile do
 
       # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.17", only: :dev},
-      {:mix_test_watch, "~> 0.6", only: :dev},
-      {:mox, "~> 0.3", only: :test},
+      {:ex_doc, "~> 0.18", only: :dev},
+      {:mix_test_watch, "~> 0.7", only: :dev},
+      {:mox, "~> 0.4", only: :test},
 
       # Optional dependencies
       {:phoenix_pubsub, "~> 1.0", optional: true}
