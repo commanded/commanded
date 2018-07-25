@@ -1,5 +1,11 @@
 # Changelog
 
+## Next release
+
+### Enhancements
+
+- Do not start new process manager instance on `:continue` ([#181](https://github.com/commanded/commanded/pull/181)).
+
 ## v0.17.0
 
 ### Enhancements
