@@ -76,6 +76,6 @@ defmodule Commanded.PubSub.LocalPubSub do
   @spec list(String.t()) :: [{term, pid}]
   @impl Commanded.PubSub
   def list(topic) when is_binary(topic) do
-    Registry.match(LocalPubSub.Tracker, topic, :_) |> Enum.map(fn {pid, key} -> {key, pid} end)
+    Registry.lookup(LocalPubSub.Tracker, topic) |> Enum.map(fn {pid, key} -> {key, pid} end)
   end
 end
