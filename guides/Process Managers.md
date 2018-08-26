@@ -49,7 +49,32 @@ The `error/3` callback function must return one of the following responses depen
 
 - `{:stop, reason}` - stop the process manager with the given reason.
 
+## Supervision
+
+Supervise you process managers to ensure they are restarted on error.
+
+```elixir
+defmodule Bank.Payments.Supervisor do
+  use Supervisor
+
+  def start_link(_arg) do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
+  def init(_arg) do
+    Supervisor.init(
+      [
+        Bank.Payments.TransferMoneyProcessManager
+      ],
+      strategy: :one_for_one
+    )
+  end
+end
+```
+
 ### Error handling example
+
+Define an `error/3` callback function to determine how to handle errors during event handling and command dispatch.
 
 ```elixir
 defmodule ExampleProcessManager do
@@ -72,9 +97,7 @@ defmodule ExampleProcessManager do
 end
 ```
 
-The default behaviour if you don't provide an `error/4` callback is to stop the process manager using the same error reason returned from the failed command dispatch.
-
-You should supervise process managers to ensure they are correctly restarted on error.
+The default behaviour if you don't provide an `error/3` callback is to stop the process manager using the same error reason returned from the failed command dispatch.
 
 ## Example process manager
 
@@ -134,3 +157,27 @@ The name given to the process manager *must* be unique. This is used when subscr
 You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
 
 Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
+
+## Event handling timeout
+
+You can configure a timeout for event handling to ensure that events are processed in a timely manner without getting stuck.
+
+An `event_timeout` option, defined in milliseconds, may be provided when using the `Commanded.ProcessManagers.ProcessManager` macro at compile time:
+
+```elixir
+defmodule TransferMoneyProcessManager do
+  use Commanded.ProcessManagers.ProcessManager,
+    name: "TransferMoneyProcessManager",
+    router: BankRouter,
+    event_timeout: :timer.minutes(10)
+
+end
+```
+
+Or may be configured when starting a process manager:
+
+```elixir
+{:ok, _} = TransferMoneyProcessManager.start_link(event_timeout: :timer.hours(1))
+```
+
+After the timeout has elapsed, indicating the process manager has not processed an event within the configured period, the process manager is stopped. The process manager will be restarted if supervised and will retry the event, this should help resolve transient problems.
