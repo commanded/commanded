@@ -160,7 +160,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     end
   end
 
-  test "should show a help note when bad argument given to a `dispatch/2` function" do
+  test "should show a helpful message when bad argument given to a `dispatch/2` function" do
     assert_raise RuntimeError, """
     unexpected dispatch parameter "id"
     available params are: to, function, aggregate, identity, identity_prefix, timeout, lifespan, consistency

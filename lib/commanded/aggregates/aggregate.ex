@@ -58,7 +58,8 @@ defmodule Commanded.Aggregates.Aggregate do
             snapshot_module_version: 1,
             snapshot_version: 0
 
-  def start_link(aggregate_module, aggregate_uuid, opts \\ []) do
+  def start_link(aggregate_module, aggregate_uuid, opts \\ [])
+      when is_atom(aggregate_module) and is_binary(aggregate_uuid) do
     snapshot_options = snapshot_options(aggregate_module)
 
     aggregate = %Aggregate{
@@ -72,14 +73,16 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def name(aggregate_module, aggregate_uuid), do: {aggregate_module, aggregate_uuid}
+  def name(aggregate_module, aggregate_uuid)
+      when is_atom(aggregate_module) and is_binary(aggregate_uuid),
+      do: {aggregate_module, aggregate_uuid}
 
   def init(%Aggregate{} = state) do
-    # initial aggregate state is populated by loading its state snapshot and/or
-    # events from the event store
+    # Initial aggregate state is populated by loading its state snapshot and/or
+    # events from the event store.
     :ok = GenServer.cast(self(), :populate_aggregate_state)
 
-    # subscribe to aggregate's events to catch any events appended to its stream
+    # Subscribe to aggregate's events to catch any events appended to its stream
     # by another process, such as directly appended to the event store.
     :ok = GenServer.cast(self(), :subscribe_to_events)
 
@@ -93,13 +96,13 @@ defmodule Commanded.Aggregates.Aggregate do
     - `aggregate_uuid` - uniquely identifies an instance of the aggregate.
     - `context` - includes command execution arguments
       (see `Commanded.Aggregates.ExecutionContext` for details).
-    - `timeout` - an integer greater than zero which specifies how many
-      milliseconds to wait for a reply, or the atom :infinity to wait
-      indefinitely. The default value is five seconds (5,000ms).
+    - `timeout` - an non-negative integer which specifies how many milliseconds
+      to wait for a reply, or the atom :infinity to wait indefinitely.
+      The default value is five seconds (5,000ms).
 
   ## Return values
 
-  Returns `{:ok, aggregate_version, events}` on success, or `{:error, reason}`
+  Returns `{:ok, aggregate_version, events}` on success, or `{:error, error}`
   on failure.
 
     - `aggregate_version` - the updated version of the aggregate after executing
@@ -107,7 +110,8 @@ defmodule Commanded.Aggregates.Aggregate do
     - `events` - events produced by the command, can be an empty list.
 
   """
-  def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000) do
+  def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000)
+      when is_atom(aggregate_module) and is_binary(aggregate_uuid) and is_number(timeout) do
     GenServer.call(
       via_name(aggregate_module, aggregate_uuid),
       {:execute_command, context},
@@ -116,15 +120,13 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5_000)
-
-  def aggregate_state(aggregate_module, aggregate_uuid, timeout) do
+  def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5_000) do
     GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state, timeout)
   end
 
   @doc false
-  def aggregate_version(aggregate_module, aggregate_uuid) do
-    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_version)
+  def aggregate_version(aggregate_module, aggregate_uuid, timeout \\ 5_000) do
+    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_version, timeout)
   end
 
   @doc false
@@ -213,11 +215,11 @@ defmodule Commanded.Aggregates.Aggregate do
 
       {:noreply, state, lifespan_timeout}
     catch
-      {:error, reason} ->
-        Logger.debug(fn -> describe(state) <> " stopping due to: #{inspect(reason)}" end)
+      {:error, error} ->
+        Logger.debug(fn -> describe(state) <> " stopping due to: #{inspect(error)}" end)
 
-        # stop after event handling returned an error
-        {:stop, reason, state}
+        # Stop after event handling returned an error
+        {:stop, error, state}
     end
   end
 
@@ -438,7 +440,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
     {reply, state} =
       case Kernel.apply(handler, function, [aggregate_state, command]) do
-        {:error, _reason} = reply ->
+        {:error, _error} = reply ->
           {reply, state}
 
         none when none in [nil, []] ->
@@ -446,7 +448,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
         %Commanded.Aggregate.Multi{} = multi ->
           case Commanded.Aggregate.Multi.run(multi) do
-            {:error, _reason} = reply ->
+            {:error, _error} = reply ->
               {reply, state}
 
             {aggregate_state, pending_events} ->
@@ -492,7 +494,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
       {{:ok, stream_version, pending_events}, state}
     else
-      {:error, _reason} = reply ->
+      {:error, _error} = reply ->
         {reply, state}
     end
   end

@@ -94,6 +94,10 @@ defmodule BankRouter do
 end
 ```
 
+The above configuration requires that all commands for the `BankAccount` aggregate must contain an `account_number` field used to identity a unique instance.
+
+#### Identity prefix
+
 An optional identity prefix can be used to distinguish between different aggregates that  would otherwise share the same identity. As an example you might have a `User` and a `UserPreferences` aggregate that you wish to share the same identity. In this scenario you should specify a `prefix` for each aggregate (e.g. "user-" and "user-preference-").
 
 ```elixir
@@ -108,7 +112,35 @@ defmodule BankRouter do
 end
 ```
 
-The prefix is used as the stream identity when appending, and reading, the aggregate's events.
+The prefix is used as the stream identity when appending, and reading, the aggregate's events (e.g. `<prefix><instance_identity>`). Note you *must not* change the stream prefix once you have events persisted in your event store, otherwise the aggregate's events cannot be read from the event store and its state cannot be rebuilt since the stream name will be different.
+
+#### Custom aggregate identity
+
+Any module that implements the `String.Chars` protocol can be used for an aggregate's identity. By default this includes the following Elixir built-in types: strings, integers, floats, atoms, and lists.
+
+You can define your own custom identity modules and implement the `String.Chars` protocol for them:
+
+```elixir
+defmodule AccountNumber do
+  defstruct [:branch, :account_number]
+
+  defimpl String.Chars do
+    def to_string(%AccountNumber{branch: branch, account_number: account_number}),
+      do: branch <> ":" <> account_number
+  end
+end
+```
+
+The custom identity will be converted to a string during command dispatch. This is used as the aggregate's identity and determines the stream to append its events in the event store.
+
+```elixir
+open_account = %OpenAccount{
+  account_number: %AccountNumber{branch: "B1", account_number: "ACC123"},
+  initial_balance: 1_000
+}
+
+:ok = BankRouter.dispatch(open_account)
+```
 
 ### Timeouts
 
@@ -120,7 +152,7 @@ You can configure a different timeout value during command registration by provi
 defmodule BankRouter do
   use Commanded.Commands.Router
 
-  # configure a timeout of 1 second for the open account command handler
+  # Configure a timeout of 1 second for the open account command handler
   dispatch OpenAccount,
     to: OpenAccountHandler,
     aggregate: BankAccount,
