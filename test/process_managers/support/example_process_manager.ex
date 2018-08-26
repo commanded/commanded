@@ -1,21 +1,26 @@
 defmodule Commanded.ProcessManagers.ExampleProcessManager do
   @moduledoc false
-  alias Commanded.ProcessManagers.{ExampleProcessManager,ExampleRouter}
+  alias Commanded.ProcessManagers.{ExampleProcessManager, ExampleRouter}
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
-  alias Commanded.ProcessManagers.ExampleAggregate.Events.{Errored,Started,Interested,Stopped}
+
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.{
+    Errored,
+    Interested,
+    Raised,
+    Started,
+    Stopped
+  }
 
   use Commanded.ProcessManagers.ProcessManager,
     name: "ExampleProcessManager",
     router: ExampleRouter
 
-  defstruct [
-    status: nil,
-    items: [],
-  ]
+  defstruct [:status, items: []]
 
   def interested?(%Started{aggregate_uuid: aggregate_uuid}), do: {:start, aggregate_uuid}
   def interested?(%Interested{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
   def interested?(%Errored{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
+  def interested?(%Raised{aggregate_uuid: aggregate_uuid}), do: {:continue, aggregate_uuid}
   def interested?(%Stopped{aggregate_uuid: aggregate_uuid}), do: {:stop, aggregate_uuid}
 
   def handle(%ExampleProcessManager{}, %Interested{index: 10, aggregate_uuid: aggregate_uuid}) do
@@ -24,17 +29,15 @@ defmodule Commanded.ProcessManagers.ExampleProcessManager do
 
   def handle(%ExampleProcessManager{}, %Errored{}), do: {:error, :failed}
 
-  ## state mutators
+  def handle(%ExampleProcessManager{}, %Raised{}), do: raise("failed")
+
+  # State mutators
 
   def apply(%ExampleProcessManager{} = process_manager, %Started{}) do
-    %ExampleProcessManager{process_manager |
-      status: :started
-    }
+    %ExampleProcessManager{process_manager | status: :started}
   end
 
   def apply(%ExampleProcessManager{items: items} = process_manager, %Interested{index: index}) do
-    %ExampleProcessManager{process_manager |
-      items: items ++ [index]
-    }
+    %ExampleProcessManager{process_manager | items: items ++ [index]}
   end
 end

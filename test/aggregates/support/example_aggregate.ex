@@ -1,21 +1,19 @@
 defmodule Commanded.Aggregates.ExampleAggregate do
   @moduledoc false
-  defstruct [
-    items: [],
-    last_index: 0,
-  ]
+  defstruct items: [],
+            last_index: 0
 
   defmodule Commands do
-    defmodule AppendItems, do: defstruct [count: 0]
-    defmodule NoOp, do: defstruct [count: 0]
+    defmodule(AppendItems, do: defstruct(count: 0))
+    defmodule(NoOp, do: defstruct(count: 0))
   end
 
   defmodule Events do
-    defmodule ItemAppended, do: defstruct [:index]
+    defmodule(ItemAppended, do: defstruct([:index]))
   end
 
   alias Commanded.Aggregates.ExampleAggregate
-  alias Commands.{AppendItems,NoOp}
+  alias Commands.{AppendItems, NoOp}
   alias Events.ItemAppended
 
   def append_items(%ExampleAggregate{last_index: last_index}, count) do
@@ -26,12 +24,9 @@ defmodule Commanded.Aggregates.ExampleAggregate do
 
   def noop(%ExampleAggregate{}, %NoOp{}), do: []
 
-  # state mutatators
+  # State mutators
 
   def apply(%ExampleAggregate{items: items} = state, %ItemAppended{index: index}) do
-    %ExampleAggregate{state |
-      items: items ++ [index],
-      last_index: index,
-    }
+    %ExampleAggregate{state | items: items ++ [index], last_index: index}
   end
 end
