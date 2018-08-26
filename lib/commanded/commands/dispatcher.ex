@@ -63,7 +63,7 @@ defmodule Commanded.Commands.Dispatcher do
     %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline,
     %Payload{aggregate_module: aggregate_module, timeout: timeout} = payload)
   do
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(aggregate_module, aggregate_uuid)
+    {:ok, aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(aggregate_module, aggregate_uuid)
 
     context = to_execution_context(pipeline, payload)
     task = Task.Supervisor.async_nolink(Commanded.Commands.TaskDispatcher, Aggregates.Aggregate, :execute, [aggregate_module, aggregate_uuid, context, timeout])
@@ -140,7 +140,7 @@ defmodule Commanded.Commands.Dispatcher do
           }
         %{include_aggregate_version: true} ->
           {:ok, pipeline.assigns.aggregate_version}
-          
+
         _ ->
           :ok
       end
