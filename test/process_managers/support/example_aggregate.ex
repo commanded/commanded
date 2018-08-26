@@ -9,6 +9,7 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
   defmodule Commands do
     defmodule(Start, do: defstruct([:aggregate_uuid]))
     defmodule(Publish, do: defstruct([:aggregate_uuid, :interesting, :uninteresting]))
+    defmodule(Pause, do: defstruct([:aggregate_uuid]))
     defmodule(Stop, do: defstruct([:aggregate_uuid]))
     defmodule(Error, do: defstruct([:aggregate_uuid]))
     defmodule(Raise, do: defstruct([:aggregate_uuid]))
@@ -19,6 +20,7 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
     defmodule(Interested, do: defstruct([:aggregate_uuid, :index]))
     defmodule(Uninterested, do: defstruct([:aggregate_uuid, :index]))
     defmodule(Stopped, do: defstruct([:aggregate_uuid]))
+    defmodule(Paused, do: defstruct([:aggregate_uuid]))
     defmodule(Errored, do: defstruct([:aggregate_uuid]))
     defmodule(Raised, do: defstruct([:aggregate_uuid]))
   end
@@ -32,6 +34,10 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
       publish_interesting(aggregate_uuid, interesting, 1),
       publish_uninteresting(aggregate_uuid, uninteresting, 1)
     )
+  end
+
+  def pause(%ExampleAggregate{uuid: aggregate_uuid}) do
+    %Events.Paused{aggregate_uuid: aggregate_uuid}
   end
 
   def stop(%ExampleAggregate{uuid: aggregate_uuid}) do
@@ -69,6 +75,9 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
 
   def apply(%ExampleAggregate{items: items} = state, %Events.Interested{index: index}),
     do: %ExampleAggregate{state | items: items ++ [index]}
+
+  def apply(%ExampleAggregate{} = state, %Events.Paused{}),
+    do: %ExampleAggregate{state | state: :paused}
 
   def apply(%ExampleAggregate{} = state, %Events.Errored{}),
     do: %ExampleAggregate{state | state: :errored}

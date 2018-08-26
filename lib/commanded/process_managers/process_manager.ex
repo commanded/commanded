@@ -235,7 +235,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           Commanded.Event.Handler.start_opts(
             __MODULE__,
             Keyword.drop(@opts, [:name, :router]),
-            opts
+            opts,
+            [:event_timeout]
           )
 
         Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)

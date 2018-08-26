@@ -4,11 +4,9 @@ defmodule Commanded.ProcessManagers.ResumeProcessManager do
     name: "resume-process-manager",
     router: ResumeRouter
 
-  defstruct [
-    status_history: []
-  ]
+  defstruct status_history: []
 
-  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted,ProcessResumed}
+  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted, ProcessResumed}
   alias Commanded.ProcessManagers.ResumeProcessManager
 
   def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}
@@ -17,17 +15,19 @@ defmodule Commanded.ProcessManagers.ResumeProcessManager do
   def handle(%ResumeProcessManager{}, %ProcessStarted{}), do: []
   def handle(%ResumeProcessManager{}, %ProcessResumed{}), do: []
 
-  ## state mutators
+  # State mutators
 
-  def apply(%ResumeProcessManager{status_history: status_history} = process, %ProcessStarted{status: status}) do
-    %ResumeProcessManager{process |
-      status_history: status_history ++ [status]
-    }
+  def apply(%ResumeProcessManager{} = process, %ProcessStarted{} = event) do
+    %ResumeProcessManager{status_history: status_history} = process
+    %ProcessStarted{status: status} = event
+
+    %ResumeProcessManager{process | status_history: status_history ++ [status]}
   end
 
-  def apply(%ResumeProcessManager{status_history: status_history} = process, %ProcessResumed{status: status}) do
-    %ResumeProcessManager{process |
-      status_history: status_history ++ [status]
-    }
+  def apply(%ResumeProcessManager{} = process, %ProcessResumed{} = event) do
+    %ResumeProcessManager{status_history: status_history} = process
+    %ProcessResumed{status: status} = event
+
+    %ResumeProcessManager{process | status_history: status_history ++ [status]}
   end
 end

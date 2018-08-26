@@ -17,12 +17,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     defstruct [
       :command_dispatcher,
       :consistency,
+      :event_timeout,
       :process_manager_name,
       :process_manager_module,
       :subscribe_from,
       :supervisor,
       :subscription,
       :last_seen_event,
+      :process_event_timer,
       process_managers: %{},
       pending_acks: %{},
       pending_events: []
@@ -37,7 +39,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       process_manager_module: process_manager_module,
       command_dispatcher: command_dispatcher,
       consistency: opts[:consistency] || :eventual,
-      subscribe_from: opts[:start_from] || :origin
+      subscribe_from: opts[:start_from] || :origin,
+      event_timeout: opts[:event_timeout]
     }
 
     Registration.start_link(name, __MODULE__, state)
@@ -187,6 +190,26 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, state}
   end
 
+  # Shutdown process manager when processing an event has taken too long.
+  def handle_info({:event_timeout, event_number}, %State{} = state) do
+    %State{pending_acks: pending_acks, event_timeout: event_timeout} = state
+
+    case Map.get(pending_acks, event_number, []) do
+      [] ->
+        {:noreply, state}
+
+      pending ->
+        Logger.error(fn ->
+          describe(state) <>
+            " has taken longer than " <>
+            inspect(event_timeout) <>
+            "ms to process event #" <> inspect(event_number) <> " and is now stopping"
+        end)
+
+        {:stop, :event_timeout, state}
+    end
+  end
+
   # Remove a process manager instance that has stopped with a normal exit reason.
   def handle_info({:DOWN, _ref, :process, pid, :normal}, %State{} = state) do
     %State{process_managers: process_managers} = state
@@ -211,9 +234,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   # ignore already seen event
-  defp event_already_seen?(%RecordedEvent{event_number: event_number}, %State{
-         last_seen_event: last_seen_event
-       }) do
+  defp event_already_seen?(
+         %RecordedEvent{event_number: event_number},
+         %State{last_seen_event: last_seen_event}
+       ) do
     not is_nil(last_seen_event) and event_number <= last_seen_event
   end
 
@@ -405,7 +429,31 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
         pending -> [process_instance | pending]
       end)
 
-    %State{state | pending_acks: pending_acks}
+    state = %State{state | pending_acks: pending_acks}
+
+    start_event_timer(event_number, state)
+  end
+
+  # Event timeout not configured
+  defp start_event_timer(_event_number, %State{event_timeout: nil} = state), do: state
+
+  defp start_event_timer(event_number, %State{process_event_timer: process_event_timer} = state)
+       when is_reference(process_event_timer) do
+    Process.cancel_timer(process_event_timer)
+
+    state = %State{state | process_event_timer: nil}
+
+    start_event_timer(event_number, state)
+  end
+
+  defp start_event_timer(event_number, %State{event_timeout: event_timeout} = state)
+       when is_integer(event_timeout) do
+    %State{event_timeout: event_timeout} = state
+
+    process_event_timer =
+      Process.send_after(self(), {:event_timeout, event_number}, event_timeout)
+
+    %State{state | process_event_timer: process_event_timer}
   end
 
   defp describe(%State{process_manager_module: process_manager_module}),
