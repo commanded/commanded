@@ -135,9 +135,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   You can return a list of process identifiers when a single domain event must
   be handled by multiple process instances.
   """
-  @callback interested?(domain_event) :: {:start, process_uuid}
-    | {:continue, process_uuid}
-    | {:stop, process_uuid} | false
+  @callback interested?(domain_event) ::
+              {:start, process_uuid}
+              | {:continue, process_uuid}
+              | {:stop, process_uuid}
+              | false
 
   @doc """
   Process manager instance handles a domain event, returning any commands to
@@ -200,27 +202,36 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `{:stop, reason}` - stop the process manager with the given reason.
 
   """
-  @callback error(error :: term(), failed_command :: command, failure_context :: FailureContext.t()) :: {:retry, context :: map()}
-    | {:retry, delay :: non_neg_integer(), context :: map()}
-    | {:skip, :discard_pending}
-    | {:skip, :continue_pending}
-    | {:continue, commands :: list(command), context :: map()}
-    | {:stop, reason :: term()}
+  @callback error(
+              error :: term(),
+              failed_command :: command,
+              failure_context :: FailureContext.t()
+            ) ::
+              {:retry, context :: map()}
+              | {:retry, delay :: non_neg_integer(), context :: map()}
+              | {:skip, :discard_pending}
+              | {:skip, :continue_pending}
+              | {:continue, commands :: list(command), context :: map()}
+              | {:stop, reason :: term()}
 
   @doc false
   defmacro __using__(opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
-      @on_definition {unquote(__MODULE__), :emit_deprecated_warnings}
 
       @behaviour Commanded.ProcessManagers.ProcessManager
 
       @opts unquote(opts) || []
       @name Commanded.Event.Handler.parse_name(__MODULE__, @opts[:name])
-      @router @opts[:router] || raise "#{inspect __MODULE__} expects `:router` to be given"
+      @router @opts[:router] || raise("#{inspect(__MODULE__)} expects `:router` to be given")
 
       def start_link(opts \\ []) do
-        opts = Commanded.Event.Handler.start_opts(__MODULE__, Keyword.drop(@opts, [:name, :router]), opts)
+        opts =
+          Commanded.Event.Handler.start_opts(
+            __MODULE__,
+            Keyword.drop(@opts, [:name, :router]),
+            opts
+          )
 
         Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)
       end
@@ -241,7 +252,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           id: {__MODULE__, @name},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
-          type: :worker,
+          type: :worker
         }
 
         Supervisor.child_spec(default, [])
@@ -274,32 +285,5 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       def error({:error, reason}, _failed_command, _pending_commands, _context),
         do: {:stop, reason}
     end
-  end
-
-  def emit_deprecated_warnings(env, _kind, name, args, _guards, _body) do
-    arity = length(args)
-    mod = env.module
-
-    case {name, arity} do
-      {:error, 4} ->
-        if Module.defines?(mod, {name, arity}) do
-          mod
-          |> error_deprecation_message
-          |> IO.warn()
-        end
-
-      _ ->
-        nil
-    end
-  end
-
-  defp error_deprecation_message(mod) do
-    """
-    Commanded Deprecation Warning:
-
-    Process manager #{mod} defined `error/4` callback, this has been deprecated in favor of `error/3`.
-
-    See https://github.com/commanded/commanded/blob/master/guides/Process%20Managers.md#deprecated-error4
-    """
   end
 end

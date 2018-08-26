@@ -41,7 +41,7 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
 
       def start_link(opts) do
         opts = Keyword.merge([name: __MODULE__], opts)
-        GenServer.start_link(Phoenix.Tracker, [__MODULE__, opts, opts], name: __MODULE__)
+        Phoenix.Tracker.start_link(__MODULE__, opts, opts)
       end
 
       def init(opts) do
@@ -76,7 +76,7 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
         %{
           id: Tracker,
           start: {Tracker, :start_link, [[pubsub_server: __MODULE__]]},
-          type: :worker
+          type: :supervisor
         }
       ]
     end
