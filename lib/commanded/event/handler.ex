@@ -390,7 +390,7 @@ defmodule Commanded.Event.Handler do
 
     case handler_module.init() do
       :ok ->
-        # register this event handler as a subscription with the given consistency
+        # Register this event handler as a subscription with the given consistency
         :ok = Subscriptions.register(handler_name, consistency)
 
         {:noreply, state}
@@ -465,12 +465,12 @@ defmodule Commanded.Event.Handler do
 
     metadata = enrich_metadata(event)
 
-    # try do
-    handler_module.handle(data, metadata)
-    # rescue
-    #   e ->
-    #     {:error, e}
-    # end
+    try do
+      handler_module.handle(data, metadata)
+    rescue
+      e ->
+        {:error, e}
+    end
   end
 
   defp handle_event_error(error, %RecordedEvent{} = failed_event, %Handler{} = state, context) do
@@ -484,13 +484,13 @@ defmodule Commanded.Event.Handler do
 
     case handler_module.error(error, data, failure_context) do
       {:retry, context} when is_map(context) ->
-        # retry the failed event
+        # Retry the failed event
         Logger.info(fn -> describe(state) <> " is retrying failed event" end)
 
         handle_event(failed_event, state, context)
 
       {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
-        # retry the failed event after waiting for the given delay, in milliseconds
+        # Retry the failed event after waiting for the given delay, in milliseconds
         Logger.info(fn ->
           describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
         end)
@@ -500,13 +500,13 @@ defmodule Commanded.Event.Handler do
         handle_event(failed_event, state, context)
 
       :skip ->
-        # skip the failed event by confirming receipt
+        # Skip the failed event by confirming receipt
         Logger.info(fn -> describe(state) <> " is skipping event" end)
 
         confirm_receipt(failed_event, state)
 
       {:stop, reason} ->
-        # stop event handler
+        # Stop event handler
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
 
         throw({:error, reason})
@@ -516,13 +516,15 @@ defmodule Commanded.Event.Handler do
           describe(state) <> " returned an invalid error reponse: #{inspect(invalid)}"
         end)
 
-        # stop event handler with original error
+        # Stop event handler with original error
         throw(error)
     end
   end
 
-  # confirm receipt of event
-  defp confirm_receipt(%RecordedEvent{event_number: event_number} = event, %Handler{} = state) do
+  # Confirm receipt of event
+  defp confirm_receipt(%RecordedEvent{} = event, %Handler{} = state) do
+    %RecordedEvent{event_number: event_number} = event
+
     Logger.debug(fn ->
       describe(state) <> " confirming receipt of event ##{inspect(event_number)}"
     end)
@@ -553,7 +555,9 @@ defmodule Commanded.Event.Handler do
     :created_at
   ]
 
-  defp enrich_metadata(%RecordedEvent{metadata: metadata} = event) do
+  defp enrich_metadata(%RecordedEvent{} = event) do
+    %RecordedEvent{metadata: metadata} = event
+
     event
     |> Map.from_struct()
     |> Map.take(@enrich_metadata_fields)

@@ -2,7 +2,7 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   use Commanded.StorageCase
 
   alias Commanded.Event.{ErrorEventHandler, ErrorRouter}
-  alias Commanded.Event.ErrorAggregate.Commands.RaiseError
+  alias Commanded.Event.ErrorAggregate.Commands.{RaiseError, RaiseException}
 
   setup do
     {:ok, handler} = ErrorEventHandler.start_link()
@@ -14,6 +14,32 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
       ref: Process.monitor(handler),
       uuid: UUID.uuid4()
     ]
+  end
+
+  describe "event handler `error/3` callback function" do
+    test "should call on error", context do
+      %{ref: ref, uuid: uuid} = context
+
+      :ok =
+        ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "default", reply_to: reply_to()})
+
+      assert_receive {:error, :stopping}
+      assert_receive {:DOWN, ^ref, _, _, :failed}
+    end
+
+    test "should call on exception", context do
+      %{ref: ref, uuid: uuid} = context
+
+      :ok =
+        ErrorRouter.dispatch(%RaiseException{
+          uuid: uuid,
+          strategy: "default",
+          reply_to: reply_to()
+        })
+
+      assert_receive {:exception, :stopping}
+      assert_receive {:DOWN, ^ref, _, _, %RuntimeError{message: "exception"}}
+    end
   end
 
   test "should stop event handler on error by default", context do

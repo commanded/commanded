@@ -33,8 +33,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           # ...
         end
 
+        def error({:error, failure}, %ExampleEvent{}, _failure_context) do
+          # Retry, skip, ignore, or stop process manager on error handling event
+        end
+
         def error({:error, failure}, %ExampleCommand{}, _failure_context) do
-          # retry, skip, ignore, or stop process manager on error dispatching command
+          # Retry, skip, ignore, or stop process manager on error dispatching command
         end
       end
 
@@ -44,19 +48,20 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   # Error handling
 
-  You can define an `c:error/3` callback function to handle any errors returned
-  by commands dispatched from your process manager. The function is passed the
-  command dispatch error (e.g. `{:error, :failure}`), the failed command, and a
-  failure context. See `Commanded.ProcessManagers.FailureContext` for details.
+  You can define an `c:error/3` callback function to handle any errors or
+  exceptions during event handling or returned by commands dispatched from your
+  process manager. The function is passed the error (e.g. `{:error, :failure}`),
+  the failed event or command, and a failure context.
+  See `Commanded.ProcessManagers.FailureContext` for details.
 
-  Use pattern matching on the error and/or failed command to explicitly handle
-  certain errors or commands. You can choose to retry, skip, ignore, or stop the
-  process manager after a command dispatch error.
+  Use pattern matching on the error and/or failed event/command to explicitly
+  handle certain errors, events, or commands. You can choose to retry, skip,
+  ignore, or stop the process manager after a command dispatch error.
 
   The default behaviour, if you don't provide an `c:error/3` callback, is to
   stop the process manager using the exact error reason returned from the
-  command dispatch. You should supervise your process managers to ensure they
-  are restarted on error.
+  event handler function or command dispatch. You should supervise your
+  process managers to ensure they are restarted on error.
 
   ## Example
 
