@@ -2,15 +2,15 @@ defmodule Commanded.Aggregates.SnapshotAggregate do
   @moduledoc false
   defstruct [
     :name,
-    :date,
+    :date
   ]
 
   defmodule Commands do
-    defmodule Create, do: defstruct [:name, :date]
+    defmodule(Create, do: defstruct([:name, :date]))
   end
 
   defmodule Events do
-    defmodule Created, do: defstruct [:name, :date]
+    defmodule(Created, do: defstruct([:name, :date]))
   end
 
   alias Commanded.Aggregates.SnapshotAggregate
@@ -18,22 +18,19 @@ defmodule Commanded.Aggregates.SnapshotAggregate do
   alias Events.Created
 
   def execute(
-    %SnapshotAggregate{name: nil},
-    %Create{name: name, date: date})
-  do
+        %SnapshotAggregate{name: nil},
+        %Create{name: name, date: date}
+      ) do
     %Created{name: name, date: date}
   end
 
-  # state mutatators
+  # State mutators
 
   def apply(
-    %SnapshotAggregate{} = state,
-    %Created{name: name, date: date})
-  do
-    %SnapshotAggregate{state |
-      name: name,
-      date: date
-    }
+        %SnapshotAggregate{} = state,
+        %Created{name: name, date: date}
+      ) do
+    %SnapshotAggregate{state | name: name, date: date}
   end
 end
 
@@ -44,8 +41,6 @@ defimpl Commanded.Serialization.JsonDecoder, for: SnapshotAggregate do
   Parse the date included in the aggregate state
   """
   def decode(%SnapshotAggregate{date: date} = state) do
-    %SnapshotAggregate{state |
-      date: NaiveDateTime.from_iso8601!(date)
-    }
+    %SnapshotAggregate{state | date: NaiveDateTime.from_iso8601!(date)}
   end
 end

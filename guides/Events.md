@@ -86,7 +86,7 @@ end
 
 ### `error/3` callback
 
-You can define an `error/3` callback function to handle any errors returned from your event handler's `handle/2` functions. The `error/3` function is passed the actual error (e.g. `{:error, :failure}`), the failed event, and a failure context.
+You can define an `error/3` callback function to handle any exceptions or errors returned from your event handler's `handle/2` functions. The `error/3` function is passed the actual error (e.g. `{:error, :failure}`), the failed event, and a failure context.
 
 Use pattern matching on the error and/or failed event to explicitly handle certain errors or events. You can choose to retry, skip, or stop the event handler after an error.
 
@@ -103,7 +103,7 @@ defmodule ExampleHandler do
   alias Commanded.Event.FailureContext
 
   def handle(%AnEvent{}, _metadata) do
-    # simulate event handling failure
+    # Simulate event handling failure
     {:error, :failed}
   end
 
@@ -112,13 +112,13 @@ defmodule ExampleHandler do
 
     case Map.get(context, :failures) do
       too_many when too_many >= 3 ->
-        # skip bad event after third failure
+        # Skip bad event after third failure
         Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
 
         :skip
 
       _ ->
-        # retry event, failure count is included in context map
+        # Retry event, failure count is included in context map
         {:retry, context}
     end
   end

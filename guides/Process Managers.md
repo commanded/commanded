@@ -29,7 +29,11 @@ This callback function is optional, the default behaviour is to retain the proce
 
 ## `error/3`
 
-You can define an `error/3` callback function to handle any errors returned from command dispatch. The function is passed the command dispatch error (e.g. `{:error, :failure}`), the failed command, and a failure context. The failure context contains the process manager state, the last received event (which triggered the command that failed), all the pending commands and a context map (which contains a state that is passed between retries). Use pattern matching on the error and/or failed command to explicitly handle certain errors or commands.
+You can define an `c:error/3` callback function to handle any errors or exceptions during event handling or returned by commands dispatched from your process manager. The function is passed the error (e.g. `{:error, :failure}`), the failed event or command, and a failure context. See `Commanded.ProcessManagers.FailureContext` for details.
+
+Use pattern matching on the error and/or failed event/command to explicitly handle certain errors, events, or commands. You can choose to retry, skip, ignore, or stop the process manager after a command dispatch error.
+
+The default behaviour, if you don't provide an `c:error/3` callback, is to stop the process manager using the exact error reason returned from the event handler function or command dispatch. You should supervise your process managers to ensure they are restarted on error.
 
 The `error/3` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
 
@@ -45,13 +49,6 @@ The `error/3` callback function must return one of the following responses depen
 
 - `{:stop, reason}` - stop the process manager with the given reason.
 
-## Deprecated: `error/4`
-
-**WARNING: This will be removed in future versions.**
-
-If you received a warning `Process manager *** defined error/4 callback. This is deprecated in favor of error/3` it means one of your process managers implements the old `error/4` callback.
-That old version receives only the dispatch error, the failed command, the pending commands and the context map. You should change your implementation to the `error/3` callback instead.
-
 ### Error handling example
 
 ```elixir
@@ -60,14 +57,14 @@ defmodule ExampleProcessManager do
     name: "ExampleProcessManager",
     router: ExampleRouter
 
-  # stop process manager after three failures
+  # Stop process manager after three failures
   def error({:error, _failure}, _failed_command, %{context: %{failures: failures}})
     when failures >= 2
   do
     {:stop, :too_many_failures}
   end
 
-  # retry command, record failure count in context map
+  # Retry command, record failure count in context map
   def error({:error, _failure}, _failed_command, %{context: context}) do
     context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)
     {:retry, context}
@@ -108,7 +105,7 @@ defmodule TransferMoneyProcessManager do
     %DepositMoney{account_number: credit_account, transfer_uuid: transfer_uuid, amount: amount}
   end
 
-  ## state mutators
+  # State mutators
 
   def apply(%TransferMoneyProcessManager{} = transfer, %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, credit_account: credit_account, amount: amount}) do
     %TransferMoneyProcessManager{transfer |

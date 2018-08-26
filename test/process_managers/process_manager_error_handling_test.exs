@@ -1,121 +1,165 @@
 defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
   use Commanded.StorageCase
 
-  alias Commanded.Helpers.ProcessHelper
-  alias Commanded.ProcessManagers.{
-    ErrorHandlingProcessManager,
-    ErrorRouter,
+  alias Commanded.ProcessManagers.{ErrorHandlingProcessManager, ErrorRouter}
+
+  alias Commanded.ProcessManagers.ErrorAggregate.Commands.{
+    RaiseError,
+    RaiseException,
+    StartProcess
   }
-  alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess
 
   setup do
-    reply_to = self()
-    {:ok, agent} = Agent.start_link(fn -> reply_to end, name: {:global, ErrorHandlingProcessManager})
+    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
-    on_exit fn ->
-      ProcessHelper.shutdown(agent)
+    [process_router: process_router]
+  end
+
+  describe "process manager event handling error" do
+    test "should call `error/3` callback on error", context do
+      %{process_router: process_router} = context
+
+      process_uuid = UUID.uuid4()
+
+      command = %RaiseError{
+        process_uuid: process_uuid,
+        message: "an error",
+        reply_to: reply_to()
+      }
+
+      ref = Process.monitor(process_router)
+
+      assert :ok = ErrorRouter.dispatch(command)
+
+      assert_receive {:error, "an error"}
+      refute_receive {:DOWN, ^ref, _, _, _}
+    end
+
+    test "should call `error/3` callback on exception", context do
+      %{process_router: process_router} = context
+
+      process_uuid = UUID.uuid4()
+
+      command = %RaiseException{
+        process_uuid: process_uuid,
+        message: "an exception",
+        reply_to: reply_to()
+      }
+
+      ref = Process.monitor(process_router)
+
+      assert :ok = ErrorRouter.dispatch(command)
+
+      assert_receive {:error, %RuntimeError{message: "an exception"}}
+      refute_receive {:DOWN, ^ref, _, _, _}
     end
   end
 
-  test "should retry the event until process manager requests stop" do
-    process_uuid = UUID.uuid4()
-    command = %StartProcess{
-      process_uuid: process_uuid,
-      strategy: "retry",
-      reply_to: reply_to(),
-    }
+  describe "process manager dispatch command error" do
+    test "should retry the event until process manager requests stop", context do
+      %{process_router: process_router} = context
 
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+      process_uuid = UUID.uuid4()
 
-    Process.unlink(process_router)
-    ref = Process.monitor(process_router)
+      command = %StartProcess{
+        process_uuid: process_uuid,
+        strategy: "retry",
+        reply_to: reply_to()
+      }
 
-    assert :ok = ErrorRouter.dispatch(command)
+      Process.unlink(process_router)
+      ref = Process.monitor(process_router)
 
-    assert_receive {:error, :failed, %{attempts: 1}}
-    assert_receive {:error, :failed, %{attempts: 2}}
-    assert_receive {:error, :too_many_attempts, %{attempts: 3}}
+      assert :ok = ErrorRouter.dispatch(command)
 
-    # should shutdown process router
-    assert_receive {:DOWN, ^ref, _, _, _}
-  end
+      assert_receive {:error, :failed, %{attempts: 1}}
+      assert_receive {:error, :failed, %{attempts: 2}}
+      assert_receive {:error, :too_many_attempts, %{attempts: 3}}
 
-  test "should retry event with specified delay between attempts" do
-    process_uuid = UUID.uuid4()
-    command = %StartProcess{
-      process_uuid: process_uuid,
-      strategy: "retry",
-      delay: 10,
-      reply_to: reply_to(),
-    }
+      # should shutdown process router
+      assert_receive {:DOWN, ^ref, _, _, _}
+    end
 
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+    test "should retry command with specified delay between attempts" do
+      process_uuid = UUID.uuid4()
 
-    Process.unlink(process_router)
-    ref = Process.monitor(process_router)
+      command = %StartProcess{
+        process_uuid: process_uuid,
+        strategy: "retry",
+        delay: 10,
+        reply_to: reply_to()
+      }
 
-    assert :ok = ErrorRouter.dispatch(command)
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
-    assert_receive {:error, :failed, %{attempts: 1, delay: 10}}
-    assert_receive {:error, :failed, %{attempts: 2, delay: 10}}
-    assert_receive {:error, :too_many_attempts, %{attempts: 3}}
+      Process.unlink(process_router)
+      ref = Process.monitor(process_router)
 
-    # should shutdown process router
-    assert_receive {:DOWN, ^ref, _, _, _}
-  end
+      assert :ok = ErrorRouter.dispatch(command)
 
-  test "should skip the event when error reply is `{:skip, :continue_pending}`" do
-    process_uuid = UUID.uuid4()
-    command = %StartProcess{
-      process_uuid: process_uuid,
-      strategy: "skip",
-      reply_to: reply_to(),
-    }
+      assert_receive {:error, :failed, %{attempts: 1, delay: 10}}
+      assert_receive {:error, :failed, %{attempts: 2, delay: 10}}
+      assert_receive {:error, :too_many_attempts, %{attempts: 3}}
 
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+      # should shutdown process router
+      assert_receive {:DOWN, ^ref, _, _, _}
+    end
 
-    assert :ok = ErrorRouter.dispatch(command)
+    test "should skip the event when error reply is `{:skip, :continue_pending}`" do
+      process_uuid = UUID.uuid4()
 
-    assert_receive {:error, :failed, %{attempts: 1}}
-    refute_receive {:error, :failed, %{attempts: 2}}
+      command = %StartProcess{
+        process_uuid: process_uuid,
+        strategy: "skip",
+        reply_to: reply_to()
+      }
 
-    # should not shutdown process router
-    assert Process.alive?(process_router)
-  end
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
-  test "should continue with modified command" do
-    process_uuid = UUID.uuid4()
-    command = %StartProcess{
-      process_uuid: process_uuid,
-      strategy: "continue",
-      reply_to: reply_to(),
-    }
+      assert :ok = ErrorRouter.dispatch(command)
 
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+      assert_receive {:error, :failed, %{attempts: 1}}
+      refute_receive {:error, :failed, %{attempts: 2}}
 
-    assert :ok = ErrorRouter.dispatch(command)
+      # should not shutdown process router
+      assert Process.alive?(process_router)
+    end
 
-    assert_receive {:error, :failed, %{attempts: 1}}
-    assert_receive :process_continued
+    test "should continue with modified command" do
+      process_uuid = UUID.uuid4()
 
-    # should not shutdown process router
-    assert Process.alive?(process_router)
-  end
+      command = %StartProcess{
+        process_uuid: process_uuid,
+        strategy: "continue",
+        reply_to: reply_to()
+      }
 
-  test "should stop process manager on error by default" do
-    process_uuid = UUID.uuid4()
-    command = %StartProcess{process_uuid: process_uuid}
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+      assert :ok = ErrorRouter.dispatch(command)
 
-    Process.unlink(process_router)
-    ref = Process.monitor(process_router)
+      assert_receive {:error, :failed, %{attempts: 1}}
+      assert_receive :process_continued
 
-    assert :ok = ErrorRouter.dispatch(command)
+      # should not shutdown process router
+      assert Process.alive?(process_router)
+    end
 
-    # should shutdown process router
-    assert_receive {:DOWN, ^ref, _, _, _}
-    refute Process.alive?(process_router)
+    test "should stop process manager on error by default" do
+      process_uuid = UUID.uuid4()
+      command = %StartProcess{process_uuid: process_uuid, reply_to: reply_to()}
+
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+
+      Process.unlink(process_router)
+      ref = Process.monitor(process_router)
+
+      assert :ok = ErrorRouter.dispatch(command)
+
+      # should shutdown process router
+      assert_receive {:DOWN, ^ref, _, _, _}
+      refute Process.alive?(process_router)
+    end
   end
 
   defp reply_to, do: self() |> :erlang.pid_to_list()

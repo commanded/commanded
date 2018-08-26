@@ -2,7 +2,7 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   use Commanded.StorageCase
 
   alias Commanded.Event.{ErrorEventHandler, ErrorRouter}
-  alias Commanded.Event.ErrorAggregate.Commands.RaiseError
+  alias Commanded.Event.ErrorAggregate.Commands.{RaiseError, RaiseException}
 
   setup do
     {:ok, handler} = ErrorEventHandler.start_link()
@@ -12,11 +12,39 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     [
       handler: handler,
       ref: Process.monitor(handler),
-      uuid: UUID.uuid4(),
+      uuid: UUID.uuid4()
     ]
   end
 
-  test "should stop event handler on error by default", %{handler: handler, ref: ref, uuid: uuid} do
+  describe "event handler `error/3` callback function" do
+    test "should call on error", context do
+      %{ref: ref, uuid: uuid} = context
+
+      :ok =
+        ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "default", reply_to: reply_to()})
+
+      assert_receive {:error, :stopping}
+      assert_receive {:DOWN, ^ref, _, _, :failed}
+    end
+
+    test "should call on exception", context do
+      %{ref: ref, uuid: uuid} = context
+
+      :ok =
+        ErrorRouter.dispatch(%RaiseException{
+          uuid: uuid,
+          strategy: "default",
+          reply_to: reply_to()
+        })
+
+      assert_receive {:exception, :stopping}
+      assert_receive {:DOWN, ^ref, _, _, %RuntimeError{message: "exception"}}
+    end
+  end
+
+  test "should stop event handler on error by default", context do
+    %{handler: handler, ref: ref, uuid: uuid} = context
+
     :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "default", reply_to: reply_to()})
 
     assert_receive {:error, :stopping}
@@ -25,7 +53,9 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     refute Process.alive?(handler)
   end
 
-  test "should stop event handler when invalid error response returned", %{handler: handler, ref: ref, uuid: uuid} do
+  test "should stop event handler when invalid error response returned", context do
+    %{handler: handler, ref: ref, uuid: uuid} = context
+
     :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "invalid", reply_to: reply_to()})
 
     assert_receive {:error, :invalid}
@@ -34,7 +64,9 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     refute Process.alive?(handler)
   end
 
-  test "should retry event handler on error", %{handler: handler, ref: ref, uuid: uuid} do
+  test "should retry event handler on error", context do
+    %{handler: handler, ref: ref, uuid: uuid} = context
+
     :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "retry", reply_to: reply_to()})
 
     assert_receive {:error, :failed, %{failures: 1}}
@@ -45,8 +77,12 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     refute Process.alive?(handler)
   end
 
-  test "should retry event handler after delay on error", %{handler: handler, ref: ref, uuid: uuid} do
-    :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "retry", delay: 10, reply_to: reply_to()})
+  test "should retry event handler after delay on error", context do
+    %{handler: handler, ref: ref, uuid: uuid} = context
+
+    command = %RaiseError{uuid: uuid, strategy: "retry", delay: 10, reply_to: reply_to()}
+
+    :ok = ErrorRouter.dispatch(command)
 
     assert_receive {:error, :failed, %{failures: 1, delay: 10}}
     assert_receive {:error, :failed, %{failures: 2, delay: 10}}
@@ -56,7 +92,9 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     refute Process.alive?(handler)
   end
 
-  test "should skip event on error", %{handler: handler, ref: ref, uuid: uuid} do
+  test "should skip event on error", context do
+    %{handler: handler, ref: ref, uuid: uuid} = context
+
     :ok = ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "skip", reply_to: reply_to()})
 
     assert_receive {:error, :skipping}

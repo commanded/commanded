@@ -15,6 +15,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
     {:ok, process_manager} =
       ProcessManagerInstance.start_link(
         NullRouter,
+        self(),
         "TransferMoneyProcessManager",
         TransferMoneyProcessManager,
         transfer_uuid
@@ -32,9 +33,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
       }
     }
 
-    :ok = ProcessManagerInstance.process_event(process_manager, event, self())
+    :ok = ProcessManagerInstance.process_event(process_manager, event)
 
-    # should send ack to process router after processing event
+    # Should send ack to process router after processing event
     assert_receive({:"$gen_cast", {:ack_event, ^event, _instance}}, 1_000)
 
     ProcessHelper.shutdown(process_manager)

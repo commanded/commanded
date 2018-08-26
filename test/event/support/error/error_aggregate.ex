@@ -5,20 +5,26 @@ defmodule Commanded.Event.ErrorAggregate do
 
   defmodule Commands do
     defmodule(RaiseError, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
+    defmodule(RaiseException, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
   end
 
   defmodule Events do
     defmodule(ErrorEvent, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
+    defmodule(ExceptionEvent, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
   end
 
   alias Commanded.Event.ErrorAggregate
-  alias Commands.RaiseError
-  alias Events.ErrorEvent
+  alias Commands.{RaiseError, RaiseException}
+  alias Events.{ErrorEvent, ExceptionEvent}
 
-  def execute(%ErrorAggregate{}, %RaiseError{} = raise_error) do
-    struct(ErrorEvent, Map.from_struct(raise_error))
+  def execute(%ErrorAggregate{}, %RaiseError{} = command) do
+    struct(ErrorEvent, Map.from_struct(command))
   end
 
-  def apply(%ErrorAggregate{} = aggregate, %ErrorEvent{uuid: uuid}),
-    do: %ErrorAggregate{aggregate | uuid: uuid}
+  def execute(%ErrorAggregate{}, %RaiseException{} = command) do
+    struct(ExceptionEvent, Map.from_struct(command))
+  end
+
+  def apply(%ErrorAggregate{} = aggregate, _event),
+    do: aggregate
 end

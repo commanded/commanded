@@ -25,7 +25,7 @@ defmodule Commanded.ProcessManagers.Todo do
     %TodoDone{todo_uuid: todo_uuid}
   end
 
-  # state mutatators
+  # State mutators
 
   def apply(%Todo{} = state, %TodoCreated{}), do: %Todo{state | status: :pending}
 
