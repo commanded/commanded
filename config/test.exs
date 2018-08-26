@@ -11,9 +11,4 @@ config :ex_unit,
 
 config :commanded,
   dispatch_consistency_timeout: 100,
-  event_store_adapter: InMemory,
-  reset_storage: fn ->
-    with {:ok, _pid} <- InMemory.start_link(serializer: JsonSerializer) do
-      :ok
-    end
-  end
+  event_store_adapter: InMemory

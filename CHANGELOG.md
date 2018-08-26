@@ -7,6 +7,7 @@
 - Do not start new process manager instance on `:continue` ([#181](https://github.com/commanded/commanded/pull/181)).
 - Support [`Phoenix.PubSub` v1.1.0](https://hexdocs.pm/phoenix/1.1.0/Phoenix.PubSub.html).
 - Rename `uuid` dependency to `elixir_uuid` ([#178](https://github.com/commanded/commanded/pull/178)).
+- Allow aggregate identity to be of any type that implements the `String.Chars` protocol ([#166](https://github.com/commanded/commanded/pull/166)).
 
 ## v0.17.0
 

@@ -43,8 +43,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     SnapshotData,
   }
 
-  def start_link(opts \\ [])
-  def start_link(opts) do
+  def start_link(opts \\ []) do
     state = %State{
       serializer: Keyword.get(opts, :serializer),
     }

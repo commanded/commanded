@@ -6,7 +6,7 @@ defmodule Commanded.MockEventStoreCase do
   import Mox
 
   alias Commanded.EventStore.Adapters.Mock, as: MockEventStore
-  
+
   using do
     quote do
       import Mox
@@ -20,16 +20,19 @@ defmodule Commanded.MockEventStoreCase do
 
     default_event_store_adapter = Application.get_env(:commanded, :event_store_adapter)
 
-    # use mock event store adapter
-    :ok = Application.put_env(:commanded, :event_store_adapter, MockEventStore)
-
-    Application.ensure_all_started(:commanded)
+    # Use mock event store adapter
+    use_event_store_adapter(MockEventStore)
 
     on_exit(fn ->
-      Application.put_env(:commanded, :event_store_adapter, default_event_store_adapter)
-      Application.stop(:commanded)
+      use_event_store_adapter(default_event_store_adapter)
     end)
+  end
 
-    :ok
+  defp use_event_store_adapter(adapter) do
+    :ok = Application.stop(:commanded)
+
+    Application.put_env(:commanded, :event_store_adapter, adapter)
+
+    {:ok, _apps} = Application.ensure_all_started(:commanded)
   end
 end

@@ -36,6 +36,7 @@ defmodule Commanded.Mixfile do
       "test/aggregates/support",
       "test/commands/support",
       "test/event/support",
+      "test/event_store/support",
       "test/example_domain",
       "test/helpers",
       "test/process_managers/support",
@@ -48,8 +49,8 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
-      {:poison, "~> 3.1"},
       {:elixir_uuid, "~> 1.2"},
+      {:poison, "~> 3.1"},
 
       # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
@@ -100,10 +101,10 @@ defmodule Commanded.Mixfile do
         "README*",
         "LICENSE*",
         "CHANGELOG*",
-        "test/event_store_adapter",
+        "test/event_store/support",
         "test/example_domain",
         "test/helpers",
-        "test/registration"
+        "test/registration/support"
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
