@@ -12,6 +12,8 @@ end
 
 A command **must contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
+Since commands are just plain Elixir structs you can use a library such as [`typed_struct`](https://hex.pm/packages/typed_struct) for defining structs, fields with their types, and enforcing mandatory keys without writing too much boilerplate code.
+
 ## Command dispatch and routing
 
 A router module is used to route and dispatch commands to their registered command handler or aggregate module.
