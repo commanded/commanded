@@ -377,7 +377,7 @@ defmodule Commanded.Aggregates.Aggregate do
   defp snapshot_valid?(%SnapshotData{metadata: metadata}, %Aggregate{
          snapshot_module_version: expected_version
        }) do
-    Map.get(metadata, "snapshot_version", 1) == expected_version
+    Map.get(metadata, "snapshot_module_version", 1) == expected_version
   end
 
   # take a snapshot now?
@@ -398,7 +398,8 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_module: _aggregate_module,
       aggregate_uuid: aggregate_uuid,
       aggregate_version: aggregate_version,
-      aggregate_state: aggregate_state
+      aggregate_state: aggregate_state,
+      snapshot_module_version: snapshot_module_version
     } = state
 
     Logger.debug(fn -> describe(state) <> " recording snapshot" end)
@@ -408,7 +409,7 @@ defmodule Commanded.Aggregates.Aggregate do
       source_version: aggregate_version,
       source_type: TypeProvider.to_string(aggregate_state),
       data: aggregate_state,
-      metadata: %{"snapshot_version" => aggregate_version}
+      metadata: %{"snapshot_module_version" => snapshot_module_version}
     }
 
     :ok = EventStore.record_snapshot(snapshot)
