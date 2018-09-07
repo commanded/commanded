@@ -92,7 +92,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
            items: Enum.to_list(1..10),
            last_index: 10
          },
-         metadata: %{"snapshot_version" => 10},
+         metadata: %{"snapshot_module_version" => 1},
        }
     end
 
@@ -112,7 +112,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
            items: Enum.to_list(1..11),
            last_index: 11
          },
-         metadata: %{"snapshot_version" => 11},
+         metadata: %{"snapshot_module_version" => 1},
        }
     end
 
@@ -141,7 +141,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
            items: Enum.to_list(1..21),
            last_index: 21
          },
-         metadata: %{"snapshot_version" => 21},
+         metadata: %{"snapshot_module_version" => 1},
        }
     end
   end
