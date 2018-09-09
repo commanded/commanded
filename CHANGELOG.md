@@ -11,6 +11,10 @@
 - Process manager and event handler error & exception handling ([#192](https://github.com/commanded/commanded/pull/192)).
 - Process manager event handling timeout ([#193](https://github.com/commanded/commanded/pull/193)).
 
+### Bug fixes
+
+- Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
+
 ## v0.17.0
 
 ### Enhancements

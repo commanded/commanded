@@ -122,6 +122,7 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Patrick Detlefsen](https://github.com/patrickdet)
 - [Phil Chen](https://github.com/fahchen)
 - [Raphaël Lustin](https://github.com/rlustin)
+- [Tobiasz Małecki](https://github.com/amatalai)
 
 ## Need help?
 

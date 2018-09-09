@@ -376,23 +376,23 @@ defmodule Commanded.Aggregates.Aggregate do
     do: is_number(snapshot_every) && snapshot_every > 0
 
   # was the snapshot taken at the current version?
-  defp snapshot_valid?(%SnapshotData{metadata: metadata}, %Aggregate{
-         snapshot_module_version: expected_version
-       }) do
+  defp snapshot_valid?(%SnapshotData{} = snapshot, %Aggregate{} = state) do
+    %SnapshotData{metadata: metadata} = snapshot
+    %Aggregate{snapshot_module_version: expected_version} = state
+
     Map.get(metadata, "snapshot_module_version", 1) == expected_version
   end
 
-  # take a snapshot now?
-  defp snapshot_required?(%Aggregate{
-         aggregate_version: aggregate_version,
-         snapshot_every: snapshot_every,
-         snapshot_version: snapshot_version
-       })
-       when aggregate_version - snapshot_version >= snapshot_every,
-       do: true
+  # Take a snapshot now?
+  defp snapshot_required?(%Aggregate{} = state) do
+    %Aggregate{
+      aggregate_version: aggregate_version,
+      snapshot_every: snapshot_every,
+      snapshot_version: snapshot_version
+    } = state
 
-  # not yet enough events to snapshot
-  defp snapshot_required?(_state), do: false
+    aggregate_version - snapshot_version >= snapshot_every
+  end
 
   # snapshot aggregate state
   defp do_snapshot(%Aggregate{} = state) do
