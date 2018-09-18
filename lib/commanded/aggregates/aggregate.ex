@@ -53,7 +53,7 @@ defmodule Commanded.Aggregates.Aggregate do
             aggregate_uuid: nil,
             aggregate_state: nil,
             aggregate_version: 0,
-            lifespan_timeout: nil,
+            lifespan_timeout: :infinity,
             snapshot_every: nil,
             snapshot_module_version: 1,
             snapshot_version: 0
