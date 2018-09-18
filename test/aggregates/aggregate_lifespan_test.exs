@@ -11,8 +11,9 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
     WithdrawMoney
   }
 
+  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.EventStore
-
+  alias Commanded.EventStore.RecordedEvent
   alias Commanded.Registration
 
   describe "aggregate started" do
@@ -65,11 +66,12 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       assert_receive {:DOWN, ^ref, :process, _, :normal}
     end
 
-    test "should adhere to aggregate lifespan when taking snapshot after receiving published event", %{
-      aggregate_uuid: aggregate_uuid,
-      pid: pid,
-      ref: ref
-    } do
+    test "should adhere to aggregate lifespan when taking snapshot after receiving published event",
+         %{
+           aggregate_uuid: aggregate_uuid,
+           pid: pid,
+           ref: ref
+         } do
       :ok = BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 10})
 
       events = aggregate_uuid |> EventStore.stream_forward() |> Enum.to_list()
@@ -85,11 +87,12 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       assert {:ok, _snapshot} = EventStore.read_snapshot(aggregate_uuid)
     end
 
-    test "should adhere to aggregate lifespan when receiving published events after taking snapshot", %{
-      aggregate_uuid: aggregate_uuid,
-      pid: pid,
-      ref: ref
-    } do
+    test "should adhere to aggregate lifespan when receiving published events after taking snapshot",
+         %{
+           aggregate_uuid: aggregate_uuid,
+           pid: pid,
+           ref: ref
+         } do
       :ok = BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 10})
 
       events = aggregate_uuid |> EventStore.stream_forward() |> Enum.to_list()
@@ -104,31 +107,52 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       assert_receive {:DOWN, ^ref, :process, _, :normal}
       assert {:ok, _snapshot} = EventStore.read_snapshot(aggregate_uuid)
     end
+
+    test "should use `:infinity` lifespan by default", %{
+      aggregate_uuid: aggregate_uuid,
+      pid: pid,
+      ref: ref
+    } do
+      events = [
+        %RecordedEvent{
+          event_id: UUID.uuid4(),
+          stream_version: 1,
+          data: %BankAccountOpened{account_number: aggregate_uuid, initial_balance: 1_000}
+        }
+      ]
+
+      # Simulate sending an event directly to the aggregate process
+      send(pid, {:events, events})
+
+      refute_receive {:DOWN, ^ref, :process, ^pid, _}
+    end
   end
 
   describe "deprecated `after_command/1` callback" do
     test "should fail to compile when missing `after_event/1` function" do
-      assert_raise ArgumentError, "Aggregate lifespan `BankAccountLifespan` does not define a callback function: `after_event/1`", fn ->
-        Code.eval_string """
-          alias Commanded.ExampleDomain.BankAccount
-          alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney}
+      assert_raise ArgumentError,
+                   "Aggregate lifespan `BankAccountLifespan` does not define a callback function: `after_event/1`",
+                   fn ->
+                     Code.eval_string("""
+                       alias Commanded.ExampleDomain.BankAccount
+                       alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney}
 
-          defmodule BankAccountLifespan do
-            def after_command(%OpenAccount{}), do: 5
-            def after_command(%DepositMoney{}), do: 20
-            def after_command(_), do: :infinity
-          end
+                       defmodule BankAccountLifespan do
+                         def after_command(%OpenAccount{}), do: 5
+                         def after_command(%DepositMoney{}), do: 20
+                         def after_command(_), do: :infinity
+                       end
 
-          defmodule BankRouter do
-            use Commanded.Commands.Router
+                       defmodule BankRouter do
+                         use Commanded.Commands.Router
 
-            dispatch [OpenAccount],
-              to: BankAccount,
-              lifespan: BankAccountLifespan,
-              identity: :account_number
-          end
-        """
-      end
+                         dispatch [OpenAccount],
+                           to: BankAccount,
+                           lifespan: BankAccountLifespan,
+                           identity: :account_number
+                       end
+                     """)
+                   end
     end
   end
 end
