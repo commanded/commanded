@@ -164,9 +164,16 @@ defmodule Commanded.Aggregates.Aggregate do
 
     Logger.debug(fn -> describe(state) <> " recording snapshot" end)
 
-    snapshotting = Snapshotting.take_snapshot(snapshotting, aggregate_version, aggregate_state)
+    state =
+      case Snapshotting.take_snapshot(snapshotting, aggregate_version, aggregate_state) do
+        {:ok, snapshotting} ->
+          %Aggregate{state | snapshotting: snapshotting}
 
-    state = %Aggregate{state | snapshotting: snapshotting}
+        {:error, error} ->
+          Logger.warn(fn -> describe(state) <> " snapshot failed due to: " <> inspect(error) end)
+
+          state
+      end
 
     {:noreply, state, lifespan_timeout}
   end

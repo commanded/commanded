@@ -48,9 +48,10 @@ defmodule Commanded.Snapshotting do
       metadata: %{"snapshot_module_version" => snapshot_module_version}
     }
 
-    :ok = EventStore.record_snapshot(snapshot)
-
-    %Snapshotting{snapshotting | snapshot_version: source_version}
+    case EventStore.record_snapshot(snapshot) do
+      :ok -> {:ok, %Snapshotting{snapshotting | snapshot_version: source_version}}
+      {:error, error} -> {:error, error}
+    end
   end
 
   @doc """
