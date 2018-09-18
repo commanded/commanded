@@ -14,6 +14,7 @@
 ### Bug fixes
 
 - Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
+- Set default aggregate lifespan timeout to `:infinity` ([#200](https://github.com/commanded/commanded/pull/200)).
 
 ## v0.17.0
 
