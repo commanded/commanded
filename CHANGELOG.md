@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.17.1
+
+### Enhancements
+
+- Support `Phoenix.PubSub` v1.1.0.
+
+### Bug fixes
+
+- Set default aggregate lifespan timeout to `:infinity` ([#200](https://github.com/commanded/commanded/pull/200)).
+
 ## v0.17.0
 
 ### Enhancements
