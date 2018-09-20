@@ -62,6 +62,20 @@ Use the `:current` position when you don't want newly created event handlers to 
 
 You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
 
+### Subscribing to an individual stream
+
+By default event handlers will subscribe to all events appended to any stream. Provide a `subscribe_to` option to subscribe to a single stream.
+
+```elixir
+defmodule ExampleHandler do
+  use Commanded.Event.Handler,
+    name: __MODULE__,
+    subscribe_to: "stream1234"
+end
+```
+
+This will ensure the handler only receives events appended to that stream.
+
 ### `init/0` callback
 
 You can define an `init/0` function in your handler to be called once it has started and successfully subscribed to the event store.

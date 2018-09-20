@@ -465,7 +465,7 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp append_to_stream([], _stream_uuid, expected_version, _context), do: :ok
+  defp append_to_stream([], _stream_uuid, _expected_version, _context), do: :ok
 
   defp append_to_stream(pending_events, stream_uuid, expected_version, context) do
     %ExecutionContext{

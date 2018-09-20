@@ -9,12 +9,13 @@ defmodule Commanded.Event.Mapper do
   end
 
   def map_to_event_data(event, fields) do
-    fields =
-      fields
-      |> Keyword.put(:event_type, TypeProvider.to_string(event))
-      |> Keyword.put(:data, event)
-
-    struct(EventData, fields)
+    %EventData{
+      causation_id: Keyword.get(fields, :causation_id),
+      correlation_id: Keyword.get(fields, :correlation_id),
+      event_type: TypeProvider.to_string(event),
+      data: event,
+      metadata: Keyword.get(fields, :metadata, %{})
+    }
   end
 
   def map_from_recorded_events(recorded_events) when is_list(recorded_events) do
