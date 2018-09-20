@@ -102,9 +102,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
         }
       }
 
-      {:ok, _} = EventStore.append_to_stream(account_number, 1, [event])
-
-      :ok
+      EventStore.append_to_stream(account_number, 1, [event])
     end
   end
 end

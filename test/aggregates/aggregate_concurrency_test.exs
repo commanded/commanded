@@ -8,8 +8,9 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
 
   setup do
-    expect(MockEventStore, :subscribe_to_all_streams, fn _handler_name, handler, _subscribe_from ->
-      {:ok, handler}
+    expect(MockEventStore, :subscribe_to, fn
+      _stream_uuid, _handler_name, handler, _subscribe_from ->
+        {:ok, handler}
     end)
 
     expect(MockEventStore, :subscribe, fn _aggregate_uuid -> :ok end)
@@ -64,9 +65,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       end)
 
       # succeed on second attempt
-      expect(MockEventStore, :append_to_stream, fn ^account_number, 2, event_data ->
-        {:ok, 2 + length(event_data)}
-      end)
+      expect(MockEventStore, :append_to_stream, fn ^account_number, 2, _event_data -> :ok end)
 
       assert {:ok, 3, _events} = Aggregate.execute(BankAccount, account_number, context)
 
@@ -109,13 +108,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
     defp open_account(_context) do
       account_number = UUID.uuid4()
 
-      expect(MockEventStore, :stream_forward, fn ^account_number, 1, _batch_size ->
-        []
-      end)
-
-      expect(MockEventStore, :append_to_stream, fn ^account_number, 0, event_data ->
-        {:ok, length(event_data)}
-      end)
+      expect(MockEventStore, :stream_forward, fn ^account_number, 1, _batch_size -> [] end)
+      expect(MockEventStore, :append_to_stream, fn ^account_number, 0, _event_data -> :ok end)
 
       {:ok, ^account_number} =
         Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)

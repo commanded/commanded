@@ -17,8 +17,9 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
     test "wipes all data from memory" do
       pid = Process.whereis(InMemory)
       initial = :sys.get_state(pid)
+      events = [build_event(1)]
 
-      {:ok, 1} = InMemory.append_to_stream("stream", 0, [build_event(1)])
+      :ok = InMemory.append_to_stream("stream", 0, events)
       after_event = :sys.get_state(pid)
 
       InMemory.reset!()

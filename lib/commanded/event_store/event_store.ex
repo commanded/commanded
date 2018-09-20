@@ -7,7 +7,7 @@ defmodule Commanded.EventStore do
 
   @type stream_uuid :: String.t()
   @type start_from :: :origin | :current | integer
-  @type stream_version :: integer
+  @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer()
   @type subscription_name :: String.t()
   @type source_uuid :: String.t()
   @type snapshot :: SnapshotData.t()
@@ -18,10 +18,10 @@ defmodule Commanded.EventStore do
   """
   @callback append_to_stream(
               stream_uuid,
-              expected_version :: non_neg_integer,
+              expected_version,
               events :: list(EventData.t())
             ) ::
-              {:ok, stream_version}
+              :ok
               | {:error, :wrong_expected_version}
               | {:error, error}
 
@@ -46,10 +46,13 @@ defmodule Commanded.EventStore do
 
   The subscriber does not need to acknowledge receipt of the events.
   """
-  @callback subscribe(stream_uuid) :: :ok | {:error, error}
+  @callback subscribe(stream_uuid | :all) :: :ok | {:error, error}
 
   @doc """
-  Create a persistent subscription to all event streams.
+  Create a persistent subscription to an event stream.
+
+  To subscribe to all events appended to any stream use `:all` as the stream
+  when subscribing.
 
   The event store will remember the subscribers last acknowledged event.
   Restarting the named subscription will resume from the next event following
@@ -65,8 +68,19 @@ defmodule Commanded.EventStore do
 
   The subscriber must ack each received, and successfully processed event, using
   `Commanded.EventStore.ack_event/2`.
+
+  ## Examples
+
+  Subscribe to all streams:
+
+      {:ok, subscription} = Commanded.EventStore.subscribe_to(:all, "Example", self())
+
+  Subscribe to a single stream:
+
+      {:ok, subscription} = Commanded.EventStore.subscribe_to("stream1234", "Example", self())
+
   """
-  @callback subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) ::
+  @callback subscribe_to(stream_uuid | :all, subscription_name, subscriber :: pid, start_from) ::
               {:ok, subscription :: pid}
               | {:error, :subscription_already_exists}
               | {:error, error}
@@ -78,9 +92,9 @@ defmodule Commanded.EventStore do
   @callback ack_event(pid, RecordedEvent.t()) :: :ok
 
   @doc """
-  Unsubscribe an existing subscriber from all event notifications.
+  Unsubscribe an existing subscriber from event notifications.
   """
-  @callback unsubscribe_from_all_streams(subscription_name) :: :ok
+  @callback unsubscribe(subscription_name) :: :ok
 
   @doc """
   Read a snapshot, if available, for a given source.
@@ -102,11 +116,14 @@ defmodule Commanded.EventStore do
   """
   @spec append_to_stream(
           stream_uuid,
-          expected_version :: non_neg_integer,
+          expected_version,
           events :: list(EventData.t())
-        ) :: {:ok, stream_version} | {:error, :wrong_expected_version} | {:error, error}
+        ) :: :ok | {:error, :wrong_expected_version} | {:error, error}
   def append_to_stream(stream_uuid, expected_version, events)
-      when is_binary(stream_uuid) and is_integer(expected_version) and is_list(events) do
+      when is_binary(stream_uuid) and
+             (is_integer(expected_version) or
+                expected_version in [:any_version, :no_stream, :stream_exists]) and
+             is_list(events) do
     event_store_adapter().append_to_stream(stream_uuid, expected_version, events)
   end
 
@@ -129,21 +146,21 @@ defmodule Commanded.EventStore do
   @doc """
   Create a transient subscription to a single event stream.
   """
-  @spec subscribe(stream_uuid) :: :ok | {:error, error}
+  @spec subscribe(stream_uuid | :all) :: :ok | {:error, error}
   def subscribe(stream_uuid) when is_binary(stream_uuid) do
     event_store_adapter().subscribe(stream_uuid)
   end
 
   @doc """
-  Create a persistent subscription to all event streams.
+  Create a persistent subscription to an event stream.
   """
-  @spec subscribe_to_all_streams(subscription_name, subscriber :: pid, start_from) ::
+  @spec subscribe_to(stream_uuid | :all, subscription_name, subscriber :: pid, start_from) ::
           {:ok, subscription :: pid}
           | {:error, :subscription_already_exists}
           | {:error, error}
-  def subscribe_to_all_streams(subscription_name, subscriber, start_from)
+  def subscribe_to(stream_uuid, subscription_name, subscriber, start_from)
       when is_binary(subscription_name) and is_pid(subscriber) do
-    event_store_adapter().subscribe_to_all_streams(subscription_name, subscriber, start_from)
+    event_store_adapter().subscribe_to(stream_uuid, subscription_name, subscriber, start_from)
   end
 
   @doc """
@@ -158,9 +175,9 @@ defmodule Commanded.EventStore do
   @doc """
   Unsubscribe an existing subscriber from all event notifications.
   """
-  @spec unsubscribe_from_all_streams(subscription_name) :: :ok
-  def unsubscribe_from_all_streams(subscription_name) when is_binary(subscription_name) do
-    event_store_adapter().unsubscribe_from_all_streams(subscription_name)
+  @spec unsubscribe(subscription_name) :: :ok
+  def unsubscribe(subscription_name) when is_binary(subscription_name) do
+    event_store_adapter().unsubscribe(subscription_name)
   end
 
   @doc """

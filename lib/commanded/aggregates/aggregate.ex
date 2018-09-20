@@ -449,22 +449,23 @@ defmodule Commanded.Aggregates.Aggregate do
   defp persist_events(pending_events, aggregate_state, context, %Aggregate{} = state) do
     %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version} = state
 
-    with {:ok, stream_version} <-
-           append_to_stream(pending_events, aggregate_uuid, expected_version, context) do
+    with :ok <- append_to_stream(pending_events, aggregate_uuid, expected_version, context) do
+      aggregate_version = expected_version + length(pending_events)
+
       state = %Aggregate{
         state
         | aggregate_state: aggregate_state,
-          aggregate_version: stream_version
+          aggregate_version: aggregate_version
       }
 
-      {{:ok, stream_version, pending_events}, state}
+      {{:ok, aggregate_version, pending_events}, state}
     else
       {:error, _error} = reply ->
         {reply, state}
     end
   end
 
-  defp append_to_stream([], _stream_uuid, expected_version, _context), do: {:ok, expected_version}
+  defp append_to_stream([], _stream_uuid, expected_version, _context), do: :ok
 
   defp append_to_stream(pending_events, stream_uuid, expected_version, context) do
     %ExecutionContext{
@@ -473,7 +474,12 @@ defmodule Commanded.Aggregates.Aggregate do
       metadata: metadata
     } = context
 
-    event_data = Mapper.map_to_event_data(pending_events, causation_id, correlation_id, metadata)
+    event_data =
+      Mapper.map_to_event_data(pending_events,
+        causation_id: causation_id,
+        correlation_id: correlation_id,
+        metadata: metadata
+      )
 
     EventStore.append_to_stream(stream_uuid, expected_version, event_data)
   end

@@ -3,7 +3,7 @@ defmodule Commanded.EventStore.Subscriber do
 
   alias Commanded.EventStore
   alias Commanded.EventStore.Subscriber
-  
+
   defmodule State do
     defstruct received_events: [],
               subscribed?: false,
@@ -15,7 +15,7 @@ defmodule Commanded.EventStore.Subscriber do
   def start_link, do: GenServer.start_link(__MODULE__, %State{})
 
   def init(%State{} = state) do
-    {:ok, subscription} = EventStore.subscribe_to_all_streams("subscriber", self(), :origin)
+    {:ok, subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
 
     {:ok, %State{state | subscription: subscription}}
   end

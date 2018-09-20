@@ -420,8 +420,7 @@ defmodule Commanded.Event.Handler do
   defp subscribe_to_all_streams(%Handler{} = state) do
     %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state
 
-    {:ok, subscription} =
-      EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
+    {:ok, subscription} = EventStore.subscribe_to(:all, handler_name, self(), subscribe_from)
 
     %Handler{state | subscription: subscription}
   end
