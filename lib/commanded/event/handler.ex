@@ -65,6 +65,20 @@ defmodule Commanded.Event.Handler do
 
       {:ok, _handler} = ExampleHandler.start_link(start_from: :current)
 
+
+  ### Subscribing to an individual stream
+
+  By default event handlers will subscribe to all events appended to any stream.
+  Provide a `subscribe_to` option to subscribe to a single stream.
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler,
+          name: __MODULE__,
+          subscribe_to: "stream1234"
+      end
+
+  This will ensure the handler only receives events appended to that stream.
+
   ## `c:init/0` callback
 
   You can define an `c:init/0` function in your handler to be called once it has
@@ -302,7 +316,7 @@ defmodule Commanded.Event.Handler do
     {valid, invalid} =
       module_opts
       |> Keyword.merge(local_opts)
-      |> Keyword.split([:consistency, :start_from] ++ additional_allowed_opts)
+      |> Keyword.split([:consistency, :start_from, :subscribe_to] ++ additional_allowed_opts)
 
     if Enum.any?(invalid) do
       raise "#{inspect(module)} specifies invalid options: #{inspect(Keyword.keys(invalid))}"
@@ -331,6 +345,7 @@ defmodule Commanded.Event.Handler do
     :handler_module,
     :last_seen_event,
     :subscribe_from,
+    :subscribe_to,
     :subscription
   ]
 
@@ -342,7 +357,8 @@ defmodule Commanded.Event.Handler do
       handler_name: handler_name,
       handler_module: handler_module,
       consistency: consistency(opts),
-      subscribe_from: start_from(opts)
+      subscribe_from: start_from(opts),
+      subscribe_to: subscribe_to(opts)
     }
 
     Registration.start_link(name, __MODULE__, handler)
@@ -367,14 +383,17 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def handle_call(:config, _from, %Handler{} = state) do
-    %Handler{consistency: consistency, subscribe_from: subscribe_from} = state
+    %Handler{consistency: consistency, subscribe_from: subscribe_from, subscribe_to: subscribe_to} =
+      state
 
-    {:reply, [consistency: consistency, start_from: subscribe_from], state}
+    config = [consistency: consistency, start_from: subscribe_from, subscribe_to: subscribe_to]
+
+    {:reply, config, state}
   end
 
   @doc false
   def handle_cast(:subscribe_to_events, %Handler{} = state) do
-    {:noreply, subscribe_to_all_streams(state)}
+    {:noreply, subscribe_to_events(state)}
   end
 
   @doc false
@@ -417,11 +436,15 @@ defmodule Commanded.Event.Handler do
     end
   end
 
-  defp subscribe_to_all_streams(%Handler{} = state) do
-    %Handler{handler_name: handler_name, subscribe_from: subscribe_from} = state
+  defp subscribe_to_events(%Handler{} = state) do
+    %Handler{
+      handler_name: handler_name,
+      subscribe_from: subscribe_from,
+      subscribe_to: subscribe_to
+    } = state
 
     {:ok, subscription} =
-      EventStore.subscribe_to_all_streams(handler_name, self(), subscribe_from)
+      EventStore.subscribe_to(subscribe_to, handler_name, self(), subscribe_from)
 
     %Handler{state | subscription: subscription}
   end
@@ -576,6 +599,14 @@ defmodule Commanded.Event.Handler do
       start_from when start_from in [:origin, :current] -> start_from
       start_from when is_integer(start_from) -> start_from
       invalid -> "Invalid `start_from` option: #{inspect(invalid)}"
+    end
+  end
+
+  defp subscribe_to(opts) do
+    case opts[:subscribe_to] || :all do
+      :all -> :all
+      stream when is_binary(stream) -> stream
+      invalid -> "Invalid `subscribe_to` option: #{inspect(invalid)}"
     end
   end
 

@@ -13,10 +13,20 @@ defmodule Commanded.PubSub.PhoenixPubSubTest do
       ]
     )
 
-    {:ok, _pid} = Supervisor.start_link(PhoenixPubSub.child_spec(), strategy: :one_for_one)
+    pubsub_pid =
+      case Process.whereis(PhoenixPubSub) do
+        nil ->
+          {:ok, pid} = Supervisor.start_link(PhoenixPubSub.child_spec(), strategy: :one_for_one)
+          pid
+
+        pid ->
+          pid
+      end
 
     on_exit(fn ->
       Application.delete_env(:commanded, :pubsub)
     end)
+
+    [pubsub_pid: pubsub_pid]
   end
 end

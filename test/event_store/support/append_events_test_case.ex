@@ -13,9 +13,9 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
 
     describe "append events to a stream" do
       test "should append events" do
-        assert {:ok, 2} == EventStore.append_to_stream("stream", 0, build_events(2))
-        assert {:ok, 4} == EventStore.append_to_stream("stream", 2, build_events(2))
-        assert {:ok, 5} == EventStore.append_to_stream("stream", 4, build_events(1))
+        assert :ok == EventStore.append_to_stream("stream", 0, build_events(2))
+        assert :ok == EventStore.append_to_stream("stream", 2, build_events(2))
+        assert :ok == EventStore.append_to_stream("stream", 4, build_events(1))
       end
 
       test "should fail to append to a stream because of wrong expected version when no previous events" do
@@ -26,10 +26,16 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
       end
 
       test "should fail to append to a stream because of wrong expected version" do
-        assert {:ok, 2} == EventStore.append_to_stream("stream", 0, build_events(2))
+        assert :ok == EventStore.append_to_stream("stream", 0, build_events(2))
 
         assert {:error, :wrong_expected_version} ==
                  EventStore.append_to_stream("stream", 1, build_events(1))
+      end
+
+      test "should append events to any version" do
+        assert :ok == EventStore.append_to_stream("stream", :any_version, build_events(2))
+        assert :ok == EventStore.append_to_stream("stream", :any_version, build_events(2))
+        assert :ok == EventStore.append_to_stream("stream", :any_version, build_events(1))
       end
     end
 
@@ -45,7 +51,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
         causation_id = UUID.uuid4()
         events = build_events(4, correlation_id, causation_id)
 
-        assert {:ok, 4} == EventStore.append_to_stream("stream", 0, events)
+        assert :ok == EventStore.append_to_stream("stream", 0, events)
 
         read_events = EventStore.stream_forward("stream") |> Enum.to_list()
         assert length(read_events) == 4
@@ -69,8 +75,8 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
         events1 = build_events(2)
         events2 = build_events(4)
 
-        assert {:ok, 2} == EventStore.append_to_stream("stream", 0, events1)
-        assert {:ok, 4} == EventStore.append_to_stream("secondstream", 0, events2)
+        assert :ok == EventStore.append_to_stream("stream", 0, events1)
+        assert :ok == EventStore.append_to_stream("secondstream", 0, events2)
 
         read_events = EventStore.stream_forward("stream", 0) |> Enum.to_list()
         assert 2 == length(read_events)
@@ -84,7 +90,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
       test "should read events in batches" do
         events = build_events(10)
 
-        assert {:ok, 10} == EventStore.append_to_stream("stream", 0, events)
+        assert :ok == EventStore.append_to_stream("stream", 0, events)
 
         read_events = EventStore.stream_forward("stream", 0, 2) |> Enum.to_list()
         assert length(read_events) == 10

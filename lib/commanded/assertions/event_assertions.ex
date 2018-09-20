@@ -174,10 +174,11 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   defp create_subscription(subscription_name),
-    do: EventStore.subscribe_to_all_streams(subscription_name, self(), :origin)
+    do: EventStore.subscribe_to(:all, subscription_name, self(), :origin)
 
   defp remove_subscription(subscription_name),
-    do: EventStore.unsubscribe_from_all_streams(subscription_name)
+    do: EventStore.unsubscribe(subscription_name)
 
-  defp ack_events(subscription, events), do: EventStore.ack_event(subscription, List.last(events))
+  defp ack_events(subscription, events),
+    do: EventStore.ack_event(subscription, List.last(events))
 end

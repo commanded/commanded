@@ -3,18 +3,25 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
 
   import Commanded.Enumerable, only: [pluck: 2]
 
-  alias Commanded.Aggregates.{Aggregate,AppendItemsHandler,ExampleAggregate}
-  alias Commanded.Aggregates.ExampleAggregate.Commands.{AppendItems,NoOp}
+  alias Commanded.Aggregates.{Aggregate, AppendItemsHandler, ExampleAggregate}
+  alias Commanded.Aggregates.ExampleAggregate.Commands.{AppendItems, NoOp}
   alias Commanded.EventStore
   alias Commanded.Helpers.ProcessHelper
   alias Commanded.Aggregates.ExecutionContext
 
   test "should persist pending events in order applied" do
-    aggregate_uuid = UUID.uuid4
+    aggregate_uuid = UUID.uuid4()
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 10}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 10, events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %AppendItems{count: 10},
+        handler: AppendItemsHandler,
+        function: :handle
+      })
+
     assert length(events) == 10
 
     recorded_events = EventStore.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
@@ -28,14 +35,27 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
   end
 
   test "should not persist events when command returns no events" do
-    aggregate_uuid = UUID.uuid4
+    aggregate_uuid = UUID.uuid4()
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 1, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 1, events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %AppendItems{count: 1},
+        handler: AppendItemsHandler,
+        function: :handle
+      })
+
     assert length(events) == 1
 
-    {:ok, 1, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %NoOp{}, handler: ExampleAggregate, function: :noop})
+    {:ok, 1, events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %NoOp{},
+        handler: ExampleAggregate,
+        function: :noop
+      })
+
     assert length(events) == 0
 
     recorded_events = EventStore.stream_forward(aggregate_uuid, 0) |> Enum.to_list()
@@ -43,12 +63,19 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
   end
 
   test "should persist event metadata" do
-    aggregate_uuid = UUID.uuid4
+    aggregate_uuid = UUID.uuid4()
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     metadata = %{"ip_address" => "127.0.0.1"}
-    context = %ExecutionContext{command: %AppendItems{count: 10}, metadata: metadata, handler: AppendItemsHandler, function: :handle}
+
+    context = %ExecutionContext{
+      command: %AppendItems{count: 10},
+      metadata: metadata,
+      handler: AppendItemsHandler,
+      function: :handle
+    }
 
     {:ok, 10, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, context)
     assert length(events) == 10
@@ -61,42 +88,71 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
   end
 
   test "should reload persisted events when restarting aggregate process" do
-    aggregate_uuid = UUID.uuid4
+    aggregate_uuid = UUID.uuid4()
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10, events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 10}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 10, events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %AppendItems{count: 10},
+        handler: AppendItemsHandler,
+        function: :handle
+      })
+
     assert length(events) == 10
 
     ProcessHelper.shutdown_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     assert Aggregate.aggregate_version(ExampleAggregate, aggregate_uuid) == 10
+
     assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == %ExampleAggregate{
-      items: 1..10 |> Enum.to_list(),
-      last_index: 10,
-    }
+             items: 1..10 |> Enum.to_list(),
+             last_index: 10
+           }
   end
 
   test "should reload persisted events in batches when restarting aggregate process" do
-    aggregate_uuid = UUID.uuid4
+    aggregate_uuid = UUID.uuid4()
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, 100, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 100}, handler: AppendItemsHandler, function: :handle})
-    {:ok, 200, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 100}, handler: AppendItemsHandler, function: :handle})
-    {:ok, 201, _events} = Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle})
+    {:ok, 100, _events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %AppendItems{count: 100},
+        handler: AppendItemsHandler,
+        function: :handle
+      })
+
+    {:ok, 200, _events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %AppendItems{count: 100},
+        handler: AppendItemsHandler,
+        function: :handle
+      })
+
+    {:ok, 201, _events} =
+      Aggregate.execute(ExampleAggregate, aggregate_uuid, %ExecutionContext{
+        command: %AppendItems{count: 1},
+        handler: AppendItemsHandler,
+        function: :handle
+      })
 
     ProcessHelper.shutdown_aggregate(ExampleAggregate, aggregate_uuid)
 
-    {:ok, ^aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
 
     assert Aggregate.aggregate_version(ExampleAggregate, aggregate_uuid) == 201
+
     assert Aggregate.aggregate_state(ExampleAggregate, aggregate_uuid) == %ExampleAggregate{
-      items: 1..201 |> Enum.to_list,
-      last_index: 201,
-    }
+             items: 1..201 |> Enum.to_list(),
+             last_index: 201
+           }
   end
 
   test "should prefix stream UUID with aggregate indentity prefix" do
@@ -104,9 +160,14 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
     prefix = "example-prefix-"
     prefixed_aggregate_uuid = prefix <> aggregate_uuid
 
-    {:ok, ^prefixed_aggregate_uuid} = Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, prefixed_aggregate_uuid)
+    {:ok, ^prefixed_aggregate_uuid} =
+      Commanded.Aggregates.Supervisor.open_aggregate(ExampleAggregate, prefixed_aggregate_uuid)
 
-    context = %ExecutionContext{command: %AppendItems{count: 1}, handler: AppendItemsHandler, function: :handle}
+    context = %ExecutionContext{
+      command: %AppendItems{count: 1},
+      handler: AppendItemsHandler,
+      function: :handle
+    }
 
     {:ok, 1, events} = Aggregate.execute(ExampleAggregate, prefixed_aggregate_uuid, context)
     assert length(events) == 1

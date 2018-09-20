@@ -10,6 +10,7 @@
 - Allow aggregate identity to be of any type that implements the `String.Chars` protocol ([#166](https://github.com/commanded/commanded/pull/166)).
 - Process manager and event handler error & exception handling ([#192](https://github.com/commanded/commanded/pull/192)).
 - Process manager event handling timeout ([#193](https://github.com/commanded/commanded/pull/193)).
+- Allow event handlers to subscribe to individual streams ([#203](https://github.com/commanded/commanded/pull/203)).
 
 ### Bug fixes
 

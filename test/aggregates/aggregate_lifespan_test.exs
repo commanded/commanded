@@ -42,7 +42,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       :ok = BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 10})
       :ok = BankRouter.dispatch(%DepositMoney{account_number: aggregate_uuid, amount: 10})
 
-      refute_receive {:DOWN, ^ref, :process, _, :normal}, 10
+      refute_receive {:DOWN, ^ref, :process, _, :normal}, 25
       assert_receive {:DOWN, ^ref, :process, _, :normal}
     end
 
@@ -53,7 +53,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       :ok = BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 10})
       :ok = BankRouter.dispatch(%WithdrawMoney{account_number: aggregate_uuid, amount: 10})
 
-      refute_receive {:DOWN, ^ref, :process, _, :normal}, 30
+      refute_receive {:DOWN, ^ref, :process, _, :normal}, 100
     end
 
     test "should stop process when requested", %{

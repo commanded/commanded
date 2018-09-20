@@ -6,7 +6,6 @@ defmodule Commanded.StorageCase do
   require Logger
 
   alias Commanded.EventStore.Adapters.InMemory
-  alias Commanded.Serialization.JsonSerializer
 
   setup do
     on_exit(fn ->

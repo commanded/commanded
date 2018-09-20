@@ -198,7 +198,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       [] ->
         {:noreply, state}
 
-      pending ->
+      _pending ->
         Logger.error(fn ->
           describe(state) <>
             " has taken longer than " <>
@@ -228,7 +228,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state
 
     {:ok, subscription} =
-      EventStore.subscribe_to_all_streams(process_manager_name, self(), subscribe_from)
+      EventStore.subscribe_to(:all, process_manager_name, self(), subscribe_from)
 
     %State{state | subscription: subscription}
   end

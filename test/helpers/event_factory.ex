@@ -6,9 +6,10 @@ defmodule Commanded.Helpers.EventFactory do
     stream_id = UUID.uuid4()
     causation_id = UUID.uuid4()
     correlation_id = UUID.uuid4()
+    fields = [causation_id: causation_id, correlation_id: correlation_id, metadata: %{}]
 
     events
-    |> Commanded.Event.Mapper.map_to_event_data(causation_id, correlation_id, %{})
+    |> Commanded.Event.Mapper.map_to_event_data(fields)
     |> Enum.with_index(1)
     |> Enum.map(fn {event, index} ->
       %RecordedEvent{
@@ -21,7 +22,7 @@ defmodule Commanded.Helpers.EventFactory do
         event_type: event.event_type,
         data: event.data,
         metadata: event.metadata,
-        created_at: now(),
+        created_at: now()
       }
     end)
   end
