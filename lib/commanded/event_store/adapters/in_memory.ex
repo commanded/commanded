@@ -31,9 +31,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
   def start_link(opts \\ []) do
-    state = %State{
-      serializer: Keyword.get(opts, :serializer)
-    }
+    state = %State{serializer: Keyword.get(opts, :serializer)}
 
     GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
@@ -45,7 +43,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   @impl Commanded.EventStore
   def append_to_stream(stream_uuid, expected_version, events) do
-    GenServer.call(__MODULE__, {:append_to_stream, stream_uuid, expected_version, events})
+    GenServer.call(__MODULE__, {:append, stream_uuid, expected_version, events})
   end
 
   @impl Commanded.EventStore
@@ -100,39 +98,73 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl GenServer
-  def handle_call(
-        {:append_to_stream, stream_uuid, expected_version, events},
-        _from,
-        %State{} = state
-      ) do
+  def handle_call({:append, stream_uuid, :stream_exists, events}, _from, %State{} = state) do
     %State{streams: streams} = state
 
-    case Map.get(streams, stream_uuid) do
-      nil ->
-        case expected_version do
-          0 ->
-            {:ok, state} = persist_events(stream_uuid, [], events, state)
+    {reply, state} =
+      case Map.get(streams, stream_uuid) do
+        nil ->
+          {{:error, :stream_does_not_exist}, state}
 
-            {:reply, :ok, state}
+        existing_events ->
+          persist_events(stream_uuid, existing_events, events, state)
+      end
 
-          :any_version ->
-            {:ok, state} = persist_events(stream_uuid, [], events, state)
+    {:reply, reply, state}
+  end
 
-            {:reply, :ok, state}
+  @impl GenServer
+  def handle_call({:append, stream_uuid, :no_stream, events}, _from, %State{} = state) do
+    %State{streams: streams} = state
 
-          _ ->
-            {:reply, {:error, :wrong_expected_version}, state}
-        end
+    {reply, state} =
+      case Map.get(streams, stream_uuid) do
+        nil ->
+          persist_events(stream_uuid, [], events, state)
 
-      existing_events
-      when length(existing_events) != expected_version and expected_version != :any_version ->
-        {:reply, {:error, :wrong_expected_version}, state}
+        _existing_events ->
+          {{:error, :stream_exists}, state}
+      end
 
-      existing_events ->
-        {:ok, state} = persist_events(stream_uuid, existing_events, events, state)
+    {:reply, reply, state}
+  end
 
-        {:reply, :ok, state}
-    end
+  @impl GenServer
+  def handle_call({:append, stream_uuid, :any_version, events}, _from, %State{} = state) do
+    %State{streams: streams} = state
+
+    existing_events = Map.get(streams, stream_uuid, [])
+
+    {:ok, state} = persist_events(stream_uuid, existing_events, events, state)
+
+    {:reply, :ok, state}
+  end
+
+  @impl GenServer
+  def handle_call({:append, stream_uuid, expected_version, events}, _from, %State{} = state)
+      when is_integer(expected_version) do
+    %State{streams: streams} = state
+
+    {reply, state} =
+      case Map.get(streams, stream_uuid) do
+        nil ->
+          case expected_version do
+            0 ->
+              persist_events(stream_uuid, [], events, state)
+
+            _ ->
+              {{:error, :wrong_expected_version}, state}
+          end
+
+        existing_events
+        when length(existing_events) != expected_version ->
+          {{:error, :wrong_expected_version}, state}
+
+        existing_events ->
+          persist_events(stream_uuid, existing_events, events, state)
+      end
+
+    {:reply, reply, state}
   end
 
   @impl GenServer
@@ -202,7 +234,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl GenServer
-  def handle_call({:read_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
+  def handle_call({:read_snapshot, source_uuid}, _from, %State{} = state) do
+    %State{snapshots: snapshots} = state
+
     reply =
       case Map.get(snapshots, source_uuid, nil) do
         nil -> {:error, :snapshot_not_found}
@@ -213,24 +247,27 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl GenServer
-  def handle_call(
-        {:record_snapshot, %SnapshotData{source_uuid: source_uuid} = snapshot},
-        _from,
-        %State{snapshots: snapshots} = state
-      ) do
+  def handle_call({:record_snapshot, %SnapshotData{} = snapshot}, _from, %State{} = state) do
+    %SnapshotData{source_uuid: source_uuid} = snapshot
+    %State{snapshots: snapshots} = state
+
     state = %State{state | snapshots: Map.put(snapshots, source_uuid, serialize(snapshot, state))}
 
     {:reply, :ok, state}
   end
 
   @impl GenServer
-  def handle_call({:delete_snapshot, source_uuid}, _from, %State{snapshots: snapshots} = state) do
+  def handle_call({:delete_snapshot, source_uuid}, _from, %State{} = state) do
+    %State{snapshots: snapshots} = state
+
     state = %State{state | snapshots: Map.delete(snapshots, source_uuid)}
 
     {:reply, :ok, state}
   end
 
-  def handle_call(:reset!, _from, %State{serializer: serializer}) do
+  def handle_call(:reset!, _from, %State{} = state) do
+    %State{serializer: serializer} = state
+
     {:reply, :ok, %State{serializer: serializer}}
   end
 
@@ -367,27 +404,26 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   defp catch_up(%Subscription{subscriber: nil}, _persisted_events, _state), do: :ok
   defp catch_up(%Subscription{start_from: :current}, _persisted_events, _state), do: :ok
 
-  defp catch_up(
-         %Subscription{
-           subscriber: subscriber,
-           start_from: :origin,
-           last_seen_event_number: last_seen_event_number
-         },
-         persisted_events,
-         %State{} = state
-       ) do
+  defp catch_up(%Subscription{} = subscription, persisted_events, %State{} = state) do
+    %Subscription{
+      subscriber: subscriber,
+      start_from: :origin,
+      last_seen_event_number: last_seen_event_number
+    } = subscription
+
     unseen_events =
       persisted_events
       |> Enum.reverse()
       |> Enum.drop(last_seen_event_number)
 
-    for events <- unseen_events,
-        do: send(subscriber, {:events, Enum.map(events, &deserialize(&1, state))})
+    for events <- unseen_events do
+      send(subscriber, {:events, Enum.map(events, &deserialize(&1, state))})
+    end
   end
 
-  defp publish_to_transient_subscribers(stream_uuid, events, %State{
-         transient_subscribers: transient
-       }) do
+  defp publish_to_transient_subscribers(stream_uuid, events, %State{} = state) do
+    %State{transient_subscribers: transient} = state
+
     subscribers = Map.get(transient, stream_uuid, [])
 
     for subscriber <- subscribers |> Enum.filter(&is_pid/1) do
@@ -417,9 +453,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp serialize(data, %State{serializer: nil}), do: data
 
-  defp serialize(%RecordedEvent{data: data, metadata: metadata} = recorded_event, %State{
-         serializer: serializer
-       }) do
+  defp serialize(%RecordedEvent{} = recorded_event, %State{} = state) do
+    %RecordedEvent{data: data, metadata: metadata} = recorded_event
+    %State{serializer: serializer} = state
+
     %RecordedEvent{
       recorded_event
       | data: serializer.serialize(data),
@@ -427,9 +464,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
-  defp serialize(%SnapshotData{data: data, metadata: metadata} = snapshot, %State{
-         serializer: serializer
-       }) do
+  defp serialize(%SnapshotData{} = snapshot, %State{} = state) do
+    %SnapshotData{data: data, metadata: metadata} = snapshot
+    %State{serializer: serializer} = state
+
     %SnapshotData{
       snapshot
       | data: serializer.serialize(data),
@@ -439,10 +477,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   def deserialize(data, %State{serializer: nil}), do: data
 
-  def deserialize(
-        %RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event,
-        %State{serializer: serializer}
-      ) do
+  def deserialize(%RecordedEvent{} = recorded_event, %State{} = state) do
+    %RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event
+    %State{serializer: serializer} = state
+
     %RecordedEvent{
       recorded_event
       | data: serializer.deserialize(data, type: event_type),
@@ -450,10 +488,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
-  def deserialize(
-        %SnapshotData{data: data, metadata: metadata, source_type: source_type} = snapshot,
-        %State{serializer: serializer}
-      ) do
+  def deserialize(%SnapshotData{} = snapshot, %State{} = state) do
+    %SnapshotData{data: data, metadata: metadata, source_type: source_type} = snapshot
+    %State{serializer: serializer} = state
+
     %SnapshotData{
       snapshot
       | data: serializer.deserialize(data, type: source_type),
