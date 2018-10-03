@@ -12,6 +12,7 @@
 - Process manager event handling timeout ([#193](https://github.com/commanded/commanded/pull/193)).
 - Allow event handlers to subscribe to individual streams ([#203](https://github.com/commanded/commanded/pull/203)).
 - Add new values for `expected_version` for event store append events behaviour ([#127](https://github.com/commanded/commanded/pull/127)).
+- Export `Commanded.Commands.Router` macros in `.formatter.exs` file ([#204](https://github.com/commanded/commanded/pull/204)).
 
 ### Bug fixes
 
