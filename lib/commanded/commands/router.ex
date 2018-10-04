@@ -448,7 +448,7 @@ defmodule Commanded.Commands.Router do
       def dispatch(command, _opts), do: unregistered_command(command)
 
       defp unregistered_command(command) do
-        Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)
+        _ = Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)
         {:error, :unregistered_command}
       end
     end
