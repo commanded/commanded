@@ -319,9 +319,6 @@ defmodule Commanded.Commands.Router do
 
       Returns `:ok` on success, or `{:error, reason}` on failure.
       """
-      @spec dispatch(command :: struct) :: :ok
-        | {:error, :consistency_timeout}
-        | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, [])
 
@@ -371,9 +368,6 @@ defmodule Commanded.Commands.Router do
       `{:ok, aggregate_version}` or `{:ok, %ExecutionResult{..}}`. Returns
       `{:error, reason}` on failure.
       """
-      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok
-        | {:error, :consistency_timeout}
-        | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
 
       def dispatch(%unquote(command_module){} = command, :infinity),
@@ -444,7 +438,16 @@ defmodule Commanded.Commands.Router do
       @doc """
       Return an error if an unregistered command is dispatched
       """
+      @spec dispatch(command :: struct) :: :ok
+        | {:error, :unregistered_command}
+        | {:error, :consistency_timeout}
+        | {:error, reason :: term}
       def dispatch(command), do: unregistered_command(command)
+
+      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok
+        | {:error, :unregistered_command}
+        | {:error, :consistency_timeout}
+        | {:error, reason :: term}
       def dispatch(command, _opts), do: unregistered_command(command)
 
       defp unregistered_command(command) do
