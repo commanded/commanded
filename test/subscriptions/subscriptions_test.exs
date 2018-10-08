@@ -1,12 +1,8 @@
 defmodule Commanded.SubscriptionsTest do
-	use ExUnit.Case
+	use Commanded.StorageCase
 
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
-
-  setup do
-    Subscriptions.reset()
-  end
 
   describe "register event handler" do
     test "should be registered" do
