@@ -12,6 +12,7 @@
 - Allow event handlers to subscribe to individual streams ([#203](https://github.com/commanded/commanded/pull/203)).
 - Add new values for `expected_version` for event store append events behaviour ([#127](https://github.com/commanded/commanded/pull/127)).
 - Export `Commanded.Commands.Router` macros in `.formatter.exs` file ([#204](https://github.com/commanded/commanded/pull/204)).
+- Generate specs and docs for Router dispatch functions only once ([#206](https://github.com/commanded/commanded/pull/206)).
 
 ### Bug fixes
 
