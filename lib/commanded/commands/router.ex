@@ -314,66 +314,9 @@ defmodule Commanded.Commands.Router do
 
       @registered_commands [unquote(command_module) | @registered_commands]
 
-      @doc """
-      Dispatch the given command to the registered handler.
-
-      Returns `:ok` on success, or `{:error, reason}` on failure.
-      """
-      @spec dispatch(command :: struct) :: :ok
-        | {:error, :consistency_timeout}
-        | {:error, reason :: term}
       def dispatch(command)
       def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, [])
 
-      @doc """
-      Dispatch the given command to the registered handler providing a timeout.
-
-      - `timeout_or_opts` is either an integer timeout or a keyword list of
-        options. The timeout must be an integer greater than zero which
-        specifies how many milliseconds to allow the command to be handled, or
-        the atom `:infinity` to wait indefinitely. The default timeout value is
-        five seconds.
-
-        Alternatively, an options keyword list can be provided, it supports the
-        following options.
-
-        Options:
-
-          - `causation_id` - an optional UUID used to identify the cause of the
-            command being dispatched.
-
-          - `correlation_id` - an optional UUID used to correlate related
-            commands/events together.
-
-          - `consistency` - one of `:eventual` (default) or `:strong`. By
-            setting the consistency to `:strong` a successful command dispatch
-            will block until all strongly consistent event handlers and process
-            managers have handled all events created by the command.
-
-          - `timeout` - as described above.
-
-          - `include_aggregate_version` - set to true to include the aggregate
-            stream version in the success response: `{:ok, aggregate_version}`
-            The default is false, to return just `:ok`.
-
-          - `include_execution_result` - set to true to include more
-            information about the dispatch, like the aggregate name, uuid, and
-            the produced events. Overrides `include_aggregate_version`. The
-            default is false to return `:ok`. See
-            `Commanded.Commands.Dispatcher.ExecutionResult`.
-
-          - `metadata` - an optional map containing key/value pairs comprising
-            the metadata to be associated with all events created by the
-            command.
-
-      Returns `:ok` on success, unless `:include_aggregate_version` or
-      `:include_execution_result` is enabled, where it respectively returns
-      `{:ok, aggregate_version}` or `{:ok, %ExecutionResult{..}}`. Returns
-      `{:error, reason}` on failure.
-      """
-      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok
-        | {:error, :consistency_timeout}
-        | {:error, reason :: term}
       def dispatch(command, timeout_or_opts)
 
       def dispatch(%unquote(command_module){} = command, :infinity),
@@ -442,9 +385,66 @@ defmodule Commanded.Commands.Router do
       def registered_commands, do: @registered_commands
 
       @doc """
-      Return an error if an unregistered command is dispatched
+      Dispatch the given command to the registered handler.
+
+      Returns `:ok` on success, or `{:error, reason}` on failure.
       """
+      @spec dispatch(command :: struct) :: :ok
+        | {:error, :unregistered_command}
+        | {:error, :consistency_timeout}
+        | {:error, reason :: term}
       def dispatch(command), do: unregistered_command(command)
+
+      @doc """
+      Dispatch the given command to the registered handler providing a timeout.
+
+      - `timeout_or_opts` is either an integer timeout or a keyword list of
+        options. The timeout must be an integer greater than zero which
+        specifies how many milliseconds to allow the command to be handled, or
+        the atom `:infinity` to wait indefinitely. The default timeout value is
+        five seconds.
+
+        Alternatively, an options keyword list can be provided, it supports the
+        following options.
+
+        Options:
+
+          - `causation_id` - an optional UUID used to identify the cause of the
+            command being dispatched.
+
+          - `correlation_id` - an optional UUID used to correlate related
+            commands/events together.
+
+          - `consistency` - one of `:eventual` (default) or `:strong`. By
+            setting the consistency to `:strong` a successful command dispatch
+            will block until all strongly consistent event handlers and process
+            managers have handled all events created by the command.
+
+          - `timeout` - as described above.
+
+          - `include_aggregate_version` - set to true to include the aggregate
+            stream version in the success response: `{:ok, aggregate_version}`
+            The default is false, to return just `:ok`.
+
+          - `include_execution_result` - set to true to include more
+            information about the dispatch, like the aggregate name, uuid, and
+            the produced events. Overrides `include_aggregate_version`. The
+            default is false to return `:ok`. See
+            `Commanded.Commands.Dispatcher.ExecutionResult`.
+
+          - `metadata` - an optional map containing key/value pairs comprising
+            the metadata to be associated with all events created by the
+            command.
+
+      Returns `:ok` on success, unless `:include_aggregate_version` or
+      `:include_execution_result` is enabled, where it respectively returns
+      `{:ok, aggregate_version}` or `{:ok, %ExecutionResult{..}}`. Returns
+      `{:error, reason}` on failure.
+      """
+      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) :: :ok
+        | {:error, :unregistered_command}
+        | {:error, :consistency_timeout}
+        | {:error, reason :: term}
       def dispatch(command, _opts), do: unregistered_command(command)
 
       defp unregistered_command(command) do
