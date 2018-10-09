@@ -126,6 +126,15 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       refute_receive {:DOWN, ^ref, :process, ^pid, _}
     end
+
+    test "should shutdown after error", %{aggregate_uuid: aggregate_uuid, ref: ref} do
+      ib = "clearly invalid"
+
+      {:error, :invalid_initial_balance} =
+        BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: ib})
+
+      assert_receive {:DOWN, ^ref, :process, _, :normal}
+    end
   end
 
   describe "deprecated `after_command/1` callback" do
