@@ -128,9 +128,10 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
     end
 
     test "should shutdown after error", %{aggregate_uuid: aggregate_uuid, ref: ref} do
+      ib = "clearly invalid"
+
       {:error, :invalid_initial_balance} =
-        BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: "clearly
-          invalid"})
+        BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: ib})
 
       assert_receive {:DOWN, ^ref, :process, _, :normal}
     end
