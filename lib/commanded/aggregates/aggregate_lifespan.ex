@@ -9,9 +9,15 @@ defmodule Commanded.Aggregates.AggregateLifespan do
   it in your router.
 
   After a command successfully executes, and creates at least one domain event,
-  the `c:after_event/1` function is called passing the last created event. The
-  returned inactivity timeout value is used to shutdown the aggregate process if
-  no other messages are received.
+  the `c:after_event/1` function is called passing the last created event.
+
+  When a command returns `[]`, the command struct is passed to the `c:after_command/1` function.
+
+  Finally, if there is an error executing the command, the error reason is passed to the
+  `c:after_error/1` function.
+
+  For all the above, the returned inactivity timeout value is used to shutdown the aggregate process
+  if no other messages are received.
 
   ## Supported return values
 
@@ -35,6 +41,10 @@ defmodule Commanded.Aggregates.AggregateLifespan do
       defmodule BankAccountLifespan do
         @behaviour Commanded.Aggregates.AggregateLifespan
 
+        def after_command(%CloseAccount{}), do: :stop
+
+        def after_error(:invalid_initial_balance), do: 10_000
+
         def after_event(%BankAccountOpened{}), do: :infinity
         def after_event(%MoneyDeposited{}), do: 60_000
         def after_event(%BankAccountClosed{}), do: :stop
@@ -54,9 +64,23 @@ defmodule Commanded.Aggregates.AggregateLifespan do
 
   """
 
+  @type error :: {:error, any}
+
   @doc """
   Aggregate process will be stopped after specified inactivity timeout unless
   `:infinity`, `:hibernate`, or `:stop` are returned.
   """
   @callback after_event(event :: struct()) :: timeout() | :hibernate | :stop
+
+  @doc """
+  Aggregate process will be stopped after specified inactivity timeout unless
+  `:infinity`, `:hibernate`, or `:stop` are returned.
+  """
+  @callback after_command(cmd :: struct()) :: timeout() | :hibernate | :stop
+
+  @doc """
+  Aggregate process will be stopped after specified inactivity timeout unless
+  `:infinity`, `:hibernate`, or `:stop` are returned.
+  """
+  @callback after_error(atom) :: timeout() | :hibernate | :stop
 end

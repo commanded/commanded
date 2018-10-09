@@ -179,13 +179,23 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
+  def handle_call(
+        {:execute_command, %ExecutionContext{lifespan: lifespan, command: cmd} = context},
+        _from,
+        %Aggregate{} = state
+      ) do
     {reply, state} = execute_command(context, state)
 
     lifespan_timeout =
       case reply do
         {:ok, _stream_version, events} ->
-          aggregate_lifespan_timeout(context, events)
+          aggregate_lifespan_timeout(context, events, &lifespan.after_event/1)
+
+        {:ok, _, []} ->
+          aggregate_lifespan_timeout(context, cmd, &lifespan.after_command/1)
+
+        {:error, reason} ->
+          aggregate_lifespan_timeout(context, reason, &lifespan.after_error/1)
 
         _reply ->
           :infinity
@@ -357,12 +367,14 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp aggregate_lifespan_timeout(_context, []), do: :infinity
+  defp aggregate_lifespan_timeout(%ExecutionContext{} = context, [event], timeout_fun) do
+    aggregate_lifespan_timeout(%ExecutionContext{} = context, event, timeout_fun)
+  end
 
-  defp aggregate_lifespan_timeout(%ExecutionContext{} = context, [event]) do
+  defp aggregate_lifespan_timeout(%ExecutionContext{} = context, event, timeout_fun) do
     %ExecutionContext{lifespan: lifespan} = context
 
-    case lifespan.after_event(event) do
+    case timeout_fun.(event) do
       timeout when timeout in [:infinity, :hibernate, :stop] ->
         timeout
 
@@ -380,8 +392,8 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp aggregate_lifespan_timeout(context, [_event | events]),
-    do: aggregate_lifespan_timeout(context, events)
+  defp aggregate_lifespan_timeout(context, [_event | events], timeout_fun),
+    do: aggregate_lifespan_timeout(context, events, timeout_fun)
 
   defp execute_command(%ExecutionContext{retry_attempts: retry_attempts}, %Aggregate{} = state)
        when retry_attempts < 0,
