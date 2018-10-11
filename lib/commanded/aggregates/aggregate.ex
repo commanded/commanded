@@ -32,7 +32,7 @@ defmodule Commanded.Aggregates.Aggregate do
   In `config/config.exs` enable snapshots for `ExampleAggregate` after every ten
   events:
 
-      config :commanded, ExampleAggregate
+      config :commanded, ExampleAggregate,
         snapshot_every: 10,
         snapshot_version: 1
 
@@ -175,48 +175,49 @@ defmodule Commanded.Aggregates.Aggregate do
           state
       end
 
-    {:noreply, state, lifespan_timeout}
+    case lifespan_timeout do
+      :stop ->
+        {:stop, :normal, state}
+
+      lifespan_timeout ->
+        {:noreply, state, lifespan_timeout}
+    end
   end
 
   @doc false
-  def handle_call(
-        {:execute_command, %ExecutionContext{lifespan: lifespan, command: cmd} = context},
-        _from,
-        %Aggregate{} = state
-      ) do
+  def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
+    %ExecutionContext{lifespan: lifespan, command: command} = context
+
     {reply, state} = execute_command(context, state)
 
     lifespan_timeout =
       case reply do
+        {:ok, _stream_version, []} ->
+          aggregate_lifespan_timeout(lifespan, :after_command, command)
+
         {:ok, _stream_version, events} ->
-          aggregate_lifespan_timeout(context, events, &lifespan.after_event/1)
+          aggregate_lifespan_timeout(lifespan, :after_event, events)
 
-        {:ok, _, []} ->
-          aggregate_lifespan_timeout(context, cmd, &lifespan.after_command/1)
-
-        {:error, reason} ->
-          aggregate_lifespan_timeout(context, reason, &lifespan.after_error/1)
+        {:error, error} ->
+          aggregate_lifespan_timeout(lifespan, :after_error, error)
 
         _reply ->
           :infinity
       end
 
-    case lifespan_timeout do
-      :stop ->
-        {:stop, :normal, reply, state}
+    state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
-      lifespan_timeout ->
-        %Aggregate{aggregate_version: aggregate_version, snapshotting: snapshotting} = state
+    %Aggregate{aggregate_version: aggregate_version, snapshotting: snapshotting} = state
 
-        state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
+    if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
+      :ok = GenServer.cast(self(), :take_snapshot)
 
-        if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
-          :ok = GenServer.cast(self(), :take_snapshot)
-
-          {:reply, reply, state}
-        else
-          {:reply, reply, state, lifespan_timeout}
-        end
+      {:reply, reply, state}
+    else
+      case lifespan_timeout do
+        :stop -> {:stop, :normal, reply, state}
+        lifespan_timeout -> {:reply, reply, state, lifespan_timeout}
+      end
     end
   end
 
@@ -367,14 +368,11 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp aggregate_lifespan_timeout(%ExecutionContext{} = context, [event], timeout_fun) do
-    aggregate_lifespan_timeout(%ExecutionContext{} = context, event, timeout_fun)
-  end
+  defp aggregate_lifespan_timeout(lifespan, timeout_function_name, args) do
+    # Take the last event or the command/error
+    args = args |> List.wrap() |> Enum.take(-1)
 
-  defp aggregate_lifespan_timeout(%ExecutionContext{} = context, event, timeout_fun) do
-    %ExecutionContext{lifespan: lifespan} = context
-
-    case timeout_fun.(event) do
+    case apply(lifespan, timeout_function_name, args) do
       timeout when timeout in [:infinity, :hibernate, :stop] ->
         timeout
 
@@ -383,17 +381,15 @@ defmodule Commanded.Aggregates.Aggregate do
 
       invalid ->
         Logger.warn(fn ->
-          "Invalid timeout for aggregate lifespan #{inspect(lifespan)}, expected a non-negative integer, `:infinity`, or `:hibernate` but got: #{
+          "Invalid timeout for aggregate lifespan " <>
+            inspect(lifespan) <>
+            ", expected a non-negative integer, `:infinity`, `:hibernate`, or `:stop` but got: " <>
             inspect(invalid)
-          }"
         end)
 
         :infinity
     end
   end
-
-  defp aggregate_lifespan_timeout(context, [_event | events], timeout_fun),
-    do: aggregate_lifespan_timeout(context, events, timeout_fun)
 
   defp execute_command(%ExecutionContext{retry_attempts: retry_attempts}, %Aggregate{} = state)
        when retry_attempts < 0,

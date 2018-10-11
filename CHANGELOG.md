@@ -18,6 +18,38 @@
 
 - Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
 
+### Breaking changes
+
+- Extend aggregate lifespan behaviour to include `after_error/1` and `after_command/1` callbacks ([#210](https://github.com/commanded/commanded/pull/210)).
+
+    Previously you only had to define an `after_event/1` callback function to implement the `Commanded.Aggregates.AggregateLifespan` behaviour:
+
+    ```elixir
+    defmodule BankAccountLifespan do
+      @behaviour Commanded.Aggregates.AggregateLifespan
+
+      def after_event(%BankAccountClosed{}), do: :stop
+      def after_event(_event), do: :infinity
+    end
+    ```
+
+    Now you must also define `after_command/1` and `after_error/1` callback functions:
+
+    ```elixir
+    defmodule BankAccountLifespan do
+      @behaviour Commanded.Aggregates.AggregateLifespan
+
+      def after_event(%BankAccountClosed{}), do: :stop
+      def after_event(_event), do: :infinity
+
+      def after_command(%CloseAccount{}), do: :stop
+      def after_command(_command), do: :infinity
+
+      def after_error(:invalid_initial_balance), do: :stop
+      def after_error(_error), do: :stop
+    end
+    ```
+
 ## v0.17.1
 
 ### Enhancements
