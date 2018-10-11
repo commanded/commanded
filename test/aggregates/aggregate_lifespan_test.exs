@@ -126,6 +126,32 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       refute_receive {:DOWN, ^ref, :process, ^pid, _}
     end
+
+    test "should adhere to aggregate lifespan after error", %{
+      aggregate_uuid: aggregate_uuid,
+      ref: ref
+    } do
+      ib = "clearly invalid"
+
+      {:error, :invalid_initial_balance} =
+        BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: ib})
+
+      refute_receive {:DOWN, ^ref, :process, _, :normal}, 29
+      assert_receive {:DOWN, ^ref, :process, _, :normal}, 35
+    end
+
+    test "should adhere to timeout when no event returned", %{
+      aggregate_uuid: aggregate_uuid,
+      ref: ref
+    } do
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: aggregate_uuid, initial_balance: 100})
+
+      :ok = BankRouter.dispatch(%CloseAccount{account_number: aggregate_uuid})
+      :ok = BankRouter.dispatch(%CloseAccount{account_number: aggregate_uuid})
+
+      assert_receive {:DOWN, ^ref, :process, _, :normal}
+    end
   end
 
   describe "deprecated `after_command/1` callback" do

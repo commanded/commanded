@@ -13,4 +13,6 @@ defmodule Commanded.Aggregates.DefaultLifespan do
   Aggregate will run indefinitely once started.
   """
   def after_event(_event), do: :infinity
+  def after_command(_event), do: :infinity
+  def after_error(_event), do: :infinity
 end

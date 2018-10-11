@@ -31,6 +31,10 @@ defmodule Commanded.ExampleDomain.BankAccount do
     BankAccountClosed
   }
 
+  def open_account(%BankAccount{state: nil}, %OpenAccount{initial_balance: "clearly invalid"}) do
+    {:error, :invalid_initial_balance}
+  end
+
   def open_account(%BankAccount{state: nil}, %OpenAccount{
         account_number: account_number,
         initial_balance: initial_balance
@@ -81,6 +85,10 @@ defmodule Commanded.ExampleDomain.BankAccount do
           balance: balance
         }
     end
+  end
+
+  def close_account(%BankAccount{state: :closed}, %CloseAccount{}) do
+    []
   end
 
   def close_account(%BankAccount{state: :active}, %CloseAccount{account_number: account_number}) do
