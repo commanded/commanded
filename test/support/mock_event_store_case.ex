@@ -29,6 +29,8 @@ defmodule Commanded.MockEventStoreCase do
   end
 
   defp use_event_store_adapter(adapter) do
+    expect(MockEventStore, :child_spec, fn -> [] end)
+
     :ok = Application.stop(:commanded)
 
     Application.put_env(:commanded, :event_store_adapter, adapter)

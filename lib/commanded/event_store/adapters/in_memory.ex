@@ -21,12 +21,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     ]
   end
 
-  defmodule Subscription do
-    @moduledoc false
-
-    defstruct [:stream_uuid, :name, :subscriber, :start_from, last_seen_event_number: 0]
-  end
-
   alias Commanded.EventStore.Adapters.InMemory.{State, Subscription}
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
@@ -39,6 +33,16 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   @impl GenServer
   def init(%State{} = state) do
     {:ok, state}
+  end
+
+  @impl Commanded.EventStore
+  def child_spec do
+    opts = Application.get_env(:commanded, __MODULE__)
+
+    [
+      child_spec(opts),
+      {DynamicSupervisor, strategy: :one_for_one, name: __MODULE__.SubscriptionsSupervisor}
+    ]
   end
 
   @impl Commanded.EventStore
@@ -74,8 +78,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def unsubscribe(subscription_name) do
-    GenServer.call(__MODULE__, {:unsubscribe, subscription_name})
+  def unsubscribe(subscription) do
+    GenServer.call(__MODULE__, {:unsubscribe, subscription})
   end
 
   @impl Commanded.EventStore
@@ -207,15 +211,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {reply, state} =
       case Map.get(subscriptions, subscription_name) do
         nil ->
-          state = persistent_subscription(subscription, state)
-
-          {{:ok, subscriber}, state}
+          persistent_subscription(subscription, state)
 
         %Subscription{subscriber: nil} = subscription ->
-          state =
-            persistent_subscription(%Subscription{subscription | subscriber: subscriber}, state)
-
-          {{:ok, subscriber}, state}
+          persistent_subscription(%Subscription{subscription | subscriber: subscriber}, state)
 
         _subscription ->
           {{:error, :subscription_already_exists}, state}
@@ -225,10 +224,15 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl GenServer
-  def handle_call({:unsubscribe, subscription_name}, _from, %State{} = state) do
+  def handle_call({:unsubscribe, subscription}, _from, %State{} = state) do
     %State{persistent_subscriptions: subscriptions} = state
 
-    state = %State{state | persistent_subscriptions: Map.delete(subscriptions, subscription_name)}
+    :ok = stop_subscription(subscription)
+
+    state = %State{
+      state
+      | persistent_subscriptions: remove_subscriber_by_pid(subscriptions, subscription)
+    }
 
     {:reply, :ok, state}
   end
@@ -266,7 +270,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def handle_call(:reset!, _from, %State{} = state) do
-    %State{serializer: serializer} = state
+    %State{serializer: serializer, persistent_subscriptions: subscriptions} = state
+
+    for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
+      :ok = stop_subscription(subscriber)
+    end
 
     {:reply, :ok, %State{serializer: serializer}}
   end
@@ -359,19 +367,30 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   defp persistent_subscription(%Subscription{} = subscription, %State{} = state) do
-    %Subscription{name: subscription_name, subscriber: subscriber} = subscription
+    %Subscription{name: subscription_name} = subscription
     %State{persistent_subscriptions: subscriptions, persisted_events: persisted_events} = state
 
-    Process.monitor(subscriber)
+    subscription_spec = subscription |> Subscription.child_spec() |> Map.put(:restart, :temporary)
 
-    send(subscriber, {:subscribed, subscriber})
+    {:ok, pid} =
+      DynamicSupervisor.start_child(__MODULE__.SubscriptionsSupervisor, subscription_spec)
+
+    Process.monitor(pid)
 
     catch_up(subscription, persisted_events, state)
 
-    %State{
+    subscription = %Subscription{subscription | subscriber: pid}
+
+    state = %State{
       state
       | persistent_subscriptions: Map.put(subscriptions, subscription_name, subscription)
     }
+
+    {{:ok, pid}, state}
+  end
+
+  defp stop_subscription(subscription) do
+    DynamicSupervisor.terminate_child(__MODULE__.SubscriptionsSupervisor, subscription)
   end
 
   defp remove_subscriber_by_pid(subscriptions, pid) do
@@ -435,19 +454,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   defp publish_to_persistent_subscriptions(stream_uuid, events, %State{} = state) do
     %State{persistent_subscriptions: subscriptions} = state
 
-    subscribers =
-      subscriptions
-      |> Map.values()
-      |> Enum.filter(fn
-        %Subscription{stream_uuid: ^stream_uuid} -> true
-        %Subscription{stream_uuid: :all} -> true
-        %Subscription{} -> false
-      end)
-      |> Enum.map(& &1.subscriber)
-      |> Enum.filter(&is_pid/1)
-
-    for subscriber <- subscribers do
-      send(subscriber, {:events, events})
+    for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
+      send(subscriber, {:events, stream_uuid, events})
     end
   end
 

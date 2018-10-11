@@ -197,7 +197,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert_receive_events(subscription, 1, from: 1)
 
-        :ok = EventStore.unsubscribe("subscriber")
+        :ok = EventStore.unsubscribe(subscription)
 
         :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
         :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
@@ -219,12 +219,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
           assert length(received_events) == 3
         end)
 
-        # wait for last `ack`
-        wait_for_event_store()
-
         ProcessHelper.shutdown(subscriber)
-
-        wait_for_event_store()
 
         {:ok, subscriber} = Subscriber.start_link()
 

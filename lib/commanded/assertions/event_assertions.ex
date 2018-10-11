@@ -113,7 +113,7 @@ defmodule Commanded.Assertions.EventAssertions do
     try do
       apply(callback_fn, [subscription])
     after
-      remove_subscription(subscription_name)
+      remove_subscription(subscription)
     end
   end
 
@@ -176,8 +176,8 @@ defmodule Commanded.Assertions.EventAssertions do
   defp create_subscription(subscription_name),
     do: EventStore.subscribe_to(:all, subscription_name, self(), :origin)
 
-  defp remove_subscription(subscription_name),
-    do: EventStore.unsubscribe(subscription_name)
+  defp remove_subscription(subscription),
+    do: EventStore.unsubscribe(subscription)
 
   defp ack_events(subscription, events),
     do: EventStore.ack_event(subscription, List.last(events))

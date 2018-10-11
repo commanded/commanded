@@ -10,6 +10,9 @@ config :commanded,
   dispatch_consistency_timeout: 100,
   event_store_adapter: Commanded.EventStore.Adapters.InMemory
 
+config :commanded, Commanded.EventStore.Adapters.InMemory,
+  serializer: Commanded.Serialization.JsonSerializer
+
 config :commanded, Commanded.Aggregates.LifespanAggregate,
   snapshot_every: 2,
   snapshot_version: 1

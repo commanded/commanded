@@ -7,11 +7,18 @@ defmodule Commanded.EventStore do
 
   @type stream_uuid :: String.t()
   @type start_from :: :origin | :current | integer
-  @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer()
+  @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer
   @type subscription_name :: String.t()
+  @type subscription :: any
+  @type subscriber :: pid
   @type source_uuid :: String.t()
   @type snapshot :: SnapshotData.t()
   @type error :: term
+
+  @doc """
+  Return a child spec defining all processes required by the event store.
+  """
+  @callback child_spec() :: [:supervisor.child_spec()]
 
   @doc """
   Append one or more events to a stream atomically.
@@ -80,8 +87,8 @@ defmodule Commanded.EventStore do
       {:ok, subscription} = Commanded.EventStore.subscribe_to("stream1234", "Example", self())
 
   """
-  @callback subscribe_to(stream_uuid | :all, subscription_name, subscriber :: pid, start_from) ::
-              {:ok, subscription :: pid}
+  @callback subscribe_to(stream_uuid | :all, subscription_name, subscriber, start_from) ::
+              {:ok, subscription}
               | {:error, :subscription_already_exists}
               | {:error, error}
 
@@ -94,7 +101,7 @@ defmodule Commanded.EventStore do
   @doc """
   Unsubscribe an existing subscriber from event notifications.
   """
-  @callback unsubscribe(subscription_name) :: :ok
+  @callback unsubscribe(subscription) :: :ok
 
   @doc """
   Read a snapshot, if available, for a given source.
@@ -110,6 +117,11 @@ defmodule Commanded.EventStore do
   Delete a previously recorded snapshop for a given source
   """
   @callback delete_snapshot(source_uuid) :: :ok | {:error, error}
+
+  @spec child_spec() :: [:supervisor.child_spec()]
+  def child_spec do
+    event_store_adapter().child_spec()
+  end
 
   @doc """
   Append one or more events to a stream atomically.
@@ -154,8 +166,8 @@ defmodule Commanded.EventStore do
   @doc """
   Create a persistent subscription to an event stream.
   """
-  @spec subscribe_to(stream_uuid | :all, subscription_name, subscriber :: pid, start_from) ::
-          {:ok, subscription :: pid}
+  @spec subscribe_to(stream_uuid | :all, subscription_name, subscriber, start_from) ::
+          {:ok, subscription}
           | {:error, :subscription_already_exists}
           | {:error, error}
   def subscribe_to(stream_uuid, subscription_name, subscriber, start_from)
@@ -175,9 +187,9 @@ defmodule Commanded.EventStore do
   @doc """
   Unsubscribe an existing subscriber from all event notifications.
   """
-  @spec unsubscribe(subscription_name) :: :ok
-  def unsubscribe(subscription_name) when is_binary(subscription_name) do
-    event_store_adapter().unsubscribe(subscription_name)
+  @spec unsubscribe(subscription) :: :ok
+  def unsubscribe(subscription) do
+    event_store_adapter().unsubscribe(subscription)
   end
 
   @doc """
