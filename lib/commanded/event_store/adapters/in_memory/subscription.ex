@@ -34,7 +34,7 @@ defmodule Commanded.EventStore.Adapters.InMemory.Subscription do
   end
 
   @impl GenServer
-  def handle_info({:DOWN, _ref, :process, pid, reason}, %Subscription{} = state) do
+  def handle_info({:DOWN, _ref, :process, _pid, reason}, %Subscription{} = state) do
     {:stop, reason, state}
   end
 end
