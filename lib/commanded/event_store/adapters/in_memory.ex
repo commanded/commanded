@@ -337,6 +337,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
     publish_events = Enum.map(new_events, &deserialize(&1, state))
 
+    publish_to_transient_subscribers(:all, publish_events, state)
     publish_to_transient_subscribers(stream_uuid, publish_events, state)
     publish_to_persistent_subscriptions(stream_uuid, publish_events, state)
 

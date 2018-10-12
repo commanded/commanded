@@ -24,9 +24,9 @@ defmodule Commanded.EventStore.Adapters.InMemory.Subscription do
 
   @impl GenServer
   def handle_info({:events, stream_uuid, events}, %Subscription{} = state) do
-    %Subscription{subscriber: subscriber, stream_uuid: subscription_stream_uuid} = state
+    %Subscription{subscriber: subscriber} = state
 
-    if subscription_stream_uuid in [:all, stream_uuid] do
+    if interested?(stream_uuid, state) do
       send(subscriber, {:events, events})
     end
 
@@ -37,4 +37,8 @@ defmodule Commanded.EventStore.Adapters.InMemory.Subscription do
   def handle_info({:DOWN, _ref, :process, _pid, reason}, %Subscription{} = state) do
     {:stop, reason, state}
   end
+
+  defp interested?(_stream_uuid, %Subscription{stream_uuid: :all}), do: true
+  defp interested?(stream_uuid, %Subscription{stream_uuid: stream_uuid}), do: true
+  defp interested?(_stream_uuid, %Subscription{}), do: false
 end

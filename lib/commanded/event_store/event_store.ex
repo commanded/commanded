@@ -159,7 +159,7 @@ defmodule Commanded.EventStore do
   Create a transient subscription to a single event stream.
   """
   @spec subscribe(stream_uuid | :all) :: :ok | {:error, error}
-  def subscribe(stream_uuid) when is_binary(stream_uuid) do
+  def subscribe(stream_uuid) when stream_uuid == :all or is_binary(stream_uuid) do
     event_store_adapter().subscribe(stream_uuid)
   end
 

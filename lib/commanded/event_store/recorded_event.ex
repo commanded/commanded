@@ -30,20 +30,20 @@ defmodule Commanded.EventStore.RecordedEvent do
 
   """
 
-  @type uuid :: String.t
+  @type uuid :: String.t()
 
   @type t :: %Commanded.EventStore.RecordedEvent{
-    event_id: uuid(),
-    event_number: non_neg_integer(),
-    stream_id: String.t,
-    stream_version: non_neg_integer(),
-    causation_id: uuid(),
-    correlation_id: uuid(),
-    event_type: String.t,
-    data: binary(),
-    metadata: binary(),
-    created_at: NaiveDateTime.t,
-  }
+          event_id: uuid(),
+          event_number: non_neg_integer(),
+          stream_id: String.t(),
+          stream_version: non_neg_integer(),
+          causation_id: uuid() | nil,
+          correlation_id: uuid() | nil,
+          event_type: String.t(),
+          data: binary(),
+          metadata: binary(),
+          created_at: NaiveDateTime.t()
+        }
 
   defstruct [
     :event_id,
@@ -55,6 +55,6 @@ defmodule Commanded.EventStore.RecordedEvent do
     :event_type,
     :data,
     :metadata,
-    :created_at,
+    :created_at
   ]
 end
