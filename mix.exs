@@ -104,7 +104,8 @@ defmodule Commanded.Mixfile do
         "test/event_store/support",
         "test/example_domain",
         "test/helpers",
-        "test/registration/support"
+        "test/registration/support",
+        "test/support"
       ],
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],

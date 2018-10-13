@@ -257,16 +257,18 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
     describe "resume subscription" do
       test "should remember last seen event number when subscription resumes" do
         :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream("stream2", 0, build_events(1))
 
         {:ok, subscriber} = Subscriber.start_link(self())
 
         assert_receive {:subscribed, _subscription}
         assert_receive {:events, received_events}
         assert length(received_events) == 1
+        assert Enum.map(received_events, & &1.stream_id) == ["stream1"]
 
         assert_receive {:events, received_events}
-        assert length(received_events) == 2
+        assert length(received_events) == 1
+        assert Enum.map(received_events, & &1.stream_id) == ["stream2"]
 
         stop_subscriber(subscriber)
 
@@ -278,6 +280,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert_receive {:events, received_events}
         assert length(received_events) == 1
+        assert Enum.map(received_events, & &1.stream_id) == ["stream3"]
 
         refute_receive {:events, _received_events}
       end
