@@ -182,8 +182,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
         events ->
           events
+          |> Enum.reverse()
           |> Stream.drop(max(0, start_version - 1))
           |> Stream.map(&deserialize(&1, state))
+          |> set_event_number_from_version()
       end
 
     {:reply, reply, state}
@@ -325,24 +327,38 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       end)
       |> Enum.map(&serialize(&1, state))
 
-    stream_events = Enum.concat(existing_events, new_events)
+    stream_events = prepend(existing_events, new_events)
     next_event_number = List.last(new_events).event_number + 1
 
     state = %State{
       state
       | streams: Map.put(streams, stream_uuid, stream_events),
-        persisted_events: [new_events | persisted_events],
+        persisted_events: prepend(persisted_events, new_events),
         next_event_number: next_event_number
     }
 
-    publish_events = Enum.map(new_events, &deserialize(&1, state))
+    publish_all_events = Enum.map(new_events, &deserialize(&1, state))
 
-    publish_to_transient_subscribers(:all, publish_events, state)
-    publish_to_transient_subscribers(stream_uuid, publish_events, state)
-    publish_to_persistent_subscriptions(stream_uuid, publish_events, state)
+    publish_to_transient_subscribers(:all, publish_all_events, state)
+    publish_to_persistent_subscriptions(:all, publish_all_events, state)
+
+    publish_stream_events = set_event_number_from_version(publish_all_events)
+
+    publish_to_transient_subscribers(stream_uuid, publish_stream_events, state)
+    publish_to_persistent_subscriptions(stream_uuid, publish_stream_events, state)
 
     {:ok, state}
   end
+
+  # Event number should equal stream version for stream events.
+  defp set_event_number_from_version(events) do
+    Enum.map(events, fn %RecordedEvent{stream_version: stream_version} = event ->
+      %RecordedEvent{event | event_number: stream_version}
+    end)
+  end
+
+  defp prepend(list, []), do: list
+  defp prepend(list, [item | remainder]), do: prepend([item | list], remainder)
 
   defp map_to_recorded_event(event_number, stream_uuid, stream_version, now, %EventData{} = event) do
     %EventData{
@@ -369,7 +385,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp persistent_subscription(%Subscription{} = subscription, %State{} = state) do
     %Subscription{name: subscription_name} = subscription
-    %State{persistent_subscriptions: subscriptions, persisted_events: persisted_events} = state
+    %State{persistent_subscriptions: subscriptions} = state
 
     subscription_spec = subscription |> Subscription.child_spec() |> Map.put(:restart, :temporary)
 
@@ -378,9 +394,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
     Process.monitor(pid)
 
-    catch_up(subscription, persisted_events, state)
-
     subscription = %Subscription{subscription | subscriber: pid}
+
+    catch_up(subscription, state)
 
     state = %State{
       state
@@ -404,10 +420,14 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end)
   end
 
-  defp ack_subscription_by_pid(subscriptions, %RecordedEvent{event_number: event_number}, pid) do
+  defp ack_subscription_by_pid(subscriptions, %RecordedEvent{} = event, pid) do
+    %RecordedEvent{event_number: event_number} = event
+
     Enum.reduce(subscriptions, subscriptions, fn
       {name, %Subscription{subscriber: subscriber} = subscription}, acc when subscriber == pid ->
-        Map.put(acc, name, %Subscription{subscription | last_seen_event_number: event_number})
+        subscription = %Subscription{subscription | last_seen: event_number}
+
+        Map.put(acc, name, subscription)
 
       _, acc ->
         acc
@@ -421,23 +441,43 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end)
   end
 
-  defp catch_up(%Subscription{subscriber: nil}, _persisted_events, _state), do: :ok
-  defp catch_up(%Subscription{start_from: :current}, _persisted_events, _state), do: :ok
+  defp catch_up(%Subscription{subscriber: nil}, _state), do: :ok
+  defp catch_up(%Subscription{start_from: :current}, _state), do: :ok
 
-  defp catch_up(%Subscription{} = subscription, persisted_events, %State{} = state) do
-    %Subscription{
-      subscriber: subscriber,
-      start_from: :origin,
-      last_seen_event_number: last_seen_event_number
-    } = subscription
+  defp catch_up(%Subscription{stream_uuid: :all} = subscription, %State{} = state) do
+    %Subscription{subscriber: subscriber, last_seen: last_seen} = subscription
+    %State{persisted_events: persisted_events} = state
 
     unseen_events =
       persisted_events
       |> Enum.reverse()
-      |> Enum.drop(last_seen_event_number)
+      |> Enum.drop(last_seen)
+      |> Enum.map(&deserialize(&1, state))
+      |> Enum.chunk_by(fn %RecordedEvent{stream_id: stream_id} -> stream_id end)
 
     for events <- unseen_events do
-      send(subscriber, {:events, Enum.map(events, &deserialize(&1, state))})
+      send(subscriber, {:events, events})
+    end
+  end
+
+  defp catch_up(%Subscription{} = subscription, %State{} = state) do
+    %Subscription{subscriber: subscriber, stream_uuid: stream_uuid, last_seen: last_seen} =
+      subscription
+
+    %State{streams: streams} = state
+
+    streams
+    |> Map.get(stream_uuid, [])
+    |> Enum.reverse()
+    |> Enum.drop(last_seen)
+    |> Enum.map(&deserialize(&1, state))
+    |> set_event_number_from_version()
+    |> case do
+      [] ->
+        :ok
+
+      unseen_events ->
+        send(subscriber, {:events, unseen_events})
     end
   end
 
@@ -451,12 +491,13 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end
   end
 
-  # publish events to subscribers
   defp publish_to_persistent_subscriptions(stream_uuid, events, %State{} = state) do
     %State{persistent_subscriptions: subscriptions} = state
 
-    for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
-      send(subscriber, {:events, stream_uuid, events})
+    for {_name, %Subscription{subscriber: subscriber, stream_uuid: ^stream_uuid}} <-
+          subscriptions,
+        is_pid(subscriber) do
+      send(subscriber, {:events, events})
     end
   end
 
