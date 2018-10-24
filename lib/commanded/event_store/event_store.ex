@@ -114,7 +114,7 @@ defmodule Commanded.EventStore do
   @callback record_snapshot(snapshot) :: :ok | {:error, error}
 
   @doc """
-  Delete a previously recorded snapshop for a given source
+  Delete a previously recorded snapshot for a given source
   """
   @callback delete_snapshot(source_uuid) :: :ok | {:error, error}
 
@@ -209,7 +209,7 @@ defmodule Commanded.EventStore do
   end
 
   @doc """
-  Delete a previously recorded snapshop for a given source
+  Delete a previously recorded snapshot for a given source
   """
   @spec delete_snapshot(source_uuid) :: :ok | {:error, error}
   def delete_snapshot(source_uuid) when is_binary(source_uuid) do
