@@ -93,7 +93,7 @@ defmodule Commanded.Event.HandleEventTest do
 
       :ok = EventStore.append_to_stream(stream_uuid, 1, to_event_data(new_events))
 
-      wait_for_event(MoneyDeposited)
+      wait_for_event(MoneyDeposited, fn event, recorded_event -> event.amount == 50 and recorded_event.event_number == 2 end)
 
       Wait.until(fn ->
         assert AppendingEventHandler.received_events() == new_events

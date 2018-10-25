@@ -162,7 +162,8 @@ defmodule Commanded.Assertions.EventAssertions do
     expected_event =
       Enum.find(received_events, fn received_event ->
         case received_event.event_type do
-          ^expected_type -> apply(predicate_fn, [received_event.data])
+          ^expected_type when is_function(predicate_fn, 2) -> apply(predicate_fn, [received_event.data, received_event])
+          ^expected_type when is_function(predicate_fn, 1) -> apply(predicate_fn, [received_event.data])
           _ -> false
         end
       end)
