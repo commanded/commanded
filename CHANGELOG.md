@@ -13,11 +13,13 @@
 - Add new values for `expected_version` for event store append events behaviour ([#127](https://github.com/commanded/commanded/pull/127)).
 - Export `Commanded.Commands.Router` macros in `.formatter.exs` file ([#204](https://github.com/commanded/commanded/pull/204)).
 - Generate specs and docs for Router dispatch functions only once ([#206](https://github.com/commanded/commanded/pull/206)).
+- Allow two-arity predicate function in `wait_for_event` receiving both event data and recorded event struct ([#213](https://github.com/commanded/commanded/pull/213)).
 - Make poison an optional dependency ([#215](https://github.com/commanded/commanded/pull/215)).
 
 ### Bug fixes
 
 - Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
+- Fix typo in `include_execution_result` global router option ([#216](https://github.com/commanded/commanded/pull/216)).
 
 ### Breaking changes
 
