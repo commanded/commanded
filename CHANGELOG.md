@@ -13,6 +13,7 @@
 - Add new values for `expected_version` for event store append events behaviour ([#127](https://github.com/commanded/commanded/pull/127)).
 - Export `Commanded.Commands.Router` macros in `.formatter.exs` file ([#204](https://github.com/commanded/commanded/pull/204)).
 - Generate specs and docs for Router dispatch functions only once ([#206](https://github.com/commanded/commanded/pull/206)).
+- Make poison an optional dependency ([#215](https://github.com/commanded/commanded/pull/215)).
 
 ### Bug fixes
 
