@@ -148,7 +148,7 @@ defmodule Commanded.Commands.Router do
         include_aggregate_version:
           Application.get_env(:commanded, :include_aggregate_version, false),
         include_execution_result:
-          Application.get_env(:commanded, :incldue_execution_result, false),
+          Application.get_env(:commanded, :include_execution_result, false),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
