@@ -1,8 +1,16 @@
 # Serialization
 
-JSON serialization is used by default for event and snapshot data.
+JSON serialization can be used for event and snapshot data.
 
-The included `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
+To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add `poison` to your deps
+
+    ```elixir
+    def deps do
+      [{:poison, "~> 3.1 or ~> 4.0"}]
+    end
+    ```
+
+The `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
 
 The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `NaiveDateTime` struct.
 

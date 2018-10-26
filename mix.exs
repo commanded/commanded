@@ -50,7 +50,7 @@ defmodule Commanded.Mixfile do
   defp deps do
     [
       {:elixir_uuid, "~> 1.2"},
-      {:poison, "~> 3.1 or ~> 4.0"},
+      {:poison, "~> 3.1 or ~> 4.0", optional: true},
 
       # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
