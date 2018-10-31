@@ -13,8 +13,9 @@ Commanded provides a solid technical foundation for you to build on. It allows y
 
 You can use Commanded with one of the following event stores for persistence:
 
-- [EventStore](https://github.com/commanded/eventstore) Elixir library, using PostgreSQL for persistence
+- [EventStore](https://github.com/commanded/eventstore) Elixir library using PostgreSQL for persistence
 - Greg Young's [Event Store](https://eventstore.org/).
+- [In-memory event store](https://github.com/commanded/commanded/wiki/In-memory-event-store) included for test use only.
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
@@ -24,12 +25,17 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 - [Wiki](https://github.com/commanded/commanded/wiki)
 - [Frequently asked questions](https://github.com/commanded/commanded/wiki/FAQ)
 - [Getting help](https://github.com/commanded/commanded/wiki/Getting-help)
+- [Latest published Hex package](https://hex.pm/packages/commanded) & [documentation](https://hexdocs.pm/commanded/)
 
 MIT License
 
 [![Build Status](https://travis-ci.org/commanded/commanded.svg?branch=master)](https://travis-ci.org/commanded/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ---
+
+> This README and the following guides follow the `master` branch which may not be the currently published version.
+>
+> [Read the documentation for the latest published version of Commanded on Hex](https://hexdocs.pm/commanded/).
 
 ### Overview
 
