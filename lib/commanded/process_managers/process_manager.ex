@@ -266,12 +266,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       def apply(process_manager, _event), do: process_manager
 
       @doc false
-      def error({:error, reason}, failed, %{pending_commands: pending, context: context}) do
-        error({:error, reason}, failed, pending, context)
-      end
-
-      @doc false
-      def error({:error, reason}, _failed_command, _pending_commands, _context),
+      def error({:error, reason}, _command, _failure_context),
         do: {:stop, reason}
     end
   end
@@ -284,7 +279,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       {:error, 4} ->
         if Module.defines?(mod, {name, arity}) do
           mod
-          |> error_deprecation_message
+          |> error_deprecation_message()
           |> IO.warn()
         end
 

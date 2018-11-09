@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
 
   alias Commanded.Helpers.ProcessHelper
   alias Commanded.ProcessManagers.{
+    DefaultErrorHandlingProcessManager,
     ErrorHandlingProcessManager,
     ErrorRouter,
   }
@@ -37,7 +38,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     assert_receive {:error, :too_many_attempts, %{attempts: 3}}
 
     # should shutdown process router
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}
   end
 
   test "should retry event with specified delay between attempts" do
@@ -61,7 +62,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     assert_receive {:error, :too_many_attempts, %{attempts: 3}}
 
     # should shutdown process router
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}
   end
 
   test "should skip the event when error reply is `{:skip, :continue_pending}`" do
@@ -106,7 +107,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     process_uuid = UUID.uuid4()
     command = %StartProcess{process_uuid: process_uuid}
 
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+    {:ok, process_router} = DefaultErrorHandlingProcessManager.start_link()
 
     Process.unlink(process_router)
     ref = Process.monitor(process_router)
@@ -114,7 +115,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     assert :ok = ErrorRouter.dispatch(command)
 
     # should shutdown process router
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, :process, ^process_router, :failed}
     refute Process.alive?(process_router)
   end
 

@@ -1,20 +1,13 @@
 defmodule Commanded.ProcessManagers.DefaultErrorHandlingProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.{
-    DefaultErrorHandlingProcessManager,
-    ExampleRouter,
-  }
-  alias Commanded.ProcessManagers.ErrorAggregate.Commands.{
-    AttemptProcess,
-  }
-  alias Commanded.ProcessManagers.ErrorAggregate.Events.{
-    ProcessStarted,
-  }
+  alias Commanded.ProcessManagers.{DefaultErrorHandlingProcessManager, ErrorRouter}
+  alias Commanded.ProcessManagers.ErrorAggregate.Commands.AttemptProcess
+  alias Commanded.ProcessManagers.ErrorAggregate.Events.ProcessStarted
 
   use Commanded.ProcessManagers.ProcessManager,
     name: "DefaultErrorHandlingProcessManager",
-    router: ExampleRouter
+    router: ErrorRouter
 
   defstruct [:process_uuid]
 
