@@ -53,6 +53,12 @@
     end
     ```
 
+## v0.17.2
+
+### Enhancements
+
+- Remove default `error/4` callback function from process manager to silence deprecation warning.
+
 ## v0.17.1
 
 ### Enhancements
