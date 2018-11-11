@@ -79,7 +79,6 @@ defmodule Commanded.Commands.Dispatcher do
     result =
       case Task.yield(task, timeout) || Task.shutdown(task) do
         {:ok, reply} -> reply
-        {:error, error} -> {:error, :aggregate_execution_failed, error}
         {:exit, error} -> {:error, :aggregate_execution_failed, error}
         nil -> {:error, :aggregate_execution_timeout}
       end
