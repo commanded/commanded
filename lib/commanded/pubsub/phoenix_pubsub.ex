@@ -84,7 +84,7 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     @doc """
     Subscribes the caller to the topic.
     """
-    @spec subscribe(atom) :: :ok | {:error, term}
+    @spec subscribe(String.t()) :: :ok | {:error, term}
     @impl Commanded.PubSub
     def subscribe(topic) when is_binary(topic) do
       Phoenix.PubSub.subscribe(__MODULE__, topic)
