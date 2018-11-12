@@ -364,8 +364,7 @@ defmodule Commanded.Event.Handler do
     Registration.start_link(name, __MODULE__, handler)
   end
 
-  @doc false
-  def name(name), do: {__MODULE__, name}
+  defp name(name), do: {__MODULE__, name}
 
   @doc false
   def init(%Handler{} = state) do
