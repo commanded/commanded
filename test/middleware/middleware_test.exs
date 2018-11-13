@@ -28,7 +28,7 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
 
     def before_dispatch(pipeline) do
       pipeline
-      |> Pipeline.assign_metadata(:updated_by, "ModifyMetadataMiddleware")
+      |> Pipeline.assign_metadata("updated_by", "ModifyMetadataMiddleware")
     end
 
     def after_dispatch(pipeline), do: pipeline
@@ -126,12 +126,12 @@ defmodule Commanded.Commands.Middleware.MiddlewareTest do
       Router.dispatch(
         %IncrementCount{aggregate_uuid: UUID.uuid4, by: 1},
         include_execution_result: true,
-        metadata: %{first_metadata: "first_metadata"}
+        metadata: %{"first_metadata" => "first_metadata"}
       )
 
     assert metadata == %{
-      first_metadata: "first_metadata",
-      updated_by: "ModifyMetadataMiddleware"
+      "first_metadata" => "first_metadata",
+      "updated_by" => "ModifyMetadataMiddleware"
     }
   end
 end
