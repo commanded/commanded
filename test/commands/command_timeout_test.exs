@@ -23,4 +23,12 @@ defmodule Commanded.Commands.CommandTimeoutTest do
         2_000
       )
   end
+
+  test "should accept :infinity as timeout option" do
+    :ok =
+      TimeoutRouter.dispatch(
+        %TimeoutCommand{aggregate_uuid: UUID.uuid4(), sleep_in_ms: 1},
+        :infinity
+      )
+  end
 end

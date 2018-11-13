@@ -111,7 +111,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   """
   def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000)
-      when is_atom(aggregate_module) and is_binary(aggregate_uuid) and is_number(timeout) do
+      when is_atom(aggregate_module) and is_binary(aggregate_uuid) and is_number(timeout) or timeout == :infinity do
     GenServer.call(
       via_name(aggregate_module, aggregate_uuid),
       {:execute_command, context},
