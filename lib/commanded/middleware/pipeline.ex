@@ -67,7 +67,7 @@ defmodule Commanded.Middleware.Pipeline do
   @doc """
   Puts the `key` with value equal to `value` into `metadata` map
   """
-  # TODO: Use of atom keys in metadata is depricated. As of mentioned in https://github.com/commanded/commanded/blob/master/guides/Events.md#metadata
+  # TODO: Use of atom keys in metadata is deprecated. As of mentioned in https://github.com/commanded/commanded/blob/master/guides/Events.md#metadata
   # Remove in next major release.
   def assign_metadata(%Pipeline{metadata: metadata} = pipeline, key, value) when is_binary(key) or is_atom(key) do
     %Pipeline{pipeline | metadata: Map.put(metadata, key, value)}

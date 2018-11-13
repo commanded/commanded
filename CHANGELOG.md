@@ -16,6 +16,8 @@
 - Allow two-arity predicate function in `wait_for_event` receiving both event data and recorded event struct ([#213](https://github.com/commanded/commanded/pull/213)).
 - Make poison an optional dependency ([#215](https://github.com/commanded/commanded/pull/215)).
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
+- Allow string keys for Commanded.Middleware.Pipeline.assign_metadata/3, atoms are being deprecated ([#228](https://github.com/commanded/commanded/pull/228))
+
 
 ### Bug fixes
 
