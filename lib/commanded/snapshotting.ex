@@ -27,8 +27,6 @@ defmodule Commanded.Snapshotting do
          {:ok, snapshot} <- EventStore.read_snapshot(source_uuid),
          :ok <- validate_snapshot(snapshotting, snapshot) do
       {:ok, snapshot}
-    else
-      {:error, error} -> {:error, error}
     end
   end
 
