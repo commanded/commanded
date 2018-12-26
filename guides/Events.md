@@ -8,6 +8,7 @@ Create a module per domain event and define the fields with `defstruct`. An even
 
 ```elixir
 defmodule BankAccountOpened do
+  @derive Jason.Encoder
   defstruct [:account_number, :initial_balance]
 end
 ```

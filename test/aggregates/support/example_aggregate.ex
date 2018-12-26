@@ -1,5 +1,6 @@
 defmodule Commanded.Aggregates.ExampleAggregate do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct items: [],
             last_index: 0
 
@@ -9,7 +10,10 @@ defmodule Commanded.Aggregates.ExampleAggregate do
   end
 
   defmodule Events do
-    defmodule(ItemAppended, do: defstruct([:index]))
+    defmodule ItemAppended do
+      @derive Jason.Encoder
+      defstruct([:index])
+    end
   end
 
   alias Commanded.Aggregates.ExampleAggregate

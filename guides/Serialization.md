@@ -2,11 +2,11 @@
 
 JSON serialization can be used for event and snapshot data.
 
-To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add `poison` to your deps
+To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add `jason` to your deps
 
     ```elixir
     def deps do
-      [{:poison, "~> 3.1 or ~> 4.0"}]
+      [{:jason, "~> 1.1"}]
     end
     ```
 
@@ -31,21 +31,21 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
 end
 ```
 
-[Poison](https://github.com/devinus/poison), a pure Elixir JSON library, is used for the actual serialization. It provides an extension point if you need to manually encode your event by using the `Poison.Encoder` protocol:
+[Jason](https://hex.pm/packages/jason), a pure Elixir JSON library, is used for the actual serialization. It provides an extension point if you need to manually encode your event by using the `Jason.Encoder` protocol:
 
 ```elixir
-defimpl Poison.Encoder, for: Person do
-  def encode(%{name: name, age: age}, options) do
-    Poison.Encoder.BitString.encode("#{name} (#{age})", options)
+defimpl Jason.Encoder, for: Person do
+  def encode(%{name: name, age: age}, opts) do
+    Jason.Encode.string("#{name} (#{age})", options)
   end
 end
 ```
 
-For maximum performance, make sure you `@derive [Poison.Encoder]` for any struct you plan on encoding.
+Make sure you `@derive Jason.Encoder` for any struct you plan on encoding.
 
 ```elixir
 defmodule ExampleEvent do
-  @derive [Poison.Encoder]
+  @derive Jason.Encoder
   defstruct [:name, :date]
 end
 ```

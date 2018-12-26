@@ -236,6 +236,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
     end
   end
 
+  @tag :wip
   describe "decode snapshot data" do
     setup do
       configure_snapshotting(SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)

@@ -10,11 +10,11 @@ Commanded can be installed from hex as follows.
     end
     ```
 
-2. Optionally add `poison` to make `Commanded.Serialization.JsonSerializer` available:
+2. Optionally add `jason` to make `Commanded.Serialization.JsonSerializer` available:
 
     ```elixir
     def deps do
-      [{:poison, "~> 3.1 or ~> 4.0"}]
+      [{:jason, "~> 1.1"}]
     end
     ```
 

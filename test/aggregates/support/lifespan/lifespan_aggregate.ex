@@ -1,12 +1,15 @@
 defmodule Commanded.Aggregates.LifespanAggregate do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct [:uuid, :reply_to, :lifespan]
 
   defmodule Command do
+    @derive Jason.Encoder
     defstruct [:uuid, :reply_to, :action, :lifespan]
   end
 
   defmodule Event do
+    @derive Jason.Encoder
     defstruct [:uuid, :reply_to, :lifespan]
   end
 

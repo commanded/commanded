@@ -1,5 +1,6 @@
 defmodule Commanded.Aggregates.SnapshotAggregate do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct [
     :name,
     :date
@@ -10,7 +11,10 @@ defmodule Commanded.Aggregates.SnapshotAggregate do
   end
 
   defmodule Events do
-    defmodule(Created, do: defstruct([:name, :date]))
+    defmodule Created do
+      @derive Jason.Encoder
+      defstruct([:name, :date])
+    end
   end
 
   alias Commanded.Aggregates.SnapshotAggregate
