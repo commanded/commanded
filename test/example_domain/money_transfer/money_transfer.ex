@@ -1,5 +1,6 @@
 defmodule Commanded.ExampleDomain.MoneyTransfer do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct transfer_uuid: nil,
             debit_account: nil,
             credit_account: nil,
@@ -9,15 +10,17 @@ defmodule Commanded.ExampleDomain.MoneyTransfer do
   alias Commanded.ExampleDomain.MoneyTransfer
 
   defmodule Commands do
-    defmodule(TransferMoney,
-      do: defstruct(transfer_uuid: nil, debit_account: nil, credit_account: nil, amount: nil)
-    )
+    defmodule TransferMoney do
+      @derive Jason.Encoder
+      defstruct(transfer_uuid: nil, debit_account: nil, credit_account: nil, amount: nil)
+    end
   end
 
   defmodule Events do
-    defmodule(MoneyTransferRequested,
-      do: defstruct(transfer_uuid: nil, debit_account: nil, credit_account: nil, amount: nil)
-    )
+    defmodule MoneyTransferRequested do
+      @derive Jason.Encoder
+      defstruct(transfer_uuid: nil, debit_account: nil, credit_account: nil, amount: nil)
+    end
   end
 
   alias Commands.{TransferMoney}

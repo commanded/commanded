@@ -1,5 +1,6 @@
 defmodule Commanded.ExampleDomain.BankAccount do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct account_number: nil,
             balance: 0,
             state: nil
@@ -7,18 +8,52 @@ defmodule Commanded.ExampleDomain.BankAccount do
   alias Commanded.ExampleDomain.BankAccount
 
   defmodule Commands do
-    defmodule(OpenAccount, do: defstruct([:account_number, :initial_balance]))
-    defmodule(DepositMoney, do: defstruct([:account_number, :transfer_uuid, :amount]))
-    defmodule(WithdrawMoney, do: defstruct([:account_number, :transfer_uuid, :amount]))
-    defmodule(CloseAccount, do: defstruct([:account_number]))
+    defmodule OpenAccount do
+      @derive Jason.Encoder
+      defstruct([:account_number, :initial_balance])
+    end
+
+    defmodule DepositMoney do
+      @derive Jason.Encoder
+      defstruct([:account_number, :transfer_uuid, :amount])
+    end
+
+    defmodule WithdrawMoney do
+      @derive Jason.Encoder
+      defstruct([:account_number, :transfer_uuid, :amount])
+    end
+
+    defmodule CloseAccount do
+      @derive Jason.Encoder
+      defstruct([:account_number])
+    end
   end
 
   defmodule Events do
-    defmodule(BankAccountOpened, do: defstruct([:account_number, :initial_balance]))
-    defmodule(MoneyDeposited, do: defstruct([:account_number, :transfer_uuid, :amount, :balance]))
-    defmodule(MoneyWithdrawn, do: defstruct([:account_number, :transfer_uuid, :amount, :balance]))
-    defmodule(AccountOverdrawn, do: defstruct([:account_number, :balance]))
-    defmodule(BankAccountClosed, do: defstruct([:account_number]))
+    defmodule BankAccountOpened do
+      @derive Jason.Encoder
+      defstruct([:account_number, :initial_balance])
+    end
+
+    defmodule MoneyDeposited do
+      @derive Jason.Encoder
+      defstruct([:account_number, :transfer_uuid, :amount, :balance])
+    end
+
+    defmodule MoneyWithdrawn do
+      @derive Jason.Encoder
+      defstruct([:account_number, :transfer_uuid, :amount, :balance])
+    end
+
+    defmodule AccountOverdrawn do
+      @derive Jason.Encoder
+      defstruct([:account_number, :balance])
+    end
+
+    defmodule BankAccountClosed do
+      @derive Jason.Encoder
+      defstruct([:account_number])
+    end
   end
 
   alias Commands.{OpenAccount, DepositMoney, WithdrawMoney, CloseAccount}

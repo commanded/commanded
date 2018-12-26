@@ -1,16 +1,30 @@
 defmodule Commanded.ProcessManagers.TodoList do
   @moduledoc false
-
+  @derive Jason.Encoder
   defstruct todo_uuids: []
 
   defmodule Commands do
-    defmodule(CreateList, do: defstruct([:list_uuid, :todo_uuids]))
-    defmodule(MarkAllDone, do: defstruct([:list_uuid]))
+    defmodule CreateList do
+      @derive Jason.Encoder
+      defstruct([:list_uuid, :todo_uuids])
+    end
+
+    defmodule MarkAllDone do
+      @derive Jason.Encoder
+      defstruct([:list_uuid])
+    end
   end
 
   defmodule Events do
-    defmodule(TodoListCreated, do: defstruct([:list_uuid, :todo_uuids]))
-    defmodule(ListAllDone, do: defstruct([:list_uuid, :todo_uuids]))
+    defmodule TodoListCreated do
+      @derive Jason.Encoder
+      defstruct([:list_uuid, :todo_uuids])
+    end
+
+    defmodule ListAllDone do
+      @derive Jason.Encoder
+      defstruct([:list_uuid, :todo_uuids])
+    end
   end
 
   alias Commanded.ProcessManagers.TodoList

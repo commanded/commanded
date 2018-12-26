@@ -7,6 +7,7 @@ defmodule Commanded.Commands.CustomIdentityRoutingTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
 
   defmodule AccountNumber do
+    @derive Jason.Encoder
     defstruct [:branch, :account_number]
 
     defimpl String.Chars do
@@ -40,6 +41,7 @@ defmodule Commanded.Commands.CustomIdentityRoutingTest do
 
   describe "invalid identity" do
     defmodule InvalidIdentity do
+      @derive Jason.Encoder
       defstruct [:uuid]
     end
 

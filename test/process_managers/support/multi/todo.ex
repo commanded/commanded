@@ -1,16 +1,31 @@
 defmodule Commanded.ProcessManagers.Todo do
   @moduledoc false
 
+  @derive Jason.Encoder
   defstruct status: nil
 
   defmodule Commands do
-    defmodule(CreateTodo, do: defstruct([:todo_uuid]))
-    defmodule(MarkDone, do: defstruct([:todo_uuid]))
+    defmodule CreateTodo do
+      @derive Jason.Encoder
+      defstruct([:todo_uuid])
+    end
+
+    defmodule MarkDone do
+      @derive Jason.Encoder
+      defstruct([:todo_uuid])
+    end
   end
 
   defmodule Events do
-    defmodule(TodoCreated, do: defstruct([:todo_uuid]))
-    defmodule(TodoDone, do: defstruct([:todo_uuid]))
+    defmodule TodoCreated do
+      @derive Jason.Encoder
+      defstruct([:todo_uuid])
+    end
+
+    defmodule TodoDone do
+      @derive Jason.Encoder
+      defstruct([:todo_uuid])
+    end
   end
 
   alias Commanded.ProcessManagers.Todo

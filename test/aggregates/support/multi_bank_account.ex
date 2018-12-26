@@ -12,8 +12,15 @@ defmodule Commanded.Aggregate.Multi.BankAccount do
   end
 
   defmodule Events do
-    defmodule(BankAccountOpened, do: defstruct([:account_number, :balance]))
-    defmodule(MoneyWithdrawn, do: defstruct([:account_number, :transfer_uuid, :amount, :balance]))
+    defmodule BankAccountOpened do
+      @derive Jason.Encoder
+      defstruct([:account_number, :balance])
+    end
+
+    defmodule MoneyWithdrawn do
+      @derive Jason.Encoder
+      defstruct([:account_number, :transfer_uuid, :amount, :balance])
+    end
   end
 
   alias Commands.{OpenAccount, WithdrawMoney}

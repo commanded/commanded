@@ -1,20 +1,55 @@
 defmodule Commanded.ProcessManagers.ErrorAggregate do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct [:process_uuid]
 
   defmodule Commands do
-    defmodule(StartProcess, do: defstruct([:process_uuid, :strategy, :delay, :reply_to]))
-    defmodule(RaiseError, do: defstruct([:process_uuid, :message, :reply_to]))
-    defmodule(RaiseException, do: defstruct([:process_uuid, :message, :reply_to]))
-    defmodule(AttemptProcess, do: defstruct([:process_uuid, :strategy, :delay, :reply_to]))
-    defmodule(ContinueProcess, do: defstruct([:process_uuid, :reply_to]))
+    defmodule StartProcess do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :strategy, :delay, :reply_to])
+    end
+
+    defmodule RaiseError do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :message, :reply_to])
+    end
+
+    defmodule RaiseException do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :message, :reply_to])
+    end
+
+    defmodule AttemptProcess do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :strategy, :delay, :reply_to])
+    end
+
+    defmodule ContinueProcess do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :reply_to])
+    end
   end
 
   defmodule Events do
-    defmodule(ProcessStarted, do: defstruct([:process_uuid, :strategy, :delay, :reply_to]))
-    defmodule(ProcessContinued, do: defstruct([:process_uuid, :reply_to]))
-    defmodule(ProcessError, do: defstruct([:process_uuid, :message, :reply_to]))
-    defmodule(ProcessException, do: defstruct([:process_uuid, :message, :reply_to]))
+    defmodule ProcessStarted do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :strategy, :delay, :reply_to])
+    end
+
+    defmodule ProcessContinued do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :reply_to])
+    end
+
+    defmodule ProcessError do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :message, :reply_to])
+    end
+
+    defmodule ProcessException do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :message, :reply_to])
+    end
   end
 
   alias Commanded.ProcessManagers.ErrorAggregate

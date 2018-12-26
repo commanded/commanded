@@ -7,6 +7,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
     alias Commanded.Helpers.ProcessHelper
 
     defmodule BankAccountOpened do
+      @derive Jason.Encoder
       defstruct [:account_number, :initial_balance]
     end
 
