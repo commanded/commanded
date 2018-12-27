@@ -33,6 +33,7 @@ if Code.ensure_loaded?(Jason) do
         end
 
       # todo this actually should be with ! since it can throw
+
       res =
         binary
         |> Jason.decode!(opts)

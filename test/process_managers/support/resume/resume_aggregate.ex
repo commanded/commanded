@@ -9,8 +9,15 @@ defmodule Commanded.ProcessManagers.ResumeAggregate do
   end
 
   defmodule Events do
-    defmodule(ProcessStarted, do: defstruct([:process_uuid, :status]))
-    defmodule(ProcessResumed, do: defstruct([:process_uuid, :status]))
+    defmodule ProcessStarted do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :status])
+    end
+
+    defmodule ProcessResumed do
+      @derive Jason.Encoder
+      defstruct([:process_uuid, :status])
+    end
   end
 
   alias Commanded.ProcessManagers.ResumeAggregate

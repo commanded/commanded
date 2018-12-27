@@ -1,10 +1,11 @@
 defmodule Commanded.Serialization.JsonDecoderTest do
-	use ExUnit.Case
-	doctest Commanded.Serialization.JsonDecoder
+  use ExUnit.Case
+  doctest Commanded.Serialization.JsonDecoder
 
-  alias Commanded.Serialization.{JsonSerializer,JsonDecoder}
+  alias Commanded.Serialization.{JsonSerializer, JsonDecoder}
 
   defmodule ExampleEvent do
+    @derive Jason.Encoder
     defstruct [:name, :date]
   end
 
@@ -13,13 +14,11 @@ defmodule Commanded.Serialization.JsonDecoderTest do
     Parse the date included in the event
     """
     def decode(%ExampleEvent{date: date} = event) do
-      %ExampleEvent{event |
-        date: NaiveDateTime.from_iso8601!(date)
-      }
+      %ExampleEvent{event | date: NaiveDateTime.from_iso8601!(date)}
     end
   end
 
-  @serialized_event_json "{\"name\":\"Ben\",\"date\":\"2016-09-20T20:01:02\"}"
+  @serialized_event_json "{\"date\":\"2016-09-20T20:01:02\",\"name\":\"Ben\"}"
 
   test "should serialize value to JSON" do
     event = %ExampleEvent{name: "Ben", date: ~N[2016-09-20 20:01:02]}

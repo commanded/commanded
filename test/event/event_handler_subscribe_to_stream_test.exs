@@ -4,6 +4,7 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
   alias Commanded.EventStore
 
   defmodule AnEvent do
+    @derive Jason.Encoder
     defstruct [:stream_uuid, :reply_to]
   end
 

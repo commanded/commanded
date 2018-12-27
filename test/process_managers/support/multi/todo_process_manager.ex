@@ -7,6 +7,7 @@ defmodule Commanded.ProcessManagers.TodoProcessManager do
     name: __MODULE__,
     router: TodoRouter
 
+  @derive Jason.Encoder
   defstruct [:todo_uuid]
 
   alias Commanded.ProcessManagers.Todo.Events.TodoCreated

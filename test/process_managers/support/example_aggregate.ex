@@ -1,7 +1,7 @@
 defmodule Commanded.ProcessManagers.ExampleAggregate do
   @moduledoc false
   alias Commanded.ProcessManagers.ExampleAggregate
-
+  @derive Jason.Encoder
   defstruct uuid: nil,
             state: nil,
             items: []
@@ -16,13 +16,40 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
   end
 
   defmodule Events do
-    defmodule(Started, do: defstruct([:aggregate_uuid]))
-    defmodule(Interested, do: defstruct([:aggregate_uuid, :index]))
-    defmodule(Uninterested, do: defstruct([:aggregate_uuid, :index]))
-    defmodule(Stopped, do: defstruct([:aggregate_uuid]))
-    defmodule(Paused, do: defstruct([:aggregate_uuid]))
-    defmodule(Errored, do: defstruct([:aggregate_uuid]))
-    defmodule(Raised, do: defstruct([:aggregate_uuid]))
+    defmodule Started do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid])
+    end
+
+    defmodule Interested do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid, :index])
+    end
+
+    defmodule Uninterested do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid, :index])
+    end
+
+    defmodule Stopped do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid])
+    end
+
+    defmodule Paused do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid])
+    end
+
+    defmodule Errored do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid])
+    end
+
+    defmodule Raised do
+      @derive Jason.Encoder
+      defstruct([:aggregate_uuid])
+    end
   end
 
   def start(%ExampleAggregate{}, aggregate_uuid) do

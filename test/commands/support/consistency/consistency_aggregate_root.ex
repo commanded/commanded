@@ -1,12 +1,32 @@
 defmodule Commanded.Commands.ConsistencyAggregateRoot do
   @moduledoc false
+  @derive Jason.Encoder
   defstruct [:delay]
 
-  defmodule ConsistencyCommand, do: defstruct [:uuid, :delay]
-  defmodule NoOpCommand, do: defstruct [:uuid]
-  defmodule RequestDispatchCommand, do: defstruct [:uuid, :delay]
-  defmodule ConsistencyEvent, do: defstruct [:uuid, :delay]
-  defmodule DispatchRequestedEvent, do: defstruct [:uuid, :delay]
+  defmodule ConsistencyCommand do
+    @derive Jason.Encoder
+    defstruct([:uuid, :delay])
+  end
+
+  defmodule NoOpCommand do
+    @derive Jason.Encoder
+    defstruct([:uuid])
+  end
+
+  defmodule RequestDispatchCommand do
+    @derive Jason.Encoder
+    defstruct([:uuid, :delay])
+  end
+
+  defmodule ConsistencyEvent do
+    @derive Jason.Encoder
+    defstruct([:uuid, :delay])
+  end
+
+  defmodule DispatchRequestedEvent do
+    @derive Jason.Encoder
+    defstruct([:uuid, :delay])
+  end
 
   alias Commanded.Commands.ConsistencyAggregateRoot
 

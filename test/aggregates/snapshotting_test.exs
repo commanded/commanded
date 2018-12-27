@@ -236,7 +236,6 @@ defmodule Commanded.Aggregates.SnapshottingTest do
     end
   end
 
-  @tag :wip
   describe "decode snapshot data" do
     setup do
       configure_snapshotting(SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)
@@ -252,7 +251,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       # aggregate state should be decoded
       assert_aggregate_state(SnapshotAggregate, aggregate_uuid, %SnapshotAggregate{
         name: "Example",
-        date: now
+        date: NaiveDateTime.to_iso8601(now)
       })
 
       assert_aggregate_version(SnapshotAggregate, aggregate_uuid, 1)
