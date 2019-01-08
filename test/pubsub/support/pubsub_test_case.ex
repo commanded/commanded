@@ -4,8 +4,8 @@ defmodule Commanded.PubSub.PubSubTestCase do
   define_tests do
     describe "pub/sub" do
       test "should receive broadcast message", %{pubsub: pubsub} do
-        :ok = pubsub.subscribe("test")
-        :ok = pubsub.broadcast("test", :message)
+        :ok = pubsub.subscribe("topic")
+        :ok = pubsub.broadcast("topic", :message)
 
         assert_receive(:message)
         refute_receive(:message)
@@ -16,20 +16,20 @@ defmodule Commanded.PubSub.PubSubTestCase do
       test "should list tracked processes", %{pubsub: pubsub} do
         self = self()
 
-        :ok = pubsub.track("test", :example1)
-        :ok = pubsub.track("test", :example2)
+        :ok = pubsub.track("topic", :key1)
+        :ok = pubsub.track("topic", :key2)
 
-        assert [{:example1, ^self}, {:example2, ^self}] = pubsub.list("test")
+        assert [{:key1, ^self}, {:key2, ^self}] = pubsub.list("topic")
       end
 
-      test "should ignore duplicate tracks", %{pubsub: pubsub} do
+      test "should ignore duplicate tracks for existing process", %{pubsub: pubsub} do
         self = self()
 
-        :ok = pubsub.track("test", :example)
-        :ok = pubsub.track("test", :example)
-        :ok = pubsub.track("test", :example)
+        :ok = pubsub.track("topic", :key)
+        :ok = pubsub.track("topic", :key)
+        :ok = pubsub.track("topic", :key)
 
-        assert [{:example, ^self}] = pubsub.list("test")
+        assert [{:key, ^self}] = pubsub.list("topic")
       end
     end
   end
