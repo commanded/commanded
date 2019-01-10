@@ -308,7 +308,7 @@ defmodule Commanded.Event.Handler do
   def parse_name(module, name) when name in [nil, ""],
     do: raise("#{inspect(module)} expects `:name` to be given")
 
-  def parse_name(_module, name) when is_bitstring(name), do: name
+  def parse_name(_module, name) when is_binary(name), do: name
   def parse_name(_module, name), do: inspect(name)
 
   @doc false

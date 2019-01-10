@@ -21,7 +21,7 @@ defmodule Commanded.Aggregates.Supervisor do
   Returns `{:ok, aggregate_uuid}` when a process is sucessfully started, or is
   already running.
   """
-  def open_aggregate(aggregate_module, aggregate_uuid) when is_bitstring(aggregate_uuid) do
+  def open_aggregate(aggregate_module, aggregate_uuid) when is_binary(aggregate_uuid) do
     Logger.debug(fn ->
       "Locating aggregate process for `#{inspect(aggregate_module)}` with UUID " <>
         inspect(aggregate_uuid)

@@ -230,7 +230,7 @@ defmodule Commanded.Commands.Router do
               prefix when is_function(prefix, 0) ->
                 prefix
 
-              prefix when is_bitstring(prefix) ->
+              prefix when is_binary(prefix) ->
                 prefix
 
               invalid ->
