@@ -273,7 +273,7 @@ defmodule Commanded.Subscriptions do
 
   defp parse_exclude(exclude), do: exclude |> List.wrap() |> MapSet.new()
 
-  defp monotonic_time, do: System.monotonic_time(:seconds)
+  defp monotonic_time, do: System.monotonic_time(:second)
 
   @default_ttl :timer.hours(1)
   @default_consistency_timeout :timer.seconds(5)
