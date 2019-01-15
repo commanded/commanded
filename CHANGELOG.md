@@ -16,6 +16,7 @@
 - Allow two-arity predicate function in `wait_for_event` receiving both event data and recorded event struct ([#213](https://github.com/commanded/commanded/pull/213)).
 - Make poison an optional dependency ([#215](https://github.com/commanded/commanded/pull/215)).
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
+- Fixed warning about deprecated `:seconds` time unit in Elixir 1.8 ([#239](https://github.com/commanded/commanded/pull/239))
 
 ### Bug fixes
 
