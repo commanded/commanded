@@ -25,35 +25,58 @@
 
 ### Breaking changes
 
+- Migrate to [Jason](https://hex.pm/packages/jason) for JSON serialization ([#234](https://github.com/commanded/commanded/pull/234)).
+
+  You will need to add Jason as a dependency in `mix.exs`:
+
+  ```elixir
+  defp deps do
+    [
+      {:jason, "~> 1.1"}
+    ]
+  end
+  ```
+
+  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required.
+
+  You *must* update all your domain event modules to include `@derive Jason.Encoder` as shown below:
+
+  ```elixir
+  defmodule AnEvent do
+    @derive Jason.Encoder
+    defstruct [:field]
+  end
+  ```
+
 - Extend aggregate lifespan behaviour to include `after_error/1` and `after_command/1` callbacks ([#210](https://github.com/commanded/commanded/pull/210)).
 
-    Previously you only had to define an `after_event/1` callback function to implement the `Commanded.Aggregates.AggregateLifespan` behaviour:
+  Previously you only had to define an `after_event/1` callback function to implement the `Commanded.Aggregates.AggregateLifespan` behaviour:
 
-    ```elixir
-    defmodule BankAccountLifespan do
-      @behaviour Commanded.Aggregates.AggregateLifespan
+  ```elixir
+  defmodule BankAccountLifespan do
+    @behaviour Commanded.Aggregates.AggregateLifespan
 
-      def after_event(%BankAccountClosed{}), do: :stop
-      def after_event(_event), do: :infinity
-    end
-    ```
+    def after_event(%BankAccountClosed{}), do: :stop
+    def after_event(_event), do: :infinity
+  end
+  ```
 
-    Now you must also define `after_command/1` and `after_error/1` callback functions:
+  Now you must also define `after_command/1` and `after_error/1` callback functions:
 
-    ```elixir
-    defmodule BankAccountLifespan do
-      @behaviour Commanded.Aggregates.AggregateLifespan
+  ```elixir
+  defmodule BankAccountLifespan do
+    @behaviour Commanded.Aggregates.AggregateLifespan
 
-      def after_event(%BankAccountClosed{}), do: :stop
-      def after_event(_event), do: :infinity
+    def after_event(%BankAccountClosed{}), do: :stop
+    def after_event(_event), do: :infinity
 
-      def after_command(%CloseAccount{}), do: :stop
-      def after_command(_command), do: :infinity
+    def after_command(%CloseAccount{}), do: :stop
+    def after_command(_command), do: :infinity
 
-      def after_error(:invalid_initial_balance), do: :stop
-      def after_error(_error), do: :stop
-    end
-    ```
+    def after_error(:invalid_initial_balance), do: :stop
+    def after_error(_error), do: :stop
+  end
+  ```
 
 ## v0.17.2
 
