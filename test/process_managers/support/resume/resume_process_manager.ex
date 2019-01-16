@@ -4,6 +4,7 @@ defmodule Commanded.ProcessManagers.ResumeProcessManager do
     name: "resume-process-manager",
     router: ResumeRouter
 
+  @derive Jason.Encoder
   defstruct status_history: []
 
   alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted, ProcessResumed}

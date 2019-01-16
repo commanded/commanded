@@ -248,12 +248,10 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       create_aggregate(aggregate_uuid, now)
       restart_aggregate(SnapshotAggregate, aggregate_uuid)
 
-      # aggregate state should be decoded
-      assert_aggregate_state(SnapshotAggregate, aggregate_uuid, %SnapshotAggregate{
-        name: "Example",
-        date: now
-      })
+      # Aggregate state should be decoded
+      expected_state = %SnapshotAggregate{name: "Example", date: now}
 
+      assert_aggregate_state(SnapshotAggregate, aggregate_uuid, expected_state)
       assert_aggregate_version(SnapshotAggregate, aggregate_uuid, 1)
     end
 
@@ -271,17 +269,17 @@ defmodule Commanded.Aggregates.SnapshottingTest do
     end
   end
 
-  # assert aggregate's state equals the given expected state
+  # Assert aggregate's state equals the given expected state.
   defp assert_aggregate_state(aggregate_module, aggregate_uuid, expected_state) do
     assert Aggregate.aggregate_state(aggregate_module, aggregate_uuid) == expected_state
   end
 
-  # assert aggregate's version equals the given expected version
+  # Assert aggregate's version equals the given expected version.
   defp assert_aggregate_version(aggregate_module, aggregate_uuid, expected_version) do
     assert Aggregate.aggregate_version(aggregate_module, aggregate_uuid) == expected_version
   end
 
-  # restart the aggregate process
+  # Restart the aggregate process
   defp restart_aggregate(aggregate_module, aggregate_uuid) do
     assert :ok = Aggregate.shutdown(aggregate_module, aggregate_uuid)
 

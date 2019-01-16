@@ -9,8 +9,15 @@ defmodule Commanded.Event.ErrorAggregate do
   end
 
   defmodule Events do
-    defmodule(ErrorEvent, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
-    defmodule(ExceptionEvent, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
+    defmodule ErrorEvent do
+      @derive Jason.Encoder
+      defstruct([:uuid, :strategy, :delay, :reply_to])
+    end
+
+    defmodule ExceptionEvent do
+      @derive Jason.Encoder
+      defstruct([:uuid, :strategy, :delay, :reply_to])
+    end
   end
 
   alias Commanded.Event.ErrorAggregate

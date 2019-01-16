@@ -8,6 +8,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
     alias Commanded.EventStore.EventData
 
     defmodule BankAccountOpened do
+      @derive Jason.Encoder
       defstruct [:account_number, :initial_balance]
     end
 

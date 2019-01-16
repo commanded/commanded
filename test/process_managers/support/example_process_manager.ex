@@ -17,6 +17,7 @@ defmodule Commanded.ProcessManagers.ExampleProcessManager do
     name: "ExampleProcessManager",
     router: ExampleRouter
 
+  @derive Jason.Encoder
   defstruct [:status, items: []]
 
   def interested?(%Started{aggregate_uuid: aggregate_uuid}), do: {:start, aggregate_uuid}

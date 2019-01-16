@@ -15,6 +15,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     name: "ErrorHandlingProcessManager",
     router: ErrorRouter
 
+  @derive Jason.Encoder
   defstruct [:process_uuid]
 
   def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}

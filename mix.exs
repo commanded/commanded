@@ -50,7 +50,6 @@ defmodule Commanded.Mixfile do
   defp deps do
     [
       {:elixir_uuid, "~> 1.2"},
-      {:poison, "~> 3.1 or ~> 4.0", optional: true},
 
       # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
@@ -59,6 +58,7 @@ defmodule Commanded.Mixfile do
       {:mox, "~> 0.4", only: :test},
 
       # Optional dependencies
+      {:jason, "~> 1.1", optional: true},
       {:phoenix_pubsub, "~> 1.1", optional: true}
     ]
   end

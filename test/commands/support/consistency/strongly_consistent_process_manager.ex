@@ -6,6 +6,7 @@ defmodule Commanded.Commands.StronglyConsistentProcessManager do
     consistency: :strong,
     router: ConsistencyRouter
 
+  @derive Jason.Encoder
   defstruct [
     :uuid
   ]
@@ -22,7 +23,7 @@ defmodule Commanded.Commands.StronglyConsistentProcessManager do
 
   def handle(%StronglyConsistentProcessManager{}, %DispatchRequestedEvent{} = requested) do
     %DispatchRequestedEvent{uuid: uuid, delay: delay} = requested
-    
+
     %ConsistencyCommand{uuid: uuid, delay: delay}
   end
 
