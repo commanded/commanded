@@ -1,7 +1,7 @@
 if Code.ensure_loaded?(Jason) do
   defmodule Commanded.Serialization.JsonSerializer do
     @moduledoc """
-    A serializer that uses the JSON format.
+    A serializer that uses the JSON format and Jason library.
     """
 
     alias Commanded.EventStore.TypeProvider
@@ -17,29 +17,20 @@ if Code.ensure_loaded?(Jason) do
     @doc """
     Deserialize given JSON binary data to the expected type.
     """
-    def deserialize(binary, config \\ [])
-
-    def deserialize(binary, config) do
-      type =
+    def deserialize(binary, config \\ []) do
+      {type, opts} =
         case Keyword.get(config, :type) do
-          nil -> nil
-          type -> TypeProvider.to_struct(type)
+          nil -> {nil, %{}}
+          type -> {TypeProvider.to_struct(type), %{keys: :atoms}}
         end
 
-      opts =
-        case Keyword.get(config, :type) do
-          nil -> %{}
-          _type -> %{keys: :atoms}
-        end
-
-      # todo this actually should be with ! since it can throw
-
-      res =
-        binary
-        |> Jason.decode!(opts)
-        |> JsonDecoder.decode()
-
-      if type !== nil, do: struct(type, res), else: res
+      binary
+      |> Jason.decode!(opts)
+      |> to_struct(type)
+      |> JsonDecoder.decode()
     end
+
+    defp to_struct(data, nil), do: data
+    defp to_struct(data, struct), do: struct(struct, data)
   end
 end

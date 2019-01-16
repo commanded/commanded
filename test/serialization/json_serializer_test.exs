@@ -19,18 +19,23 @@ defmodule Commanded.Serialization.JsonSerializerTest do
     assert JsonSerializer.deserialize(@serialized_event_json, type: type) == account_opened
   end
 
-  defmodule(NamedEvent, do: defstruct(data: nil))
-  defmodule(AnotherNamedEvent, do: defstruct(data: nil))
+  defmodule NamedEvent do
+    defstruct [:data]
+  end
 
-  test "should deserialize to event type which is specifying the module name" do
+  defmodule AnotherNamedEvent do
+    defstruct [:data]
+  end
+
+  test "should deserialize to event type module name" do
     assert %NamedEvent{data: "data"} ==
              JsonSerializer.deserialize("{\"data\": \"data\"}",
-               type: "Elixir.Commanded.Serialization.JsonSerializerTest.NamedEvent"
+               type: "#{__MODULE__}.NamedEvent"
              )
 
     assert %AnotherNamedEvent{data: "data"} ==
              JsonSerializer.deserialize("{\"data\": \"data\"}",
-               type: "Elixir.Commanded.Serialization.JsonSerializerTest.AnotherNamedEvent"
+               type: "#{__MODULE__}.AnotherNamedEvent"
              )
   end
 end

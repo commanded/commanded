@@ -50,15 +50,15 @@ defmodule Commanded.Mixfile do
   defp deps do
     [
       {:elixir_uuid, "~> 1.2"},
-      {:jason, "~> 1.1", optional: true},
+
       # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
       {:ex_doc, "~> 0.19", only: :dev},
       {:mix_test_watch, "~> 0.9", only: :dev},
       {:mox, "~> 0.4", only: :test},
-      {:apex, "~> 1.2", only: :test},
 
       # Optional dependencies
+      {:jason, "~> 1.1", optional: true},
       {:phoenix_pubsub, "~> 1.1", optional: true}
     ]
   end
