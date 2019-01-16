@@ -6,11 +6,12 @@ You need to create a module per command and define the fields using `defstruct`:
 
 ```elixir
 defmodule OpenAccount do
+  @enforce_keys [:account_number]
   defstruct [:account_number, :initial_balance]
 end
 ```
 
-A command **must contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
+A command **must contain** a field to uniquely identify the aggregate instance (e.g. `account_number`). Use `@enforce_keys` to force the identity field to be specified when creating the command struct.
 
 Since commands are just plain Elixir structs you can use a library such as [`typed_struct`](https://hex.pm/packages/typed_struct) for defining structs, fields with their types, and enforcing mandatory keys without writing too much boilerplate code.
 
@@ -343,7 +344,7 @@ defmodule BankAccountLifespan do
   def after_event(%MoneyDeposited{}), do: :timer.hours(1)
   def after_event(%BankAccountClosed{}), do: :stop
   def after_event(_event), do: :infinity
-  
+
   def after_command(%CloseAccount{}), do: :stop
   def after_command(_command), do: :infinity
 

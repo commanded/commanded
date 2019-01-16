@@ -1,8 +1,8 @@
 # Serialization
 
-JSON serialization can be used for event and snapshot data.
+JSON serialization can be used for event data, and aggregate and process manager snapshot data.
 
-To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add `jason` to your deps
+To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add `jason` to your deps:
 
     ```elixir
     def deps do
@@ -16,12 +16,13 @@ The example event below has an implementation of the `Commanded.Serialization.Js
 
 ```elixir
 defmodule ExampleEvent do
+  @derive Jason.Encoder
   defstruct [:name, :date]
 end
 
 defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
   @doc """
-  Parse the date included in the event
+  Parse the date included in the event.
   """
   def decode(%ExampleEvent{date: date} = event) do
     %ExampleEvent{event |

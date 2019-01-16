@@ -35,7 +35,5 @@ defmodule MyApp.ExampleProjector do
   use Commanded.Projections.Ecto,
     name: "ExampleProjector",
     consistency: :strong
-
-  # ...
 end
 ```

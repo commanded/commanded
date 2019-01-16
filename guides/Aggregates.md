@@ -228,21 +228,24 @@ config :commanded, ExampleAggregate
 
 ### Snapshot serialization
 
-Aggregate state will be serialized using the configured event store serializer, by default this stores the data as JSON. You can use the `Commanded.Serialization.JsonDecoder` protocol to decode the parsed JSON data into the expected types.
+Aggregate state will be serialized using the configured event store serializer, by default this stores the data as JSON. Remember to derive the `Jason.Encoder` protocol for the aggregate state to ensure JSON serialization is supported, as shown below.
 
 ```elixir
 defmodule ExampleAggregate do
+  @derive Jason.Encoder
   defstruct [:name, :date]
 end
+```
 
+You can use the `Commanded.Serialization.JsonDecoder` protocol to decode the parsed JSON data into the expected types:
+
+```elixir
 defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   @doc """
   Parse the date included in the aggregate state
   """
   def decode(%ExampleAggregate{date: date} = state) do
-    %ExampleAggregate{state |
-      date: NaiveDateTime.from_iso8601!(date)
-    }
+    %ExampleAggregate{state | date: NaiveDateTime.from_iso8601!(date)}
   end
 end
 ```

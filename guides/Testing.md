@@ -6,10 +6,9 @@ When using ES/CQRS, events are first-class citizens. It's critical to be able to
 
 Please refer to the [Testing your application](https://github.com/commanded/commanded/wiki/Testing-your-application) page on the Wiki for help with configuring your test environment.
 
-### Additions to the wiki:
+### Remember `projection_versions` when truncating tables
 
-#### 1. Remember projection_versions when truncating tables
-If you rely on your read projections in your tests, remember to truncate the projection_versions table in your truncate_readstore_tables function. Otherwise, your projector will ignore everything but the first projection. 
+If you rely on your read projections in your tests, remember to truncate the `projection_versions` table in your `truncate_readstore_tables/0` function. Otherwise, your projector will ignore everything but the first projection.
 
 ```elixir
 defp truncate_readstore_tables do
@@ -18,7 +17,7 @@ defp truncate_readstore_tables do
       table1,
       table2,
       table3,
-      projection_versions    <---- REMEBER THIS LINE
+      projection_versions
     RESTART IDENTITY
     CASCADE;
     """

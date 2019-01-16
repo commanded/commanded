@@ -31,15 +31,11 @@
 
   ```elixir
   defp deps do
-    [
-      {:jason, "~> 1.1"}
-    ]
+    [{:jason, "~> 1.1"}]
   end
   ```
 
-  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required.
-
-  You *must* update all your domain event modules to include `@derive Jason.Encoder` as shown below:
+  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required. You *must* update all your domain event modules, aggregate state (when using state snapshotting), and process manager state to include `@derive Jason.Encoder` as shown below:
 
   ```elixir
   defmodule AnEvent do

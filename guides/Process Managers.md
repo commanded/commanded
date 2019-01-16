@@ -107,6 +107,7 @@ defmodule TransferMoneyProcessManager do
     name: "TransferMoneyProcessManager",
     router: BankRouter
 
+  @derive Jason.Encoder
   defstruct [
     :transfer_uuid,
     :debit_account,

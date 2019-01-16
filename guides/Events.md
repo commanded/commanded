@@ -6,6 +6,8 @@ Domain events indicate that something of importance has occurred, within the con
 
 Create a module per domain event and define the fields with `defstruct`. An event **should contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
+Remember to derive the `Jason.Encoder` protocol for the event struct to ensure JSON serialization is supported, as shown below.
+
 ```elixir
 defmodule BankAccountOpened do
   @derive Jason.Encoder
@@ -47,11 +49,9 @@ The name given to the event handler **must be** unique and remain unchanged betw
 You can choose to start the event handler's event store subscription from the `:origin`, `:current` position, or an exact event number using the `start_from` option. The default is to use the origin so your handler will receive all events.
 
 ```elixir
-# start from :origin, :current, or an explicit event number (e.g. 1234)
 defmodule ExampleHandler do
+  # Define `start_from` as one of :origin, :current, or an explicit event number (e.g. 1234)
   use Commanded.Event.Handler, name: "ExampleHandler", start_from: :origin
-
-  # ...
 end
 ```
 

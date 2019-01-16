@@ -27,6 +27,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
     ```elixir
     defmodule BankAccountOpened do
+      @derive Jason.Encoder
       defstruct [:account_number, :initial_balance]
     end
     ```
@@ -37,7 +38,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
     defmodule BankAccount do
       defstruct [:account_number, :balance]
 
-      # public command API
+      # Public command API
 
       def execute(%BankAccount{account_number: nil} = account, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
         when initial_balance > 0
@@ -45,19 +46,19 @@ Here's an example bank account opening feature built using Commanded to demonstr
         %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
       end
 
-      # ensure initial balance is never zero or negative
+      # Ensure initial balance is never zero or negative
       def execute(%BankAccount{}, %OpenBankAccount{initial_balance: initial_balance})
         when initial_balance <= 0
       do
         {:error, :initial_balance_must_be_above_zero}
       end
 
-      # ensure account has not already been opened
+      # Ensure account has not already been opened
       def execute(%BankAccount{}, %OpenBankAccount{}) do
         {:error, :account_already_opened}
       end
 
-      # state mutators
+      # State mutators
 
       def apply(%BankAccount{} = account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}) do
         %BankAccount{account |
