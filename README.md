@@ -29,7 +29,7 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 
 MIT License
 
-[![Build Status](https://travis-ci.org/commanded/commanded.svg?branch=master)](https://travis-ci.org/commanded/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://travis-ci.com/commanded/commanded.svg?branch=master)](https://travis-ci.com/commanded/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ---
 
