@@ -4,6 +4,9 @@ defmodule Commanded.Commands.Router do
 
   ## Example
 
+  Define a router module which uses `Commanded.Commands.Router` and configures
+  available commands to dispatch:
+
       defmodule BankRouter do
         use Commanded.Commands.Router
 
@@ -13,14 +16,17 @@ defmodule Commanded.Commands.Router do
           identity: :account_number
       end
 
+    Once configured, you can dispatch a command using the module:
+
       :ok = BankRouter.dispatch(%OpenAccount{
         account_number: "ACC123",
         initial_balance: 1_000
       })
 
-  The command handler module must implement a `handle/2` function that receives
-  the aggregate's state and the command to execute. It should delegate the
-  command to the aggregate.
+  The `to` option determines which module receives the command being dispatched.
+  This command handler module must implement a `handle/2` function. It receives
+  the aggregate's state and the command to execute. Usually the command handler
+  module will forward the command to the aggregate.
 
   ## Dispatch command directly to an aggregate
 
@@ -114,10 +120,15 @@ defmodule Commanded.Commands.Router do
   You can also choose to include the execution result as part of the dispatch result by
   setting `include_execution_result` true.
 
-      {:ok, execution_result} = BankRouter.dispatch(command, include_execution_result: true)
+      {:ok, execution_result} = Router.dispatch(command, include_execution_result: true)
 
-  You can use this if you need to get information from the events produced by the aggregate
-  but you can't afford to wait for the events to be projected.
+  Or by setting `include_execution_result` in your application config file:
+
+      # config/config.exs
+      config :commanded, include_execution_result: true
+
+  Use this if you need to get information from the events produced by the aggregate
+  but you don't want to wait for the events to be projected.
 
   ## Metadata
 
