@@ -16,11 +16,9 @@
 - Allow two-arity predicate function in `wait_for_event` receiving both event data and recorded event struct ([#213](https://github.com/commanded/commanded/pull/213)).
 - Make poison an optional dependency ([#215](https://github.com/commanded/commanded/pull/215)).
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
-- Fixed warning about deprecated `:seconds` time unit in Elixir 1.8 ([#239](https://github.com/commanded/commanded/pull/239))
 
 ### Bug fixes
 
-- Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
 - Fix typo in `include_execution_result` global router option ([#216](https://github.com/commanded/commanded/pull/216)).
 
 ### Breaking changes
@@ -73,6 +71,13 @@
     def after_error(_error), do: :stop
   end
   ```
+
+## v0.17.3
+
+### Bug fixes
+
+- Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
+- Fixed warning about deprecated time unit in elixir 1.8 ([#239](https://github.com/commanded/commanded/pull/239)).
 
 ## v0.17.2
 
