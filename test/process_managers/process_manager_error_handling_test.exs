@@ -13,15 +13,9 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
     StartProcess
   }
 
-  setup do
-    {:ok, process_router} = ErrorHandlingProcessManager.start_link()
-
-    [process_router: process_router]
-  end
-
   describe "process manager event handling error" do
-    test "should call `error/3` callback on error", context do
-      %{process_router: process_router} = context
+    test "should call `error/3` callback on error" do
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
       process_uuid = UUID.uuid4()
 
@@ -39,8 +33,8 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       refute_receive {:DOWN, ^ref, _, _, _}
     end
 
-    test "should call `error/3` callback on exception", context do
-      %{process_router: process_router} = context
+    test "should call `error/3` callback on exception" do
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
       process_uuid = UUID.uuid4()
 
@@ -60,8 +54,8 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
   end
 
   describe "process manager dispatch command error" do
-    test "should retry the event until process manager requests stop", context do
-      %{process_router: process_router} = context
+    test "should retry the event until process manager requests stop" do
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
 
       process_uuid = UUID.uuid4()
 
