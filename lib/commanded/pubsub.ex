@@ -11,7 +11,7 @@ defmodule Commanded.PubSub do
   @doc """
   Subscribes the caller to the PubSub adapter's topic.
   """
-  @callback subscribe(atom) :: :ok | {:error, term}
+  @callback subscribe(String.t() | atom) :: :ok | {:error, term}
 
   @doc """
   Broadcasts message on given topic.
