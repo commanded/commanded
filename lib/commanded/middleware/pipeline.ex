@@ -39,37 +39,37 @@ defmodule Commanded.Middleware.Pipeline do
 
   """
 
-  defstruct [
-    assigns: %{},
-    causation_id: nil,
-    correlation_id: nil,
-    command: nil,
-    command_uuid: nil,
-    consistency: nil,
-    halted: false,
-    identity: nil,
-    identity_prefix: nil,
-    metadata: nil,
-    response: nil,
-  ]
+  defstruct assigns: %{},
+            causation_id: nil,
+            correlation_id: nil,
+            command: nil,
+            command_uuid: nil,
+            consistency: nil,
+            halted: false,
+            identity: nil,
+            identity_prefix: nil,
+            metadata: nil,
+            response: nil
 
   alias Commanded.Middleware.Pipeline
 
   @doc """
   Puts the `key` with value equal to `value` into `assigns` map.
   """
-  def assign(%Pipeline{assigns: assigns} = pipeline, key, value)
-    when is_atom(key)
-  do
+  def assign(%Pipeline{} = pipeline, key, value) when is_atom(key) do
+    %Pipeline{assigns: assigns} = pipeline
+
     %Pipeline{pipeline | assigns: Map.put(assigns, key, value)}
   end
 
   @doc """
-  Puts the `key` with value equal to `value` into `metadata` map
+  Puts the `key` with value equal to `value` into `metadata` map.
+
+  Note: Use of atom keys in metadata is deprecated in favour of binary strings.
   """
-  # TODO: Use of atom keys in metadata is deprecated. As of mentioned in https://github.com/commanded/commanded/blob/master/guides/Events.md#metadata
-  # Remove in next major release.
-  def assign_metadata(%Pipeline{metadata: metadata} = pipeline, key, value) when is_binary(key) or is_atom(key) do
+  def assign_metadata(%Pipeline{} = pipeline, key, value) when is_binary(key) or is_atom(key) do
+    %Pipeline{metadata: metadata} = pipeline
+
     %Pipeline{pipeline | metadata: Map.put(metadata, key, value)}
   end
 
@@ -98,6 +98,7 @@ defmodule Commanded.Middleware.Pipeline do
   def respond(%Pipeline{response: nil} = pipeline, response) do
     %Pipeline{pipeline | response: response}
   end
+
   def respond(%Pipeline{} = pipeline, _response), do: pipeline
 
   @doc """
@@ -107,6 +108,7 @@ defmodule Commanded.Middleware.Pipeline do
   def chain(%Pipeline{} = pipeline, _stage, []), do: pipeline
   def chain(%Pipeline{halted: true} = pipeline, :before_dispatch, _middleware), do: pipeline
   def chain(%Pipeline{halted: true} = pipeline, :after_dispatch, _middleware), do: pipeline
+
   def chain(%Pipeline{} = pipeline, stage, [module | modules]) do
     chain(apply(module, stage, [pipeline]), stage, modules)
   end
