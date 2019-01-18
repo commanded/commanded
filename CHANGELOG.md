@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.17.3
+
+### Bug fixes
+
+- Fix snapshot recording ([#196](https://github.com/commanded/commanded/pull/196)).
+- Fixed warning about deprecated time unit in elixir 1.8 ([#239](https://github.com/commanded/commanded/pull/239)).
+
 ## v0.17.2
 
 ### Enhancements

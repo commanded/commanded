@@ -212,7 +212,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       # record an outdated snapshot
       snapshot_aggregate(aggregate_uuid, 2, %ExampleAggregate{
         items: [],
-      }, %{"snapshot_version" => 1})
+      }, %{"snapshot_module_version" => 1})
 
       restart_aggregate(ExampleAggregate, aggregate_uuid)
 
