@@ -114,6 +114,7 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Bernardo Amorim](https://github.com/bamorim)
 - [Brenton Annan](https://github.com/brentonannan)
 - [Chris Brodt](https://github.com/uberbrodt)
+- [Chris Martin](https://github.com/trbngr)
 - [David Carlin](https://github.com/davich)
 - [Danni Friedland](https://github.com/BlueHotDog)
 - [Florian Ebeling](https://github.com/febeling)
