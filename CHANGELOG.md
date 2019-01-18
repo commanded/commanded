@@ -22,6 +22,7 @@
 - Fix typo in `include_execution_result` global router option ([#216](https://github.com/commanded/commanded/pull/216)).
 - Handle the `{:ok, _}` tuple dispatch result in process manager command dispatch ([#236](https://github.com/commanded/commanded/pull/236)).
 - Allow string keys for `Commanded.Middleware.Pipeline.assign_metadata/3`, atoms are being deprecated ([#228](https://github.com/commanded/commanded/pull/228))
+- Fix `Commanded.PubSub.subscribe/1` typespec ([#222](https://github.com/commanded/commanded/pull/222)).
 
 ### Breaking changes
 
