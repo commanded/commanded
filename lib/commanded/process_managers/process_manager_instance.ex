@@ -273,6 +273,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       :ok ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
+      # when include_execution_result is set to true, the dispatcher returns an :ok tuple
+      {:ok, _} ->
+        dispatch_commands(pending_commands, opts, state, last_event)
+
       error ->
         Logger.warn(fn ->
           describe(state) <>
