@@ -1,86 +1,223 @@
 defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
-  use Commanded.StorageCase
+  use Commanded.MockEventStoreCase
 
-  import Commanded.Assertions.EventAssertions
-
-  alias Commanded.ExampleDomain.BankRouter
-  alias Commanded.ExampleDomain.TransferMoneyProcessManager
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited,MoneyWithdrawn}
-  alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
-  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
-  alias Commanded.Helpers.CommandAuditMiddleware
+  alias Commanded.Helpers.EventFactory
+  alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
 
+  defmodule Started do
+    @enforce_keys [:process_uuid]
+    defstruct [:process_uuid, :reply_to, strict?: false]
+  end
+
+  defmodule Continued do
+    @enforce_keys [:process_uuid]
+    defstruct [:process_uuid, :reply_to, strict?: false]
+  end
+
+  defmodule Stopped do
+    @enforce_keys [:process_uuid]
+    defstruct [:process_uuid]
+  end
+
+  defmodule ProcessManager do
+    use Commanded.ProcessManagers.ProcessManager,
+      name: __MODULE__,
+      router: Commanded.Commands.MockRouter
+
+    alias Commanded.ProcessManagers.FailureContext
+
+    defstruct [:processes]
+
+    def interested?(%Started{process_uuid: process_uuid, strict?: true}),
+      do: {:start!, process_uuid}
+
+    def interested?(%Started{process_uuid: process_uuid}),
+      do: {:start, process_uuid}
+
+    def interested?(%Continued{process_uuid: process_uuid, strict?: true}),
+      do: {:continue!, process_uuid}
+
+    def interested?(%Continued{process_uuid: process_uuid}),
+      do: {:continue, process_uuid}
+
+    def interested?(%Stopped{process_uuid: process_uuid}),
+      do: {:stop, process_uuid}
+
+    def handle(%ProcessManager{}, %Started{} = event) do
+      %Started{reply_to: reply_to} = event
+
+      send(reply_to, {:started, self()})
+
+      []
+    end
+
+    def handle(%ProcessManager{}, %Continued{} = event) do
+      %Continued{reply_to: reply_to} = event
+
+      send(reply_to, {:continue, self()})
+
+      []
+    end
+
+    def error({:error, error}, %Started{} = event, %FailureContext{}) do
+      %Started{reply_to: reply_to} = event
+
+      send(reply_to, {:error, error})
+
+      {:stop, error}
+    end
+
+    def error({:error, error}, %Continued{} = event, %FailureContext{}) do
+      %Continued{reply_to: reply_to} = event
+
+      send(reply_to, {:error, error})
+
+      {:stop, error}
+    end
+  end
+
   setup do
-    CommandAuditMiddleware.start_link()
-    :ok
+    expect(MockEventStore, :subscribe_to, fn
+      :all, _name, pid, :origin ->
+        send(pid, {:subscribed, self()})
+
+        {:ok, self()}
+    end)
+
+    stub(MockEventStore, :read_snapshot, fn _snapshot_uuid -> {:error, :snapshot_not_found} end)
+    stub(MockEventStore, :record_snapshot, fn _snapshot -> :ok end)
+    stub(MockEventStore, :ack_event, fn _pid, _event -> :ok end)
+
+    {:ok, pid} = ProcessManager.start_link()
+
+    [pid: pid, process_uuid: UUID.uuid4()]
   end
 
-  test "should start a process manager in response to an event" do
-    account_number1 = UUID.uuid4
-    account_number2 = UUID.uuid4
-    transfer_uuid = UUID.uuid4
+  describe "process manager routing" do
+    test "should start instance on `:start`", %{pid: pid, process_uuid: process_uuid} do
+      send_events(pid, [%Started{process_uuid: process_uuid, reply_to: self()}])
 
-    {:ok, process_router} = TransferMoneyProcessManager.start_link()
+      instance = wait_for_instance(pid, process_uuid)
 
-    assert ProcessRouter.process_instances(process_router) == []
-
-    :timer.sleep 500
-
-    # create two bank accounts
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number1, initial_balance: 1_000})
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number2, initial_balance:  500})
-
-    # transfer funds between account 1 and account 2
-    :ok = BankRouter.dispatch(%TransferMoney{
-      transfer_uuid: transfer_uuid,
-      debit_account: account_number1,
-      credit_account: account_number2,
-      amount: 100,
-    })
-
-    assert_receive_event MoneyTransferRequested, fn event ->
-      assert event.debit_account == account_number1
-      assert event.credit_account == account_number2
-      assert event.amount == 100
+      assert_receive {:started, ^instance}
     end
 
-    assert_receive_event MoneyWithdrawn, fn event ->
-      assert event.account_number == account_number1
-      assert event.amount == 100
-      assert event.balance == 900
+    test "should continue existing instance on `:start`", %{pid: pid, process_uuid: process_uuid} do
+      send_events(pid, [
+        %Started{process_uuid: process_uuid, reply_to: self()},
+        %Started{process_uuid: process_uuid, reply_to: self()}
+      ])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      assert_receive {:started, ^instance}
+      assert_receive {:started, ^instance}
     end
 
-    assert_receive_event MoneyDeposited, fn event ->
-      assert event.account_number == account_number2
-      assert event.amount == 100
-      assert event.balance == 600
+    test "should continue instance on `:continue`", %{pid: pid, process_uuid: process_uuid} do
+      send_events(pid, [
+        %Started{process_uuid: process_uuid, reply_to: self()},
+        %Continued{process_uuid: process_uuid, reply_to: self()}
+      ])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      assert_receive {:started, ^instance}
+      assert_receive {:continue, ^instance}
     end
 
-    assert [{^transfer_uuid, _}] = ProcessRouter.process_instances(process_router)
+    test "should start instance on `:continue`", %{pid: pid, process_uuid: process_uuid} do
+      send_events(pid, [%Continued{process_uuid: process_uuid, reply_to: self()}])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      refute_receive {:started, ^instance}
+      assert_receive {:continue, ^instance}
+    end
+
+    test "should stop instance on `:stop`", %{pid: pid, process_uuid: process_uuid} do
+      expect(MockEventStore, :delete_snapshot, fn _process_uuid -> :ok end)
+
+      send_events(pid, [%Started{process_uuid: process_uuid, reply_to: self()}])
+
+      instance = wait_for_instance(pid, process_uuid)
+      ref = Process.monitor(instance)
+
+      send_events(pid, [%Stopped{process_uuid: process_uuid}], 2)
+
+      assert_receive {:started, ^instance}
+      assert_receive {:DOWN, ^ref, :process, ^instance, :normal}
+    end
   end
 
-  test "should not create entirely new instance when process manager expected to continue" do
-    account_number1 = UUID.uuid4
-    transfer_uuid = UUID.uuid4
+  describe "process manager strict routing" do
+    test "should start instance on `:start!`", %{pid: pid, process_uuid: process_uuid} do
+      send_events(pid, [%Started{process_uuid: process_uuid, reply_to: self(), strict?: true}])
 
-    {:ok, process_router} = TransferMoneyProcessManager.start_link()
+      instance = wait_for_instance(pid, process_uuid)
 
-    assert ProcessRouter.process_instances(process_router) == []
+      assert_receive {:started, ^instance}
+    end
 
-    :timer.sleep 500
+    test "should error on `:start!` when instance already started", %{
+      pid: pid,
+      process_uuid: process_uuid
+    } do
+      Process.unlink(pid)
+      ref = Process.monitor(pid)
 
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number1, initial_balance: 1_000})
-    :ok = BankRouter.dispatch(%WithdrawMoney{
-      transfer_uuid: transfer_uuid,
-      account_number: account_number1,
-      amount: 100,
-    })
+      send_events(pid, [
+        %Started{process_uuid: process_uuid, reply_to: self(), strict?: true},
+        %Started{process_uuid: process_uuid, reply_to: self(), strict?: true}
+      ])
 
-    :timer.sleep 300
+      assert_receive {:started, _instance}
+      refute_receive {:started, _instance}
+      assert_receive {:error, {:start!, :process_already_started}}
+      assert_receive {:DOWN, ^ref, :process, ^pid, {:start!, :process_already_started}}
+    end
 
-    assert [] = ProcessRouter.process_instances(process_router)
+    test "should continue instance on `:continue!`", %{pid: pid, process_uuid: process_uuid} do
+      send_events(pid, [
+        %Started{process_uuid: process_uuid, reply_to: self(), strict?: true},
+        %Continued{process_uuid: process_uuid, reply_to: self(), strict?: true}
+      ])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      assert_receive {:started, ^instance}
+      assert_receive {:continue, ^instance}
+    end
+
+    test "should error on `:continue` when instance not already started", %{
+      pid: pid,
+      process_uuid: process_uuid
+    } do
+      Process.unlink(pid)
+      ref = Process.monitor(pid)
+
+      send_events(pid, [%Continued{process_uuid: process_uuid, reply_to: self(), strict?: true}])
+
+      refute_receive {:continue, _instance}
+      assert_receive {:error, {:continue!, :process_not_started}}
+      assert_receive {:DOWN, ^ref, :process, ^pid, {:continue!, :process_not_started}}
+    end
+  end
+
+  defp send_events(pid, events, initial_event_number \\ 1) do
+    recorded_events = EventFactory.map_to_recorded_events(events, initial_event_number)
+
+    send(pid, {:events, recorded_events})
+  end
+
+  defp wait_for_instance(pid, process_uuid) do
+    Wait.until(fn ->
+      instance = ProcessRouter.process_instance(pid, process_uuid)
+
+      assert is_pid(instance)
+
+      instance
+    end)
   end
 end

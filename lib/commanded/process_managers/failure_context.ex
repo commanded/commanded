@@ -13,16 +13,16 @@ defmodule Commanded.ProcessManagers.FailureContext do
   """
 
   @type t :: %__MODULE__{
-    pending_commands: [struct()],
-    process_manager_state: struct(),
-    last_event: struct(),
-    context: map()
-  }
+          pending_commands: [struct()],
+          process_manager_state: struct(),
+          last_event: struct(),
+          context: map()
+        }
 
   defstruct [
-    pending_commands: nil,
-    process_manager_state: nil,
-    last_event: nil,
-    context: nil
+    :process_manager_state,
+    :last_event,
+    context: %{},
+    pending_commands: []
   ]
 end

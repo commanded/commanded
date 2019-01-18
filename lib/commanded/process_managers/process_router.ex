@@ -8,7 +8,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.ProcessManagers.{ProcessManagerInstance, ProcessRouter, Supervisor}
+  alias Commanded.ProcessManagers.ProcessManagerInstance
+  alias Commanded.ProcessManagers.ProcessRouter
+  alias Commanded.ProcessManagers.Supervisor
+  alias Commanded.ProcessManagers.FailureContext
   alias Commanded.Subscriptions
 
   defmodule State do
@@ -59,21 +62,17 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     GenServer.cast(process_router, {:ack_event, event, instance})
   end
 
-  @doc """
-  Fetch the pid of an individual process manager instance identified by the
-  given `process_uuid`
-  """
+  @doc false
   def process_instance(process_router, process_uuid) do
     GenServer.call(process_router, {:process_instance, process_uuid})
   end
 
-  @doc """
-  Fetch the `process_uuid` and pid of all process manager instances
-  """
+  @doc false
   def process_instances(process_router) do
     GenServer.call(process_router, :process_instances)
   end
 
+  @doc false
   def handle_call(:process_instances, _from, %State{} = state) do
     %State{process_managers: process_managers} = state
 
@@ -82,6 +81,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:reply, reply, state}
   end
 
+  @doc false
   def handle_call({:process_instance, process_uuid}, _from, %State{} = state) do
     %State{process_managers: process_managers} = state
 
@@ -94,6 +94,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:reply, reply, state}
   end
 
+  @doc false
   def handle_cast({:ack_event, event, instance}, %State{} = state) do
     %State{pending_acks: pending_acks} = state
     %RecordedEvent{event_number: event_number} = event
@@ -117,16 +118,16 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, state}
   end
 
-  @doc """
-  Subscribe the process router to all events
-  """
+  @doc false
   def handle_cast(:subscribe_to_events, %State{} = state) do
     {:noreply, subscribe_to_all_streams(state)}
   end
 
+  @doc false
   def handle_cast(:process_pending_events, %State{pending_events: []} = state),
     do: {:noreply, state}
 
+  @doc false
   def handle_cast(:process_pending_events, %State{} = state) do
     %State{pending_events: [event | pending_events]} = state
 
@@ -141,9 +142,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
         Logger.debug(fn -> describe(state) <> " has #{count} pending events to process" end)
     end
 
-    state = handle_event(event, state)
-
-    {:noreply, %State{state | pending_events: pending_events}}
+    case handle_event(event, state) do
+      %State{} = state -> {:noreply, %State{state | pending_events: pending_events}}
+      reply -> reply
+    end
   end
 
   @doc false
@@ -165,6 +167,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, %State{state | supervisor: supervisor}}
   end
 
+  @doc false
   def handle_info({:events, events}, %State{pending_events: pending_events} = state) do
     Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
 
@@ -190,6 +193,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, state}
   end
 
+  @doc false
   # Shutdown process manager when processing an event has taken too long.
   def handle_info({:event_timeout, event_number}, %State{} = state) do
     %State{pending_acks: pending_acks, event_timeout: event_timeout} = state
@@ -210,6 +214,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     end
   end
 
+  @doc false
   # Remove a process manager instance that has stopped with a normal exit reason.
   def handle_info({:DOWN, _ref, :process, pid, :normal}, %State{} = state) do
     %State{process_managers: process_managers} = state
@@ -217,6 +222,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:noreply, %State{state | process_managers: remove_process_manager(process_managers, pid)}}
   end
 
+  @doc false
   # Stop process router when a process manager instance terminates abnormally.
   def handle_info({:DOWN, _ref, :process, _pid, reason}, %State{} = state) do
     Logger.warn(fn -> describe(state) <> " is stopping due to: #{inspect(reason)}" end)
@@ -242,87 +248,133 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   defp handle_event(%RecordedEvent{} = event, %State{} = state) do
-    %RecordedEvent{
-      event_number: event_number,
-      data: data,
-      stream_id: stream_id,
-      stream_version: stream_version
-    } = event
-
+    %RecordedEvent{data: data} = event
     %State{process_manager_module: process_manager_module} = state
 
-    case process_manager_module.interested?(data) do
-      {:start, process_uuid} ->
-        Logger.debug(fn ->
-          describe(state) <>
-            " is interested in event: #{inspect(event_number)} (#{inspect(stream_id)}@#{
-              inspect(stream_version)
-            })"
-        end)
+    try do
+      case process_manager_module.interested?(data) do
+        {:start, process_uuid} ->
+          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
 
-        process_uuid
-        |> List.wrap()
-        |> Enum.reduce(state, fn process_uuid, state ->
-          {process_instance, state} = start_process_manager(process_uuid, state)
-
-          delegate_event(process_instance, event, state)
-        end)
-
-      {:continue, process_uuid} ->
-        Logger.debug(fn ->
-          describe(state) <>
-            " is interested in event: #{inspect(event_number)} (#{inspect(stream_id)}@#{
-              inspect(stream_version)
-            })"
-        end)
-
-        process_uuid
-        |> List.wrap()
-        |> Enum.reduce(state, fn process_uuid, state ->
-          {process_instance, state} = continue_process_manager(process_uuid, state)
-
-          case ProcessManagerInstance.new?(process_instance) do
-            false ->
-              delegate_event(process_instance, event, state)
-
-            true ->
-              Logger.debug(fn ->
-                describe(state) <>
-                  " is not interested in event: #{inspect(event_number)} (#{inspect(stream_id)}@#{
-                    inspect(stream_version)
-                  })"
-              end)
-
-              stop_process_manager(process_uuid, state)
-
-              ack_and_continue(event, state)
-          end
-        end)
-
-      {:stop, process_uuid} ->
-        Logger.debug(fn ->
-          describe(state) <>
-            " has been stopped by event: #{inspect(event_number)} (#{inspect(stream_id)}@#{
-              inspect(stream_version)
-            })"
-        end)
-
-        state =
           process_uuid
           |> List.wrap()
-          |> Enum.reduce(state, &stop_process_manager/2)
+          |> Enum.reduce(state, fn process_uuid, state ->
+            {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
 
-        ack_and_continue(event, state)
+            delegate_event(process_instance, event, state)
+          end)
 
-      false ->
-        Logger.debug(fn ->
-          describe(state) <>
-            " is not interested in event: #{inspect(event_number)} (#{inspect(stream_id)}@#{
-              inspect(stream_version)
-            })"
+        {:start!, process_uuid} ->
+          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+
+          {state, process_instances} =
+            process_uuid
+            |> List.wrap()
+            |> Enum.reduce({state, []}, fn process_uuid, {state, process_instances} ->
+              {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+
+              if ProcessManagerInstance.new?(process_instance) do
+                {state, [process_instance | process_instances]}
+              else
+                throw(
+                  handle_routing_error(
+                    {:error, {:start!, :process_already_started}},
+                    event,
+                    state
+                  )
+                )
+              end
+            end)
+
+          process_instances
+          |> Enum.reverse()
+          |> Enum.reduce(state, &delegate_event(&1, event, &2))
+
+        {:continue, process_uuid} ->
+          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+
+          process_uuid
+          |> List.wrap()
+          |> Enum.reduce(state, fn process_uuid, state ->
+            {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+
+            delegate_event(process_instance, event, state)
+          end)
+
+        {:continue!, process_uuid} ->
+          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+
+          {state, process_instances} =
+            process_uuid
+            |> List.wrap()
+            |> Enum.reduce({state, []}, fn process_uuid, {state, process_instances} ->
+              {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+
+              if ProcessManagerInstance.new?(process_instance) do
+                throw(
+                  handle_routing_error(
+                    {:error, {:continue!, :process_not_started}},
+                    event,
+                    state
+                  )
+                )
+              else
+                {state, [process_instance | process_instances]}
+              end
+            end)
+
+          process_instances
+          |> Enum.reverse()
+          |> Enum.reduce(state, &delegate_event(&1, event, &2))
+
+        {:stop, process_uuid} ->
+          Logger.debug(fn ->
+            describe(state) <> " has been stopped by event " <> describe(event)
+          end)
+
+          state =
+            process_uuid
+            |> List.wrap()
+            |> Enum.reduce(state, &stop_process_manager/2)
+
+          ack_and_continue(event, state)
+
+        false ->
+          Logger.debug(fn ->
+            describe(state) <> " is not interested in event " <> describe(event)
+          end)
+
+          ack_and_continue(event, state)
+      end
+    catch
+      reply -> reply
+    end
+  end
+
+  defp handle_routing_error(error, %RecordedEvent{} = failed_event, %State{} = state) do
+    %RecordedEvent{data: data} = failed_event
+    %State{process_manager_module: process_manager_module} = state
+
+    failure_context = %FailureContext{last_event: failed_event}
+
+    case process_manager_module.error(error, data, failure_context) do
+      :skip ->
+        # Skip the problematic event by confirming receipt
+        Logger.info(fn -> describe(state) <> " is skipping event" end)
+
+        ack_and_continue(failed_event, state)
+
+      {:stop, reason} ->
+        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(error)}" end)
+
+        {:stop, reason, state}
+
+      invalid ->
+        Logger.warn(fn ->
+          describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 
-        ack_and_continue(event, state)
+        {:stop, error, state}
     end
   end
 
@@ -342,6 +394,18 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     do_ack_event(event, state)
 
     %State{state | last_seen_event: event_number}
+  end
+
+  defp start_or_continue_process_manager(process_uuid, %State{} = state) do
+    %State{process_managers: process_managers} = state
+
+    case Map.get(process_managers, process_uuid) do
+      process_manager when is_pid(process_manager) ->
+        {process_manager, state}
+
+      nil ->
+        start_process_manager(process_uuid, state)
+    end
   end
 
   defp start_process_manager(process_uuid, %State{} = state) do
@@ -368,18 +432,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     }
 
     {process_manager, state}
-  end
-
-  defp continue_process_manager(process_uuid, %State{} = state) do
-    %State{process_managers: process_managers} = state
-
-    case Map.get(process_managers, process_uuid) do
-      nil ->
-        start_process_manager(process_uuid, state)
-
-      process_manager ->
-        {process_manager, state}
-    end
   end
 
   defp stop_process_manager(process_uuid, %State{} = state) do
@@ -458,4 +510,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   defp describe(%State{process_manager_module: process_manager_module}),
     do: inspect(process_manager_module)
+
+  defp describe(%RecordedEvent{} = event) do
+    %RecordedEvent{
+      event_number: event_number,
+      stream_id: stream_id,
+      stream_version: stream_version
+    } = event
+
+    "#{inspect(event_number)} (#{inspect(stream_id)}@#{inspect(stream_version)})"
+  end
 end

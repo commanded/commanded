@@ -245,7 +245,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
       invalid ->
         Logger.warn(fn ->
-          describe(state) <> " returned an invalid error reponse: #{inspect(invalid)}"
+          describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 
         # Stop process manager with original error

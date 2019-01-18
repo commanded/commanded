@@ -535,7 +535,7 @@ defmodule Commanded.Event.Handler do
 
       invalid ->
         Logger.warn(fn ->
-          describe(state) <> " returned an invalid error reponse: #{inspect(invalid)}"
+          describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 
         # Stop event handler with original error
