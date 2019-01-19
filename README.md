@@ -23,6 +23,7 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 
 - [Changelog](CHANGELOG.md)
 - [Wiki](https://github.com/commanded/commanded/wiki)
+- [What is CQRS/ES?](https://kalele.io/blog-posts/really-simple-cqrs/)
 - [Frequently asked questions](https://github.com/commanded/commanded/wiki/FAQ)
 - [Getting help](https://github.com/commanded/commanded/wiki/Getting-help)
 - [Latest published Hex package](https://hex.pm/packages/commanded) & [documentation](https://hexdocs.pm/commanded/)
