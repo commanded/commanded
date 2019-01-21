@@ -95,10 +95,8 @@ defmodule Commanded.Aggregate.Multi do
   """
   @spec reduce(Multi.t(), Enum.t(), function()) :: Multi.t()
   def reduce(%Multi{} = multi, enumerable, execute_fun) when is_function(execute_fun, 2) do
-    execute(multi, fn aggregate ->
-      Enum.reduce(enumerable, Multi.new(aggregate), fn item, %Multi{} = multi ->
-        execute(multi, &execute_fun.(&1, item))
-      end)
+    Enum.reduce(enumerable, multi, fn item, %Multi{} = multi ->
+      execute(multi, &execute_fun.(&1, item))
     end)
   end
 
