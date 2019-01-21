@@ -4,7 +4,6 @@
 
 ### Enhancements
 
-- Do not start new process manager instance on `:continue` ([#181](https://github.com/commanded/commanded/pull/181)).
 - Rename `uuid` dependency to `elixir_uuid` ([#178](https://github.com/commanded/commanded/pull/178)).
 - Allow aggregate identity to be of any type that implements the `String.Chars` protocol ([#166](https://github.com/commanded/commanded/pull/166)).
 - Process manager and event handler error & exception handling ([#192](https://github.com/commanded/commanded/pull/192)).
@@ -14,8 +13,8 @@
 - Export `Commanded.Commands.Router` macros in `.formatter.exs` file ([#204](https://github.com/commanded/commanded/pull/204)).
 - Generate specs and docs for Router dispatch functions only once ([#206](https://github.com/commanded/commanded/pull/206)).
 - Allow two-arity predicate function in `wait_for_event` receiving both event data and recorded event struct ([#213](https://github.com/commanded/commanded/pull/213)).
-- Make poison an optional dependency ([#215](https://github.com/commanded/commanded/pull/215)).
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
+- Strict process manager routing ([#243](https://github.com/commanded/commanded/pull/243)).
 
 ### Bug fixes
 

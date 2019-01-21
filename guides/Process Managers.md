@@ -2,18 +2,35 @@
 
 A process manager is responsible for coordinating one or more aggregates. It handles events and dispatches commands in response. You can think of a process manager as the opposite of an aggregate: aggregates handle commands and create events; process managers handle events and create commands. Process managers have state that can be used to track which aggregates are being orchestrated.
 
-Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the callback functions defined in the behaviour: `interested?/1`, `handle/2`, `apply/2`, and `error/4`.
+Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the callback functions defined in the behaviour: `interested?/1`, `handle/2`, `apply/2`, and `error/3`.
 
 ## `interested?/1`
 
 The `interested?/1` function is used to indicate which events the process manager handles. The response is used to route the event to an existing instance or start a new process instance:
 
 - `{:start, process_uuid}` - create a new instance of the process manager.
+- `{:start!, process_uuid}` - create a new instance of the process manager (strict).
 - `{:continue, process_uuid}` - continue execution of an existing process manager.
-- `{:stop, process_uuid}` - stop an existing process manager, shutdown its process, and delete its persisted state.
+- `{:continue!, process_uuid}` - continue execution of an existing process manager (strict).
+- `{:stop, process_uuid}` - stop an existing process manager, shutdown its
+  process, and delete its persisted state.
 - `false` - ignore the event.
 
-You can return a list of process identifiers when a single domain event must be handled by multiple process instances.
+You can return a list of process identifiers when a single domain event is to be handled by multiple process instances.
+
+### Strict process routing
+
+Using strict routing, with `:start!` or `:continue`, enforces the following validation checks:
+
+- `{:start!, process_uuid}` - validate process does not already exist.
+- `{:continue!, process_uuid}` - validate process already exists.
+
+If the check fails an error will be passed to the `error/3` callback function:
+
+- `{:error, {:start!, :process_already_started}}`
+- `{:error, {:continue!, :process_not_started}}`
+
+The `error/3` function can choose to `:stop` the process or `:skip` the problematic event.
 
 ## `handle/2`
 
@@ -33,7 +50,7 @@ You can define an `c:error/3` callback function to handle any errors or exceptio
 
 Use pattern matching on the error and/or failed event/command to explicitly handle certain errors, events, or commands. You can choose to retry, skip, ignore, or stop the process manager after a command dispatch error.
 
-The default behaviour, if you don't provide an `c:error/3` callback, is to stop the process manager using the exact error reason returned from the event handler function or command dispatch. You should supervise your process managers to ensure they are restarted on error.
+The default behaviour, if you don't provide an `c:error/3` callback, is to stop the process manager using the exact error reason returned from the event handler function or command dispatch.
 
 The `error/3` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
 
@@ -72,6 +89,29 @@ defmodule Bank.Payments.Supervisor do
 end
 ```
 
+### Supervision caveats
+
+The default error handling strategy is to stop the process manager. When supervised, the process will be restarted and will attempt to handle the same event again, which will likely result in the same error. This could lead to too many restarts of the supervisor, which may eventually cause the application to stop, depending upon your supervision tree.
+
+To prevent this you can choose to define the default error handling strategy as `:skip` to skip over any problematic events.
+
+```elixir
+defmodule ExampleProcessManager do
+  use Commanded.ProcessManagers.ProcessManager, name: __MODULE__, router: Router
+
+  require Logger
+
+  # By default skip any problematic events
+  def error(error, _command_or_event, _failure_context) do
+    Logger.error(fn -> "#{__MODULE__} encountered an error: " <> inspect(error) end)
+
+    :skip
+  end
+end
+```
+
+Alternatively you can define the restart strategy of your process manager as `:temporary` to prevent it from being restarted on termination. This approach will require manual intervention to fix the stopped process manager, but ensures that it won't miss any events nor crash the application.
+
 ### Error handling example
 
 Define an `error/3` callback function to determine how to handle errors during event handling and command dispatch.
@@ -83,14 +123,14 @@ defmodule ExampleProcessManager do
     router: ExampleRouter
 
   # Stop process manager after three failures
-  def error({:error, _failure}, _failed_command, %{context: %{failures: failures}})
+  def error({:error, _failure}, _failed_message, %{context: %{failures: failures}})
     when failures >= 2
   do
     {:stop, :too_many_failures}
   end
 
   # Retry command, record failure count in context map
-  def error({:error, _failure}, _failed_command, %{context: context}) do
+  def error({:error, _failure}, _failed_message, %{context: context}) do
     context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)
     {:retry, context}
   end
@@ -116,22 +156,32 @@ defmodule TransferMoneyProcessManager do
     :status
   ]
 
+  # Process routing
+
   def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}), do: {:start, transfer_uuid}
   def interested?(%MoneyWithdrawn{transfer_uuid: transfer_uuid}), do: {:continue, transfer_uuid}
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}), do: {:stop, transfer_uuid}
   def interested?(_event), do: false
 
-  def handle(%TransferMoneyProcessManager{}, %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, amount: amount}) do
+  # Command dispatch
+
+  def handle(%TransferMoneyProcessManager{}, %MoneyTransferRequested{} = event) do
+    %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, amount: amount} = event
+
     %WithdrawMoney{account_number: debit_account, transfer_uuid: transfer_uuid, amount: amount}
   end
 
-  def handle(%TransferMoneyProcessManager{transfer_uuid: transfer_uuid, credit_account: credit_account, amount: amount}, %MoneyWithdrawn{}) do
+  def handle(%TransferMoneyProcessManager{} = pm, %MoneyWithdrawn{}) do
+    %TransferMoneyProcessManager{transfer_uuid: transfer_uuid, credit_account: credit_account, amount: amount} = pm
+
     %DepositMoney{account_number: credit_account, transfer_uuid: transfer_uuid, amount: amount}
   end
 
   # State mutators
 
-  def apply(%TransferMoneyProcessManager{} = transfer, %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, credit_account: credit_account, amount: amount}) do
+  def apply(%TransferMoneyProcessManager{} = transfer, %MoneyTransferRequested{} = event) do
+    %MoneyTransferRequested{transfer_uuid: transfer_uuid, debit_account: debit_account, credit_account: credit_account, amount: amount} = event
+
     %TransferMoneyProcessManager{transfer |
       transfer_uuid: transfer_uuid,
       debit_account: debit_account,
@@ -152,7 +202,7 @@ end
 The name given to the process manager *must* be unique. This is used when subscribing to events from the event store to track the last seen event and ensure they are only received once.
 
 ```elixir
-{:ok, _} = TransferMoneyProcessManager.start_link(start_from: :current)
+{:ok, _pid} = TransferMoneyProcessManager.start_link(start_from: :current)
 ```
 
 You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
@@ -171,14 +221,13 @@ defmodule TransferMoneyProcessManager do
     name: "TransferMoneyProcessManager",
     router: BankRouter,
     event_timeout: :timer.minutes(10)
-
 end
 ```
 
 Or may be configured when starting a process manager:
 
 ```elixir
-{:ok, _} = TransferMoneyProcessManager.start_link(event_timeout: :timer.hours(1))
+{:ok, _pid} = TransferMoneyProcessManager.start_link(event_timeout: :timer.hours(1))
 ```
 
 After the timeout has elapsed, indicating the process manager has not processed an event within the configured period, the process manager is stopped. The process manager will be restarted if supervised and will retry the event, this should help resolve transient problems.

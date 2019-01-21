@@ -42,7 +42,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   end
 
   test "should provide `__name__/0` function" do
-    assert TransferMoneyProcessManager.__name__() == "transfer_money_process_manager"
+    assert TransferMoneyProcessManager.__name__() ==
+             "Commanded.ExampleDomain.TransferMoneyProcessManager"
   end
 
   test "should ensure a process manager name is provided" do

@@ -139,6 +139,10 @@ defmodule Commanded.Commands.Router do
       :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
   """
+
+  @callback dispatch(struct, keyword()) ::
+              :ok | {:ok, non_neg_integer()} | {:ok, struct} | {:error, term}
+
   defmacro __using__(_opts) do
     quote do
       require Logger
