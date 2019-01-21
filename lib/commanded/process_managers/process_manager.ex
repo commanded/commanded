@@ -132,17 +132,38 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   instance or start a new process instance:
 
   - `{:start, process_uuid}` - create a new instance of the process manager.
+  - `{:start!, process_uuid}` - create a new instance of the process manager (strict).
   - `{:continue, process_uuid}` - continue execution of an existing process manager.
+  - `{:continue!, process_uuid}` - continue execution of an existing process manager (strict).
   - `{:stop, process_uuid}` - stop an existing process manager, shutdown its
     process, and delete its persisted state.
   - `false` - ignore the event.
 
-  You can return a list of process identifiers when a single domain event must
+  You can return a list of process identifiers when a single domain event is to
   be handled by multiple process instances.
+
+  ## Strict process routing
+
+  Using strict routing, with `:start!` or `:continue`, enforces the following
+  validation checks:
+
+  - `{:start!, process_uuid}` - validate process does not already exist.
+  - `{:continue!, process_uuid}` - validate process already exists.
+
+  If the check fails an error will be passed to the `error/3` callback function:
+
+  - `{:error, {:start!, :process_already_started}}`
+  - `{:error, {:continue!, :process_not_started}}`
+
+  The `error/3` function can choose to `:stop` the process or `:skip` the
+  problematic event.
+
   """
   @callback interested?(domain_event) ::
               {:start, process_uuid}
+              | {:start!, process_uuid}
               | {:continue, process_uuid}
+              | {:continue!, process_uuid}
               | {:stop, process_uuid}
               | false
 

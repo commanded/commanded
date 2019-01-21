@@ -346,6 +346,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
           ack_and_continue(event, state)
       end
+    rescue
+      e -> handle_routing_error({:error, e}, event, state)
     catch
       reply -> reply
     end

@@ -78,7 +78,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   def handle_call(:stop, _from, %ProcessManagerInstance{} = state) do
     :ok = delete_state(state)
 
-    # stop the process with a normal reason
+    # Stop the process with a normal reason
     {:stop, :normal, :ok, state}
   end
 
@@ -126,11 +126,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
-  defp event_already_seen?(
-         %RecordedEvent{event_number: event_number},
-         %ProcessManagerInstance{last_seen_event: last_seen_event}
-       ) do
-    not is_nil(last_seen_event) and event_number <= last_seen_event
+  defp event_already_seen?(%RecordedEvent{}, %ProcessManagerInstance{last_seen_event: nil}),
+    do: false
+
+  defp event_already_seen?(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do
+    %RecordedEvent{event_number: event_number} = event
+    %ProcessManagerInstance{last_seen_event: last_seen_event} = state
+
+    event_number <= last_seen_event
   end
 
   # Already seen event, so just ack
@@ -196,8 +199,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     try do
       process_manager_module.handle(process_state, data)
     rescue
-      e ->
-        {:error, e}
+      e -> {:error, e}
     end
   end
 

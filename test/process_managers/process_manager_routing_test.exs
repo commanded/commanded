@@ -4,78 +4,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   alias Commanded.Helpers.EventFactory
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
-
-  defmodule Started do
-    @enforce_keys [:process_uuid]
-    defstruct [:process_uuid, :reply_to, strict?: false]
-  end
-
-  defmodule Continued do
-    @enforce_keys [:process_uuid]
-    defstruct [:process_uuid, :reply_to, strict?: false]
-  end
-
-  defmodule Stopped do
-    @enforce_keys [:process_uuid]
-    defstruct [:process_uuid]
-  end
-
-  defmodule ProcessManager do
-    use Commanded.ProcessManagers.ProcessManager,
-      name: __MODULE__,
-      router: Commanded.Commands.MockRouter
-
-    alias Commanded.ProcessManagers.FailureContext
-
-    defstruct [:processes]
-
-    def interested?(%Started{process_uuid: process_uuid, strict?: true}),
-      do: {:start!, process_uuid}
-
-    def interested?(%Started{process_uuid: process_uuid}),
-      do: {:start, process_uuid}
-
-    def interested?(%Continued{process_uuid: process_uuid, strict?: true}),
-      do: {:continue!, process_uuid}
-
-    def interested?(%Continued{process_uuid: process_uuid}),
-      do: {:continue, process_uuid}
-
-    def interested?(%Stopped{process_uuid: process_uuid}),
-      do: {:stop, process_uuid}
-
-    def handle(%ProcessManager{}, %Started{} = event) do
-      %Started{reply_to: reply_to} = event
-
-      send(reply_to, {:started, self()})
-
-      []
-    end
-
-    def handle(%ProcessManager{}, %Continued{} = event) do
-      %Continued{reply_to: reply_to} = event
-
-      send(reply_to, {:continue, self()})
-
-      []
-    end
-
-    def error({:error, error}, %Started{} = event, %FailureContext{}) do
-      %Started{reply_to: reply_to} = event
-
-      send(reply_to, {:error, error})
-
-      {:stop, error}
-    end
-
-    def error({:error, error}, %Continued{} = event, %FailureContext{}) do
-      %Continued{reply_to: reply_to} = event
-
-      send(reply_to, {:error, error})
-
-      {:stop, error}
-    end
-  end
+  alias Commanded.ProcessManagers.RoutingProcessManager
+  alias Commanded.ProcessManagers.RoutingProcessManager.Continued
+  alias Commanded.ProcessManagers.RoutingProcessManager.Errored
+  alias Commanded.ProcessManagers.RoutingProcessManager.Started
+  alias Commanded.ProcessManagers.RoutingProcessManager.Stopped
 
   setup do
     expect(MockEventStore, :subscribe_to, fn
@@ -89,7 +22,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
     stub(MockEventStore, :record_snapshot, fn _snapshot -> :ok end)
     stub(MockEventStore, :ack_event, fn _pid, _event -> :ok end)
 
-    {:ok, pid} = ProcessManager.start_link()
+    {:ok, pid} = RoutingProcessManager.start_link()
 
     [pid: pid, process_uuid: UUID.uuid4()]
   end
@@ -124,7 +57,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
       instance = wait_for_instance(pid, process_uuid)
 
       assert_receive {:started, ^instance}
-      assert_receive {:continue, ^instance}
+      assert_receive {:continued, ^instance}
     end
 
     test "should start instance on `:continue`", %{pid: pid, process_uuid: process_uuid} do
@@ -133,7 +66,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
       instance = wait_for_instance(pid, process_uuid)
 
       refute_receive {:started, ^instance}
-      assert_receive {:continue, ^instance}
+      assert_receive {:continued, ^instance}
     end
 
     test "should stop instance on `:stop`", %{pid: pid, process_uuid: process_uuid} do
@@ -187,7 +120,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
       instance = wait_for_instance(pid, process_uuid)
 
       assert_receive {:started, ^instance}
-      assert_receive {:continue, ^instance}
+      assert_receive {:continued, ^instance}
     end
 
     test "should error on `:continue` when instance not already started", %{
@@ -199,9 +132,44 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
 
       send_events(pid, [%Continued{process_uuid: process_uuid, reply_to: self(), strict?: true}])
 
-      refute_receive {:continue, _instance}
+      refute_receive {:continued, _instance}
       assert_receive {:error, {:continue!, :process_not_started}}
       assert_receive {:DOWN, ^ref, :process, ^pid, {:continue!, :process_not_started}}
+    end
+
+    test "should rescue `interested?` errors", %{
+      pid: pid,
+      process_uuid: process_uuid
+    } do
+      Process.unlink(pid)
+      ref = Process.monitor(pid)
+
+      send_events(pid, [
+        %Errored{process_uuid: process_uuid, reply_to: self(), on_error: {:stop, :error}}
+      ])
+
+      assert_receive {:error, %RuntimeError{message: "error"}}
+      assert_receive {:DOWN, ^ref, :process, ^pid, :error}
+    end
+
+    test "should continue processing events after `:skip` error", %{
+      pid: pid,
+      process_uuid: process_uuid
+    } do
+      ref = Process.monitor(pid)
+
+      send_events(pid, [
+        %Started{process_uuid: process_uuid, reply_to: self()},
+        %Errored{process_uuid: process_uuid, reply_to: self(), on_error: :skip},
+        %Continued{process_uuid: process_uuid, reply_to: self()}
+      ])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      assert_receive {:started, ^instance}
+      assert_receive {:error, %RuntimeError{message: "error"}}
+      assert_receive {:continued, ^instance}
+      refute_receive {:DOWN, ^ref, :process, ^pid, _}
     end
   end
 
