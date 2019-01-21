@@ -15,6 +15,7 @@
 - Allow two-arity predicate function in `wait_for_event` receiving both event data and recorded event struct ([#213](https://github.com/commanded/commanded/pull/213)).
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
 - Strict process manager routing ([#243](https://github.com/commanded/commanded/pull/243)).
+- Allow `Commanded.Aggregate.Multi` to be nested ([#244](https://github.com/commanded/commanded/pull/244)).
 
 ### Bug fixes
 

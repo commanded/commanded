@@ -1,43 +1,44 @@
 defmodule Commanded.Aggregate.Multi.BankAccount do
-  defstruct account_number: nil,
-            balance: 0,
-            state: nil
+  defstruct [:account_number, :status, balance: 0]
 
   alias Commanded.Aggregate.Multi
   alias Commanded.Aggregate.Multi.BankAccount
 
   defmodule Commands do
-    defmodule(OpenAccount, do: defstruct([:account_number, :initial_balance]))
-    defmodule(WithdrawMoney, do: defstruct([:account_number, :transfer_uuid, :amount]))
+    defmodule OpenAccount do
+      defstruct [:account_number, :initial_balance]
+    end
+
+    defmodule WithdrawMoney do
+      defstruct [:account_number, :transfer_uuid, :amount]
+    end
   end
 
   defmodule Events do
     defmodule BankAccountOpened do
       @derive Jason.Encoder
-      defstruct([:account_number, :balance])
+      defstruct [:account_number, :balance]
     end
 
     defmodule MoneyWithdrawn do
       @derive Jason.Encoder
-      defstruct([:account_number, :transfer_uuid, :amount, :balance])
+      defstruct [:account_number, :transfer_uuid, :amount, :balance]
     end
   end
 
   alias Commands.{OpenAccount, WithdrawMoney}
   alias Events.{BankAccountOpened, MoneyWithdrawn}
 
-  def execute(
-        %BankAccount{state: nil},
-        %OpenAccount{account_number: account_number, initial_balance: initial_balance}
-      )
+  # Public command functions
+
+  def execute(%BankAccount{status: nil}, %OpenAccount{initial_balance: initial_balance} = command)
       when is_number(initial_balance) and initial_balance > 0 do
+    %OpenAccount{account_number: account_number} = command
+
     %BankAccountOpened{account_number: account_number, balance: initial_balance}
   end
 
-  def execute(
-        %BankAccount{state: :active} = account,
-        %WithdrawMoney{amount: amount}
-      )
+  def execute(%BankAccount{status: :active} = account, %WithdrawMoney{amount: amount})
       when is_number(amount) and amount > 0 do
     account
     |> Multi.new()
@@ -47,19 +48,23 @@ defmodule Commanded.Aggregate.Multi.BankAccount do
 
   # State mutators
 
-  def apply(
-        %BankAccount{} = state,
-        %BankAccountOpened{account_number: account_number, balance: balance}
-      ) do
-    %BankAccount{state | account_number: account_number, balance: balance, state: :active}
+  def apply(%BankAccount{} = state, %BankAccountOpened{} = event) do
+    %BankAccountOpened{account_number: account_number, balance: balance} = event
+
+    %BankAccount{state | account_number: account_number, balance: balance, status: :active}
   end
 
-  def apply(%BankAccount{} = state, %MoneyWithdrawn{balance: balance}),
-    do: %BankAccount{state | balance: balance}
+  def apply(%BankAccount{} = state, %MoneyWithdrawn{} = event) do
+    %MoneyWithdrawn{balance: balance} = event
 
-  # private helpers
+    %BankAccount{state | balance: balance}
+  end
 
-  defp withdraw_money(%BankAccount{account_number: account_number, balance: balance}, amount) do
+  # Private helpers
+
+  defp withdraw_money(%BankAccount{} = state, amount) do
+    %BankAccount{account_number: account_number, balance: balance} = state
+
     %MoneyWithdrawn{
       account_number: account_number,
       amount: amount,
@@ -67,8 +72,7 @@ defmodule Commanded.Aggregate.Multi.BankAccount do
     }
   end
 
-  defp check_balance(%BankAccount{balance: balance})
-       when balance < 0 do
+  defp check_balance(%BankAccount{balance: balance}) when balance < 0 do
     {:error, :insufficient_funds_available}
   end
 
