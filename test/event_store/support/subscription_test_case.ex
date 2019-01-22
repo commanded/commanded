@@ -253,6 +253,51 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         refute_receive {:events, _received_events}
       end
+
+      test "should resume subscription when subscribing again" do
+        {:ok, subscription1} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+
+        assert_receive {:subscribed, ^subscription1}
+
+        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+
+        assert_receive_events(subscription1, 1, from: 1)
+
+        :ok = EventStore.unsubscribe(subscription1)
+
+        {:ok, subscription2} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+
+        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+
+        assert_receive {:subscribed, ^subscription2}
+        assert_receive_events(subscription2, 2, from: 2)
+      end
+    end
+
+    describe "delete subscription" do
+      test "should be deleted" do
+        {:ok, subscription1} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+
+        assert_receive {:subscribed, ^subscription1}
+
+        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+
+        assert_receive_events(subscription1, 1, from: 1)
+
+        :ok = EventStore.unsubscribe(subscription1)
+        :ok = EventStore.delete_subscription(:all, "subscriber")
+
+        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+
+        refute_receive {:events, _received_events}
+
+        {:ok, subscription2} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+
+        # Should receive all events as subscription has been recreated from `:origin`
+        assert_receive {:subscribed, ^subscription2}
+        assert_receive_events(subscription2, 1, from: 1)
+        assert_receive_events(subscription2, 2, from: 2)
+      end
     end
 
     describe "resume subscription" do

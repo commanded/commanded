@@ -83,6 +83,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
+  def delete_subscription(stream_uuid, subscription_name) do
+    GenServer.call(__MODULE__, {:delete_subscription, stream_uuid, subscription_name})
+  end
+
+  @impl Commanded.EventStore
   def read_snapshot(source_uuid) do
     GenServer.call(__MODULE__, {:read_snapshot, source_uuid})
   end
@@ -216,9 +221,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
           persistent_subscription(subscription, state)
 
         %Subscription{subscriber: nil} = subscription ->
-          persistent_subscription(%Subscription{subscription | subscriber: subscriber}, state)
+          subscription = %Subscription{subscription | subscriber: subscriber}
 
-        _subscription ->
+          persistent_subscription(subscription, state)
+
+        %Subscription{} ->
           {{:error, :subscription_already_exists}, state}
       end
 
@@ -226,17 +233,52 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl GenServer
-  def handle_call({:unsubscribe, subscription}, _from, %State{} = state) do
+  def handle_call({:unsubscribe, pid}, _from, %State{} = state) do
     %State{persistent_subscriptions: subscriptions} = state
 
-    :ok = stop_subscription(subscription)
+    {reply, state} =
+      case Enum.find(subscriptions, fn
+             {_name, %Subscription{subscriber: ^pid}} -> true
+             {_name, %Subscription{}} -> false
+           end) do
+        {subscription_name, %Subscription{} = subscription} ->
+          :ok = stop_subscription(pid)
 
-    state = %State{
-      state
-      | persistent_subscriptions: remove_subscriber_by_pid(subscriptions, subscription)
-    }
+          subscription = %Subscription{subscription | subscriber: nil, ref: nil}
 
-    {:reply, :ok, state}
+          state = %State{
+            state
+            | persistent_subscriptions: Map.put(subscriptions, subscription_name, subscription)
+          }
+
+          {:ok, state}
+
+        nil ->
+          {:ok, state}
+      end
+
+    {:reply, reply, state}
+  end
+
+  @impl GenServer
+  def handle_call({:delete_subscription, stream_uuid, subscription_name}, _from, %State{} = state) do
+    %State{persistent_subscriptions: subscriptions} = state
+
+    {reply, state} =
+      case Map.get(subscriptions, subscription_name) do
+        %Subscription{stream_uuid: ^stream_uuid, subscriber: nil} ->
+          state = %State{
+            state
+            | persistent_subscriptions: Map.delete(subscriptions, subscription_name)
+          }
+
+          {:ok, state}
+
+        nil ->
+          {{:error, :subscription_not_found}, state}
+      end
+
+    {:reply, reply, state}
   end
 
   @impl GenServer
@@ -412,7 +454,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp remove_subscriber_by_pid(subscriptions, pid) do
     Enum.reduce(subscriptions, subscriptions, fn
-      {name, %Subscription{subscriber: subscriber} = subscription}, acc when subscriber == pid ->
+      {name, %Subscription{subscriber: ^pid} = subscription}, acc ->
         Map.put(acc, name, %Subscription{subscription | subscriber: nil})
 
       _, acc ->

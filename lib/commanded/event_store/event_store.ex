@@ -100,8 +100,26 @@ defmodule Commanded.EventStore do
 
   @doc """
   Unsubscribe an existing subscriber from event notifications.
+
+  This will not delete the subscription.
+
+  ## Example
+
+      :ok = Commanded.EventStore.unsubscribe(subscription)
+
   """
   @callback unsubscribe(subscription) :: :ok
+
+  @doc """
+  Delete an existing subscription.
+
+  ## Example
+
+      :ok = Commanded.EventStore.delete_subscription(:all, "Example")
+
+  """
+  @callback delete_subscription(stream_uuid | :all, subscription_name) ::
+              :ok | {:error, :subscription_not_found} | {:error, error}
 
   @doc """
   Read a snapshot, if available, for a given source.
@@ -190,6 +208,15 @@ defmodule Commanded.EventStore do
   @spec unsubscribe(subscription) :: :ok
   def unsubscribe(subscription) do
     event_store_adapter().unsubscribe(subscription)
+  end
+
+  @doc """
+  Delete an existing subscription.
+  """
+  @spec delete_subscription(stream_uuid | :all, subscription_name) ::
+          :ok | {:error, :subscription_not_found} | {:error, error}
+  def delete_subscription(stream_uuid, subscription_name) do
+    event_store_adapter().delete_subscription(stream_uuid, subscription_name)
   end
 
   @doc """
