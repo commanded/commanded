@@ -17,6 +17,7 @@
 - Strict process manager routing ([#243](https://github.com/commanded/commanded/pull/243)).
 - Allow `Commanded.Aggregate.Multi` to be nested ([#244](https://github.com/commanded/commanded/pull/244)).
 - Add `delete_subscription/2` to `Commanded.EventStore` behaviour ([#245](https://github.com/commanded/commanded/pull/245)).
+- Add `refute_receive_event/2` to `Commanded.Assertions.EventAssertions` test helpers.
 
 ### Bug fixes
 

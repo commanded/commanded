@@ -7,6 +7,8 @@ config :ex_unit,
   assert_receive_timeout: 1_000
 
 config :commanded,
+  assert_receive_event_timeout: 100,
+  refute_receive_event_timeout: 100,
   dispatch_consistency_timeout: 100,
   event_store_adapter: Commanded.EventStore.Adapters.InMemory
 
