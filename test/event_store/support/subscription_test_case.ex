@@ -246,7 +246,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert_receive_events(subscription, 1, from: 1)
 
-        :ok = EventStore.unsubscribe(subscription)
+        :ok = unsubscribe(subscription)
 
         :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
         :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
@@ -263,7 +263,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert_receive_events(subscription1, 1, from: 1)
 
-        :ok = EventStore.unsubscribe(subscription1)
+        :ok = unsubscribe(subscription1)
 
         {:ok, subscription2} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
 
@@ -284,7 +284,22 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert_receive_events(subscription1, 1, from: 1)
 
-        :ok = EventStore.unsubscribe(subscription1)
+        :ok = unsubscribe(subscription1)
+
+        assert :ok = EventStore.delete_subscription(:all, "subscriber")
+      end
+
+      test "should create new subscription after deletion" do
+        {:ok, subscription1} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+
+        assert_receive {:subscribed, ^subscription1}
+
+        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+
+        assert_receive_events(subscription1, 1, from: 1)
+
+        :ok = unsubscribe(subscription1)
+
         :ok = EventStore.delete_subscription(:all, "subscriber")
 
         :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
@@ -359,12 +374,19 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       end
     end
 
+    defp unsubscribe(subscription) do
+      :ok = EventStore.unsubscribe(subscription)
+
+      wait_for_event_store()
+    end
+
     defp stop_subscriber(subscriber) do
       ProcessHelper.shutdown(subscriber)
 
       wait_for_event_store()
     end
 
+    # Optionally wait for the event store
     defp wait_for_event_store do
       case event_store_wait() do
         nil -> :ok
