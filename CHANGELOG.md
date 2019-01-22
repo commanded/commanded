@@ -16,6 +16,7 @@
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
 - Strict process manager routing ([#243](https://github.com/commanded/commanded/pull/243)).
 - Allow `Commanded.Aggregate.Multi` to be nested ([#244](https://github.com/commanded/commanded/pull/244)).
+- Add `delete_subscription/2` to `Commanded.EventStore` behaviour ([#245](https://github.com/commanded/commanded/pull/245)).
 
 ### Bug fixes
 
