@@ -29,11 +29,14 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   @doc """
-  Wait for an event of the given event type, matching the predicate, to be published.
+  Wait for an event of the given event type, matching the predicate, to be
+  published.
 
   ## Examples
 
-      wait_for_event BankAccountOpened, fn opened -> opened.account_number == "ACC123" end
+      wait_for_event(BankAccountOpened, fn opened ->
+        opened.account_number == "ACC123"
+      end)
 
   """
   def wait_for_event(event_type, predicate_fn) when is_function(predicate_fn) do
@@ -43,17 +46,18 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   @doc """
-  Assert that events matching their respective predicates have a matching correlation id.
+  Assert that events matching their respective predicates have a matching
+  correlation id.
+
   Useful when there is a chain of events that is connected through event handlers.
 
   ## Examples
 
-      id_one = 1
-      id_two = 2
       assert_correlated(
-        BankAccountOpened, fn opened -> opened.id == id_one end,
-        InitialAmountDeposited, fn deposited -> deposited.id == id_two end
+        BankAccountOpened, fn opened -> opened.id == 1 end,
+        InitialAmountDeposited, fn deposited -> deposited.id == 2 end
       )
+
   """
   def assert_correlated(event_type_a, predicate_a, event_type_b, predicate_b) do
     assert_receive_event(event_type_a, predicate_a, fn _event_a, metadata_a ->
@@ -64,13 +68,14 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   @doc """
-  Assert that an event of the given event type is published. Verify that event using the assertion function.
+  Assert that an event of the given event type is published.
+  Verify that event using the assertion function.
 
   ## Examples
 
-      assert_receive_event BankAccountOpened, fn opened ->
+      assert_receive_event(BankAccountOpened, fn opened ->
         assert opened.account_number == "ACC123"
-      end
+      end)
 
   """
   def assert_receive_event(event_type, assertion_fn) do
@@ -78,16 +83,16 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   @doc """
-  Assert that an event of the given event type, matching the predicate, is published.
-  Verify that event using the assertion function.
+  Assert that an event of the given event type, matching the predicate, is
+  published. Verify that event using the assertion function.
 
   ## Examples
 
-      assert_receive_event BankAccountOpened,
+      assert_receive_event(BankAccountOpened,
         fn opened -> opened.account_number == "ACC123" end,
         fn opened ->
           assert opened.balance == 1_000
-        end
+        end)
 
   """
   def assert_receive_event(event_type, predicate_fn, assertion_fn) do
@@ -100,20 +105,18 @@ defmodule Commanded.Assertions.EventAssertions do
     end)
   end
 
-  defp default_receive_timeout,
-    do: Application.get_env(:commanded, :assert_receive_event_timeout, 1_000)
-
-  defp with_subscription(callback_fn) do
+  defp with_subscription(callback_fun) when is_function(callback_fun, 1) do
     subscription_name = UUID.uuid4()
 
-    {:ok, subscription} = create_subscription(subscription_name)
+    {:ok, subscription} = EventStore.subscribe_to(:all, subscription_name, self(), :origin)
 
     assert_receive {:subscribed, ^subscription}, default_receive_timeout()
 
     try do
-      apply(callback_fn, [subscription])
+      apply(callback_fun, [subscription])
     after
-      remove_subscription(subscription)
+      :ok = EventStore.unsubscribe(subscription)
+      :ok = EventStore.delete_subscription(:all, subscription_name)
     end
   end
 
@@ -162,9 +165,14 @@ defmodule Commanded.Assertions.EventAssertions do
     expected_event =
       Enum.find(received_events, fn received_event ->
         case received_event.event_type do
-          ^expected_type when is_function(predicate_fn, 2) -> apply(predicate_fn, [received_event.data, received_event])
-          ^expected_type when is_function(predicate_fn, 1) -> apply(predicate_fn, [received_event.data])
-          _ -> false
+          ^expected_type when is_function(predicate_fn, 2) ->
+            apply(predicate_fn, [received_event.data, received_event])
+
+          ^expected_type when is_function(predicate_fn, 1) ->
+            apply(predicate_fn, [received_event.data])
+
+          _ ->
+            false
         end
       end)
 
@@ -174,12 +182,8 @@ defmodule Commanded.Assertions.EventAssertions do
     end
   end
 
-  defp create_subscription(subscription_name),
-    do: EventStore.subscribe_to(:all, subscription_name, self(), :origin)
+  defp ack_events(subscription, events), do: EventStore.ack_event(subscription, List.last(events))
 
-  defp remove_subscription(subscription),
-    do: EventStore.unsubscribe(subscription)
-
-  defp ack_events(subscription, events),
-    do: EventStore.ack_event(subscription, List.last(events))
+  defp default_receive_timeout,
+    do: Application.get_env(:commanded, :assert_receive_event_timeout, 1_000)
 end
