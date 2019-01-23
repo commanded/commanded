@@ -77,6 +77,27 @@
   end
   ```
 
+### Upgrading
+
+Please ensure you upgrade the following event store dependencies.
+
+Using the Elixir [EventStore](https://github.com/commanded/eventstore):
+
+- `eventstore` to [v0.16.0](https://hex.pm/packages/eventstore)
+- `commanded_eventstore_adapter` to [v0.5.0](https://hex.pm/packages/commanded_eventstore_adapter)
+
+Using Greg Young's [Event Store](https://eventstore.org/):
+
+- `commanded_extreme_adapter` to [v0.6.0](https://hex.pm/packages/commanded_extreme_adapter)
+
+Commanded Ecto projections:
+
+- `commanded_ecto_projections` to [v0.8.0](https://hex.pm/packages/commanded_ecto_projections)
+
+Commanded scheduler:
+
+- `commanded_scheduler` to [v0.2.0](https://hex.pm/packages/commanded_scheduler)
+
 ## v0.17.3
 
 ### Bug fixes
