@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v0.18.0
 
 ### Enhancements
 
