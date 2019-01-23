@@ -346,7 +346,8 @@ defmodule Commanded.Event.Handler do
     :last_seen_event,
     :subscribe_from,
     :subscribe_to,
-    :subscription
+    :subscription,
+    :subscription_ref
   ]
 
   @doc false
@@ -435,6 +436,17 @@ defmodule Commanded.Event.Handler do
     end
   end
 
+  @doc false
+  # Stop event handler when event store subscription process terminates.
+  def handle_info(
+        {:DOWN, ref, :process, pid, reason},
+        %Handler{subscription_ref: ref, subscription: pid} = state
+      ) do
+    Logger.debug(fn -> describe(state) <> " subscription DOWN due to: #{inspect(reason)}" end)
+
+    {:stop, reason, state}
+  end
+
   defp subscribe_to_events(%Handler{} = state) do
     %Handler{
       handler_name: handler_name,
@@ -445,7 +457,9 @@ defmodule Commanded.Event.Handler do
     {:ok, subscription} =
       EventStore.subscribe_to(subscribe_to, handler_name, self(), subscribe_from)
 
-    %Handler{state | subscription: subscription}
+    subscription_ref = Process.monitor(subscription)
+
+    %Handler{state | subscription: subscription, subscription_ref: subscription_ref}
   end
 
   defp handle_event(event, handler, context \\ %{})
@@ -490,8 +504,7 @@ defmodule Commanded.Event.Handler do
     try do
       handler_module.handle(data, metadata)
     rescue
-      e ->
-        {:error, e}
+      e -> {:error, e}
     end
   end
 
