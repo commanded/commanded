@@ -10,8 +10,8 @@ defmodule Commanded.EventStore.EventData do
           causation_id: uuid(),
           correlation_id: uuid(),
           event_type: String.t(),
-          data: binary(),
-          metadata: binary()
+          data: struct(),
+          metadata: map()
         }
 
   defstruct [
