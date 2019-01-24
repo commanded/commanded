@@ -126,6 +126,7 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 - [Kok J Sam](https://github.com/sammkj)
 - [Leif Gensert](https://github.com/leifg)
 - [Luís Ferreira](https://github.com/zamith)
+- [Matt Doughty](https://github.com/m-doughty)
 - [Miguel Palhas](https://github.com/naps62)
 - [Nigel Thorne](https://github.com/nigelthorne)
 - [Olafur Arason](https://github.com/olafura)
