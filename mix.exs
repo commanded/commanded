@@ -98,6 +98,7 @@ defmodule Commanded.Mixfile do
       files: [
         "lib",
         "mix.exs",
+        ".formatter.exs",
         "README*",
         "LICENSE*",
         "CHANGELOG*",
