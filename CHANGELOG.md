@@ -5,6 +5,7 @@
 ### Enhancements
 
 - Update typespec for `data` and `metadata` fields in `Commanded.EventStore.EventData` struct ([#246](https://github.com/commanded/commanded/pull/246)).
+- Add `.formatter.exs` to Hex package ([#247](https://github.com/commanded/commanded/pull/247)).
 
 ## v0.18.0
 
@@ -22,6 +23,7 @@
 - Allow `:infinity` timeout on command dispatch ([#227](https://github.com/commanded/commanded/pull/227))
 - Strict process manager routing ([#243](https://github.com/commanded/commanded/pull/243)).
 - Allow `Commanded.Aggregate.Multi` to be nested ([#244](https://github.com/commanded/commanded/pull/244)).
+- Add `child_spec/0` function to `Commanded.EventStore` behaviour.
 - Add `delete_subscription/2` to `Commanded.EventStore` behaviour ([#245](https://github.com/commanded/commanded/pull/245)).
 - Add `refute_receive_event/2` to `Commanded.Assertions.EventAssertions` test helpers.
 
