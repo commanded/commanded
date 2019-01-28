@@ -35,7 +35,7 @@ defmodule Commanded.Commands.CompositeRouter do
             @registered_commands Map.put(@registered_commands, command, unquote(router_module))
 
           existing_router ->
-            raise "duplicate registration for #{inspect command} command, registered in both #{inspect existing_router} and #{inspect unquote(router_module)}"
+            raise "duplicate registration for #{inspect(command)} command, registered in both #{inspect existing_router} and #{inspect unquote(router_module)}"
         end
       end
     end
@@ -62,7 +62,7 @@ defmodule Commanded.Commands.CompositeRouter do
 
       @doc false
       def dispatch(command, _opts) do
-        Logger.error(fn -> "attempted to dispatch an unregistered command: #{inspect command}" end)
+        Logger.error(fn -> "attempted to dispatch an unregistered command: #{Commanded.Commands.Describer.describe(command)}" end)
         {:error, :unregistered_command}
       end
     end

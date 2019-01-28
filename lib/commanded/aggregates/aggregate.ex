@@ -44,6 +44,7 @@ defmodule Commanded.Aggregates.Aggregate do
   require Logger
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
+  alias Commanded.Commands.Describer
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
@@ -407,7 +408,7 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_state: aggregate_state
     } = state
 
-    Logger.debug(fn -> describe(state) <> " executing command: #{inspect(command)}" end)
+    Logger.debug(fn -> describe(state) <> " executing command: #{Describer.describe(command)}" end)
 
     {reply, state} =
       case Kernel.apply(handler, function, [aggregate_state, command]) do
