@@ -15,6 +15,16 @@ A command **must contain** a field to uniquely identify the aggregate instance (
 
 Since commands are just plain Elixir structs you can use a library such as [`typed_struct`](https://hex.pm/packages/typed_struct) for defining structs, fields with their types, and enforcing mandatory keys without writing too much boilerplate code.
 
+Commanded logs commands during execution when using debug log level. To prevent sensitive data from being exposed in
+logs you can use the built-in Elixir `Inspect` module to exclude fields.
+
+```
+defmodule RegisterUser do
+  @derive {Inspect, only: [:id, :name]}
+  defstruct [:id, :name, :password]
+end
+```
+
 ## Command dispatch and routing
 
 A router module is used to route and dispatch commands to their registered command handler or aggregate module.
