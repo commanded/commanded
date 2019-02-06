@@ -233,7 +233,7 @@ Aggregate state will be serialized using the configured event store serializer, 
 ```elixir
 defmodule ExampleAggregate do
   @derive Jason.Encoder
-  defstruct [:name, :date]
+  defstruct [:name, :datetime]
 end
 ```
 
@@ -242,11 +242,11 @@ You can use the `Commanded.Serialization.JsonDecoder` protocol to decode the par
 ```elixir
 defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   @doc """
-  Parse the date included in the aggregate state
+  Parse the datetime included in the aggregate state
   """
-  def decode(%ExampleAggregate{date: date} = state) do
-    {:ok, dt, _} = DateTime.from_iso8601(date)
-    %ExampleAggregate{state | date: dt}
+  def decode(%ExampleAggregate{datetime: datetime} = state) do
+    {:ok, dt, _} = DateTime.from_iso8601(datetime)
+    %ExampleAggregate{state | datetime: dt}
   end
 end
 ```

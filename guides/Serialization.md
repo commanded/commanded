@@ -10,23 +10,23 @@ To enable JSON serialization with the included `Commanded.Serialization.JsonSeri
     end
     ```
 
-The `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
+The `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as datetime parsing from a string.
 
-The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `DateTime` struct.
+The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the datetime into a `DateTime` struct.
 
 ```elixir
 defmodule ExampleEvent do
   @derive Jason.Encoder
-  defstruct [:name, :date]
+  defstruct [:name, :datetime]
 end
 
 defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
   @doc """
-  Parse the date included in the event.
+  Parse the datetime included in the event.
   """
-  def decode(%ExampleEvent{date: date} = event) do
-    {:ok, dt, _} = DateTime.from_iso8601(date)
-    %ExampleEvent{event | date: dt}
+  def decode(%ExampleEvent{datetime: datetime} = event) do
+    {:ok, dt, _} = DateTime.from_iso8601(datetime)
+    %ExampleEvent{event | datetime: dt}
   end
 end
 ```
@@ -46,7 +46,7 @@ Make sure you `@derive Jason.Encoder` for any struct you plan on encoding.
 ```elixir
 defmodule ExampleEvent do
   @derive Jason.Encoder
-  defstruct [:name, :date]
+  defstruct [:name, :datetime]
 end
 ```
 

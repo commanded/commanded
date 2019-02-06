@@ -6,31 +6,31 @@ defmodule Commanded.Serialization.JsonDecoderTest do
 
   defmodule ExampleEvent do
     @derive Jason.Encoder
-    defstruct [:name, :date]
+    defstruct [:name, :datetime]
   end
 
   defimpl JsonDecoder, for: ExampleEvent do
     @doc """
-    Parse the date included in the event.
+    Parse the datetime included in the event.
     """
-    def decode(%ExampleEvent{date: date} = event) do
-      {:ok, dt, _} = DateTime.from_iso8601(date)
-      %ExampleEvent{event | date: dt}
+    def decode(%ExampleEvent{datetime: datetime} = event) do
+      {:ok, dt, _} = DateTime.from_iso8601(datetime)
+      %ExampleEvent{event | datetime: dt}
     end
   end
 
-  @serialized_event_json "{\"date\":\"2016-09-20T20:01:02Z\",\"name\":\"Ben\"}"
+  @serialized_event_json "{\"datetime\":\"2016-09-20T20:01:02Z\",\"name\":\"Ben\"}"
 
   test "should serialize value to JSON" do
     {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
-    event = %ExampleEvent{name: "Ben", date: dt}
+    event = %ExampleEvent{name: "Ben", datetime: dt}
 
     assert JsonSerializer.serialize(event) == @serialized_event_json
   end
 
   test "should allow decoding of deserialized value from JSON" do
     {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
-    event = %ExampleEvent{name: "Ben", date: dt}
+    event = %ExampleEvent{name: "Ben", datetime: dt}
     type = Atom.to_string(event.__struct__)
 
     assert JsonSerializer.deserialize(@serialized_event_json, type: type) == event
