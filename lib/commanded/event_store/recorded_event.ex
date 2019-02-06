@@ -42,7 +42,7 @@ defmodule Commanded.EventStore.RecordedEvent do
           event_type: String.t(),
           data: binary(),
           metadata: binary(),
-          created_at: NaiveDateTime.t()
+          created_at: DateTime.t()
         }
 
   defstruct [

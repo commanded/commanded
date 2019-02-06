@@ -9,7 +9,7 @@ defmodule Commanded.EventStore.SnapshotData do
           source_type: String.t(),
           data: binary,
           metadata: binary,
-          created_at: NaiveDateTime.t()
+          created_at: DateTime.t()
         }
 
   @derive Jason.Encoder

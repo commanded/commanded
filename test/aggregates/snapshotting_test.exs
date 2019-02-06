@@ -243,7 +243,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
     test "should parse date" do
       aggregate_uuid = UUID.uuid4()
-      now = NaiveDateTime.utc_now()
+      now = DateTime.utc_now()
 
       create_aggregate(aggregate_uuid, now)
       restart_aggregate(SnapshotAggregate, aggregate_uuid)
@@ -255,7 +255,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       assert_aggregate_version(SnapshotAggregate, aggregate_uuid, 1)
     end
 
-    defp create_aggregate(aggregate_uuid, %NaiveDateTime{} = date) do
+    defp create_aggregate(aggregate_uuid, %DateTime{} = date) do
       execution_context = %ExecutionContext{
         command: %Create{name: "Example", date: date},
         handler: SnapshotAggregate,

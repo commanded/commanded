@@ -14,20 +14,23 @@ defmodule Commanded.Serialization.JsonDecoderTest do
     Parse the date included in the event.
     """
     def decode(%ExampleEvent{date: date} = event) do
-      %ExampleEvent{event | date: NaiveDateTime.from_iso8601!(date)}
+      {:ok, dt, _} = DateTime.from_iso8601(date)
+      %ExampleEvent{event | date: dt}
     end
   end
 
-  @serialized_event_json "{\"date\":\"2016-09-20T20:01:02\",\"name\":\"Ben\"}"
+  @serialized_event_json "{\"date\":\"2016-09-20T20:01:02Z\",\"name\":\"Ben\"}"
 
   test "should serialize value to JSON" do
-    event = %ExampleEvent{name: "Ben", date: ~N[2016-09-20 20:01:02]}
+    {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
+    event = %ExampleEvent{name: "Ben", date: dt}
 
     assert JsonSerializer.serialize(event) == @serialized_event_json
   end
 
   test "should allow decoding of deserialized value from JSON" do
-    event = %ExampleEvent{name: "Ben", date: ~N[2016-09-20 20:01:02]}
+    {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
+    event = %ExampleEvent{name: "Ben", date: dt}
     type = Atom.to_string(event.__struct__)
 
     assert JsonSerializer.deserialize(@serialized_event_json, type: type) == event

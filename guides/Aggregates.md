@@ -208,13 +208,13 @@ This is a performance optimisation for aggregates that have a long lifetime or r
 
 Use the following options to configure snapshots for an aggregate:
 
-  - `snapshot_every` - snapshot aggregate state every so many events. Use
-    `nil` to disable snapshotting, or exclude the configuration entirely.
+- `snapshot_every` - snapshot aggregate state every so many events. Use
+  `nil` to disable snapshotting, or exclude the configuration entirely.
 
-  - `snapshot_version` - a non-negative integer indicating the version of
-    the aggregate state snapshot. Incrementing this version forces any
-    earlier recorded snapshots to be ignored when rebuilding aggregate
-    state.
+- `snapshot_version` - a non-negative integer indicating the version of
+  the aggregate state snapshot. Incrementing this version forces any
+  earlier recorded snapshots to be ignored when rebuilding aggregate
+  state.
 
 ### Example
 
@@ -245,7 +245,8 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   Parse the date included in the aggregate state
   """
   def decode(%ExampleAggregate{date: date} = state) do
-    %ExampleAggregate{state | date: NaiveDateTime.from_iso8601!(date)}
+    {:ok, dt, _} = DateTime.from_iso8601(date)
+    %ExampleAggregate{state | date: dt}
   end
 end
 ```

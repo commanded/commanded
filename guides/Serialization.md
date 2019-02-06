@@ -12,7 +12,7 @@ To enable JSON serialization with the included `Commanded.Serialization.JsonSeri
 
 The `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized value. This can be used for parsing data into valid structures, such as date/time parsing from a string.
 
-The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `NaiveDateTime` struct.
+The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `DateTime` struct.
 
 ```elixir
 defmodule ExampleEvent do
@@ -25,9 +25,8 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
   Parse the date included in the event.
   """
   def decode(%ExampleEvent{date: date} = event) do
-    %ExampleEvent{event |
-      date: NaiveDateTime.from_iso8601!(date)
-    }
+    {:ok, dt, _} = DateTime.from_iso8601(date)
+    %ExampleEvent{event | date: dt}
   end
 end
 ```
@@ -59,18 +58,18 @@ Configure your own serializer in `config/config.exs` for the event store you are
 
 - Elixir EventStore:
 
-    ```elixir
-    config :eventstore, EventStore.Storage,
-      serializer: MyApp.MessagePackSerializer,
-      # ...
-    ```
+  ```elixir
+  config :eventstore, EventStore.Storage,
+    serializer: MyApp.MessagePackSerializer,
+    # ...
+  ```
 
 - Greg Young's Event Store:
 
-    ```elixir
-    config :commanded_extreme_adapter,
-      serializer: Commanded.Serialization.JsonSerializer,
-      # ...
-    ```
+  ```elixir
+  config :commanded_extreme_adapter,
+    serializer: Commanded.Serialization.JsonSerializer,
+    # ...
+  ```
 
 You *should not* change serialization format once your app has been deployed to production since Commanded will not be able to deserialize any existing events or snapshot data. In this scenario, to change serialization format you would need to also migrate your event store to the new format.

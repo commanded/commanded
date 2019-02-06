@@ -175,7 +175,7 @@ defmodule ExampleHandler do
     # %{
     #   :causation_id => "db1ebd30-7d3c-40f7-87cd-12cd9966df32",
     #   :correlation_id => "1599630b-9c38-433c-9548-0dd793108ba0",
-    #   :created_at => ~N[2017-10-30 11:19:56.178901],
+    #   :created_at => #DateTime<2017-10-30 11:19:56.178901Z>,
     #   :event_id => "5e4a0f38-385b-4d57-823b-a1bcf705b7bb",
     #   :event_number => 12345,
     #   :stream_id => "e42a588d-2cda-4314-a471-5d008cce01fc",
