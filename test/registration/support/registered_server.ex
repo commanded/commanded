@@ -1,8 +1,8 @@
 defmodule Commanded.Registration.RegisteredServer do
-  use GenServer
+  use GenServer, restart: :temporary
   use Commanded.Registration
 
-  def start_link(name, opts \\ []) do
+  def start_link([name, opts]) do
     GenServer.start_link(__MODULE__, name, opts)
   end
 

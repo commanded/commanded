@@ -19,12 +19,12 @@ defmodule Commanded.RegistrationTestCase do
 
     describe "`start_child/3`" do
       test "should return child process PID on success" do
-        assert {:ok, _pid} = RegisteredSupervisor.start_child("child")
+        assert {:ok, _pid} = RegisteredSupervisor.start_registered_child("child")
       end
 
       test "should return existing child process when already started" do
-        assert {:ok, pid} = RegisteredSupervisor.start_child("child")
-        assert {:ok, ^pid} = RegisteredSupervisor.start_child("child")
+        assert {:ok, pid} = RegisteredSupervisor.start_registered_child("child")
+        assert {:ok, ^pid} = RegisteredSupervisor.start_registered_child("child")
       end
     end
 
@@ -45,7 +45,7 @@ defmodule Commanded.RegistrationTestCase do
       end
 
       test "should return `PID` when child registered" do
-        assert {:ok, pid} = RegisteredSupervisor.start_child("child")
+        assert {:ok, pid} = RegisteredSupervisor.start_registered_child("child")
         assert Registration.whereis_name("child") == pid
       end
 
