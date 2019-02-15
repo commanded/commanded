@@ -14,6 +14,11 @@ defmodule Commanded.Aggregates.Supervisor do
     DynamicSupervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
+  # args == Aggregate.start_link/1 arguments
+  def start_child(args) do
+    DynamicSupervisor.start_child(__MODULE__, {Commanded.Aggregates.Aggregate, args})
+  end
+
   @doc """
   Open an aggregate instance process for the given aggregate module and unique
   indentity.
