@@ -3,7 +3,7 @@ defmodule Commanded.Aggregates.Supervisor do
   Supervises `Commanded.Aggregates.Aggregate` instance processes.
   """
 
-  use Supervisor
+  use DynamicSupervisor
 
   require Logger
 
@@ -11,7 +11,7 @@ defmodule Commanded.Aggregates.Supervisor do
   alias Commanded.Registration
 
   def start_link(arg) do
-    Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
+    DynamicSupervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
   @doc """
@@ -48,10 +48,6 @@ defmodule Commanded.Aggregates.Supervisor do
     do: {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
 
   def init(_) do
-    children = [
-      worker(Commanded.Aggregates.Aggregate, [], restart: :temporary)
-    ]
-
-    supervise(children, strategy: :simple_one_for_one)
+    DynamicSupervisor.init(strategy: :one_for_one)
   end
 end

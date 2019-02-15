@@ -28,8 +28,9 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def start_child(name, supervisor, args) do
     via_name = {:via, Registry, {__MODULE__, name}}
+    aggregate_child_spec = {Commanded.Aggregates.Aggregate, args ++ [[name: via_name]]}
 
-    case Supervisor.start_child(supervisor, args ++ [[name: via_name]]) do
+    case DynamicSupervisor.start_child(supervisor, aggregate_child_spec) do
       {:error, {:already_started, pid}} -> {:ok, pid}
       reply -> reply
     end
