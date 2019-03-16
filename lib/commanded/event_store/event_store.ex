@@ -177,7 +177,10 @@ defmodule Commanded.EventStore do
         error
 
       stream ->
-        Stream.map(stream, fn %{data: data} = event -> %{event | data: Upcaster.upcast(data)} end)
+        Stream.map(stream, fn
+          %{data: data, metadata: metadata} = event ->
+            %{event | data: Upcaster.upcast(data, metadata)}
+        end)
     end
   end
 

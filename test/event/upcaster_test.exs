@@ -15,7 +15,7 @@ defmodule Event.UpcasterTest do
     defstruct(n: 10)
 
     defimpl Upcaster do
-      def upcast(%{n: n} = event), do: %{event | n: n * 2}
+      def upcast(%{n: n} = event, _metadata), do: %{event | n: n * 2}
     end
   end
 
