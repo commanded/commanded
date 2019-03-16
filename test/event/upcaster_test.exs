@@ -19,20 +19,18 @@ defmodule Event.UpcasterTest do
     end
   end
 
-  setup(do: %{stream_uuid: UUID.uuid4(:hex)})
-
-  test "will not upcast an event without an upcaster", %{stream_uuid: stream_uuid} do
+  test "will not upcast an event without an upcaster" do
     %{data: %{n: n}} =
-      stream_uuid
+      UUID.uuid4(:hex)
       |> write_event(struct(EventOne))
       |> read_event()
 
     assert n == 0
   end
 
-  test "will upcast using defined upcaster", %{stream_uuid: stream_uuid} do
+  test "will upcast using defined upcaster" do
     %{data: %{n: n}} =
-      stream_uuid
+      UUID.uuid4(:hex)
       |> write_event(struct(EventTwo))
       |> read_event()
 
