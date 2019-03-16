@@ -500,6 +500,8 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) ::
               :ok
+              | {:ok, execution_result :: Commanded.Commands.Dispatcher.ExecutionResult.t()}
+              | {:ok, aggregate_version :: integer}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}
