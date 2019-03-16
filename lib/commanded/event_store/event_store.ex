@@ -170,7 +170,15 @@ defmodule Commanded.EventStore do
 
   def stream_forward(stream_uuid, start_version, read_batch_size)
       when is_binary(stream_uuid) and is_integer(start_version) and is_integer(read_batch_size) do
-    event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size)
+    alias Commanded.Event.Upcaster
+
+    case event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size) do
+      {:error, _} = error ->
+        error
+
+      stream ->
+        Stream.map(stream, fn %{data: data} = event -> %{event | data: Upcaster.upcast(data)} end)
+    end
   end
 
   @doc """
