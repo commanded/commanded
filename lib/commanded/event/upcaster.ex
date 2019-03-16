@@ -8,11 +8,11 @@ defprotocol Commanded.Event.Upcaster do
 
   Because the upcaster changes any historical event to the latest version,
   consumers (aggregates, event handlers, and process managers) only need
-  to support the last version.
+  to support the latest version.
   """
 
   @fallback_to_any true
-  @spec upcast(event :: struct(), metadata :: struct()) :: struct()
+  @spec upcast(event :: struct(), metadata :: map()) :: struct()
   def upcast(event, metadata)
 end
 
