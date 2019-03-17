@@ -1,4 +1,4 @@
-defmodule Commanded.Event.Upcasting.ProcessManager do
+defmodule Commanded.Event.Upcast.ProcessManager do
   defmodule(Ok, do: defstruct([:id]))
 
   defmodule Aggregate do
@@ -15,10 +15,10 @@ defmodule Commanded.Event.Upcasting.ProcessManager do
   @derive Jason.Encoder
   defstruct []
 
-  alias Commanded.Event.Upcasting.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
+  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: "UpcastingProcessManager",
+    name: "UpcastProcessManager",
     router: Router
 
   def interested?(%EventOne{process_id: process_id}), do: {:start, process_id}

@@ -170,7 +170,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @doc false
   def handle_info({:events, events}, %State{} = state) do
-    alias Commanded.Event.Upcasting
+    alias Commanded.Event.Upcast
 
     Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
 
@@ -178,7 +178,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     unseen_events =
       events
-      |> Upcasting.upcast_event_stream()
+      |> Upcast.upcast_event_stream()
       |> Enum.reject(&event_already_seen?(&1, state))
 
     state =

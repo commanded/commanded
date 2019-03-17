@@ -3,7 +3,7 @@ defmodule Event.UpcasterTest do
 
   alias Commanded.EventStore
   alias Commanded.EventStore.EventData
-  alias Commanded.Event.Upcasting.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
+  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
 
   describe "event store stream forward" do
     setup do
@@ -41,7 +41,7 @@ defmodule Event.UpcasterTest do
   end
 
   describe "event handler" do
-    alias Commanded.Event.Upcasting.EventHandler
+    alias Commanded.Event.Upcast.EventHandler
 
     setup do
       {:ok, handler} = EventHandler.start_link()
@@ -68,7 +68,7 @@ defmodule Event.UpcasterTest do
   end
 
   describe "process manager" do
-    alias Commanded.Event.Upcasting.ProcessManager
+    alias Commanded.Event.Upcast.ProcessManager
 
     setup do
       {:ok, manager} = ProcessManager.start_link()
