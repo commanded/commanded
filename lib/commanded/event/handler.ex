@@ -423,10 +423,14 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def handle_info({:events, events}, %Handler{} = state) do
+    alias Commanded.Event.Upcasting
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
-      state = Enum.reduce(events, state, &handle_event/2)
+      state =
+        events
+        |> Upcasting.upcast_event_stream()
+        |> Enum.reduce(state, &handle_event/2)
 
       {:noreply, state}
     catch
@@ -496,7 +500,6 @@ defmodule Commanded.Event.Handler do
   end
 
   defp delegate_event_to_handler(%RecordedEvent{} = event, %Handler{} = state) do
-    event = Commanded.Event.Upcasting.upcast_event(event)
     %RecordedEvent{data: data} = event
     %Handler{handler_module: handler_module} = state
 
