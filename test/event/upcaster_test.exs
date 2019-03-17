@@ -19,6 +19,23 @@ defmodule Event.UpcasterTest do
     end
   end
 
+  defmodule EventThree do
+    @derive Jason.Encoder
+    defstruct(n: 10)
+  end
+
+  defmodule EventFour do
+    @derive Jason.Encoder
+    defstruct(n: 2, name: nil)
+
+    defimpl Upcaster, for: EventThree do
+      def upcast(event, _metadata) do
+        data = Map.from_struct(event) |> Map.put(:name, "Chris")
+        struct(EventFour, data)
+      end
+    end
+  end
+
   test "will not upcast an event without an upcaster" do
     %{data: %{n: n}} =
       UUID.uuid4(:hex)
@@ -35,6 +52,15 @@ defmodule Event.UpcasterTest do
       |> read_event()
 
     assert n == 20
+  end
+
+  test "can adapt new event from old event" do
+    %{data: %EventFour{name: name}} =
+      UUID.uuid4(:hex)
+      |> write_event(struct(EventThree))
+      |> read_event()
+
+    assert name == "Chris"
   end
 
   defp write_event(stream_uuid, %{__struct__: event_type} = data) do
