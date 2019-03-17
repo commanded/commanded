@@ -61,6 +61,8 @@ defmodule Event.UpcasterTest do
         struct(EventThree, n: 0, reply_to: reply_to)
       ])
 
+      refute_receive %EventThree{}
+
       assert_receive %EventOne{n: 0}
       assert_receive %EventTwo{n: 20}
       assert_receive %EventFour{name: "Chris"}
@@ -91,6 +93,8 @@ defmodule Event.UpcasterTest do
         struct(EventThree, n: 0, reply_to: reply_to, process_id: process_id),
         struct(Stop, process_id: process_id)
       ])
+
+      refute_receive %EventThree{}
 
       assert_receive %EventOne{n: 0}
       assert_receive %EventTwo{n: 20}
