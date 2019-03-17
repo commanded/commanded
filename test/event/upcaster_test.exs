@@ -2,77 +2,118 @@ defmodule Event.UpcasterTest do
   use Commanded.StorageCase
 
   alias Commanded.EventStore
-  alias Commanded.Event.Upcaster
   alias Commanded.EventStore.EventData
+  alias Commanded.Event.Upcasting.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
 
-  defmodule EventOne do
-    @derive Jason.Encoder
-    defstruct(n: 0)
-  end
-
-  defmodule EventTwo do
-    @derive Jason.Encoder
-    defstruct(n: 10)
-
-    defimpl Upcaster do
-      def upcast(%{n: n} = event, _metadata), do: %{event | n: n * 2}
-    end
-  end
-
-  defmodule EventThree do
-    @derive Jason.Encoder
-    defstruct(n: 10)
-  end
-
-  defmodule EventFour do
-    @derive Jason.Encoder
-    defstruct(n: 2, name: nil)
-
-    defimpl Upcaster, for: EventThree do
-      def upcast(event, _metadata) do
-        data = Map.from_struct(event) |> Map.put(:name, "Chris")
-        struct(EventFour, data)
-      end
-    end
-  end
-
-  test "will not upcast an event without an upcaster" do
-    %{data: %{n: n}} =
-      UUID.uuid4(:hex)
-      |> write_event(struct(EventOne))
-      |> read_event()
-
-    assert n == 0
-  end
-
-  test "will upcast using defined upcaster" do
-    %{data: %{n: n}} =
-      UUID.uuid4(:hex)
-      |> write_event(struct(EventTwo))
-      |> read_event()
-
-    assert n == 20
-  end
-
-  test "can adapt new event from old event" do
-    %{data: %EventFour{name: name}} =
-      UUID.uuid4(:hex)
-      |> write_event(struct(EventThree))
-      |> read_event()
-
-    assert name == "Chris"
-  end
-
-  defp write_event(stream_uuid, %{__struct__: event_type} = data) do
-    EventStore.append_to_stream(stream_uuid, :any_version, [
-      %EventData{
-        event_type: to_string(event_type),
-        data: data,
-        metadata: %{}
+  describe "event store stream forward" do
+    setup do
+      %{
+        stream_uuid: UUID.uuid4(:hex)
       }
-    ])
+    end
+
+    test "will not upcast an event without an upcaster", %{stream_uuid: stream_uuid} do
+      %{data: %{n: n}} =
+        stream_uuid
+        |> write_events(struct(EventOne, n: 0))
+        |> read_event()
+
+      assert n == 0
+    end
+
+    test "will upcast using defined upcaster", %{stream_uuid: stream_uuid} do
+      %{data: %{n: n}} =
+        stream_uuid
+        |> write_events(struct(EventTwo, n: 10))
+        |> read_event()
+
+      assert n == 20
+    end
+
+    test "can adapt new event from old event", %{stream_uuid: stream_uuid} do
+      %{data: %EventFour{name: name}} =
+        stream_uuid
+        |> write_events(struct(EventThree, n: 0))
+        |> read_event()
+
+      assert name == "Chris"
+    end
+  end
+
+  describe "event handler" do
+    alias Commanded.Event.Upcasting.EventHandler
+
+    setup do
+      {:ok, handler} = EventHandler.start_link()
+
+      %{
+        stream_uuid: UUID.uuid4(:hex),
+        handler: handler,
+        reply_to: :erlang.pid_to_list(self())
+      }
+    end
+
+    test "will receive upcasted events", %{stream_uuid: stream_uuid, reply_to: reply_to} do
+      stream_uuid
+      |> write_events([
+        struct(EventOne, n: 0, reply_to: reply_to),
+        struct(EventTwo, n: 10, reply_to: reply_to),
+        struct(EventThree, n: 0, reply_to: reply_to)
+      ])
+
+      assert_receive %EventOne{n: 0}
+      assert_receive %EventTwo{n: 20}
+      assert_receive %EventFour{name: "Chris"}
+    end
+  end
+
+  describe "process manager" do
+    alias Commanded.Event.Upcasting.ProcessManager
+
+    setup do
+      {:ok, manager} = ProcessManager.start_link()
+
+      %{
+        stream_uuid: UUID.uuid4(:hex),
+        manager: manager,
+        reply_to: :erlang.pid_to_list(self()),
+        process_id: UUID.uuid4(:hex)
+      }
+    end
+
+    test "will receive upcasted events", context do
+      %{stream_uuid: stream_uuid, reply_to: reply_to, process_id: process_id} = context
+
+      stream_uuid
+      |> write_events([
+        struct(EventOne, n: 0, reply_to: reply_to, process_id: process_id),
+        struct(EventTwo, n: 10, reply_to: reply_to, process_id: process_id),
+        struct(EventThree, n: 0, reply_to: reply_to, process_id: process_id),
+        struct(Stop, process_id: process_id)
+      ])
+
+      assert_receive %EventOne{n: 0}
+      assert_receive %EventTwo{n: 20}
+      assert_receive %EventFour{name: "Chris"}
+    end
+  end
+
+  defp write_events(stream_uuid, events) do
+    EventStore.append_to_stream(
+      stream_uuid,
+      :any_version,
+      events |> List.wrap() |> Enum.map(&create_event/1)
+    )
 
     stream_uuid
+  end
+
+  defp create_event(%{__struct__: event_type} = data) do
+    %EventData{
+      event_type: to_string(event_type),
+      data: data,
+      metadata: %{}
+    }
   end
 
   defp read_event(stream_uuid) do

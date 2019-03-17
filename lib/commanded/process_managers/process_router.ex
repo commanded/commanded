@@ -266,6 +266,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   defp handle_event(%RecordedEvent{} = event, %State{} = state) do
+    event = Commanded.Event.Upcasting.upcast_event(event)
     %RecordedEvent{data: data} = event
     %State{process_manager_module: process_manager_module} = state
 

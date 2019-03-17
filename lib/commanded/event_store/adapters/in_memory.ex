@@ -394,7 +394,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   # Event number should equal stream version for stream events.
   defp set_event_number_from_version(events) do
-    Enum.map(events, fn %RecordedEvent{stream_version: stream_version} = event ->
+    Stream.map(events, fn %RecordedEvent{stream_version: stream_version} = event ->
       %RecordedEvent{event | event_number: stream_version}
     end)
   end

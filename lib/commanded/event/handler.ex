@@ -496,6 +496,7 @@ defmodule Commanded.Event.Handler do
   end
 
   defp delegate_event_to_handler(%RecordedEvent{} = event, %Handler{} = state) do
+    event = Commanded.Event.Upcasting.upcast_event(event)
     %RecordedEvent{data: data} = event
     %Handler{handler_module: handler_module} = state
 
