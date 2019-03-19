@@ -7,6 +7,7 @@
 - Update typespec for `data` and `metadata` fields in `Commanded.EventStore.EventData` struct ([#246](https://github.com/commanded/commanded/pull/246)).
 - Add `include_execution_result` and `aggregate_version` to typespec for router command dispatch ([#262](https://github.com/commanded/commanded/pull/262)).
 - Add `.formatter.exs` to Hex package ([#247](https://github.com/commanded/commanded/pull/247)).
+- Event upcasting ([#263](https://github.com/commanded/commanded/pull/263)).
 
 ## v0.18.0
 
