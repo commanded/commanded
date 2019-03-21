@@ -3,32 +3,35 @@ defmodule Commanded.Event.Upcast.Events do
 
   defmodule EventOne do
     @derive Jason.Encoder
-    defstruct [:n, :reply_to, :process_id]
+    defstruct [:version, :reply_to, :process_id]
   end
 
   defmodule EventTwo do
     @derive Jason.Encoder
-    defstruct [:n, :reply_to, :process_id]
+    defstruct [:version, :reply_to, :process_id]
 
     defimpl Upcaster do
-      def upcast(%{n: n} = event, _metadata), do: %{event | n: n * 2}
+      def upcast(%EventTwo{} = event, _metadata) do
+        %EventTwo{event | version: 2}
+      end
     end
   end
 
   defmodule EventThree do
     @derive Jason.Encoder
-    defstruct [:n, :reply_to, :process_id]
+    defstruct [:version, :reply_to, :process_id]
   end
 
   defmodule EventFour do
     @derive Jason.Encoder
-    defstruct [:n, :name, :reply_to, :process_id]
+    defstruct [:version, :name, :reply_to, :process_id]
+  end
 
-    defimpl Upcaster, for: EventThree do
-      def upcast(event, _metadata) do
-        data = Map.from_struct(event) |> Map.put(:name, "Chris")
-        struct(EventFour, data)
-      end
+  defimpl Upcaster, for: EventThree do
+    def upcast(%EventThree{} = event, _metadata) do
+      data = Map.from_struct(event) |> Map.put(:name, "Chris") |> Map.put(:version, 2)
+
+      struct(EventFour, data)
     end
   end
 

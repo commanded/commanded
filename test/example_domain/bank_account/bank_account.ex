@@ -1,89 +1,87 @@
 defmodule Commanded.ExampleDomain.BankAccount do
   @moduledoc false
   @derive Jason.Encoder
-  defstruct account_number: nil,
-            balance: 0,
-            state: nil
+  defstruct [:account_number, :state, balance: 0]
 
   alias Commanded.ExampleDomain.BankAccount
 
   defmodule Commands do
     defmodule OpenAccount do
-      @derive Jason.Encoder
-      defstruct([:account_number, :initial_balance])
+      defstruct [:account_number, :initial_balance]
     end
 
     defmodule DepositMoney do
-      @derive Jason.Encoder
-      defstruct([:account_number, :transfer_uuid, :amount])
+      defstruct [:account_number, :transfer_uuid, :amount]
     end
 
     defmodule WithdrawMoney do
-      @derive Jason.Encoder
-      defstruct([:account_number, :transfer_uuid, :amount])
+      defstruct [:account_number, :transfer_uuid, :amount]
     end
 
     defmodule CloseAccount do
-      @derive Jason.Encoder
-      defstruct([:account_number])
+      defstruct [:account_number]
     end
   end
 
   defmodule Events do
     defmodule BankAccountOpened do
       @derive Jason.Encoder
-      defstruct([:account_number, :initial_balance])
+      defstruct [:account_number, :initial_balance]
     end
 
     defmodule MoneyDeposited do
       @derive Jason.Encoder
-      defstruct([:account_number, :transfer_uuid, :amount, :balance])
+      defstruct [:account_number, :transfer_uuid, :amount, :balance]
     end
 
     defmodule MoneyWithdrawn do
       @derive Jason.Encoder
-      defstruct([:account_number, :transfer_uuid, :amount, :balance])
+      defstruct [:account_number, :transfer_uuid, :amount, :balance]
     end
 
     defmodule AccountOverdrawn do
       @derive Jason.Encoder
-      defstruct([:account_number, :balance])
+      defstruct [:account_number, :balance]
     end
 
     defmodule BankAccountClosed do
       @derive Jason.Encoder
-      defstruct([:account_number])
+      defstruct [:account_number]
     end
   end
 
-  alias Commands.{OpenAccount, DepositMoney, WithdrawMoney, CloseAccount}
+  alias Commands.OpenAccount
+  alias Commands.DepositMoney
+  alias Commands.WithdrawMoney
+  alias Commands.CloseAccount
 
-  alias Events.{
-    BankAccountOpened,
-    MoneyDeposited,
-    MoneyWithdrawn,
-    AccountOverdrawn,
-    BankAccountClosed
-  }
+  alias Events.BankAccountOpened
+  alias Events.MoneyDeposited
+  alias Events.MoneyWithdrawn
+  alias Events.AccountOverdrawn
+  alias Events.BankAccountClosed
 
-  def open_account(%BankAccount{state: nil}, %OpenAccount{initial_balance: "clearly invalid"}) do
-    {:error, :invalid_initial_balance}
-  end
-
-  def open_account(%BankAccount{state: nil}, %OpenAccount{
-        account_number: account_number,
-        initial_balance: initial_balance
-      })
+  def open_account(
+        %BankAccount{state: nil},
+        %OpenAccount{initial_balance: initial_balance} = command
+      )
       when is_number(initial_balance) and initial_balance > 0 do
+    %OpenAccount{account_number: account_number} = command
+
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
-  def deposit(%BankAccount{state: :active, balance: balance}, %DepositMoney{
-        account_number: account_number,
-        transfer_uuid: transfer_uuid,
-        amount: amount
-      })
+  def open_account(%BankAccount{state: nil}, %OpenAccount{}),
+    do: {:error, :invalid_initial_balance}
+
+  def deposit(
+        %BankAccount{state: :active} = account,
+        %DepositMoney{amount: amount} = command
+      )
       when is_number(amount) and amount > 0 do
+    %BankAccount{balance: balance} = account
+    %DepositMoney{account_number: account_number, transfer_uuid: transfer_uuid} = command
+
     balance = balance + amount
 
     %MoneyDeposited{
@@ -94,12 +92,14 @@ defmodule Commanded.ExampleDomain.BankAccount do
     }
   end
 
-  def withdraw(%BankAccount{state: :active, balance: balance}, %WithdrawMoney{
-        account_number: account_number,
-        transfer_uuid: transfer_uuid,
-        amount: amount
-      })
+  def withdraw(
+        %BankAccount{state: :active} = account,
+        %WithdrawMoney{amount: amount} = command
+      )
       when is_number(amount) and amount > 0 do
+    %BankAccount{balance: balance} = account
+    %WithdrawMoney{account_number: account_number, transfer_uuid: transfer_uuid} = command
+
     case balance - amount do
       balance when balance < 0 ->
         [
@@ -132,10 +132,9 @@ defmodule Commanded.ExampleDomain.BankAccount do
 
   # State mutators
 
-  def apply(%BankAccount{} = state, %BankAccountOpened{
-        account_number: account_number,
-        initial_balance: initial_balance
-      }) do
+  def apply(%BankAccount{} = state, %BankAccountOpened{} = event) do
+    %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
+
     %BankAccount{state | account_number: account_number, balance: initial_balance, state: :active}
   end
 

@@ -188,7 +188,9 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
-  alias Commanded.Event.{FailureContext, Handler}
+  alias Commanded.Event.FailureContext
+  alias Commanded.Event.Handler
+  alias Commanded.Event.Upcast
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
@@ -423,7 +425,6 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def handle_info({:events, events}, %Handler{} = state) do
-    alias Commanded.Event.Upcast
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do

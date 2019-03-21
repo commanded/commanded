@@ -80,11 +80,13 @@ defmodule Commanded.EventStore do
 
   Subscribe to all streams:
 
-      {:ok, subscription} = Commanded.EventStore.subscribe_to(:all, "Example", self())
+      {:ok, subscription} =
+        Commanded.EventStore.subscribe_to(:all, "Example", self(), :current)
 
   Subscribe to a single stream:
 
-      {:ok, subscription} = Commanded.EventStore.subscribe_to("stream1234", "Example", self())
+      {:ok, subscription} =
+        Commanded.EventStore.subscribe_to("stream1", "Example", self(), :origin)
 
   """
   @callback subscribe_to(stream_uuid | :all, subscription_name, subscriber, start_from) ::

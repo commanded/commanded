@@ -45,6 +45,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Event.Mapper
+  alias Commanded.Event.Upcast
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
   alias Commanded.Snapshotting
@@ -240,6 +241,11 @@ defmodule Commanded.Aggregates.Aggregate do
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
+      state =
+        events
+        |> Upcast.upcast_event_stream()
+        |> Enum.reduce(state, &handle_event/2)
+
       state = Enum.reduce(events, state, &handle_event/2)
 
       {:noreply, state, lifespan_timeout}
