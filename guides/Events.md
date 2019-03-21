@@ -218,7 +218,7 @@ By implementing the upcaster protocol you can transform an event before it is us
 Change the shape of an event by renaming a field:
 
 ```elixir
-defimpl Upcaster, for: AnEvent do
+defimpl Commanded.Event.Upcaster, for: AnEvent do
   def upcast(%AnEvent{} = event, _metadata) do
     %AnEvent{name: name} = event
 
@@ -230,7 +230,7 @@ end
 Change the type of event by replacing a historical event with a new event:
 
 ```elixir
-defimpl Upcaster, for: HistoricalEvent do
+defimpl Commanded.Event.Upcaster, for: HistoricalEvent do
   def upcast(%HistoricalEvent{} = event, _metadata) do
     %HistoricalEvent{id: id, name: name} = event
 
