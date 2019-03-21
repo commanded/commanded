@@ -75,7 +75,7 @@ MIT License
     - [Configuring JSON serialization](guides/Serialization.md#configuring-json-serialization)
     - [Decoding event structs](guides/Serialization.md#decoding-event-structs)
     - [Using an alternative serialization format](guides/Serialization.md#using-an-alternative-serialization-format)
-    - [Customising serialization](guides/Serialization.md#custimising-serialization)
+    - [Customising serialization](guides/Serialization.md#customising-serialization)
   - [Read model projections](guides/Read%20Model%20Projections.md)
 - [Deployment](guides/Deployment.md)
   - [Single node deployment](guides/Deployment.md#single-node-deployment)
@@ -93,9 +93,7 @@ MIT License
 
 ## Used in production?
 
-Yes, Commanded is being used in production.
-
-- Case Study: [Building a CQRS/ES web application in Elixir using Phoenix](https://10consulting.com/2017/01/04/building-a-cqrs-web-application-in-elixir-using-phoenix/)
+Yes, see the [companies using Commanded](https://github.com/commanded/commanded/wiki/Companies-using-Commanded).
 
 ## Example application
 
