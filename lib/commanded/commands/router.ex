@@ -447,6 +447,8 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct) ::
               :ok
+              | {:ok, execution_result :: Commanded.Commands.Dispatcher.ExecutionResult.t()}
+              | {:ok, aggregate_version :: integer}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}
