@@ -447,7 +447,7 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct) ::
               :ok
-              | {:ok, execution_result :: Commanded.Commands.Dispatcher.ExecutionResult.t()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:ok, aggregate_version :: integer}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
@@ -489,7 +489,7 @@ defmodule Commanded.Commands.Router do
             information about the dispatch, like the aggregate name, uuid, and
             the produced events. Overrides `include_aggregate_version`. The
             default is false to return `:ok`. See
-            `Commanded.Commands.Dispatcher.ExecutionResult`.
+            `Commanded.Commands.ExecutionResult`.
 
           - `metadata` - an optional map containing key/value pairs comprising
             the metadata to be associated with all events created by the
@@ -502,7 +502,7 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) ::
               :ok
-              | {:ok, execution_result :: Commanded.Commands.Dispatcher.ExecutionResult.t()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:ok, aggregate_version :: integer}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
