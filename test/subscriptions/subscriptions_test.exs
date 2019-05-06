@@ -10,7 +10,40 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.register("handler2", :eventual)
       :ok = Subscriptions.register("handler3", :strong)
 
-      assert Subscriptions.all() |> Enum.sort() == [{"handler1", self()}, {"handler3", self()}]
+      assert Subscriptions.all() ==[{"handler3", self()}, {"handler1", self()}]
+    end
+
+    test "should not remove PID when process terminates" do
+      pid = spawn_link(fn ->
+        :ok = Subscriptions.register("handler1", :strong)
+      end)
+
+      ref = Process.monitor(pid)
+      assert_receive {:DOWN, ^ref, :process, _, :normal}
+      
+      assert Subscriptions.all() ==[{"handler1", pid}]
+    end
+
+    test "should replace registered subscription PID" do
+      reply_to = self()
+
+      pid1 = spawn_link(fn ->
+        :ok = Subscriptions.register("handler1", :strong)
+
+        send(reply_to,{:handler, self()})
+      end)
+
+      assert_receive {:handler, ^pid1}
+      assert Subscriptions.all() ==[{"handler1", pid1}]
+
+      pid2 = spawn_link(fn ->
+        :ok = Subscriptions.register("handler1", :strong)
+
+        send(reply_to, {:handler, self()})
+      end)
+
+      assert_receive {:handler, ^pid2}
+      assert Subscriptions.all() ==[{"handler1", pid2}]
     end
 
     test "should ack event" do

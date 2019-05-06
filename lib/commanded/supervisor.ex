@@ -13,8 +13,9 @@ defmodule Commanded.Supervisor do
       Registration.child_spec() ++ PubSub.child_spec() ++
       [
         {Task.Supervisor, name: Commanded.Commands.TaskDispatcher},
-        {Commanded.Aggregates.Supervisor, []},
-        {Commanded.Subscriptions, []}
+        Commanded.Aggregates.Supervisor,
+        Commanded.Subscriptions.Registry,
+        Commanded.Subscriptions
       ]
 
     Supervisor.init(children, strategy: :one_for_one)
