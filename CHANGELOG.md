@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.17.4
+
+### Bug fixes
+
+- Register event handler and process manager subscriptions on process start ([#272](https://github.com/commanded/commanded/pull/272)).
+
 ## v0.17.3
 
 ### Bug fixes
