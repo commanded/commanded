@@ -51,6 +51,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   def init(%State{} = state) do
+    :ok = register_subscription(state)
     :ok = GenServer.cast(self(), :subscribe_to_events)
 
     {:ok, state}
@@ -154,14 +155,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
-    %State{
-      consistency: consistency,
-      command_dispatcher: command_dispatcher,
-      process_manager_name: process_manager_name
-    } = state
-
-    # Register this process manager as a subscription with the given consistency
-    :ok = Subscriptions.register(process_manager_name, consistency)
+    %State{command_dispatcher: command_dispatcher} = state
 
     {:ok, supervisor} = Supervisor.start_link(command_dispatcher, self())
 
@@ -244,6 +238,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     Logger.warn(fn -> describe(state) <> " is stopping due to: #{inspect(reason)}" end)
 
     {:stop, reason, state}
+  end
+
+  # Register this process manager as a subscription with the given consistency
+  defp register_subscription(%State{} = state) do
+    %State{consistency: consistency, process_manager_name: name} = state
+
+    Subscriptions.register(name, consistency)
   end
 
   defp subscribe_to_all_streams(%State{} = state) do

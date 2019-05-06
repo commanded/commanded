@@ -1,5 +1,6 @@
 defmodule Commanded.Supervisor do
   @moduledoc false
+
   use Supervisor
 
   alias Commanded.{EventStore, PubSub, Registration}
@@ -15,8 +16,9 @@ defmodule Commanded.Supervisor do
         PubSub.child_spec() ++
         [
           {Task.Supervisor, name: Commanded.Commands.TaskDispatcher},
-          {Commanded.Aggregates.Supervisor, []},
-          {Commanded.Subscriptions, []}
+          Commanded.Aggregates.Supervisor,
+          Commanded.Subscriptions.Registry,
+          Commanded.Subscriptions
         ]
 
     Supervisor.init(children, strategy: :one_for_one)
