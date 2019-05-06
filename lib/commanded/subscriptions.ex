@@ -4,23 +4,23 @@ defmodule Commanded.Subscriptions do
   use GenServer
 
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.{PubSub, Subscriptions}
+  alias Commanded.PubSub
+  alias Commanded.Subscriptions
 
-  @subscriptions_topic "subscriptions"
   @ack_topic "ack_event"
 
-  defstruct [:streams_table, :started_at, subscribers: []]
+  defstruct [
+    :streams_table,
+    :started_at,
+    subscribers: []
+  ]
 
   def start_link(arg) do
     GenServer.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
-  @doc """
-  Register an event store subscription with the given consistency guarantee.
-  """
-  def register(name, consistency)
-  def register(_name, :eventual), do: :ok
-  def register(name, :strong), do: PubSub.track(@subscriptions_topic, name)
+  defdelegate register(name, consistency), to: Subscriptions.Registry
+  defdelegate all(), to: Subscriptions.Registry
 
   @doc """
   Acknowledge receipt and sucessful processing of the given event by the named
@@ -37,12 +37,7 @@ defmodule Commanded.Subscriptions do
   end
 
   @doc false
-  def all, do: subscriptions()
-
-  @doc false
-  def reset do
-    GenServer.call(__MODULE__, :reset)
-  end
+  def reset, do: GenServer.call(__MODULE__, :reset)
 
   @doc """
   Have all the registered handlers processed the given event?
@@ -84,7 +79,9 @@ defmodule Commanded.Subscriptions do
     {:ok, initial_state()}
   end
 
-  def handle_call(:reset, _from, %Subscriptions{streams_table: streams_table}) do
+  def handle_call(:reset, _from, %Subscriptions{} = state) do
+    %Subscriptions{streams_table: streams_table} = state
+
     :ets.delete(streams_table)
 
     {:reply, :ok, initial_state()}
@@ -177,8 +174,6 @@ defmodule Commanded.Subscriptions do
     }
   end
 
-  defp subscriptions, do: PubSub.list(@subscriptions_topic)
-
   # Have all subscriptions handled the event for the given stream and version
   defp handled_by_all?(
          stream_uuid,
@@ -187,7 +182,7 @@ defmodule Commanded.Subscriptions do
          exclude,
          %Subscriptions{} = state
        ) do
-    subscriptions()
+    Subscriptions.Registry.all()
     |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclude, pid) end)
     |> Enum.filter(fn {name, _pid} ->
       # Optionally filter subscriptions to those provided by the `consistency` option
@@ -200,7 +195,9 @@ defmodule Commanded.Subscriptions do
   end
 
   # Has the named subscription handled the event for the given stream and version
-  defp handled_by?(name, stream_uuid, stream_version, %Subscriptions{streams_table: streams_table}) do
+  defp handled_by?(name, stream_uuid, stream_version, %Subscriptions{} = state) do
+    %Subscriptions{streams_table: streams_table} = state
+
     case :ets.lookup(streams_table, {name, stream_uuid}) do
       [{{^name, ^stream_uuid}, last_seen, _inserted_at}] when last_seen >= stream_version -> true
       _ -> false
@@ -215,7 +212,9 @@ defmodule Commanded.Subscriptions do
   end
 
   # Notify any subscribers waiting on a given stream if it is at the expected version
-  defp notify_subscribers(stream_uuid, %Subscriptions{subscribers: subscribers} = state) do
+  defp notify_subscribers(stream_uuid, %Subscriptions{} = state) do
+    %Subscriptions{subscribers: subscribers} = state
+
     Enum.reduce(subscribers, subscribers, fn
       {pid, ^stream_uuid, expected_stream_version, consistency, exclude} = subscriber,
       subscribers ->
