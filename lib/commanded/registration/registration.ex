@@ -10,6 +10,8 @@ defmodule Commanded.Registration do
   cluster of nodes.
   """
 
+  @type start_child_arg :: {module(), keyword} | module()
+
   @doc """
   Return an optional supervisor spec for the registry
   """
@@ -21,7 +23,7 @@ defmodule Commanded.Registration do
 
   Registers the pid with the given name.
   """
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+  @callback start_child(name :: term(), supervisor :: module(), child_spec :: start_child_arg) ::
               {:ok, pid} | {:error, term}
 
   @doc """
@@ -49,10 +51,10 @@ defmodule Commanded.Registration do
   def child_spec, do: registry_provider().child_spec()
 
   @doc false
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
-              {:ok, pid()} | {:error, reason :: term()}
-  def start_child(name, supervisor, args),
-    do: registry_provider().start_child(name, supervisor, args)
+  @spec start_child(name :: term(), supervisor :: module(), child_spec :: start_child_arg) ::
+          {:ok, pid()} | {:error, reason :: term()}
+  def start_child(name, supervisor, child_spec),
+    do: registry_provider().start_child(name, supervisor, child_spec)
 
   @doc false
   @spec start_link(name :: term(), module :: module(), args :: any()) ::

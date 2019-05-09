@@ -89,7 +89,8 @@ defmodule Event.UpcasterTest do
 
   describe "upcast events received by aggregate" do
     test "should receive upcasted events" do
-      {:ok, pid} = Aggregate.start_link(UpcastAggregate, "upcast")
+      args = [aggregate_module: UpcastAggregate, aggregate_uuid: "upcast"]
+      {:ok, pid} = Aggregate.start_link(args)
 
       event = %RecordedEvent{
         event_id: UUID.uuid4(),

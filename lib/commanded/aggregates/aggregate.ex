@@ -38,7 +38,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   """
 
-  use GenServer
+  use GenServer, restart: :temporary
   use Commanded.Registration
 
   require Logger
@@ -61,8 +61,15 @@ defmodule Commanded.Aggregates.Aggregate do
     lifespan_timeout: :infinity
   ]
 
-  def start_link(aggregate_module, aggregate_uuid, opts \\ [])
-      when is_atom(aggregate_module) and is_binary(aggregate_uuid) do
+  def start_link(args) do
+    opts = [name: args[:name]]
+    aggregate_module = args[:aggregate_module]
+    aggregate_uuid = args[:aggregate_uuid]
+
+    unless is_atom(aggregate_module) and is_binary(aggregate_uuid) do
+      raise "aggregate_module must be an atom and aggregate_uuid must be a string"
+    end
+
     aggregate = %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
