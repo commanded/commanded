@@ -23,13 +23,23 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @spec start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+  @spec start_child(name :: term(), supervisor :: module(), child_spec :: Commanded.Registration.start_child_arg) ::
           {:ok, pid} | {:error, term}
   @impl Commanded.Registration
-  def start_child(name, supervisor, args) do
+  def start_child(name, supervisor, module) when is_atom(module) do
     via_name = {:via, Registry, {__MODULE__, name}}
 
-    case Supervisor.start_child(supervisor, args ++ [[name: via_name]]) do
+    case DynamicSupervisor.start_child(supervisor, {module, [name: via_name]}) do
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      reply -> reply
+    end
+  end
+
+  def start_child(name, supervisor, {module, args}) when is_list(args) do
+    via_name = {:via, Registry, {__MODULE__, name}}
+    updated_args = Keyword.put(args, :name, via_name)
+
+    case DynamicSupervisor.start_child(supervisor, {module, updated_args}) do
       {:error, {:already_started, pid}} -> {:ok, pid}
       reply -> reply
     end
