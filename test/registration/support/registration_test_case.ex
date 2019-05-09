@@ -30,7 +30,8 @@ defmodule Commanded.RegistrationTestCase do
 
     describe "`start_link/3`" do
       test "should return process PID on success" do
-        assert {:ok, _pid} = start_link("registered")
+        assert {:ok, pid} = start_link("registered")
+        assert is_pid(pid)
       end
 
       test "should return existing process when already started" do
@@ -56,7 +57,7 @@ defmodule Commanded.RegistrationTestCase do
     end
 
     defp start_link(name) do
-      Registration.start_link(name, RegisteredServer, [name])
+      Registration.start_link(name, RegisteredServer, [])
     end
   end
 end

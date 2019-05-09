@@ -21,15 +21,17 @@ defmodule Commanded.Aggregates.Supervisor do
   Returns `{:ok, aggregate_uuid}` when a process is sucessfully started, or is
   already running.
   """
-  def open_aggregate(aggregate_module, aggregate_uuid) when is_binary(aggregate_uuid) do
+  def open_aggregate(aggregate_module, aggregate_uuid)
+      when is_atom(aggregate_module) and is_binary(aggregate_uuid) do
     Logger.debug(fn ->
       "Locating aggregate process for `#{inspect(aggregate_module)}` with UUID " <>
         inspect(aggregate_uuid)
     end)
 
     name = Aggregate.name(aggregate_module, aggregate_uuid)
-    args = [aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid]
-    case Registration.start_child(name, __MODULE__, {Aggregate, args}) do
+    child_spec = {Aggregate, aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid}
+
+    case Registration.start_child(name, __MODULE__, child_spec) do
       {:ok, _pid} ->
         {:ok, aggregate_uuid}
 

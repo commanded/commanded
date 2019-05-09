@@ -72,7 +72,7 @@ defmodule Commanded.Registration do
   @doc """
   Get the configured process registry.
 
-  Defaults to a local registry, restricted to running on a single node, if not configured.
+  Defaults to a local registry, restricted to running on a single node.
   """
   @spec registry_provider() :: module()
   def registry_provider do
@@ -83,7 +83,8 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Use the `Commanded.Registration` module to import the registry provider and via tuple functions.
+  Use the `Commanded.Registration` module to import the registry provider and
+  via tuple functions.
   """
   defmacro __using__(_opts) do
     quote location: :keep do
@@ -95,7 +96,8 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Allow a registry provider to handle the standard `GenServer` callback functions
+  Allow a registry provider to handle the standard `GenServer` callback
+  functions
   """
   defmacro __before_compile__(_env) do
     quote generated: true, location: :keep do

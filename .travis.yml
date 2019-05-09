@@ -1,7 +1,7 @@
 language: elixir
 
 elixir:
-  - 1.8.0
+  - 1.8.1
 
 otp_release:
-  - 21.2
+  - 21.3
