@@ -3,12 +3,20 @@ defmodule Commanded.Aggregates.Supervisor do
   Supervises `Commanded.Aggregates.Aggregate` instance processes.
   """
 
-  use DynamicSupervisor
-
   require Logger
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Registration
+
+  def child_spec(arg) do
+    default = %{
+      id: __MODULE__,
+      start: Application.get_env(:commanded, :aggregate_supervisor_mfa, {__MODULE__, :start_link, [arg]}),
+      type: :supervisor
+    }
+
+    Supervisor.child_spec(default, [])
+  end
 
   def start_link(arg) do
     DynamicSupervisor.start_link(__MODULE__, arg, name: __MODULE__)
