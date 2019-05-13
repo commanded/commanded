@@ -18,6 +18,21 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc """
+  Starts a supervisor.
+  """
+  @spec supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
+  @impl Commanded.Registration
+  def supervisor_child_spec(module, arg) do
+    default = %{
+     id: module,
+     start: {module, :start_link, [arg]},
+     type: :supervisor
+    }
+
+    Supervisor.child_spec(default, [])
+  end
+
+  @doc """
   Starts a uniquely named child process of a supervisor using the given module
   and args.
 

@@ -56,6 +56,17 @@ defmodule Commanded.RegistrationTestCase do
       end
     end
 
+    describe "`supervisor_child_spec/2`" do
+      test "should return a valid child_spec" do
+        assert Registration.supervisor_child_spec(RegisteredSupervisor, "child") ==
+                 %{
+                   id: Commanded.Registration.RegisteredSupervisor,
+                   start: {Commanded.Registration.RegisteredSupervisor, :start_link, ["child"]},
+                   type: :supervisor
+                 }
+      end
+    end
+
     defp start_link(name) do
       Registration.start_link(name, RegisteredServer, [])
     end
