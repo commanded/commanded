@@ -8,4 +8,4 @@ Commanded and EventStore are MIT-licensed open source projects. Ongoing developm
 
 ## Backers via OpenCollective
 
-<img src="https://opencollective.com/commanded/backers.svg?width=890">
+<a href="https://opencollective.com/commanded#contributors" target="_blank"><img src="https://opencollective.com/commanded/backers.svg?width=890"></a>
