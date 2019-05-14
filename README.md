@@ -21,6 +21,14 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 
 ---
 
+### Supporting Commanded
+
+You can help support Commanded by helping to fund its ongoing development, new features, and releases.
+
+- [Become a backer or sponsor on OpenCollective](https://opencollective.com/commanded).
+
+---
+
 - [Changelog](CHANGELOG.md)
 - [Wiki](https://github.com/commanded/commanded/wiki)
 - [What is CQRS/ES?](https://kalele.io/blog-posts/really-simple-cqrs/)
