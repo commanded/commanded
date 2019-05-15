@@ -10,6 +10,7 @@
 - Event upcasting ([#263](https://github.com/commanded/commanded/pull/263)).
 - Support `:ok` tagged tuple events from aggregate ([#268](https://github.com/commanded/commanded/pull/268)).
 - Modify `Commanded.Registration.start_child/3` to pass a child_spec ([#273](https://github.com/commanded/commanded/pull/273)).
+- Add `supervisor_child_spec/2` to `Commanded.Registration` behaviour ([#277](https://github.com/commanded/commanded/pull/277)) used by [Commanded Horde Registry](https://github.com/uberbrodt/commanded_horde_registry).
 
 ## v0.18.0
 
