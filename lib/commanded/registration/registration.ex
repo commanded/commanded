@@ -17,6 +17,12 @@ defmodule Commanded.Registration do
   """
   @callback child_spec() :: [:supervisor.child_spec()]
 
+
+  @doc """
+  Use to start a supervisor.
+  """
+  @callback supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
+
   @doc """
   Starts a uniquely named child process of a supervisor using the given module
   and args.
@@ -49,6 +55,10 @@ defmodule Commanded.Registration do
   @doc false
   @spec child_spec() :: [:supervisor.child_spec()]
   def child_spec, do: registry_provider().child_spec()
+
+  @doc false
+  @spec supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
+  def supervisor_child_spec(module, arg), do: registry_provider().supervisor_child_spec(module, arg)
 
   @doc false
   @spec start_child(name :: term(), supervisor :: module(), child_spec :: start_child_arg) ::
