@@ -93,7 +93,8 @@ MIT License
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
 - [Learn Commanded in 20 minutes](#learn-commanded-in-20-minutes)
-- [Event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
+- [Choosing an event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
+- [Tooling](https://github.com/commanded/commanded/wiki/Tooling)
 - [Contributing](#contributing)
 - [Need help?](#need-help)
 
