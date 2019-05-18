@@ -122,6 +122,10 @@ You should include unit tests to cover any changes. Run `mix test` to execute th
 
 ### Contributors
 
+Commanded exists thanks to the following people who have contributed.
+
+<img src="https://opencollective.com/commanded/contributors.svg?width=890&button=false" width="890" />
+
 - [Adil Yarulin](https://github.com/ayarulin)
 - [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
