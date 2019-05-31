@@ -33,4 +33,8 @@ if Code.ensure_loaded?(Jason) do
     defp to_struct(data, nil), do: data
     defp to_struct(data, struct), do: struct(struct, data)
   end
+
+  require Protocol
+
+  Protocol.derive(Jason.Encoder, Commanded.EventStore.SnapshotData)
 end

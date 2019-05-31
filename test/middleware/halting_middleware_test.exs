@@ -1,8 +1,14 @@
-defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
+defmodule Commanded.Middleware.HaltingMiddlewareTest do
   use Commanded.StorageCase
 
   alias Commanded.Helpers.CommandAuditMiddleware
-  alias Commanded.Helpers.Commands.{IncrementCount,Validate,CommandHandler,CounterAggregateRoot}
+
+  alias Commanded.Middleware.Commands.{
+    IncrementCount,
+    Validate,
+    CommandHandler,
+    CounterAggregateRoot
+  }
 
   defmodule HaltingMiddleware do
     @behaviour Commanded.Middleware
@@ -22,7 +28,9 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
 
     def before_dispatch(%Pipeline{command: command} = pipeline) do
       case Map.get(command, :valid?, false) do
-        true -> pipeline
+        true ->
+          pipeline
+
         false ->
           pipeline
           |> respond({:error, :validation_failure, "validation failed"})
@@ -40,7 +48,10 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
     middleware CommandAuditMiddleware
     middleware HaltingMiddleware
 
-    dispatch IncrementCount, to: CommandHandler, aggregate: CounterAggregateRoot, identity: :aggregate_uuid
+    dispatch IncrementCount,
+      to: CommandHandler,
+      aggregate: CounterAggregateRoot,
+      identity: :aggregate_uuid
   end
 
   defmodule ValidatingRouter do
@@ -49,7 +60,10 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
     middleware CommandAuditMiddleware
     middleware ValidationMiddleware
 
-    dispatch Validate, to: CommandHandler, aggregate: CounterAggregateRoot, identity: :aggregate_uuid
+    dispatch Validate,
+      to: CommandHandler,
+      aggregate: CounterAggregateRoot,
+      identity: :aggregate_uuid
   end
 
   setup do
@@ -58,7 +72,8 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
   end
 
   test "should not dispatch the command when middleware halts pipeline" do
-    assert {:error, :halted} = HaltingRouter.dispatch(%IncrementCount{aggregate_uuid: UUID.uuid4})
+    assert {:error, :halted} =
+             HaltingRouter.dispatch(%IncrementCount{aggregate_uuid: UUID.uuid4()})
 
     {dispatched, succeeded, failed} = CommandAuditMiddleware.count_commands()
 
@@ -68,7 +83,8 @@ defmodule Commanded.Commands.Middleware.HaltingMiddlewareTest do
   end
 
   test "should allow middleware to set dispatch response" do
-    assert {:error, :validation_failure, "validation failed"} = ValidatingRouter.dispatch(%Validate{aggregate_uuid: UUID.uuid4, valid?: false})
+    assert {:error, :validation_failure, "validation failed"} =
+             ValidatingRouter.dispatch(%Validate{aggregate_uuid: UUID.uuid4(), valid?: false})
 
     {dispatched, succeeded, failed} = CommandAuditMiddleware.count_commands()
 

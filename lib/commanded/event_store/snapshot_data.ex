@@ -12,7 +12,6 @@ defmodule Commanded.EventStore.SnapshotData do
           created_at: NaiveDateTime.t()
         }
 
-  @derive Jason.Encoder
   defstruct [
     :source_uuid,
     :source_version,
