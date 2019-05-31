@@ -38,6 +38,7 @@ defmodule Commanded.Mixfile do
       "test/event/support",
       "test/event_store/support",
       "test/example_domain",
+      "test/middleware/support",
       "test/helpers",
       "test/process_managers/support",
       "test/pubsub/support",

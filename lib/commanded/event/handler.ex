@@ -188,7 +188,9 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
-  alias Commanded.Event.{FailureContext, Handler}
+  alias Commanded.Event.FailureContext
+  alias Commanded.Event.Handler
+  alias Commanded.Event.Upcast
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
@@ -369,6 +371,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def init(%Handler{} = state) do
+    :ok = register_subscription(state)
     :ok = GenServer.cast(self(), :subscribe_to_events)
 
     {:ok, state}
@@ -401,17 +404,10 @@ defmodule Commanded.Event.Handler do
   def handle_info({:subscribed, subscription}, %Handler{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
-    %Handler{
-      consistency: consistency,
-      handler_module: handler_module,
-      handler_name: handler_name
-    } = state
+    %Handler{handler_module: handler_module} = state
 
     case handler_module.init() do
       :ok ->
-        # Register this event handler as a subscription with the given consistency
-        :ok = Subscriptions.register(handler_name, consistency)
-
         {:noreply, state}
 
       {:stop, reason} ->
@@ -426,7 +422,10 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
-      state = Enum.reduce(events, state, &handle_event/2)
+      state =
+        events
+        |> Upcast.upcast_event_stream()
+        |> Enum.reduce(state, &handle_event/2)
 
       {:noreply, state}
     catch
@@ -445,6 +444,13 @@ defmodule Commanded.Event.Handler do
     Logger.debug(fn -> describe(state) <> " subscription DOWN due to: #{inspect(reason)}" end)
 
     {:stop, reason, state}
+  end
+
+  # Register this event handler as a subscription with the given consistency
+  defp register_subscription(%Handler{} = state) do
+    %Handler{consistency: consistency, handler_name: name} = state
+
+    Subscriptions.register(name, consistency)
   end
 
   defp subscribe_to_events(%Handler{} = state) do

@@ -80,11 +80,13 @@ defmodule Commanded.EventStore do
 
   Subscribe to all streams:
 
-      {:ok, subscription} = Commanded.EventStore.subscribe_to(:all, "Example", self())
+      {:ok, subscription} =
+        Commanded.EventStore.subscribe_to(:all, "Example", self(), :current)
 
   Subscribe to a single stream:
 
-      {:ok, subscription} = Commanded.EventStore.subscribe_to("stream1234", "Example", self())
+      {:ok, subscription} =
+        Commanded.EventStore.subscribe_to("stream1", "Example", self(), :origin)
 
   """
   @callback subscribe_to(stream_uuid | :all, subscription_name, subscriber, start_from) ::
@@ -170,7 +172,12 @@ defmodule Commanded.EventStore do
 
   def stream_forward(stream_uuid, start_version, read_batch_size)
       when is_binary(stream_uuid) and is_integer(start_version) and is_integer(read_batch_size) do
-    event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size)
+    alias Commanded.Event.Upcast
+
+    case event_store_adapter().stream_forward(stream_uuid, start_version, read_batch_size) do
+      {:error, _} = error -> error
+      stream -> Upcast.upcast_event_stream(stream)
+    end
   end
 
   @doc """

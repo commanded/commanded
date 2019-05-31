@@ -206,3 +206,35 @@ The available options are `:eventual` (default) and `:strong`:
 - *Eventual consistency* offers low latency but read model queries may reply with stale data since they may not have processed the persisted events.
 
 You request the consistency guarantee, either `:strong` or `:eventual`, when dispatching a command. Strong consistency will block the command dispatch and wait for all strongly consistent event handlers to successfully process all events created by the command. Whereas eventual consistency will immediately return after command dispatch, without waiting for any event handlers, even those configured for strong consistency.
+
+## Upcasting events
+
+Commanded supports upcasting of events at runtime using the `Commanded.Event.Upcaster` protocol.
+
+By implementing the upcaster protocol you can transform an event before it is used by a consumer. This might be an aggregate, an event handler, or a process manager. Because the upcaster changes the event at runtime, handlers only need to support the latest version. You can also use upcasting to change the type of event.
+
+### Examples
+
+Change the shape of an event by renaming a field:
+
+```elixir
+defimpl Commanded.Event.Upcaster, for: AnEvent do
+  def upcast(%AnEvent{} = event, _metadata) do
+    %AnEvent{name: name} = event
+
+    %AnEvent{event | first_name: name}
+  end
+end
+```
+
+Change the type of event by replacing a historical event with a new event:
+
+```elixir
+defimpl Commanded.Event.Upcaster, for: HistoricalEvent do
+  def upcast(%HistoricalEvent{} = event, _metadata) do
+    %HistoricalEvent{id: id, name: name} = event
+
+    %NewEvent{id: id, name: name}
+  end
+end
+```

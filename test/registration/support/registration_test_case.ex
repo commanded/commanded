@@ -30,7 +30,8 @@ defmodule Commanded.RegistrationTestCase do
 
     describe "`start_link/3`" do
       test "should return process PID on success" do
-        assert {:ok, _pid} = start_link("registered")
+        assert {:ok, pid} = start_link("registered")
+        assert is_pid(pid)
       end
 
       test "should return existing process when already started" do
@@ -55,8 +56,19 @@ defmodule Commanded.RegistrationTestCase do
       end
     end
 
+    describe "`supervisor_child_spec/2`" do
+      test "should return a valid child_spec" do
+        assert Registration.supervisor_child_spec(RegisteredSupervisor, "child") ==
+                 %{
+                   id: Commanded.Registration.RegisteredSupervisor,
+                   start: {Commanded.Registration.RegisteredSupervisor, :start_link, ["child"]},
+                   type: :supervisor
+                 }
+      end
+    end
+
     defp start_link(name) do
-      Registration.start_link(name, RegisteredServer, [name])
+      Registration.start_link(name, RegisteredServer, [])
     end
   end
 end

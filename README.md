@@ -21,6 +21,14 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 
 ---
 
+### Supporting Commanded
+
+You can help support Commanded by helping to fund its ongoing development, new features, and releases.
+
+- [Become a backer or sponsor on OpenCollective](https://opencollective.com/commanded).
+
+---
+
 - [Changelog](CHANGELOG.md)
 - [Wiki](https://github.com/commanded/commanded/wiki)
 - [What is CQRS/ES?](https://kalele.io/blog-posts/really-simple-cqrs/)
@@ -61,14 +69,21 @@ MIT License
       - [Composite command routers](guides/Commands.md#composite-command-routers)
     - [Middleware](guides/Commands.md#middleware)
       - [Example middleware](guides/Commands.md#example-middleware)
+    - [Composite command routers](guides/Commands.md#composite-command-routers)
   - [Events](guides/Events.md)
     - [Domain events](guides/Events.md#domain-events)
     - [Event handlers](guides/Events.md#event-handlers)
       - [Consistency guarantee](guides/Events.md#consistency-guarantee)
+    - [Upcasting events](guides/Events.md#upcasting-events)
   - [Process managers](guides/Process%20Managers.md)
     - [Example process manager](guides/Process%20Managers.md#example-process-manager)
   - [Supervision](guides/Supervision.md)
   - [Serialization](guides/Serialization.md)
+    - [Default JSON serializer](guides/Serialization.md#default-json-serializer)
+    - [Configuring JSON serialization](guides/Serialization.md#configuring-json-serialization)
+    - [Decoding event structs](guides/Serialization.md#decoding-event-structs)
+    - [Using an alternative serialization format](guides/Serialization.md#using-an-alternative-serialization-format)
+    - [Customising serialization](guides/Serialization.md#customising-serialization)
   - [Read model projections](guides/Read%20Model%20Projections.md)
 - [Deployment](guides/Deployment.md)
   - [Single node deployment](guides/Deployment.md#single-node-deployment)
@@ -78,7 +93,8 @@ MIT License
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
 - [Learn Commanded in 20 minutes](#learn-commanded-in-20-minutes)
-- [Event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
+- [Choosing an event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
+- [Tooling](https://github.com/commanded/commanded/wiki/Tooling)
 - [Contributing](#contributing)
 - [Need help?](#need-help)
 
@@ -86,9 +102,7 @@ MIT License
 
 ## Used in production?
 
-Yes, Commanded is being used in production.
-
-- Case Study: [Building a CQRS/ES web application in Elixir using Phoenix](https://10consulting.com/2017/01/04/building-a-cqrs-web-application-in-elixir-using-phoenix/)
+Yes, see the [companies using Commanded](https://github.com/commanded/commanded/wiki/Companies-using-Commanded).
 
 ## Example application
 
@@ -107,6 +121,10 @@ Please follow the existing coding conventions, or refer to the [Elixir style gui
 You should include unit tests to cover any changes. Run `mix test` to execute the test suite.
 
 ### Contributors
+
+Commanded exists thanks to the following people who have contributed.
+
+<a href="https://github.com/commanded/commanded/graphs/contributors"><img src="https://opencollective.com/commanded/contributors.svg?width=890&button=false" width="890" /></a>
 
 - [Adil Yarulin](https://github.com/ayarulin)
 - [Andrey Akulov](https://github.com/astery)

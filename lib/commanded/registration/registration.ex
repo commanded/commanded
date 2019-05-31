@@ -10,10 +10,18 @@ defmodule Commanded.Registration do
   cluster of nodes.
   """
 
+  @type start_child_arg :: {module(), keyword} | module()
+
   @doc """
   Return an optional supervisor spec for the registry
   """
   @callback child_spec() :: [:supervisor.child_spec()]
+
+
+  @doc """
+  Use to start a supervisor.
+  """
+  @callback supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
 
   @doc """
   Starts a uniquely named child process of a supervisor using the given module
@@ -21,7 +29,7 @@ defmodule Commanded.Registration do
 
   Registers the pid with the given name.
   """
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+  @callback start_child(name :: term(), supervisor :: module(), child_spec :: start_child_arg) ::
               {:ok, pid} | {:error, term}
 
   @doc """
@@ -49,10 +57,14 @@ defmodule Commanded.Registration do
   def child_spec, do: registry_provider().child_spec()
 
   @doc false
-  @callback start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
-              {:ok, pid()} | {:error, reason :: term()}
-  def start_child(name, supervisor, args),
-    do: registry_provider().start_child(name, supervisor, args)
+  @spec supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
+  def supervisor_child_spec(module, arg), do: registry_provider().supervisor_child_spec(module, arg)
+
+  @doc false
+  @spec start_child(name :: term(), supervisor :: module(), child_spec :: start_child_arg) ::
+          {:ok, pid()} | {:error, reason :: term()}
+  def start_child(name, supervisor, child_spec),
+    do: registry_provider().start_child(name, supervisor, child_spec)
 
   @doc false
   @spec start_link(name :: term(), module :: module(), args :: any()) ::
@@ -70,7 +82,7 @@ defmodule Commanded.Registration do
   @doc """
   Get the configured process registry.
 
-  Defaults to a local registry, restricted to running on a single node, if not configured.
+  Defaults to a local registry, restricted to running on a single node.
   """
   @spec registry_provider() :: module()
   def registry_provider do
@@ -81,7 +93,8 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Use the `Commanded.Registration` module to import the registry provider and via tuple functions.
+  Use the `Commanded.Registration` module to import the registry provider and
+  via tuple functions.
   """
   defmacro __using__(_opts) do
     quote location: :keep do
@@ -93,7 +106,8 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Allow a registry provider to handle the standard `GenServer` callback functions
+  Allow a registry provider to handle the standard `GenServer` callback
+  functions
   """
   defmacro __before_compile__(_env) do
     quote generated: true, location: :keep do

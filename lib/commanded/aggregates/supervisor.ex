@@ -3,15 +3,19 @@ defmodule Commanded.Aggregates.Supervisor do
   Supervises `Commanded.Aggregates.Aggregate` instance processes.
   """
 
-  use Supervisor
+  use DynamicSupervisor
 
   require Logger
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Registration
 
+  def child_spec(arg) do
+    Registration.supervisor_child_spec(__MODULE__, arg)
+  end
+
   def start_link(arg) do
-    Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
+    DynamicSupervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
   @doc """
@@ -21,15 +25,17 @@ defmodule Commanded.Aggregates.Supervisor do
   Returns `{:ok, aggregate_uuid}` when a process is sucessfully started, or is
   already running.
   """
-  def open_aggregate(aggregate_module, aggregate_uuid) when is_binary(aggregate_uuid) do
+  def open_aggregate(aggregate_module, aggregate_uuid)
+      when is_atom(aggregate_module) and is_binary(aggregate_uuid) do
     Logger.debug(fn ->
       "Locating aggregate process for `#{inspect(aggregate_module)}` with UUID " <>
         inspect(aggregate_uuid)
     end)
 
     name = Aggregate.name(aggregate_module, aggregate_uuid)
+    child_spec = {Aggregate, aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid}
 
-    case Registration.start_child(name, __MODULE__, [aggregate_module, aggregate_uuid]) do
+    case Registration.start_child(name, __MODULE__, child_spec) do
       {:ok, _pid} ->
         {:ok, aggregate_uuid}
 
@@ -47,11 +53,7 @@ defmodule Commanded.Aggregates.Supervisor do
   def open_aggregate(_aggregate_module, aggregate_uuid),
     do: {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
 
-  def init(_) do
-    children = [
-      worker(Commanded.Aggregates.Aggregate, [], restart: :temporary)
-    ]
-
-    supervise(children, strategy: :simple_one_for_one)
+  def init(_arg) do
+    DynamicSupervisor.init(strategy: :one_for_one)
   end
 end

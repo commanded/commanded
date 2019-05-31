@@ -38,13 +38,14 @@ defmodule Commanded.Aggregates.Aggregate do
 
   """
 
-  use GenServer
+  use GenServer, restart: :temporary
   use Commanded.Registration
 
   require Logger
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Event.Mapper
+  alias Commanded.Event.Upcast
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
   alias Commanded.Snapshotting
@@ -60,8 +61,15 @@ defmodule Commanded.Aggregates.Aggregate do
     lifespan_timeout: :infinity
   ]
 
-  def start_link(aggregate_module, aggregate_uuid, opts \\ [])
-      when is_atom(aggregate_module) and is_binary(aggregate_uuid) do
+  def start_link(args) do
+    opts = [name: args[:name]]
+    aggregate_module = args[:aggregate_module]
+    aggregate_uuid = args[:aggregate_uuid]
+
+    unless is_atom(aggregate_module) and is_binary(aggregate_uuid) do
+      raise "aggregate_module must be an atom and aggregate_uuid must be a string"
+    end
+
     aggregate = %Aggregate{
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
@@ -240,6 +248,11 @@ defmodule Commanded.Aggregates.Aggregate do
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
+      state =
+        events
+        |> Upcast.upcast_event_stream()
+        |> Enum.reduce(state, &handle_event/2)
+
       state = Enum.reduce(events, state, &handle_event/2)
 
       {:noreply, state, lifespan_timeout}
@@ -401,11 +414,7 @@ defmodule Commanded.Aggregates.Aggregate do
       retry_attempts: retry_attempts
     } = context
 
-    %Aggregate{
-      aggregate_module: aggregate_module,
-      aggregate_version: expected_version,
-      aggregate_state: aggregate_state
-    } = state
+    %Aggregate{aggregate_version: expected_version, aggregate_state: aggregate_state} = state
 
     Logger.debug(fn -> describe(state) <> " executing command: #{inspect(command)}" end)
 
@@ -414,7 +423,7 @@ defmodule Commanded.Aggregates.Aggregate do
         {:error, _error} = reply ->
           {reply, state}
 
-        none when none in [nil, []] ->
+        none when none in [:ok, nil, []] ->
           {{:ok, expected_version, []}, state}
 
         %Commanded.Aggregate.Multi{} = multi ->
@@ -426,11 +435,11 @@ defmodule Commanded.Aggregates.Aggregate do
               persist_events(pending_events, aggregate_state, context, state)
           end
 
-        events ->
-          pending_events = List.wrap(events)
-          aggregate_state = apply_events(aggregate_module, aggregate_state, pending_events)
+        {:ok, pending_events} ->
+          record_events(pending_events, context, state)
 
-          persist_events(pending_events, aggregate_state, context, state)
+        pending_events ->
+          record_events(pending_events, context, state)
       end
 
     case reply do
@@ -446,6 +455,15 @@ defmodule Commanded.Aggregates.Aggregate do
       reply ->
         {reply, state}
     end
+  end
+
+  defp record_events(pending_events, context, %Aggregate{} = state) do
+    %Aggregate{aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state
+
+    pending_events = List.wrap(pending_events)
+    aggregate_state = apply_events(aggregate_module, aggregate_state, pending_events)
+
+    persist_events(pending_events, aggregate_state, context, state)
   end
 
   defp apply_events(aggregate_module, aggregate_state, events) do

@@ -86,3 +86,32 @@ test "make sure two events are correlated" do
   )
 end
 ```
+
+## Aggregate state testing
+
+Sometimes it's useful to compare an expected aggregate's state with the proceed one. This kind of method should be used
+only for testing.
+
+For this pupore, Commanded provides a `aggregate_state` method which returns the current aggregate state.
+
+```elixir
+import Commanded.Assertions.EventAssertions
+
+alias Commanded.Aggregates.Aggregate
+
+test "make sure aggregate state are what we wanted" do
+  account_number = "ACC123"
+
+  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: account_number, initial_balance: 1_000})
+  :ok = BankRouter.dispatch(%WithdrawnMoney{account_number: account_number, amount: 200})
+
+  wait_for_event(BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
+  wait_for_event(MoneyWithdrawn, fn withdrawn -> withdrawn.balance == 800 end)
+
+  assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+    account_number: account_number,
+    balance: 800,
+    state: :active
+  }
+end
+```

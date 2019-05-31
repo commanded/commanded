@@ -18,7 +18,7 @@ Since commands are just plain Elixir structs you can use a library such as [`typ
 Commanded logs commands during execution when using debug log level. To prevent sensitive data from being exposed in
 logs you can use the built-in Elixir `Inspect` module to exclude fields.
 
-```
+```elixir
 defmodule RegisterUser do
   @derive {Inspect, only: [:id, :name]}
   defstruct [:id, :name, :password]

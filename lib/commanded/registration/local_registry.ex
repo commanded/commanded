@@ -18,18 +18,46 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc """
+  Starts a supervisor.
+  """
+  @spec supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
+  @impl Commanded.Registration
+  def supervisor_child_spec(module, arg) do
+    default = %{
+     id: module,
+     start: {module, :start_link, [arg]},
+     type: :supervisor
+    }
+
+    Supervisor.child_spec(default, [])
+  end
+
+  @doc """
   Starts a uniquely named child process of a supervisor using the given module
   and args.
 
   Registers the pid with the given name.
   """
-  @spec start_child(name :: term(), supervisor :: module(), args :: [any()]) ::
+  @spec start_child(
+          name :: term(),
+          supervisor :: module(),
+          child_spec :: Commanded.Registration.start_child_arg()
+        ) ::
           {:ok, pid} | {:error, term}
   @impl Commanded.Registration
-  def start_child(name, supervisor, args) do
+  def start_child(name, supervisor, child_spec) do
     via_name = {:via, Registry, {__MODULE__, name}}
 
-    case Supervisor.start_child(supervisor, args ++ [[name: via_name]]) do
+    child_spec =
+      case child_spec do
+        module when is_atom(module) ->
+          {module, name: via_name}
+
+        {module, args} when is_atom(module) and is_list(args) ->
+          {module, Keyword.put(args, :name, via_name)}
+      end
+
+    case DynamicSupervisor.start_child(supervisor, child_spec) do
       {:error, {:already_started, pid}} -> {:ok, pid}
       reply -> reply
     end

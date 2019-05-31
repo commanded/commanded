@@ -14,9 +14,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
       :append_event_to_stream
     ]
 
-    test "should notify aggregate and mutate its state", context do
-      %{account_number: account_number} = context
-
+    test "should notify aggregate and mutate its state", %{account_number: account_number} do
       assert Aggregate.aggregate_version(BankAccount, account_number) == 2
 
       assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
@@ -26,9 +24,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
              }
     end
 
-    test "should ignore already seen events", context do
-      %{account_number: account_number} = context
-
+    test "should ignore already seen events", %{account_number: account_number} do
       pid = Registration.whereis_name({BankAccount, account_number})
       events = account_number |> EventStore.stream_forward() |> Enum.to_list()
 
@@ -47,9 +43,9 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
              }
     end
 
-    test "should stop aggregate process when unexpected event received", context do
-      %{account_number: account_number} = context
-
+    test "should stop aggregate process when unexpected event received", %{
+      account_number: account_number
+    } do
       pid = Registration.whereis_name({BankAccount, account_number})
       ref = Process.monitor(pid)
 
@@ -70,39 +66,39 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
 
       assert_receive {:DOWN, ^ref, :process, _, :unexpected_event_received}
     end
+  end
 
-    defp open_account(_context) do
-      account_number = UUID.uuid4()
+  defp open_account(_context) do
+    account_number = UUID.uuid4()
 
-      {:ok, ^account_number} = AggregateSupervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} = AggregateSupervisor.open_aggregate(BankAccount, account_number)
 
-      context = %ExecutionContext{
-        command: %OpenAccount{account_number: account_number, initial_balance: 1_000},
-        handler: OpenAccountHandler,
-        function: :handle,
-        retry_attempts: 1
+    context = %ExecutionContext{
+      command: %OpenAccount{account_number: account_number, initial_balance: 1_000},
+      handler: OpenAccountHandler,
+      function: :handle,
+      retry_attempts: 1
+    }
+
+    {:ok, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
+
+    [
+      account_number: account_number
+    ]
+  end
+
+  # Write an event to the aggregate's stream, bypassing the aggregate process
+  defp append_event_to_stream(%{account_number: account_number}) do
+    event = %Commanded.EventStore.EventData{
+      event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited",
+      data: %MoneyDeposited{
+        account_number: account_number,
+        transfer_uuid: UUID.uuid4(),
+        amount: 500,
+        balance: 1_500
       }
+    }
 
-      {:ok, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
-
-      [
-        account_number: account_number
-      ]
-    end
-
-    # Write an event to the aggregate's stream, bypassing the aggregate process
-    defp append_event_to_stream(%{account_number: account_number}) do
-      event = %Commanded.EventStore.EventData{
-        event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited",
-        data: %MoneyDeposited{
-          account_number: account_number,
-          transfer_uuid: UUID.uuid4(),
-          amount: 500,
-          balance: 1_500
-        }
-      }
-
-      EventStore.append_to_stream(account_number, 1, [event])
-    end
+    EventStore.append_to_stream(account_number, 1, [event])
   end
 end
