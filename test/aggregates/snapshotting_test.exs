@@ -241,23 +241,23 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       configure_snapshotting(SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)
     end
 
-    test "should parse date" do
+    test "should parse datetime" do
       aggregate_uuid = UUID.uuid4()
-      now = NaiveDateTime.utc_now()
+      now = DateTime.utc_now()
 
       create_aggregate(aggregate_uuid, now)
       restart_aggregate(SnapshotAggregate, aggregate_uuid)
 
       # Aggregate state should be decoded
-      expected_state = %SnapshotAggregate{name: "Example", date: now}
+      expected_state = %SnapshotAggregate{name: "Example", datetime: now}
 
       assert_aggregate_state(SnapshotAggregate, aggregate_uuid, expected_state)
       assert_aggregate_version(SnapshotAggregate, aggregate_uuid, 1)
     end
 
-    defp create_aggregate(aggregate_uuid, %NaiveDateTime{} = date) do
+    defp create_aggregate(aggregate_uuid, %DateTime{} = datetime) do
       execution_context = %ExecutionContext{
-        command: %Create{name: "Example", date: date},
+        command: %Create{name: "Example", datetime: datetime},
         handler: SnapshotAggregate,
         function: :execute
       }

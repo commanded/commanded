@@ -356,7 +356,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     } = state
 
     initial_stream_version = length(existing_events) + 1
-    now = NaiveDateTime.utc_now()
+    now = DateTime.utc_now()
 
     new_events =
       new_events

@@ -19,7 +19,7 @@ You must derive the `Jason.Encoder` protocol for all structs you plan on encodin
 ```elixir
 defmodule ExampleEvent do
   @derive Jason.Encoder
-  defstruct [:name, :date]
+  defstruct [:name, :datetime]
 end
 ```
 
@@ -58,7 +58,7 @@ JSON serialization configuration depends upon which event store you are using wi
 
   Note that the two EventStore serializers do not implement the `Commanded.Serialization.JsonSerializer` decoding protocol.
 
-- Greg Young's Event Store:
+- Event Store:
 
   ```elixir
   config :commanded_extreme_adapter,
@@ -74,24 +74,24 @@ JSON serialization configuration depends upon which event store you are using wi
 
 ## Decoding event structs
 
-The `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized data. This can be used for parsing data into valid types, such as date/time parsing from a string.
+The `Commanded.Serialization.JsonSerializer` module provides an extension point to allow additional decoding of the deserialized data. This can be used for parsing data into valid types, such as datetime parsing from a string.
 
-The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the date into a `NaiveDateTime` struct.
+The example event below has an implementation of the `Commanded.Serialization.JsonDecoder` protocol to parse the datetime into a `DateTime` struct.
 
 ```elixir
 defmodule ExampleEvent do
   @derive Jason.Encoder
-  defstruct [:name, :date]
+  defstruct [:name, :datetime]
 end
 
 defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
   @doc """
-  Parse the date included in the event.
+  Parse the datetime included in the event.
   """
-  def decode(%ExampleEvent{date: date} = event) do
-    %ExampleEvent{event |
-      date: NaiveDateTime.from_iso8601!(date)
-    }
+  def decode(%ExampleEvent{datetime: datetime} = event) do
+    {:ok, dt, _} = DateTime.from_iso8601(datetime)
+    
+    %ExampleEvent{event | datetime: dt}
   end
 end
 ```
@@ -107,22 +107,19 @@ Configure your own serializer in `config/config.exs` for the event store you are
 - Postgres EventStore:
 
   ```elixir
-  config :eventstore, EventStore.Storage,
-    serializer: MyApp.MessagePackSerializer
+  config :eventstore, EventStore.Storage, serializer: MyApp.MessagePackSerializer
   ```
 
-- Greg Young's Event Store:
+- Event Store:
 
   ```elixir
-  config :commanded_extreme_adapter,
-    serializer: MyApp.MessagePackSerializer
+  config :commanded_extreme_adapter, serializer: MyApp.MessagePackSerializer
   ```
 
 - In-memory event store:
 
   ```elixir
-  config :commanded, Commanded.EventStore.Adapters.InMemory,
-    serializer: MyApp.MessagePackSerializer
+  config :commanded, Commanded.EventStore.Adapters.InMemory, serializer: MyApp.MessagePackSerializer
   ```
 
 You *should not* change serialization format once your app has been deployed to production since Commanded will not be able to deserialize any existing events or snapshot data. In this scenario, to change serialization format you would need to also migrate your event store to the new format.

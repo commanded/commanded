@@ -208,13 +208,13 @@ This is a performance optimisation for aggregates that have a long lifetime or r
 
 Use the following options to configure snapshots for an aggregate:
 
-  - `snapshot_every` - snapshot aggregate state every so many events. Use
-    `nil` to disable snapshotting, or exclude the configuration entirely.
+- `snapshot_every` - snapshot aggregate state every so many events. Use
+  `nil` to disable snapshotting, or exclude the configuration entirely.
 
-  - `snapshot_version` - a non-negative integer indicating the version of
-    the aggregate state snapshot. Incrementing this version forces any
-    earlier recorded snapshots to be ignored when rebuilding aggregate
-    state.
+- `snapshot_version` - a non-negative integer indicating the version of
+  the aggregate state snapshot. Incrementing this version forces any
+  earlier recorded snapshots to be ignored when rebuilding aggregate
+  state.
 
 ### Example
 
@@ -233,7 +233,7 @@ Aggregate state will be serialized using the configured event store serializer, 
 ```elixir
 defmodule ExampleAggregate do
   @derive Jason.Encoder
-  defstruct [:name, :date]
+  defstruct [:name, :datetime]
 end
 ```
 
@@ -242,10 +242,11 @@ You can use the `Commanded.Serialization.JsonDecoder` protocol to decode the par
 ```elixir
 defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   @doc """
-  Parse the date included in the aggregate state
+  Parse the datetime included in the aggregate state
   """
-  def decode(%ExampleAggregate{date: date} = state) do
-    %ExampleAggregate{state | date: NaiveDateTime.from_iso8601!(date)}
+  def decode(%ExampleAggregate{datetime: datetime} = state) do
+    {:ok, dt, _} = DateTime.from_iso8601(datetime)
+    %ExampleAggregate{state | datetime: dt}
   end
 end
 ```

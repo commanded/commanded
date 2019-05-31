@@ -47,9 +47,7 @@ defmodule Commanded.Middleware.Logger do
   def after_failure(%Pipeline{} = pipeline), do: pipeline
 
   defp delta(%Pipeline{assigns: %{started_at: started_at}}) do
-    now_usecs = DateTime.utc_now() |> DateTime.to_unix(:microsecond)
-    started_usecs = started_at |> DateTime.to_unix(:microsecond)
-    now_usecs - started_usecs
+    DateTime.diff(started_at, DateTime.utc_now(), :microsecond)
   end
 
   defp log_context(%Pipeline{command: command}) do

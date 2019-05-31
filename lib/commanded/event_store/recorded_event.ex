@@ -25,7 +25,7 @@ defmodule Commanded.EventStore.RecordedEvent do
 
     - `metadata` - the serialized event metadata as binary data.
 
-    - `created_at` - the date/time, in UTC, indicating when the event was
+    - `created_at` - the datetime, in UTC, indicating when the event was
       created.
 
   """
@@ -42,7 +42,7 @@ defmodule Commanded.EventStore.RecordedEvent do
           event_type: String.t(),
           data: binary(),
           metadata: binary(),
-          created_at: NaiveDateTime.t()
+          created_at: DateTime.t()
         }
 
   defstruct [

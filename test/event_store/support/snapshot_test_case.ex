@@ -57,12 +57,12 @@ defmodule Commanded.EventStore.SnapshotTestCase do
         source_type: "#{__MODULE__}.BankAccountOpened",
         data: %BankAccountOpened{account_number: account_number, initial_balance: 1_000},
         metadata: nil,
-        created_at: DateTime.to_naive(DateTime.utc_now())
+        created_at: DateTime.utc_now()
       }
     end
 
     defp snapshot_timestamps_within_delta?(snapshot, other_snapshot, delta_seconds) do
-      NaiveDateTime.diff(snapshot.created_at, other_snapshot.created_at, :second) < delta_seconds
+      DateTime.diff(snapshot.created_at, other_snapshot.created_at, :second) < delta_seconds
     end
   end
 end

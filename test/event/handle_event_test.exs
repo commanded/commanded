@@ -103,7 +103,7 @@ defmodule Commanded.Event.HandleEventTest do
         assert Map.get(metadata, :event_number) == 2
         assert Map.get(metadata, :stream_id) == stream_uuid
         assert Map.get(metadata, :stream_version) == 2
-        assert %NaiveDateTime{} = Map.get(metadata, :created_at)
+        assert %DateTime{} = Map.get(metadata, :created_at)
 
         assert GenServer.call(handler, :last_seen_event) == 2
       end)
@@ -132,7 +132,7 @@ defmodule Commanded.Event.HandleEventTest do
 
         Enum.each(received_metadata, fn metadata ->
           assert Map.get(metadata, :stream_id) == stream_uuid
-          assert %NaiveDateTime{} = Map.get(metadata, :created_at)
+          assert %DateTime{} = Map.get(metadata, :created_at)
         end)
       end)
     end

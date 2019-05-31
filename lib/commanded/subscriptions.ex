@@ -137,7 +137,7 @@ defmodule Commanded.Subscriptions do
   def handle_info({:ack_event, name, stream_uuid, stream_version}, %Subscriptions{} = state) do
     %Subscriptions{streams_table: streams_table, started_at: started_at} = state
 
-    # track insert date as seconds since the subscriptions process was started
+    # track insert time as seconds since the subscriptions process was started
     # to support expiry of stale acks
     inserted_at_epoch = monotonic_time() - started_at
 
