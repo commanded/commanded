@@ -1,4 +1,4 @@
-defmodule Commanded.Helpers.Commands do
+defmodule Commanded.Middleware.Commands do
   @moduledoc false
 
   defmodule IncrementCount do
