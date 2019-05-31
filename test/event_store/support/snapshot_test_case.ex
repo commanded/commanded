@@ -29,6 +29,7 @@ defmodule Commanded.EventStore.SnapshotTestCase do
         assert :ok == EventStore.record_snapshot(snapshot3)
 
         {:ok, snapshot} = EventStore.read_snapshot(snapshot3.source_uuid)
+
         assert snapshot_timestamps_within_delta?(snapshot, snapshot3, 60)
       end
 

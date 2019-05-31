@@ -3,7 +3,9 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
   define_tests do
     alias Commanded.EventStore
-    alias Commanded.EventStore.{EventData, Subscriber}
+    alias Commanded.EventStore.EventData
+    alias Commanded.EventStore.Subscriber
+    alias Commanded.EventStore.RecordedEvent
     alias Commanded.Helpers.ProcessHelper
 
     defmodule BankAccountOpened do
@@ -20,24 +22,33 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         :ok = EventStore.append_to_stream(stream_uuid, 0, build_events(1))
 
         received_events = assert_receive_events(1, from: 1)
-        assert Enum.map(received_events, & &1.stream_id) == [stream_uuid]
+
+        for %RecordedEvent{} = event <- received_events do
+          assert event.stream_id == stream_uuid
+          assert %DateTime{} = event.created_at
+        end
+
         assert Enum.map(received_events, & &1.stream_version) == [1]
 
         :ok = EventStore.append_to_stream(stream_uuid, 1, build_events(2))
 
         received_events = assert_receive_events(2, from: 2)
-        assert Enum.map(received_events, & &1.stream_id) == [stream_uuid, stream_uuid]
+
+        for %RecordedEvent{} = event <- received_events do
+          assert event.stream_id == stream_uuid
+          assert %DateTime{} = event.created_at
+        end
+
         assert Enum.map(received_events, & &1.stream_version) == [2, 3]
 
         :ok = EventStore.append_to_stream(stream_uuid, 3, build_events(3))
 
         received_events = assert_receive_events(3, from: 4)
 
-        assert Enum.map(received_events, & &1.stream_id) == [
-                 stream_uuid,
-                 stream_uuid,
-                 stream_uuid
-               ]
+        for %RecordedEvent{} = event <- received_events do
+          assert event.stream_id == stream_uuid
+          assert %DateTime{} = event.created_at
+        end
 
         assert Enum.map(received_events, & &1.stream_version) == [4, 5, 6]
 

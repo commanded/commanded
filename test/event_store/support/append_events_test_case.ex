@@ -92,6 +92,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
           assert event.correlation_id == correlation_id
           assert event.causation_id == causation_id
           assert event.metadata == %{"metadata" => "value"}
+          assert %DateTime{} = event.created_at
         end)
 
         read_events = EventStore.stream_forward("stream", 3) |> Enum.to_list()
