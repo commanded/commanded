@@ -88,13 +88,7 @@ defmodule Commanded.Aggregates.Aggregate do
   def init(%Aggregate{} = state) do
     # Initial aggregate state is populated by loading its state snapshot and/or
     # events from the event store.
-    :ok = GenServer.cast(self(), :populate_aggregate_state)
-
-    # Subscribe to aggregate's events to catch any events appended to its stream
-    # by another process, such as directly appended to the event store.
-    :ok = GenServer.cast(self(), :subscribe_to_events)
-
-    {:ok, state}
+    {:ok, state, {:continue, :populate_aggregate_state}}
   end
 
   @doc """
@@ -146,6 +140,17 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   def shutdown(aggregate_module, aggregate_uuid) do
     GenServer.stop(via_name(aggregate_module, aggregate_uuid))
+  end
+
+  def handle_continue(:populate_aggregate_state, %Aggregate{} = state) do
+    # Subscribe to aggregate's events to catch any events appended to its stream
+    # by another process, such as directly appended to the event store.
+    {:noreply, populate_aggregate_state(state), {:continue, :subscribe_to_events}}
+  end
+
+  def handle_continue(:subscribe_to_events, %Aggregate{aggregate_uuid: uuid} = state) do
+    :ok = EventStore.subscribe(uuid)
+    {:noreply, state}
   end
 
   @doc false
