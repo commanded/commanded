@@ -12,6 +12,7 @@
 - Modify `Commanded.Registration.start_child/3` to pass a child_spec ([#273](https://github.com/commanded/commanded/pull/273)).
 - Add `supervisor_child_spec/2` to `Commanded.Registration` behaviour ([#277](https://github.com/commanded/commanded/pull/277)) used by [Commanded Horde Registry](https://github.com/uberbrodt/commanded_horde_registry).
 - Ensure Commanded can be compiled when optional Jason dependency is not present ([#286](https://github.com/commanded/commanded/pull/286)).
+- Fix Aggregate initialization races ([#287](https://github.com/commanded/commanded/pull/287)).
 
 ### Breaking changes
 

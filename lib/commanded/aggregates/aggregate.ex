@@ -142,24 +142,15 @@ defmodule Commanded.Aggregates.Aggregate do
     GenServer.stop(via_name(aggregate_module, aggregate_uuid))
   end
 
+  @doc false
   def handle_continue(:populate_aggregate_state, %Aggregate{} = state) do
     # Subscribe to aggregate's events to catch any events appended to its stream
     # by another process, such as directly appended to the event store.
     {:noreply, populate_aggregate_state(state), {:continue, :subscribe_to_events}}
   end
 
-  def handle_continue(:subscribe_to_events, %Aggregate{aggregate_uuid: uuid} = state) do
-    :ok = EventStore.subscribe(uuid)
-    {:noreply, state}
-  end
-
   @doc false
-  def handle_cast(:populate_aggregate_state, %Aggregate{} = state) do
-    {:noreply, populate_aggregate_state(state)}
-  end
-
-  @doc false
-  def handle_cast(:subscribe_to_events, %Aggregate{} = state) do
+  def handle_continue(:subscribe_to_events, %Aggregate{} = state) do
     %Aggregate{aggregate_uuid: aggregate_uuid} = state
 
     :ok = EventStore.subscribe(aggregate_uuid)
