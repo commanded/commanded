@@ -11,6 +11,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   defstruct [
     :command_dispatcher,
+    :idle_timeout,
     :process_router,
     :process_manager_name,
     :process_manager_module,
@@ -19,19 +20,16 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     :last_seen_event
   ]
 
-  def start_link(
-        command_dispatcher,
-        process_router,
-        process_manager_name,
-        process_manager_module,
-        process_uuid
-      ) do
+  def start_link(opts) do
+    process_manager_module = Keyword.fetch!(opts, :process_manager_module)
+
     state = %ProcessManagerInstance{
-      command_dispatcher: command_dispatcher,
-      process_router: process_router,
-      process_manager_name: process_manager_name,
+      command_dispatcher: Keyword.fetch!(opts, :command_dispatcher),
+      idle_timeout: Keyword.fetch!(opts, :idle_timeout),
+      process_router: Keyword.fetch!(opts, :process_router),
+      process_manager_name: Keyword.fetch!(opts, :process_manager_name),
       process_manager_module: process_manager_module,
-      process_uuid: process_uuid,
+      process_uuid: Keyword.fetch!(opts, :process_uuid),
       process_state: struct(process_manager_module)
     }
 
@@ -84,16 +82,16 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   @doc false
   def handle_call(:process_state, _from, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{process_state: process_state} = state
+    %ProcessManagerInstance{idle_timeout: idle_timeout, process_state: process_state} = state
 
-    {:reply, process_state, state}
+    {:reply, process_state, state, idle_timeout}
   end
 
   @doc false
   def handle_call(:new?, _from, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{last_seen_event: last_seen_event} = state
+    %ProcessManagerInstance{idle_timeout: idle_timeout, last_seen_event: last_seen_event} = state
 
-    {:reply, is_nil(last_seen_event), state}
+    {:reply, is_nil(last_seen_event), state, idle_timeout}
   end
 
   @doc """
@@ -126,6 +124,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
+  @doc false
+  def handle_info(:timeout, %ProcessManagerInstance{} = state) do
+    Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
+
+    {:stop, :normal, state}
+  end
+
   defp event_already_seen?(%RecordedEvent{}, %ProcessManagerInstance{last_seen_event: nil}),
     do: false
 
@@ -137,18 +142,19 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   # Already seen event, so just ack
-  defp process_seen_event(event, state) do
+  defp process_seen_event(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do
+    %ProcessManagerInstance{idle_timeout: idle_timeout} = state
+
     :ok = ack_event(event, state)
 
-    {:noreply, state}
+    {:noreply, state, idle_timeout}
   end
 
-  defp process_unseen_event(event, state, context \\ %{}) do
-    %RecordedEvent{
-      correlation_id: correlation_id,
-      event_id: event_id,
-      event_number: event_number
-    } = event
+  defp process_unseen_event(event, %ProcessManagerInstance{} = state, context \\ %{}) do
+    %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
+      event
+
+    %ProcessManagerInstance{idle_timeout: idle_timeout} = state
 
     case handle_event(event, state) do
       {:error, error} ->
@@ -178,7 +184,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
           :ok = persist_state(event_number, state)
           :ok = ack_event(event, state)
 
-          {:noreply, state}
+          {:noreply, state, idle_timeout}
         else
           {:stop, reason} ->
             {:stop, reason, state}
@@ -205,7 +211,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   defp handle_event_error(error, failed_event, state, context) do
     %RecordedEvent{data: data} = failed_event
-    %ProcessManagerInstance{process_manager_module: process_manager_module} = state
+
+    %ProcessManagerInstance{
+      idle_timeout: idle_timeout,
+      process_manager_module: process_manager_module
+    } = state
 
     failure_context = %FailureContext{
       pending_commands: [],
@@ -237,7 +247,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
         :ok = ack_event(failed_event, state)
 
-        {:noreply, state}
+        {:noreply, state, idle_timeout}
 
       {:stop, error} ->
         # Stop the process manager instance
