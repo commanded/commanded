@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.18.1
+
+### Enhancements
+
+- Process manager idle process timeout ([#290](https://github.com/commanded/commanded/pull/290)).
+- Register event handler and process manager subscriptions on process start ([#272](https://github.com/commanded/commanded/pull/272)).
+
 ## v0.18.0
 
 ### Enhancements
@@ -76,6 +83,18 @@
     def after_error(_error), do: :stop
   end
   ```
+
+## v0.17.5
+
+### Enhancements
+
+- Process manager idle process timeout ([#290](https://github.com/commanded/commanded/pull/290)).
+
+## v0.17.4
+
+### Bug fixes
+
+- Register event handler and process manager subscriptions on process start ([#272](https://github.com/commanded/commanded/pull/272)).
 
 ## v0.17.3
 

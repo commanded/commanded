@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "0.18.0"
+  @version "0.18.1"
 
   def project do
     [
@@ -53,9 +53,9 @@ defmodule Commanded.Mixfile do
 
       # Build & test tools
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.19", only: :dev},
+      {:ex_doc, "~> 0.20", only: :dev},
       {:mix_test_watch, "~> 0.9", only: :dev},
-      {:mox, "~> 0.4", only: :test},
+      {:mox, "~> 0.5", only: :test},
 
       # Optional dependencies
       {:jason, "~> 1.1", optional: true},
