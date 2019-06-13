@@ -53,11 +53,11 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     Registration.start_link(name, __MODULE__, state)
   end
 
+  @impl GenServer
   def init(%State{} = state) do
     :ok = register_subscription(state)
-    :ok = GenServer.cast(self(), :subscribe_to_events)
 
-    {:ok, state}
+    {:ok, state, {:continue, :subscribe_to_events}}
   end
 
   @doc """
@@ -78,6 +78,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc false
+  @impl GenServer
+  def handle_continue(:subscribe_to_events, %State{} = state) do
+    {:noreply, subscribe_to_events(state)}
+  end
+
+  @doc false
+  @impl GenServer
   def handle_call(:process_instances, _from, %State{} = state) do
     %State{process_managers: process_managers} = state
 
@@ -87,6 +94,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc false
+  @impl GenServer
   def handle_call({:process_instance, process_uuid}, _from, %State{} = state) do
     %State{process_managers: process_managers} = state
 
@@ -100,6 +108,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc false
+  @impl GenServer
   def handle_cast({:ack_event, event, instance}, %State{} = state) do
     %State{pending_acks: pending_acks} = state
     %RecordedEvent{event_number: event_number} = event
@@ -124,15 +133,12 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc false
-  def handle_cast(:subscribe_to_events, %State{} = state) do
-    {:noreply, subscribe_to_all_streams(state)}
-  end
-
-  @doc false
+  @impl GenServer
   def handle_cast(:process_pending_events, %State{pending_events: []} = state),
     do: {:noreply, state}
 
   @doc false
+  @impl GenServer
   def handle_cast(:process_pending_events, %State{} = state) do
     %State{pending_events: [event | pending_events]} = state
 
@@ -155,6 +161,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @doc false
   # Subscription to event store has successfully subscribed, init process router
+  @impl GenServer
   def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
@@ -164,6 +171,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   @doc false
+  @impl GenServer
   def handle_info({:events, events}, %State{} = state) do
     Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
 
@@ -196,6 +204,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @doc false
   # Shutdown process manager when processing an event has taken too long.
+  @impl GenServer
   def handle_info({:event_timeout, event_number}, %State{} = state) do
     %State{pending_acks: pending_acks, event_timeout: event_timeout} = state
 
@@ -217,6 +226,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @doc false
   # Stop process manager when event store subscription process terminates.
+  @impl GenServer
   def handle_info(
         {:DOWN, ref, :process, pid, reason},
         %State{subscription_ref: ref, subscription: pid} = state
@@ -228,6 +238,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @doc false
   # Remove a process manager instance that has stopped with a normal exit reason.
+  @impl GenServer
   def handle_info({:DOWN, _ref, :process, pid, :normal}, %State{} = state) do
     %State{process_managers: process_managers} = state
 
@@ -238,6 +249,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @doc false
   # Stop process router when a process manager instance terminates abnormally.
+  @impl GenServer
   def handle_info({:DOWN, _ref, :process, _pid, reason}, %State{} = state) do
     Logger.warn(fn -> describe(state) <> " is stopping due to: #{inspect(reason)}" end)
 
@@ -251,7 +263,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     Subscriptions.register(name, consistency)
   end
 
-  defp subscribe_to_all_streams(%State{} = state) do
+  defp subscribe_to_events(%State{} = state) do
     %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state
 
     {:ok, subscription} =

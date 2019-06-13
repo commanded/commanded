@@ -85,6 +85,7 @@ defmodule Commanded.Aggregates.Aggregate do
       do: {aggregate_module, aggregate_uuid}
 
   @doc false
+  @impl GenServer
   def init(%Aggregate{} = state) do
     # Initial aggregate state is populated by loading its state snapshot and/or
     # events from the event store.
@@ -150,6 +151,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_continue(:subscribe_to_events, %Aggregate{} = state) do
     %Aggregate{aggregate_uuid: aggregate_uuid} = state
 
@@ -159,6 +161,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_cast(:take_snapshot, %Aggregate{} = state) do
     %Aggregate{
       aggregate_state: aggregate_state,
@@ -190,6 +193,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
     %ExecutionContext{lifespan: lifespan, command: command} = context
 
@@ -224,6 +228,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_call(:aggregate_state, _from, %Aggregate{} = state) do
     %Aggregate{aggregate_state: aggregate_state} = state
 
@@ -231,6 +236,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_call(:aggregate_version, _from, %Aggregate{} = state) do
     %Aggregate{aggregate_version: aggregate_version} = state
 
@@ -238,6 +244,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_info({:events, events}, %Aggregate{} = state) do
     %Aggregate{lifespan_timeout: lifespan_timeout} = state
 
@@ -262,6 +269,7 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
   def handle_info(:timeout, %Aggregate{} = state) do
     Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
 
