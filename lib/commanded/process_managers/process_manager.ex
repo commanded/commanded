@@ -80,6 +80,24 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         end
       end
 
+    # Idle process timeouts
+
+    Each instance of a process manager will run indefinitely once started. To
+    reduce memory usage you can configure an idle timeout, in milliseconds,
+    after which the process will be shutdown.
+
+    The process will be restarted whenever another event is routed to it and its
+    state will be rehydrated from the instance snapshot.
+
+    ## Example
+
+        defmodule ExampleProcessManager do
+          use Commanded.ProcessManagers.ProcessManager,
+            name: "ExampleProcessManager",
+            router: ExampleRouter,
+            idle_timeout: :timer.minutes(10)
+        end
+
   # Consistency
 
   For each process manager you can define its consistency, as one of either
@@ -207,22 +225,27 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     | {:continue, commands :: list(command), context :: map()}
     | {:stop, reason :: term()}
 
+  alias Commanded.Event.Handler
+  alias Commanded.ProcessManagers.ProcessManager
+  alias Commanded.ProcessManagers.ProcessRouter
+
   @doc false
   defmacro __using__(opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
       @on_definition {unquote(__MODULE__), :emit_deprecated_warnings}
 
-      @behaviour Commanded.ProcessManagers.ProcessManager
+      @behaviour ProcessManager
 
       @opts unquote(opts) || []
-      @name Commanded.Event.Handler.parse_name(__MODULE__, @opts[:name])
+      @name Handler.parse_name(__MODULE__, @opts[:name])
       @router @opts[:router] || raise "#{inspect __MODULE__} expects `:router` to be given"
 
       def start_link(opts \\ []) do
-        opts = Commanded.Event.Handler.start_opts(__MODULE__, Keyword.drop(@opts, [:name, :router]), opts)
+        module_opts = Keyword.drop(@opts, [:name, :router])
+        opts = Handler.start_opts(__MODULE__, module_opts, opts, [:idle_timeout])
 
-        Commanded.ProcessManagers.ProcessRouter.start_link(@name, __MODULE__, @router, opts)
+        ProcessRouter.start_link(@name, __MODULE__, @router, opts)
       end
 
       @doc """
