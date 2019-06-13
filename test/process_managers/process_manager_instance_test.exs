@@ -14,11 +14,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
     {:ok, process_manager} =
       ProcessManagerInstance.start_link(
-        NullRouter,
-        self(),
-        "TransferMoneyProcessManager",
-        TransferMoneyProcessManager,
-        transfer_uuid
+        command_dispatcher: NullRouter,
+        idle_timeout: :infinity,
+        process_manager_name: "TransferMoneyProcessManager",
+        process_manager_module: TransferMoneyProcessManager,
+        process_router: self(),
+        process_uuid: transfer_uuid
       )
 
     event = %RecordedEvent{

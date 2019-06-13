@@ -20,6 +20,15 @@
 
     This affects the `created_at` field defined in the `Commanded.EventStore.RecordedEvent`. You will need to migrate from `NaiveDateTime` to `DateTime` if you use this field in your code (such as in an event handler's metadata).
 
+---
+
+## v0.18.1
+
+### Enhancements
+
+- Process manager idle process timeout ([#290](https://github.com/commanded/commanded/pull/290)).
+- Register event handler and process manager subscriptions on process start ([#272](https://github.com/commanded/commanded/pull/272)).
+
 ## v0.18.0
 
 ### Enhancements
@@ -119,6 +128,14 @@ Commanded scheduler:
 
 - `commanded_scheduler` to [v0.2.0](https://hex.pm/packages/commanded_scheduler)
 
+---
+
+## v0.17.5
+
+### Enhancements
+
+- Process manager idle process timeout ([#290](https://github.com/commanded/commanded/pull/290)).
+
 ## v0.17.4
 
 ### Bug fixes
@@ -162,6 +179,8 @@ Commanded scheduler:
 - Ensure process managers can be configured with `:strong` consistency.
 - Fix error when subscription process already tracked ([#180](https://github.com/commanded/commanded/pull/180)).
 
+---
+
 ## v0.16.0
 
 - Support composite command routers ([#111](https://github.com/commanded/commanded/pull/111)).
@@ -193,6 +212,8 @@ Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 Using Greg Young's [Event Store](https://eventstore.org/):
 
 - `commanded_extreme_adapter` to [v0.5.0](https://hex.pm/packages/commanded_extreme_adapter)
+
+---
 
 ## v0.15.1
 
@@ -228,6 +249,8 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 - `commanded_extreme_adapter` to [v0.4.0](https://hex.pm/packages/commanded_extreme_adapter)
 
+---
+
 ## v0.14.0
 
 ### Enhancements
@@ -250,11 +273,15 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 - `commanded_extreme_adapter` to [v0.3.0](https://hex.pm/packages/commanded_extreme_adapter)
 
+---
+
 ## v0.13.0
 
 ### Enhancements
 
 - Command dispatch optionally returns aggregate version, using `include_aggregate_version: true` during dispatch.
+
+---
 
 ## v0.12.0
 
@@ -262,11 +289,15 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 - `Commanded.Event.Handler` and `Commanded.ProcessManagers.ProcessManager` macros to simplify defining, and starting, event handlers and process managers. Note the previous approach to defining and starting may still be used, so this is *not* a breaking change.
 
+---
+
 ## v0.11.0
 
 ### Enhancements
 
 - Shutdown idle aggregate processes ([#43](https://github.com/commanded/commanded/issues/43)).
+
+---
 
 ## v0.10.0
 
@@ -280,11 +311,15 @@ Using Greg's [Event Store](https://eventstore.org/):
 
   You must install the required event store adapter package and update your environment configuration to specify the `:event_store_adapter` module. See the [README](https://github.com/commanded/commanded/blob/master/README.md) for details.
 
+---
+
 ## v0.9.0
 
 ### Enhancements
 
 - Stream events from event store when rebuilding aggregate state.
+
+---
 
 ## v0.8.5
 
@@ -323,6 +358,8 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 - Simplify aggregates and process managers ([#31](https://github.com/commanded/commanded/issues/31)).
 
+---
+
 ## v0.7.1
 
 ### Bug fixes
@@ -334,6 +371,8 @@ Using Greg's [Event Store](https://eventstore.org/):
 ### Enhancements
 
 - Command handling middleware allows a command router to define middleware modules that are executed before, and after success or failure of each command dispatch ([#12](https://github.com/commanded/commanded/issues/12)).
+
+---
 
 ## v0.6.3
 
@@ -366,17 +405,23 @@ Using Greg's [Event Store](https://eventstore.org/):
 - Prefix process manager instance snapshot uuid with process manager name.
 - Multi command dispatch registration in router ([#16](https://github.com/commanded/commanded/issues/16)).
 
+---
+
 ## v0.5.0
 
 ### Enhancements
 
 - Include event metadata as second argument to event handlers. An event handler must now implement the `Commanded.Event.Handler` behaviour consisting of a single `handle_event/2` function.
 
+---
+
 ## v0.4.0
 
 ### Enhancements
 
 - Macro to assist with building process managers ([README](https://github.com/commanded/commanded/tree/feature/process-manager-macro#process-managers)).
+
+---
 
 ## v0.3.1
 
@@ -395,8 +440,14 @@ Using Greg's [Event Store](https://eventstore.org/):
 
 - Ensure an aggregate's pending events are persisted in the order they were applied.
 
+---
+
 ## v0.2.1
 
 ### Enhancements
 
 - Support integer, atom or strings as an aggregate UUID ([#7](https://github.com/commanded/commanded/pull/7)).
+
+## v0.1.0
+
+Initial release.
