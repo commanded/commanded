@@ -16,7 +16,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   }
 
   defstruct [
-    command_dispatcher: nil,
+    :command_dispatcher,
+    :idle_timeout,
     process_manager_name: nil,
     process_manager_module: nil,
     process_uuid: nil,
@@ -24,18 +25,24 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     last_seen_event: nil,
   ]
 
-  def start_link(command_dispatcher, process_manager_name, process_manager_module, process_uuid) do
-    GenServer.start_link(__MODULE__, %ProcessManagerInstance{
-      command_dispatcher: command_dispatcher,
-      process_manager_name: process_manager_name,
+  def start_link(opts) do
+    process_manager_module = Keyword.fetch!(opts, :process_manager_module)
+
+    state = %ProcessManagerInstance{
+      command_dispatcher: Keyword.fetch!(opts, :command_dispatcher),
+      idle_timeout: Keyword.fetch!(opts, :idle_timeout),
+      process_manager_name: Keyword.fetch!(opts, :process_manager_name),
       process_manager_module: process_manager_module,
-      process_uuid: process_uuid,
+      process_uuid: Keyword.fetch!(opts, :process_uuid),
       process_state: struct(process_manager_module),
-    })
+    }
+
+    GenServer.start_link(__MODULE__, state)
   end
 
   def init(%ProcessManagerInstance{} = state) do
     GenServer.cast(self(), :fetch_state)
+
     {:ok, state}
   end
 
@@ -66,13 +73,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   def handle_call(:stop, _from, %ProcessManagerInstance{} = state) do
     :ok = delete_state(state)
 
-    # stop the process with a normal reason
+    # Stop the process with a normal reason
     {:stop, :normal, :ok, state}
   end
 
   @doc false
-  def handle_call(:process_state, _from, %ProcessManagerInstance{process_state: process_state} = state) do
-    {:reply, process_state, state}
+  def handle_call(:process_state, _from, %ProcessManagerInstance{} = state) do
+    %ProcessManagerInstance{idle_timeout: idle_timeout, process_state: process_state} = state
+
+    {:reply, process_state, state, idle_timeout}
   end
 
   @doc """
@@ -102,6 +111,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
+  @doc false
+  def handle_info(:timeout, %ProcessManagerInstance{} = state) do
+    Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
+
+    {:stop, :normal, state}
+  end
+
   defp event_already_seen?(
     %RecordedEvent{event_number: event_number},
     %ProcessManagerInstance{last_seen_event: last_seen_event})
@@ -110,13 +126,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp process_seen_event(event = %RecordedEvent{}, process_router, state) do
+    %ProcessManagerInstance{idle_timeout: idle_timeout} = state
+
     # already seen event, so just ack
     :ok = ack_event(event, process_router)
 
-    {:noreply, state}
+    {:noreply, state, idle_timeout}
   end
 
-  defp process_unseen_event(%RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} = event, process_router, %ProcessManagerInstance{} = state) do
+  defp process_unseen_event(%RecordedEvent{} = event, process_router, %ProcessManagerInstance{} = state) do
+    %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} = event
+    %ProcessManagerInstance{idle_timeout: idle_timeout} = state
+
     case handle_event(event, state) do
       {:error, reason} ->
         Logger.error(fn -> describe(state) <> " failed to handle event #{inspect event_number} due to: #{inspect reason}" end)
@@ -138,7 +159,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
           :ok = persist_state(state, event_number)
           :ok = ack_event(event, process_router)
 
-          {:noreply, state}
+          {:noreply, state, idle_timeout}
         else
           {:stop, reason} ->
             {:stop, reason, state}

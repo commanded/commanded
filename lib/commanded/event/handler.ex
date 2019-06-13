@@ -290,11 +290,11 @@ defmodule Commanded.Event.Handler do
   def parse_name(_module, name), do: inspect(name)
 
   @doc false
-  def start_opts(module, module_opts, local_opts) do
+  def start_opts(module, module_opts, local_opts, additional_allowed_opts \\ []) do
     {valid, invalid} =
       module_opts
       |> Keyword.merge(local_opts)
-      |> Keyword.split([:consistency, :start_from])
+      |> Keyword.split([:consistency, :start_from] ++ additional_allowed_opts)
 
     if Enum.any?(invalid) do
       raise "#{inspect module} specifies invalid options: #{inspect Keyword.keys(invalid)}"

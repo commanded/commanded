@@ -21,6 +21,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     defstruct [
       command_dispatcher: nil,
       consistency: nil,
+      idle_timeout: nil,
       process_manager_name: nil,
       process_manager_module: nil,
       subscribe_from: nil,
@@ -41,6 +42,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       command_dispatcher: command_dispatcher,
       consistency: opts[:consistency] || :eventual,
       subscribe_from: opts[:start_from] || :origin,
+      idle_timeout: opts[:idle_timeout] || :infinity
     }
 
     Registration.start_link(name, __MODULE__, state)
@@ -143,9 +145,9 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
-    %State{command_dispatcher: command_dispatcher} = state
+    %State{command_dispatcher: command_dispatcher, idle_timeout: idle_timeout} = state
 
-    {:ok, supervisor} = Supervisor.start_link(command_dispatcher)
+    {:ok, supervisor} = Supervisor.start_link()
 
     {:noreply, %State{state | supervisor: supervisor}}
   end
@@ -274,19 +276,23 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   defp start_process_manager(process_uuid, %State{} = state) do
     %State{
+      command_dispatcher: command_dispatcher,
+      idle_timeout: idle_timeout,
       process_managers: process_managers,
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
       supervisor: supervisor
     } = state
 
-    {:ok, process_manager} =
-      Supervisor.start_process_manager(
-        supervisor,
-        process_manager_name,
-        process_manager_module,
-        process_uuid
-      )
+    opts = [
+      command_dispatcher: command_dispatcher,
+      idle_timeout: idle_timeout,
+      process_manager_name: process_manager_name,
+      process_manager_module: process_manager_module,
+      process_uuid: process_uuid
+    ]
+
+    {:ok, process_manager} = Supervisor.start_process_manager(supervisor, opts)
 
     Process.monitor(process_manager)
 
