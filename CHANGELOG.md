@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.17.5
+
+### Enhancements
+
+- Process manager idle process timeout ([#290](https://github.com/commanded/commanded/pull/290)).
+
 ## v0.17.4
 
 ### Bug fixes

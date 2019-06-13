@@ -145,8 +145,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
-    %State{command_dispatcher: command_dispatcher, idle_timeout: idle_timeout} = state
-
     {:ok, supervisor} = Supervisor.start_link()
 
     {:noreply, %State{state | supervisor: supervisor}}
