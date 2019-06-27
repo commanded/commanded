@@ -66,6 +66,7 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
         |> Keyword.put(:name, __MODULE__)
 
       {adapter, phoenix_pubsub_config} = Keyword.pop(phoenix_pubsub_config, :adapter)
+      phoenix_pubsub_config = parse_config(phoenix_pubsub_config)
 
       [
         %{
@@ -120,6 +121,19 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     @impl Commanded.PubSub
     def list(topic) when is_binary(topic) do
       Phoenix.Tracker.list(Tracker, topic) |> Enum.map(fn {key, %{pid: pid}} -> {key, pid} end)
+    end
+
+    defp parse_config(config) do
+      Enum.map(config, fn
+        {key, {:system, env}} when key in [:port, :pool_size] ->
+          {key, env |> System.get_env() |> String.to_integer()}
+
+        {key, {:system, env}} ->
+          {key, System.get_env(env)}
+
+        pair ->
+          pair
+      end)
     end
   end
 end
