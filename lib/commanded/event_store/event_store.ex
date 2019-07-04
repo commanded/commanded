@@ -5,6 +5,8 @@ defmodule Commanded.EventStore do
 
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
+  @type application :: module
+  @type event_store_adapter :: module
   @type stream_uuid :: String.t()
   @type start_from :: :origin | :current | integer
   @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer
@@ -137,11 +139,6 @@ defmodule Commanded.EventStore do
   Delete a previously recorded snapshot for a given source
   """
   @callback delete_snapshot(source_uuid) :: :ok | {:error, error}
-
-  @spec child_spec() :: [:supervisor.child_spec()]
-  def child_spec do
-    event_store_adapter().child_spec()
-  end
 
   @doc """
   Append one or more events to a stream atomically.
