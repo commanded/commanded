@@ -11,6 +11,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     @moduledoc false
 
     defstruct [
+      :application,
       :serializer,
       persisted_events: [],
       streams: %{},
@@ -25,9 +26,14 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
   def start_link(opts \\ []) do
-    state = %State{serializer: Keyword.get(opts, :serializer)}
+    {start_opts, in_memory_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
 
-    GenServer.start_link(__MODULE__, state, name: __MODULE__)
+    state = %State{
+      application: Keyword.fetch!(in_memory_opts, :application),
+      serializer: Keyword.get(in_memory_opts, :serializer)
+    }
+
+    GenServer.start_link(__MODULE__, state, start_opts)
   end
 
   @impl GenServer
@@ -36,32 +42,43 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def child_spec do
-    opts = Application.get_env(:commanded, __MODULE__)
+  def event_store(application, _config) do
+    Module.concat([application, __MODULE__])
+  end
+
+  @impl Commanded.EventStore
+  def child_spec(application, config) do
+    name = Module.concat([application, __MODULE__])
+    supervisor_name = Module.concat([application, __MODULE__, SubscriptionsSupervisor])
+
+    config = Keyword.merge(config, application: application, name: name)
 
     [
-      child_spec(opts),
-      {DynamicSupervisor, strategy: :one_for_one, name: __MODULE__.SubscriptionsSupervisor}
+      {DynamicSupervisor, strategy: :one_for_one, name: supervisor_name},
+      %{
+        id: name,
+        start: {__MODULE__, :start_link, [config]}
+      }
     ]
   end
 
   @impl Commanded.EventStore
-  def append_to_stream(stream_uuid, expected_version, events) do
-    GenServer.call(__MODULE__, {:append, stream_uuid, expected_version, events})
+  def append_to_stream(event_store, stream_uuid, expected_version, events) do
+    GenServer.call(event_store, {:append, stream_uuid, expected_version, events})
   end
 
   @impl Commanded.EventStore
-  def stream_forward(stream_uuid, start_version \\ 0, _read_batch_size \\ 1_000) do
-    GenServer.call(__MODULE__, {:stream_forward, stream_uuid, start_version})
+  def stream_forward(event_store, stream_uuid, start_version \\ 0, _read_batch_size \\ 1_000) do
+    GenServer.call(event_store, {:stream_forward, stream_uuid, start_version})
   end
 
   @impl Commanded.EventStore
-  def subscribe(stream_uuid) do
-    GenServer.call(__MODULE__, {:subscribe, stream_uuid, self()})
+  def subscribe(event_store, stream_uuid) do
+    GenServer.call(event_store, {:subscribe, stream_uuid, self()})
   end
 
   @impl Commanded.EventStore
-  def subscribe_to(stream_uuid, subscription_name, subscriber, start_from) do
+  def subscribe_to(event_store, stream_uuid, subscription_name, subscriber, start_from) do
     subscription = %Subscription{
       stream_uuid: stream_uuid,
       name: subscription_name,
@@ -69,41 +86,41 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       start_from: start_from
     }
 
-    GenServer.call(__MODULE__, {:subscribe_to, subscription})
+    GenServer.call(event_store, {:subscribe_to, subscription})
   end
 
   @impl Commanded.EventStore
-  def ack_event(pid, event) do
-    GenServer.cast(__MODULE__, {:ack_event, event, pid})
+  def ack_event(event_store, pid, event) do
+    GenServer.cast(event_store, {:ack_event, event, pid})
   end
 
   @impl Commanded.EventStore
-  def unsubscribe(subscription) do
-    GenServer.call(__MODULE__, {:unsubscribe, subscription})
+  def unsubscribe(event_store, subscription) do
+    GenServer.call(event_store, {:unsubscribe, subscription})
   end
 
   @impl Commanded.EventStore
-  def delete_subscription(stream_uuid, subscription_name) do
-    GenServer.call(__MODULE__, {:delete_subscription, stream_uuid, subscription_name})
+  def delete_subscription(event_store, stream_uuid, subscription_name) do
+    GenServer.call(event_store, {:delete_subscription, stream_uuid, subscription_name})
   end
 
   @impl Commanded.EventStore
-  def read_snapshot(source_uuid) do
-    GenServer.call(__MODULE__, {:read_snapshot, source_uuid})
+  def read_snapshot(event_store, source_uuid) do
+    GenServer.call(event_store, {:read_snapshot, source_uuid})
   end
 
   @impl Commanded.EventStore
-  def record_snapshot(snapshot) do
-    GenServer.call(__MODULE__, {:record_snapshot, snapshot})
+  def record_snapshot(event_store, snapshot) do
+    GenServer.call(event_store, {:record_snapshot, snapshot})
   end
 
   @impl Commanded.EventStore
-  def delete_snapshot(source_uuid) do
-    GenServer.call(__MODULE__, {:delete_snapshot, source_uuid})
+  def delete_snapshot(event_store, source_uuid) do
+    GenServer.call(event_store, {:delete_snapshot, source_uuid})
   end
 
-  def reset! do
-    GenServer.call(__MODULE__, :reset!)
+  def reset!(event_store) do
+    GenServer.call(event_store, :reset!)
   end
 
   @impl GenServer
@@ -427,12 +444,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp persistent_subscription(%Subscription{} = subscription, %State{} = state) do
     %Subscription{name: subscription_name} = subscription
-    %State{persistent_subscriptions: subscriptions} = state
+    %State{application: application, persistent_subscriptions: subscriptions} = state
 
     subscription_spec = subscription |> Subscription.child_spec() |> Map.put(:restart, :temporary)
+    supervisor_name = Module.concat([application, __MODULE__, SubscriptionsSupervisor])
 
-    {:ok, pid} =
-      DynamicSupervisor.start_child(__MODULE__.SubscriptionsSupervisor, subscription_spec)
+    {:ok, pid} = DynamicSupervisor.start_child(supervisor_name, subscription_spec)
 
     Process.monitor(pid)
 
@@ -567,9 +584,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
-  def deserialize(data, %State{serializer: nil}), do: data
+  defp deserialize(data, %State{serializer: nil}), do: data
 
-  def deserialize(%RecordedEvent{} = recorded_event, %State{} = state) do
+  defp deserialize(%RecordedEvent{} = recorded_event, %State{} = state) do
     %RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event
     %State{serializer: serializer} = state
 
@@ -580,7 +597,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
-  def deserialize(%SnapshotData{} = snapshot, %State{} = state) do
+  defp deserialize(%SnapshotData{} = snapshot, %State{} = state) do
     %SnapshotData{data: data, metadata: metadata, source_type: source_type} = snapshot
     %State{serializer: serializer} = state
 

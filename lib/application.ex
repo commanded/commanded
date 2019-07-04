@@ -9,9 +9,18 @@ defmodule Commanded.Application do
   the application configuration. For example, the application:
 
       defmodule MyApp.Application do
+        use Commanded.Application, otp_app: :my_app
+
+        router MyApp.Router
+      end
+
+      defmodule MyApp.Application do
         use Commanded.Application,
           otp_app: :my_app,
-          event_store_adapter: Commanded.EventStore.Adapters.InMemory
+          event_store: [
+            adapter: Commanded.EventStore.Adapters.EventStore,
+            event_store: MyApp.EventStore
+          ]
 
         router MyApp.Router
       end
@@ -19,6 +28,7 @@ defmodule Commanded.Application do
   Could be configured with:
 
       config :my_app, MyApp.Application
+        event_store: [adapter: MyApp.EventStore, event_store: MyApp.EventStore]
   """
 
   @type t :: module
@@ -28,11 +38,20 @@ defmodule Commanded.Application do
     quote bind_quoted: [opts: opts] do
       @behaviour Commanded.Application
 
-      {otp_app, event_store_adapter} =
+      {otp_app, event_store_adapter, event_store_config, event_store} =
         Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
 
       @otp_app otp_app
       @event_store_adapter event_store_adapter
+      @event_store_config event_store_config
+      @event_store event_store
+
+      defmodule EventStore do
+        use Commanded.EventStore.Adapter,
+          adapter: event_store_adapter,
+          config: event_store_config,
+          event_store: event_store
+      end
 
       def config do
         {:ok, config} = Commanded.Application.Supervisor.runtime_config(__MODULE__, @otp_app, [])
@@ -41,6 +60,10 @@ defmodule Commanded.Application do
 
       def __event_store_adapter__ do
         @event_store_adapter
+      end
+
+      def __event_store_config__ do
+        @event_store_config
       end
 
       def child_spec(opts) do
@@ -55,7 +78,7 @@ defmodule Commanded.Application do
         Commanded.Application.Supervisor.start_link(
           __MODULE__,
           @otp_app,
-          @event_store_adapter,
+          EventStore,
           opts
         )
       end

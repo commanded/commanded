@@ -15,6 +15,12 @@ config :commanded,
 config :commanded, Commanded.EventStore.Adapters.InMemory,
   serializer: Commanded.Serialization.JsonSerializer
 
+config :commanded, Commanded.TestApplication,
+  event_store: [adapter: InMemory, serializer: Commanded.Serialization.JsonSerializer]
+
+# config :commanded, Commanded.TestApplication,
+#   event_store: [adapter: EventStore, event_store: MyApp.EventStore]
+
 config :commanded, Commanded.Aggregates.LifespanAggregate,
   snapshot_every: 2,
   snapshot_version: 1

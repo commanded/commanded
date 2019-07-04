@@ -6,13 +6,15 @@ defmodule Commanded.Application.Supervisor do
   @doc """
   Retrieves the compile time configuration.
   """
-  def compile_config(_application, opts) do
+  def compile_config(application, opts) do
     otp_app = Keyword.fetch!(opts, :otp_app)
-    event_store_adapter = opts[:event_store_adapter]
+    event_store = opts[:event_store]
 
-    unless event_store_adapter do
-      raise ArgumentError, "missing :event_store_adapter option on use Commanded.Application"
+    unless event_store do
+      raise ArgumentError, "missing :event_store option on use Commanded.Application"
     end
+
+    {event_store_adapter, event_store_config} = Keyword.pop(event_store, :adapter)
 
     unless Code.ensure_compiled?(event_store_adapter) do
       raise ArgumentError,
@@ -20,7 +22,19 @@ defmodule Commanded.Application.Supervisor do
               "ensure it is correct and it is included as a project dependency"
     end
 
-    {otp_app, event_store_adapter}
+    behaviours =
+      for {:behaviour, behaviours} <- event_store_adapter.__info__(:attributes),
+          behaviour <- behaviours,
+          do: behaviour
+
+    unless Commanded.EventStore in behaviours do
+      raise ArgumentError,
+            "expected :event_store_adapter option given to Commanded.Application to list Commanded.EventStore as a behaviour"
+    end
+
+    event_store = event_store_adapter.event_store(application, event_store_config)
+
+    {otp_app, event_store_adapter, event_store_config, event_store}
   end
 
   @doc """
@@ -41,21 +55,21 @@ defmodule Commanded.Application.Supervisor do
   @doc """
   Starts the application supervisor.
   """
-  def start_link(application, otp_app, event_store_adapter, opts) do
+  def start_link(application, otp_app, event_store, opts) do
     sup_opts = if name = Keyword.get(opts, :name, application), do: [name: name], else: []
 
     Supervisor.start_link(
       __MODULE__,
-      {application, otp_app, event_store_adapter, opts},
+      {application, otp_app, event_store, opts},
       sup_opts
     )
   end
 
-  def init({application, otp_app, event_store_adapter, opts}) do
+  def init({application, otp_app, event_store, opts}) do
     case runtime_config(application, otp_app, opts) do
       {:ok, _config} ->
         children =
-          Commanded.EventStore.Default.child_spec(application, event_store_adapter) ++
+          event_store.child_spec() ++
             Commanded.Registration.child_spec() ++
             Commanded.PubSub.child_spec() ++
             [

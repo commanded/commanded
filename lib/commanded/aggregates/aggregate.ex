@@ -156,6 +156,9 @@ defmodule Commanded.Aggregates.Aggregate do
     %Aggregate{aggregate_uuid: aggregate_uuid} = state
 
     :ok = EventStore.subscribe(aggregate_uuid)
+    # :ok = EventStore.Adapter.subscribe(application, aggregate_uuid)
+    # :ok = EventStore.Adapter.subscribe(event_store, aggregate_uuid)
+    # :ok = EventStore.Adapter.subscribe(event_store_adapter, event_store_config, aggregate_uuid)
 
     {:noreply, state}
   end
