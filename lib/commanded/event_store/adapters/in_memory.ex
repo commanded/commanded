@@ -11,7 +11,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     @moduledoc false
 
     defstruct [
-      :application,
+      :event_store,
       :serializer,
       persisted_events: [],
       streams: %{},
@@ -29,7 +29,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {start_opts, in_memory_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
 
     state = %State{
-      application: Keyword.fetch!(in_memory_opts, :application),
+      event_store: Keyword.fetch!(in_memory_opts, :event_store),
       serializer: Keyword.get(in_memory_opts, :serializer)
     }
 
@@ -49,9 +49,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   @impl Commanded.EventStore
   def child_spec(application, config) do
     name = Module.concat([application, __MODULE__])
-    supervisor_name = Module.concat([application, __MODULE__, SubscriptionsSupervisor])
-
-    config = Keyword.merge(config, application: application, name: name)
+    supervisor_name = Module.concat([name, SubscriptionsSupervisor])
+    config = Keyword.merge(config, event_store: name, name: name)
 
     [
       {DynamicSupervisor, strategy: :one_for_one, name: supervisor_name},
@@ -259,7 +258,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
              {_name, %Subscription{}} -> false
            end) do
         {subscription_name, %Subscription{} = subscription} ->
-          :ok = stop_subscription(pid)
+          :ok = stop_subscription(pid, state)
 
           subscription = %Subscription{subscription | subscriber: nil, ref: nil}
 
@@ -334,7 +333,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     %State{serializer: serializer, persistent_subscriptions: subscriptions} = state
 
     for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
-      :ok = stop_subscription(subscriber)
+      :ok = stop_subscription(subscriber, state)
     end
 
     {:reply, :ok, %State{serializer: serializer}}
@@ -444,10 +443,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp persistent_subscription(%Subscription{} = subscription, %State{} = state) do
     %Subscription{name: subscription_name} = subscription
-    %State{application: application, persistent_subscriptions: subscriptions} = state
+    %State{event_store: event_store, persistent_subscriptions: subscriptions} = state
 
     subscription_spec = subscription |> Subscription.child_spec() |> Map.put(:restart, :temporary)
-    supervisor_name = Module.concat([application, __MODULE__, SubscriptionsSupervisor])
+    supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
 
     {:ok, pid} = DynamicSupervisor.start_child(supervisor_name, subscription_spec)
 
@@ -465,8 +464,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {{:ok, pid}, state}
   end
 
-  defp stop_subscription(subscription) do
-    DynamicSupervisor.terminate_child(__MODULE__.SubscriptionsSupervisor, subscription)
+  defp stop_subscription(subscription, %State{} = state) do
+    %State{event_store: event_store} = state
+
+    supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
+
+    DynamicSupervisor.terminate_child(supervisor_name, subscription)
   end
 
   defp remove_subscriber_by_pid(subscriptions, pid) do

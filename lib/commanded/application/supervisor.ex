@@ -69,7 +69,7 @@ defmodule Commanded.Application.Supervisor do
     case runtime_config(application, otp_app, opts) do
       {:ok, _config} ->
         children =
-          event_store.child_spec() ++
+          event_store.child_spec(application) ++
             Commanded.Registration.child_spec() ++
             Commanded.PubSub.child_spec() ++
             [

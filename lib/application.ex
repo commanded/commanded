@@ -43,7 +43,6 @@ defmodule Commanded.Application do
 
       @otp_app otp_app
       @event_store_adapter event_store_adapter
-      @event_store_config event_store_config
       @event_store event_store
 
       defmodule EventStore do
@@ -60,10 +59,6 @@ defmodule Commanded.Application do
 
       def __event_store_adapter__ do
         @event_store_adapter
-      end
-
-      def __event_store_config__ do
-        @event_store_config
       end
 
       def child_spec(opts) do

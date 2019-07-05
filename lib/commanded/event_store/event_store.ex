@@ -15,12 +15,10 @@ defmodule Commanded.EventStore do
   @type subscription :: any
   @type subscriber :: pid
   @type source_uuid :: String.t()
-  @type snapshot :: SnapshotData.t()
   @type error :: term
 
   @doc """
-  Return a child spec defining all processes required by the event store and
-  an event store term used for subsequent requests.
+  Return a child spec defining all processes required by the event store.
   """
   @callback child_spec(application, config) :: [:supervisor.child_spec()]
 
@@ -146,12 +144,12 @@ defmodule Commanded.EventStore do
   Read a snapshot, if available, for a given source.
   """
   @callback read_snapshot(event_store, source_uuid) ::
-              {:ok, snapshot} | {:error, :snapshot_not_found}
+              {:ok, SnapshotData.t()} | {:error, :snapshot_not_found}
 
   @doc """
   Record a snapshot of the data and metadata for a given source
   """
-  @callback record_snapshot(event_store, snapshot) :: :ok | {:error, error}
+  @callback record_snapshot(event_store, SnapshotData.t()) :: :ok | {:error, error}
 
   @doc """
   Delete a previously recorded snapshot for a given source

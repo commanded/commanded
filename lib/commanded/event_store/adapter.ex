@@ -1,67 +1,224 @@
 defmodule Commanded.EventStore.Adapter do
   @moduledoc false
 
-  alias Commanded.EventStore
-  alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
+  defmacro __using__(opts) do
+    quote bind_quoted: [opts: opts] do
+      @adapter Keyword.fetch!(opts, :adapter)
+      @config Keyword.fetch!(opts, :config)
+      @event_store Keyword.fetch!(opts, :event_store)
 
-  def child_spec(adapter, application, config) do
-    adapter.child_spec(application, config)
-  end
+      @behaviour Commanded.EventStore.Adapter
 
-  def append_to_stream(adapter, event_store, stream_uuid, expected_version, events)
-      when is_binary(stream_uuid) and
-             (is_integer(expected_version) or
-                expected_version in [:any_version, :no_stream, :stream_exists]) and
-             is_list(events) do
-    adapter.append_to_stream(event_store, stream_uuid, expected_version, events)
-  end
+      alias Commanded.EventStore
+      alias Commanded.EventStore.{RecordedEvent, SnapshotData}
 
-  def stream_forward(
-        event_store_adapter,
-        stream_uuid,
-        start_version \\ 0,
-        read_batch_size \\ 1_000
-      )
-      when is_binary(stream_uuid) and is_integer(start_version) and is_integer(read_batch_size) do
-    alias Commanded.Event.Upcast
+      def child_spec(application) do
+        @adapter.child_spec(application, @config)
+      end
 
-    case event_store_adapter.stream_forward(stream_uuid, start_version, read_batch_size) do
-      {:error, _} = error -> error
-      stream -> Upcast.upcast_event_stream(stream)
+      def append_to_stream(stream_uuid, expected_version, events)
+          when is_binary(stream_uuid) and
+                 (is_integer(expected_version) or
+                    expected_version in [:any_version, :no_stream, :stream_exists]) and
+                 is_list(events) do
+        @adapter.append_to_stream(@event_store, stream_uuid, expected_version, events)
+      end
+
+      def stream_forward(
+            stream_uuid,
+            start_version \\ 0,
+            read_batch_size \\ 1_000
+          )
+          when is_binary(stream_uuid) and
+                 is_integer(start_version) and
+                 is_integer(read_batch_size) do
+        alias Commanded.Event.Upcast
+
+        case @adapter.stream_forward(@event_store, stream_uuid, start_version, read_batch_size) do
+          {:error, _} = error -> error
+          stream -> Upcast.upcast_event_stream(stream)
+        end
+      end
+
+      def subscribe(stream_uuid)
+          when stream_uuid == :all or is_binary(stream_uuid) do
+        @adapter.subscribe(@event_store, stream_uuid)
+      end
+
+      def subscribe_to(
+            stream_uuid,
+            subscription_name,
+            subscriber,
+            start_from
+          )
+          when is_binary(subscription_name) and is_pid(subscriber) do
+        @adapter.subscribe_to(
+          @event_store,
+          stream_uuid,
+          subscription_name,
+          subscriber,
+          start_from
+        )
+      end
+
+      def ack_event(pid, %RecordedEvent{} = event) when is_pid(pid) do
+        @adapter.ack_event(@event_store, pid, event)
+      end
+
+      def unsubscribe(subscription) do
+        @adapter.unsubscribe(@event_store, subscription)
+      end
+
+      def delete_subscription(stream_uuid, subscription_name) do
+        @adapter.delete_subscription(@event_store, stream_uuid, subscription_name)
+      end
+
+      def read_snapshot(source_uuid) when is_binary(source_uuid) do
+        @adapter.read_snapshot(@event_store, source_uuid)
+      end
+
+      def record_snapshot(%SnapshotData{} = snapshot) do
+        @adapter.record_snapshot(@event_store, snapshot)
+      end
+
+      def delete_snapshot(source_uuid) when is_binary(source_uuid) do
+        @adapter.delete_snapshot(@event_store, source_uuid)
+      end
     end
   end
 
-  def subscribe(event_store_adapter, stream_uuid)
-      when stream_uuid == :all or is_binary(stream_uuid) do
-    event_store_adapter.subscribe(stream_uuid)
-  end
+  alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
+  alias Commanded.EventStore.SnapshotData
 
-  def subscribe_to(event_store_adapter, stream_uuid, subscription_name, subscriber, start_from)
-      when is_binary(subscription_name) and is_pid(subscriber) do
-    event_store_adapter.subscribe_to(stream_uuid, subscription_name, subscriber, start_from)
-  end
+  @doc """
+  Return a child spec defining all processes required by the event store.
+  """
+  @callback child_spec(Commanded.EventStore.application()) :: [:supervisor.child_spec()]
 
-  def ack_event(event_store_adapter, pid, %RecordedEvent{} = event) when is_pid(pid) do
-    event_store_adapter.ack_event(pid, event)
-  end
+  @doc """
+  Append one or more events to a stream atomically.
+  """
+  @callback append_to_stream(
+              Commanded.EventStore.stream_uuid(),
+              Commanded.EventStore.expected_version(),
+              events :: list(EventData.t())
+            ) ::
+              :ok
+              | {:error, :wrong_expected_version}
+              | {:error, term}
 
-  def unsubscribe(event_store_adapter, subscription) do
-    event_store_adapter.unsubscribe(subscription)
-  end
+  @doc """
+  Streams events from the given stream, in the order in which they were
+  originally written.
+  """
+  @callback stream_forward(
+              Commanded.EventStore.stream_uuid(),
+              start_version :: non_neg_integer,
+              read_batch_size :: non_neg_integer
+            ) ::
+              Enumerable.t()
+              | {:error, :stream_not_found}
+              | {:error, term}
 
-  def delete_subscription(event_store_adapter, stream_uuid, subscription_name) do
-    event_store_adapter.delete_subscription(stream_uuid, subscription_name)
-  end
+  @doc """
+  Create a transient subscription to a single event stream.
 
-  def read_snapshot(event_store_adapter, source_uuid) when is_binary(source_uuid) do
-    event_store_adapter.read_snapshot(source_uuid)
-  end
+  The event store will publish any events appended to the given stream to the
+  `subscriber` process as an `{:events, events}` message.
 
-  def record_snapshot(event_store_adapter, %SnapshotData{} = snapshot) do
-    event_store_adapter.record_snapshot(snapshot)
-  end
+  The subscriber does not need to acknowledge receipt of the events.
+  """
+  @callback subscribe(Commanded.EventStore.stream_uuid() | :all) :: :ok | {:error, term}
 
-  def delete_snapshot(event_store_adapter, source_uuid) when is_binary(source_uuid) do
-    event_store_adapter.delete_snapshot(source_uuid)
-  end
+  @doc """
+  Create a persistent subscription to an event stream.
+
+  To subscribe to all events appended to any stream use `:all` as the stream
+  when subscribing.
+
+  The event store will remember the subscribers last acknowledged event.
+  Restarting the named subscription will resume from the next event following
+  the last seen.
+
+  Once subscribed, the subscriber process should be sent a
+  `{:subscribed, subscription}` message to allow it to defer initialisation
+  until the subscription has started.
+
+  The subscriber process will be sent all events persisted to any stream. It
+  will receive a `{:events, events}` message for each batch of events persisted
+  for a single aggregate.
+
+  The subscriber must ack each received, and successfully processed event, using
+  `Commanded.EventStore.ack_event/2`.
+
+  ## Examples
+
+  Subscribe to all streams:
+
+      {:ok, subscription} =
+        Commanded.EventStore.subscribe_to(:all, "Example", self(), :current)
+
+  Subscribe to a single stream:
+
+      {:ok, subscription} =
+        Commanded.EventStore.subscribe_to("stream1", "Example", self(), :origin)
+
+  """
+  @callback subscribe_to(
+              Commanded.EventStore.stream_uuid() | :all,
+              Commanded.EventStore.subscription_name(),
+              Commanded.EventStore.subscriber(),
+              Commanded.EventStore.start_from()
+            ) ::
+              {:ok, Commanded.EventStore.subscription()}
+              | {:error, :subscription_already_exists}
+              | {:error, term}
+
+  @doc """
+  Acknowledge receipt and successful processing of the given event received from
+  a subscription to an event stream.
+  """
+  @callback ack_event(pid, RecordedEvent.t()) :: :ok
+
+  @doc """
+  Unsubscribe an existing subscriber from event notifications.
+
+  This will not delete the subscription.
+
+  ## Example
+
+      :ok = Commanded.EventStore.unsubscribe(subscription)
+
+  """
+  @callback unsubscribe(Commanded.EventStore.subscription()) :: :ok
+
+  @doc """
+  Delete an existing subscription.
+
+  ## Example
+
+      :ok = Commanded.EventStore.delete_subscription(:all, "Example")
+
+  """
+  @callback delete_subscription(
+              Commanded.EventStore.stream_uuid() | :all,
+              Commanded.EventStore.subscription_name()
+            ) ::
+              :ok | {:error, :subscription_not_found} | {:error, term}
+
+  @doc """
+  Read a snapshot, if available, for a given source.
+  """
+  @callback read_snapshot(Commanded.EventStore.source_uuid()) ::
+              {:ok, SnapshotData.t()} | {:error, :snapshot_not_found}
+
+  @doc """
+  Record a snapshot of the data and metadata for a given source
+  """
+  @callback record_snapshot(SnapshotData.t()) :: :ok | {:error, term}
+
+  @doc """
+  Delete a previously recorded snapshot for a given source
+  """
+  @callback delete_snapshot(Commanded.EventStore.source_uuid()) :: :ok | {:error, term}
 end

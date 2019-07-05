@@ -32,6 +32,7 @@ defmodule Commanded.Mixfile do
     do: [
       "lib",
       "test/aggregates/support",
+      "test/application/support",
       "test/commands/support",
       "test/event/support",
       "test/event_store/support",

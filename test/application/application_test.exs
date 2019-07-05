@@ -1,22 +1,46 @@
-defmodule Commanded.Aggregates.AggregateConcurrencyTest do
+defmodule Commanded.ApplicationTest do
   use ExUnit.Case
 
   alias Commanded.EventStore.Adapters.InMemory
-  alias Commanded.Serialization.JsonSerializer
-
-  defmodule ExampleApplication do
-    use Commanded.Application,
-      otp_app: :commanded,
-      event_store: [
-        adapter: InMemory,
-        serializer: JsonSerializer
-      ]
-  end
+  alias Commanded.EventStore.EventData
+  alias Commanded.ExampleApplication
 
   describe "a Commanded application" do
+    setup do
+      start_supervised!(ExampleApplication)
+      :ok
+    end
+
+    defmodule Event do
+      @derive Jason.Encoder
+      defstruct [:name]
+    end
+
     test "should return configured event store" do
       assert ExampleApplication.__event_store_adapter__() == InMemory
-      assert ExampleApplication.__event_store_config__() == [serializer: JsonSerializer]
     end
+
+    test "should define an event store adapter" do
+      assert_implements(ExampleApplication.EventStore, Commanded.EventStore.Adapter)
+
+      events = [
+        %EventData{
+          correlation_id: UUID.uuid4(),
+          causation_id: UUID.uuid4(),
+          event_type: "#{__MODULE__}.Event",
+          data: %Event{name: "1"},
+          metadata: %{"metadata" => "value"}
+        }
+      ]
+
+      assert :ok = ExampleApplication.EventStore.append_to_stream("1", 0, events)
+    end
+  end
+
+  # Returns `true` if module implements behaviour.
+  defp assert_implements(module, behaviour) do
+    all = Keyword.take(module.__info__(:attributes), [:behaviour])
+
+    assert [behaviour] in Keyword.values(all)
   end
 end
