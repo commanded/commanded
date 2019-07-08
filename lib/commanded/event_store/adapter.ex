@@ -12,8 +12,8 @@ defmodule Commanded.EventStore.Adapter do
       alias Commanded.EventStore
       alias Commanded.EventStore.{RecordedEvent, SnapshotData}
 
-      def child_spec(application) do
-        @adapter.child_spec(application, @config)
+      def child_spec do
+        @adapter.child_spec(@event_store, @config)
       end
 
       def append_to_stream(stream_uuid, expected_version, events)
@@ -93,7 +93,7 @@ defmodule Commanded.EventStore.Adapter do
   @doc """
   Return a child spec defining all processes required by the event store.
   """
-  @callback child_spec(Commanded.EventStore.application()) :: [:supervisor.child_spec()]
+  @callback child_spec() :: [:supervisor.child_spec()]
 
   @doc """
   Append one or more events to a stream atomically.

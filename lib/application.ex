@@ -20,7 +20,8 @@ defmodule Commanded.Application do
           event_store: [
             adapter: Commanded.EventStore.Adapters.EventStore,
             event_store: MyApp.EventStore
-          ]
+          ],
+          pubsub: :local
 
         router MyApp.Router
       end
@@ -38,18 +39,35 @@ defmodule Commanded.Application do
     quote bind_quoted: [opts: opts] do
       @behaviour Commanded.Application
 
-      {otp_app, event_store_adapter, event_store_config, event_store} =
-        Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
+      {otp_app, config} = Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
+
+      {event_store_adapter, event_store_config, event_store} =
+        Commanded.EventStore.adapter(__MODULE__, config)
+
+      {pubsub_adapter, pubsub_config} = Commanded.PubSub.pubsub_provider(__MODULE__, config)
+
+      registry_adapter = Commanded.Registration.registry_provider(__MODULE__, config)
 
       @otp_app otp_app
       @event_store_adapter event_store_adapter
-      @event_store event_store
+      @pubsub_adapter pubsub_adapter
+      @registry_adapter registry_adapter
 
       defmodule EventStore do
         use Commanded.EventStore.Adapter,
           adapter: event_store_adapter,
           config: event_store_config,
           event_store: event_store
+      end
+
+      defmodule PubSub do
+        use Commanded.PubSub.Adapter,
+          adapter: pubsub_adapter,
+          config: pubsub_config
+      end
+
+      defmodule Registration do
+        use Commanded.Registration.Adapter, adapter: registry_adapter
       end
 
       def config do
@@ -59,6 +77,14 @@ defmodule Commanded.Application do
 
       def __event_store_adapter__ do
         @event_store_adapter
+      end
+
+      def __pubsub_adapter__ do
+        @pubsub_adapter
+      end
+
+      def __registry_adapter__ do
+        @registry_adapter
       end
 
       def child_spec(opts) do
@@ -74,6 +100,8 @@ defmodule Commanded.Application do
           __MODULE__,
           @otp_app,
           EventStore,
+          PubSub,
+          Registration,
           opts
         )
       end

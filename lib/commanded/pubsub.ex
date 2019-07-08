@@ -3,15 +3,17 @@ defmodule Commanded.PubSub do
   Pub/sub behaviour for use by Commanded to subcribe to and broadcast messages.
   """
 
+  @type application :: module
+
   @doc """
   Return an optional supervisor spec for pub/sub.
   """
-  @callback child_spec() :: [:supervisor.child_spec()]
+  @callback child_spec(application, config :: Keyword.t()) :: [:supervisor.child_spec()]
 
   @doc """
   Subscribes the caller to the PubSub adapter's topic.
   """
-  @callback subscribe(String.t() | atom) :: :ok | {:error, term}
+  @callback subscribe(application, topic :: String.t()) :: :ok | {:error, term}
 
   @doc """
   Broadcasts message on given topic.
@@ -20,76 +22,58 @@ defmodule Commanded.PubSub do
     * `message` - The payload of the broadcast
 
   """
-  @callback broadcast(String.t(), term) :: :ok | {:error, term}
+  @callback broadcast(application, topic :: String.t(), message :: term) :: :ok | {:error, term}
 
   @doc """
   Track the current process under the given `topic`, uniquely identified by
   `key`.
   """
-  @callback track(String.t(), term) :: :ok | {:error, term}
+  @callback track(application, topic :: String.t(), key :: term) :: :ok | {:error, term}
 
   @doc """
   List tracked PIDs for a given topic.
   """
-  @callback list(String.t()) :: [{term, pid}]
+  @callback list(application, topic :: String.t()) :: [{term, pid}]
 
-  @doc """
-  Return an optional supervisor spec for pub/sub.
-  """
-  @spec child_spec() :: [:supervisor.child_spec()]
-  def child_spec, do: pubsub_provider().child_spec()
+  def subscribe(application, topic) do
+    pubsub = Module.concat([application, PubSub])
+    pubsub.subscribe(topic)
+  end
 
-  @doc """
-  Subscribes the caller to the PubSub adapter's topic.
-  """
-  @callback subscribe(atom) :: :ok | {:error, term}
-  def subscribe(topic) when is_binary(topic), do: pubsub_provider().subscribe(topic)
-
-  @doc """
-  Broadcasts message on given topic.
-  """
-  @callback broadcast(String.t(), term) :: :ok | {:error, term}
-  def broadcast(topic, message) when is_binary(topic),
-    do: pubsub_provider().broadcast(topic, message)
-
-  @doc """
-  Track the current process under the given `topic`, uniquely identified by
-  `key`.
-  """
-  @spec track(String.t(), term) :: :ok
-  def track(topic, key) when is_binary(topic), do: pubsub_provider().track(topic, key)
-
-  @doc """
-  List tracked PIDs for a given topic.
-  """
-  @spec list(String.t()) :: [{term, pid}]
-  def list(topic) when is_binary(topic), do: pubsub_provider().list(topic)
+  def broadcast(application, topic, message) do
+    pubsub = Module.concat([application, PubSub])
+    pubsub.subscribe(topic, message)
+  end
 
   @doc """
   Get the configured pub/sub adapter.
 
   Defaults to a local pub/sub, restricted to running on a single node.
   """
-  @spec pubsub_provider() :: module()
-  def pubsub_provider do
-    case Application.get_env(:commanded, :pubsub, :local) do
+  @spec pubsub_provider(application, config :: Keyword.t()) :: {module(), Keyword.t()}
+  def pubsub_provider(application, config) do
+    case Keyword.get(config, :pubsub, :local) do
       :local ->
-        Commanded.PubSub.LocalPubSub
+        {Commanded.PubSub.LocalPubSub, []}
 
       provider when is_atom(provider) ->
-        provider
+        {provider, []}
 
       config ->
         if Keyword.keyword?(config) do
           case Keyword.get(config, :phoenix_pubsub) do
             nil ->
-              raise "Unsupported pubsub adapter: #{inspect(config)}"
+              raise ArgumentError,
+                    "invalid Phoenix pubsub configuration #{inspect(config)} for application " <>
+                      inspect(application)
 
-            _phoenix_pubsub ->
-              Commanded.PubSub.PhoenixPubSub
+            phoenix_pubsub ->
+              {Commanded.PubSub.PhoenixPubSub, phoenix_pubsub}
           end
         else
-          raise "Unsupported pubsub adapter: #{inspect(config)}"
+          raise ArgumentError,
+                "invalid pubsub configured for application " <>
+                  inspect(application) <> " as: " <> inspect(config)
         end
     end
   end

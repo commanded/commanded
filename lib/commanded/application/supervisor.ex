@@ -8,33 +8,11 @@ defmodule Commanded.Application.Supervisor do
   """
   def compile_config(application, opts) do
     otp_app = Keyword.fetch!(opts, :otp_app)
-    event_store = opts[:event_store]
+    env_opts = Application.get_env(otp_app, application, [])
 
-    unless event_store do
-      raise ArgumentError, "missing :event_store option on use Commanded.Application"
-    end
+    config = Keyword.merge(opts, env_opts)
 
-    {event_store_adapter, event_store_config} = Keyword.pop(event_store, :adapter)
-
-    unless Code.ensure_compiled?(event_store_adapter) do
-      raise ArgumentError,
-            "event store adapter #{inspect(event_store_adapter)} was not compiled, " <>
-              "ensure it is correct and it is included as a project dependency"
-    end
-
-    behaviours =
-      for {:behaviour, behaviours} <- event_store_adapter.__info__(:attributes),
-          behaviour <- behaviours,
-          do: behaviour
-
-    unless Commanded.EventStore in behaviours do
-      raise ArgumentError,
-            "expected :event_store_adapter option given to Commanded.Application to list Commanded.EventStore as a behaviour"
-    end
-
-    event_store = event_store_adapter.event_store(application, event_store_config)
-
-    {otp_app, event_store_adapter, event_store_config, event_store}
+    {otp_app, config}
   end
 
   @doc """
@@ -55,28 +33,31 @@ defmodule Commanded.Application.Supervisor do
   @doc """
   Starts the application supervisor.
   """
-  def start_link(application, otp_app, event_store, opts) do
+  def start_link(application, otp_app, event_store, pubsub, registry, opts) do
     sup_opts = if name = Keyword.get(opts, :name, application), do: [name: name], else: []
 
     Supervisor.start_link(
       __MODULE__,
-      {application, otp_app, event_store, opts},
+      {application, otp_app, event_store, registry, pubsub, opts},
       sup_opts
     )
   end
 
-  def init({application, otp_app, event_store, opts}) do
+  def init({application, otp_app, event_store, pubsub, registry, opts}) do
     case runtime_config(application, otp_app, opts) do
       {:ok, _config} ->
+        task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
+        subscriptions_name = Module.concat([application, Commanded.Subscriptions])
+
         children =
-          event_store.child_spec(application) ++
-            Commanded.Registration.child_spec() ++
-            Commanded.PubSub.child_spec() ++
+          event_store.child_spec() ++
+            pubsub.child_spec() ++
+            registry.child_spec() ++
             [
-              {Task.Supervisor, name: Commanded.Commands.TaskDispatcher},
+              {Task.Supervisor, name: task_dispatcher_name},
               Commanded.Aggregates.Supervisor,
               Commanded.Subscriptions.Registry,
-              Commanded.Subscriptions
+              {Commanded.Subscriptions, application: application, name: subscriptions_name}
             ]
 
         Supervisor.init(children, strategy: :one_for_one)

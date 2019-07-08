@@ -47,15 +47,14 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def child_spec(application, config) do
-    name = Module.concat([application, __MODULE__])
-    supervisor_name = Module.concat([name, SubscriptionsSupervisor])
-    config = Keyword.merge(config, event_store: name, name: name)
+  def child_spec(event_store, config) do
+    supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
+    config = Keyword.merge(config, event_store: event_store, name: event_store)
 
     [
       {DynamicSupervisor, strategy: :one_for_one, name: supervisor_name},
       %{
-        id: name,
+        id: event_store,
         start: {__MODULE__, :start_link, [config]}
       }
     ]

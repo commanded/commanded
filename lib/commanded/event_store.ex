@@ -155,4 +155,34 @@ defmodule Commanded.EventStore do
   Delete a previously recorded snapshot for a given source
   """
   @callback delete_snapshot(event_store, source_uuid) :: :ok | {:error, error}
+
+  def adapter(application, config) do
+    event_store = Keyword.get(config, :event_store)
+
+    unless event_store do
+      raise ArgumentError, "missing :event_store option on use Commanded.Application"
+    end
+
+    {adapter, config} = Keyword.pop(event_store, :adapter)
+
+    unless Code.ensure_compiled?(adapter) do
+      raise ArgumentError,
+            "event store adapter #{inspect(adapter)} was not compiled, " <>
+              "ensure it is correct and it is included as a project dependency"
+    end
+
+    behaviours =
+      for {:behaviour, behaviours} <- adapter.__info__(:attributes),
+          behaviour <- behaviours,
+          do: behaviour
+
+    unless Commanded.EventStore in behaviours do
+      raise ArgumentError,
+            "expected event store :adapter option given to Commanded.Application to implement behaviour Commanded.EventStore"
+    end
+
+    event_store = adapter.event_store(application, config)
+
+    {adapter, config, event_store}
+  end
 end

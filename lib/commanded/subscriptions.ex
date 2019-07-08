@@ -10,13 +10,16 @@ defmodule Commanded.Subscriptions do
   @ack_topic "ack_event"
 
   defstruct [
+    :application,
     :streams_table,
     :started_at,
     subscribers: []
   ]
 
-  def start_link(arg) do
-    GenServer.start_link(__MODULE__, arg, name: __MODULE__)
+  def start_link(opts) do
+    {start_opts, subscriptions_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
+
+    GenServer.start_link(__MODULE__, subscriptions_opts, start_opts)
   end
 
   defdelegate register(name, consistency), to: Subscriptions.Registry
@@ -26,14 +29,14 @@ defmodule Commanded.Subscriptions do
   Acknowledge receipt and sucessful processing of the given event by the named
   handler.
   """
-  def ack_event(name, consistency, event)
+  def ack_event(application, name, consistency, event)
 
-  def ack_event(_name, :eventual, _event), do: :ok
+  def ack_event(_application, _name, :eventual, _event), do: :ok
 
-  def ack_event(name, :strong, %RecordedEvent{} = event) do
+  def ack_event(application, name, :strong, %RecordedEvent{} = event) do
     %RecordedEvent{stream_id: stream_id, stream_version: stream_version} = event
 
-    PubSub.broadcast(@ack_topic, {:ack_event, name, stream_id, stream_version})
+    PubSub.broadcast(application, @ack_topic, {:ack_event, name, stream_id, stream_version})
   end
 
   @doc false
@@ -71,20 +74,22 @@ defmodule Commanded.Subscriptions do
     end
   end
 
-  def init(_arg) do
-    :ok = PubSub.subscribe(@ack_topic)
+  def init(opts) do
+    application = Keyword.fetch!(opts, :application)
+
+    :ok = PubSub.subscribe(application, @ack_topic)
 
     schedule_purge_streams()
 
-    {:ok, initial_state()}
+    {:ok, initial_state(application)}
   end
 
   def handle_call(:reset, _from, %Subscriptions{} = state) do
-    %Subscriptions{streams_table: streams_table} = state
+    %Subscriptions{application: application, streams_table: streams_table} = state
 
     :ets.delete(streams_table)
 
-    {:reply, :ok, initial_state()}
+    {:reply, :ok, initial_state(application)}
   end
 
   def handle_call({:handled?, stream_uuid, stream_version, opts}, _from, %Subscriptions{} = state) do
@@ -167,8 +172,9 @@ defmodule Commanded.Subscriptions do
     {:noreply, state}
   end
 
-  defp initial_state do
+  defp initial_state(application) do
     %Subscriptions{
+      application: application,
       streams_table: :ets.new(:streams, [:set, :private]),
       started_at: monotonic_time()
     }

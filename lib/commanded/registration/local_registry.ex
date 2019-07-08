@@ -9,24 +9,24 @@ defmodule Commanded.Registration.LocalRegistry do
   @doc """
   Return an optional supervisor spec for the registry
   """
-  @spec child_spec() :: [:supervisor.child_spec()]
   @impl Commanded.Registration
-  def child_spec do
+  def child_spec(registry) do
+    registry_name = registry_name(registry)
+
     [
-      {Registry, keys: :unique, name: __MODULE__}
+      {Registry, keys: :unique, name: registry_name}
     ]
   end
 
   @doc """
   Starts a supervisor.
   """
-  @spec supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
   @impl Commanded.Registration
-  def supervisor_child_spec(module, arg) do
+  def supervisor_child_spec(_registry, module, arg) do
     default = %{
-     id: module,
-     start: {module, :start_link, [arg]},
-     type: :supervisor
+      id: module,
+      start: {module, :start_link, [arg]},
+      type: :supervisor
     }
 
     Supervisor.child_spec(default, [])
@@ -38,15 +38,10 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @spec start_child(
-          name :: term(),
-          supervisor :: module(),
-          child_spec :: Commanded.Registration.start_child_arg()
-        ) ::
-          {:ok, pid} | {:error, term}
+
   @impl Commanded.Registration
-  def start_child(name, supervisor, child_spec) do
-    via_name = {:via, Registry, {__MODULE__, name}}
+  def start_child(registry, name, supervisor, child_spec) do
+    via_name = via_tuple(registry, name)
 
     child_spec =
       case child_spec do
@@ -68,11 +63,9 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @spec start_link(name :: term(), module :: module(), args :: any()) ::
-          {:ok, pid} | {:error, term}
   @impl Commanded.Registration
-  def start_link(name, module, args) do
-    via_name = {:via, Registry, {__MODULE__, name}}
+  def start_link(registry, name, module, args) do
+    via_name = via_tuple(registry, name)
 
     case GenServer.start_link(module, args, name: via_name) do
       {:error, {:already_started, pid}} -> {:ok, pid}
@@ -85,16 +78,20 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Returns `:undefined` if the name is unregistered.
   """
-  @spec whereis_name(name :: term) :: pid | :undefined
   @impl Commanded.Registration
-  def whereis_name(name), do: Registry.whereis_name({__MODULE__, name})
+  def whereis_name(registry, name) do
+    registry_name = registry_name(registry)
+    Registry.whereis_name({registry_name, name})
+  end
 
   @doc """
   Return a `:via` tuple to route a message to a process by its registered name
   """
-  @spec via_tuple(name :: term()) :: {:via, module(), name :: term()}
   @impl Commanded.Registration
-  def via_tuple(name), do: {:via, Registry, {__MODULE__, name}}
+  def via_tuple(registry, name) do
+    registry_name = registry_name(registry)
+    {:via, Registry, {registry_name, name}}
+  end
 
   @doc false
   def handle_call(_request, _from, _state) do
@@ -117,4 +114,6 @@ defmodule Commanded.Registration.LocalRegistry do
       {_, name} -> name
     end
   end
+
+  defp registry_name(registry), do: Module.concat([registry, LocalRegistry])
 end

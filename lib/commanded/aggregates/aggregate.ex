@@ -80,9 +80,9 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
-  def name(aggregate_module, aggregate_uuid)
-      when is_atom(aggregate_module) and is_binary(aggregate_uuid),
-      do: {aggregate_module, aggregate_uuid}
+  def name(application, aggregate_module, aggregate_uuid)
+      when is_atom(application) and is_atom(aggregate_module) and is_binary(aggregate_uuid),
+      do: {application, aggregate_module, aggregate_uuid}
 
   @doc false
   @impl GenServer
@@ -113,34 +113,41 @@ defmodule Commanded.Aggregates.Aggregate do
     - `events` - events produced by the command, can be an empty list.
 
   """
-  def execute(aggregate_module, aggregate_uuid, %ExecutionContext{} = context, timeout \\ 5_000)
+  def execute(
+        application,
+        aggregate_module,
+        aggregate_uuid,
+        %ExecutionContext{} = context,
+        timeout \\ 5_000
+      )
       when is_atom(aggregate_module) and is_binary(aggregate_uuid) and
              (is_number(timeout) or timeout == :infinity) do
-    GenServer.call(
-      via_name(aggregate_module, aggregate_uuid),
-      {:execute_command, context},
-      timeout
-    )
+    name = via_name(application, aggregate_module, aggregate_uuid)
+    GenServer.call(name, {:execute_command, context}, timeout)
   end
 
   @doc false
-  def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5_000) do
-    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_state, timeout)
+  def aggregate_state(application, aggregate_module, aggregate_uuid, timeout \\ 5_000) do
+    name = via_name(application, aggregate_module, aggregate_uuid)
+    GenServer.call(name, :aggregate_state, timeout)
   end
 
   @doc false
-  def aggregate_version(aggregate_module, aggregate_uuid, timeout \\ 5_000) do
-    GenServer.call(via_name(aggregate_module, aggregate_uuid), :aggregate_version, timeout)
+  def aggregate_version(application, aggregate_module, aggregate_uuid, timeout \\ 5_000) do
+    name = via_name(application, aggregate_module, aggregate_uuid)
+    GenServer.call(name, :aggregate_version, timeout)
   end
 
   @doc false
-  def take_snapshot(aggregate_module, aggregate_uuid) do
-    GenServer.cast(via_name(aggregate_module, aggregate_uuid), :take_snapshot)
+  def take_snapshot(application, aggregate_module, aggregate_uuid) do
+    name = via_name(application, aggregate_module, aggregate_uuid)
+    GenServer.cast(name, :take_snapshot)
   end
 
   @doc false
-  def shutdown(aggregate_module, aggregate_uuid) do
-    GenServer.stop(via_name(aggregate_module, aggregate_uuid))
+  def shutdown(application, aggregate_module, aggregate_uuid) do
+    name = via_name(application, aggregate_module, aggregate_uuid)
+    GenServer.stop(name)
   end
 
   @doc false
@@ -519,8 +526,10 @@ defmodule Commanded.Aggregates.Aggregate do
   defp snapshot_options(aggregate_module),
     do: Application.get_env(:commanded, aggregate_module, [])
 
-  defp via_name(aggregate_module, aggregate_uuid),
-    do: name(aggregate_module, aggregate_uuid) |> via_tuple()
+  defp via_name(application, aggregate_module, aggregate_uuid) do
+    name = name(application, aggregate_module, aggregate_uuid)
+    via_tuple(application, name)
+  end
 
   defp describe(%Aggregate{} = aggregate) do
     %Aggregate{
