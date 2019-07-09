@@ -1,6 +1,6 @@
 defmodule Commanded.Helpers.ProcessHelper do
   @moduledoc false
-  
+
   import ExUnit.Assertions
 
   alias Commanded.Registration
@@ -37,14 +37,14 @@ defmodule Commanded.Helpers.ProcessHelper do
   @doc """
   Stop a given aggregate process.
   """
-  def shutdown_aggregate(aggregate_module, aggregate_uuid) do
-    name = {aggregate_module, aggregate_uuid}
+  def shutdown_aggregate(application, aggregate_module, aggregate_uuid) do
+    name = {application, aggregate_module, aggregate_uuid}
 
-    Registration.whereis_name(name) |> shutdown()
+    Registration.whereis_name(application, name) |> shutdown()
 
-    # wait until process removed from registry
+    # Wait until process removed from registry
     Wait.until(fn ->
-      assert Registration.whereis_name(name) == :undefined
+      assert Registration.whereis_name(application, name) == :undefined
     end)
   end
 end

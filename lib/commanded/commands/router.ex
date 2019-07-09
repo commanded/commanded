@@ -377,6 +377,8 @@ defmodule Commanded.Commands.Router do
         do: do_dispatch(command, opts)
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
+        application = Keyword.fetch!(opts, :application)
+
         causation_id = Keyword.get(opts, :causation_id)
         correlation_id = Keyword.get(opts, :correlation_id) || UUID.uuid4()
 
@@ -411,6 +413,7 @@ defmodule Commanded.Commands.Router do
         alias Commanded.Commands.Dispatcher.Payload
 
         payload = %Payload{
+          application: application,
           command: command,
           command_uuid: UUID.uuid4(),
           causation_id: causation_id,

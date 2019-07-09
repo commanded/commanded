@@ -35,6 +35,14 @@ defmodule Commanded.ApplicationTest do
 
       assert :ok = ExampleApplication.EventStore.append_to_stream("1", 0, events)
     end
+
+    test "should define a pubsub adapter" do
+      assert_implements(ExampleApplication.PubSub, Commanded.PubSub.Adapter)
+    end
+
+    test "should define a registration adapter" do
+      assert_implements(ExampleApplication.Registration, Commanded.Registration.Adapter)
+    end
   end
 
   # Returns `true` if module implements behaviour.

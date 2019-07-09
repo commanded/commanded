@@ -53,6 +53,7 @@ defmodule Commanded.Aggregates.Aggregate do
   @read_event_batch_size 100
 
   defstruct [
+    :application,
     :aggregate_module,
     :aggregate_uuid,
     :aggregate_state,
@@ -63,17 +64,23 @@ defmodule Commanded.Aggregates.Aggregate do
 
   def start_link(args) do
     opts = [name: args[:name]]
-    aggregate_module = args[:aggregate_module]
-    aggregate_uuid = args[:aggregate_uuid]
+
+    application = Keyword.fetch!(args, :application)
+    aggregate_module = Keyword.fetch!(args, :aggregate_module)
+    aggregate_uuid = Keyword.fetch!(args, :aggregate_uuid)
 
     unless is_atom(aggregate_module) and is_binary(aggregate_uuid) do
       raise "aggregate_module must be an atom and aggregate_uuid must be a string"
     end
 
+    snapshotting =
+      Snapshotting.new(application, aggregate_uuid, snapshot_options(aggregate_module))
+
     aggregate = %Aggregate{
+      application: application,
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
-      snapshotting: Snapshotting.new(aggregate_uuid, snapshot_options(aggregate_module))
+      snapshotting: snapshotting
     }
 
     GenServer.start_link(__MODULE__, aggregate, opts)
@@ -160,12 +167,9 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   @impl GenServer
   def handle_continue(:subscribe_to_events, %Aggregate{} = state) do
-    %Aggregate{aggregate_uuid: aggregate_uuid} = state
+    %Aggregate{application: application, aggregate_uuid: aggregate_uuid} = state
 
-    :ok = EventStore.subscribe(aggregate_uuid)
-    # :ok = EventStore.Adapter.subscribe(application, aggregate_uuid)
-    # :ok = EventStore.Adapter.subscribe(event_store, aggregate_uuid)
-    # :ok = EventStore.Adapter.subscribe(event_store_adapter, event_store_config, aggregate_uuid)
+    :ok = EventStore.subscribe(application, aggregate_uuid)
 
     {:noreply, state}
   end
@@ -350,9 +354,18 @@ defmodule Commanded.Aggregates.Aggregate do
 
   # Load events from the event store, in batches, to rebuild the aggregate state
   defp rebuild_from_events(%Aggregate{} = state) do
-    %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: aggregate_version} = state
+    %Aggregate{
+      application: application,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_version: aggregate_version
+    } = state
 
-    case EventStore.stream_forward(aggregate_uuid, aggregate_version + 1, @read_event_batch_size) do
+    case EventStore.stream_forward(
+           application,
+           aggregate_uuid,
+           aggregate_version + 1,
+           @read_event_batch_size
+         ) do
       {:error, :stream_not_found} ->
         # aggregate does not exist, return initial state
         state
@@ -485,9 +498,9 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   defp persist_events(pending_events, aggregate_state, context, %Aggregate{} = state) do
-    %Aggregate{aggregate_uuid: aggregate_uuid, aggregate_version: expected_version} = state
+    %Aggregate{aggregate_version: expected_version} = state
 
-    with :ok <- append_to_stream(pending_events, aggregate_uuid, expected_version, context) do
+    with :ok <- append_to_stream(pending_events, context, state) do
       aggregate_version = expected_version + length(pending_events)
 
       state = %Aggregate{
@@ -503,9 +516,15 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp append_to_stream([], _stream_uuid, _expected_version, _context), do: :ok
+  defp append_to_stream([], _context, _state), do: :ok
 
-  defp append_to_stream(pending_events, stream_uuid, expected_version, context) do
+  defp append_to_stream(pending_events, %ExecutionContext{} = context, %Aggregate{} = state) do
+    %Aggregate{
+      application: application,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_version: expected_version
+    } = state
+
     %ExecutionContext{
       causation_id: causation_id,
       correlation_id: correlation_id,
@@ -519,7 +538,7 @@ defmodule Commanded.Aggregates.Aggregate do
         metadata: metadata
       )
 
-    EventStore.append_to_stream(stream_uuid, expected_version, event_data)
+    EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
   end
 
   # get the snapshot options for the aggregate defined in environment config.

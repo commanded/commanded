@@ -23,13 +23,6 @@ defmodule Commanded.EventStore do
   @callback child_spec(application, config) :: [:supervisor.child_spec()]
 
   @doc """
-  Return an identifier for the event store to allow subsequent requests.
-
-  This might be a PID, a value representing a registered name, or a module.
-  """
-  @callback event_store(application, config) :: event_store
-
-  @doc """
   Append one or more events to a stream atomically.
   """
   @callback append_to_stream(
@@ -156,7 +149,34 @@ defmodule Commanded.EventStore do
   """
   @callback delete_snapshot(event_store, source_uuid) :: :ok | {:error, error}
 
-  def adapter(application, config) do
+  @doc false
+  def append_to_stream(application, stream_uuid, expected_version, events) do
+    event_store = Module.concat([application, EventStore])
+    event_store.append_to_stream(stream_uuid, expected_version, events)
+  end
+
+  @doc false
+  def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
+    event_store = Module.concat([application, EventStore])
+    event_store.stream_forward(stream_uuid, start_version, read_batch_size)
+  end
+
+  @doc false
+  def subscribe(application, stream_uuid) do
+    event_store = Module.concat([application, EventStore])
+    event_store.subscribe(stream_uuid)
+  end
+
+  @doc false
+  def read_snapshot(application, source_uuid) do
+    event_store = Module.concat([application, EventStore])
+    event_store.read_snapshot(source_uuid)
+  end
+
+  @doc """
+  Get the configured event store adapter for the given application.
+  """
+  def adapter(_application, config) do
     event_store = Keyword.get(config, :event_store)
 
     unless event_store do
@@ -171,18 +191,18 @@ defmodule Commanded.EventStore do
               "ensure it is correct and it is included as a project dependency"
     end
 
-    behaviours =
-      for {:behaviour, behaviours} <- adapter.__info__(:attributes),
-          behaviour <- behaviours,
-          do: behaviour
+    # behaviours =
+    #   for {:behaviour, behaviours} <- adapter.__info__(:attributes),
+    #       behaviour <- behaviours,
+    #       do: behaviour
+    #
+    # unless Commanded.EventStore in behaviours do
+    #   raise ArgumentError,
+    #         "expected event store :adapter option given to Commanded.Application to implement behaviour Commanded.EventStore"
+    # end
 
-    unless Commanded.EventStore in behaviours do
-      raise ArgumentError,
-            "expected event store :adapter option given to Commanded.Application to implement behaviour Commanded.EventStore"
-    end
+    # event_store = adapter.event_store(application, config)
 
-    event_store = adapter.event_store(application, config)
-
-    {adapter, config, event_store}
+    {adapter, config}
   end
 end

@@ -14,8 +14,11 @@ defmodule Commanded.Aggregates.Supervisor do
   #   Registration.supervisor_child_spec(__MODULE__, arg)
   # end
 
-  def start_link(arg) do
-    DynamicSupervisor.start_link(__MODULE__, arg, name: __MODULE__)
+  def start_link(args) do
+    application = Keyword.fetch!(args, :application)
+    name = Module.concat([application, __MODULE__])
+
+    DynamicSupervisor.start_link(__MODULE__, args, name: name)
   end
 
   @doc """
@@ -32,10 +35,16 @@ defmodule Commanded.Aggregates.Supervisor do
         inspect(aggregate_uuid)
     end)
 
-    name = Aggregate.name(application, aggregate_module, aggregate_uuid)
-    child_spec = {Aggregate, aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid}
+    module_name = Module.concat([application, __MODULE__])
+    aggregate_name = Aggregate.name(application, aggregate_module, aggregate_uuid)
 
-    case Registration.start_child(name, __MODULE__, child_spec) do
+    args = [
+      application: application,
+      aggregate_module: aggregate_module,
+      aggregate_uuid: aggregate_uuid
+    ]
+
+    case Registration.start_child(application, aggregate_name, module_name, {Aggregate, args}) do
       {:ok, _pid} ->
         {:ok, aggregate_uuid}
 

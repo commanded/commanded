@@ -35,11 +35,13 @@ defmodule Commanded.PubSub do
   """
   @callback list(application, topic :: String.t()) :: [{term, pid}]
 
+  @doc false
   def subscribe(application, topic) do
     pubsub = Module.concat([application, PubSub])
     pubsub.subscribe(topic)
   end
 
+  @doc false
   def broadcast(application, topic, message) do
     pubsub = Module.concat([application, PubSub])
     pubsub.subscribe(topic, message)

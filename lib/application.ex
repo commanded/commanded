@@ -14,6 +14,20 @@ defmodule Commanded.Application do
         router MyApp.Router
       end
 
+  Could be configured with:
+
+      # config/config.exs
+      config :my_app, MyApp.Application
+        event_store: [
+          adapter: Commanded.EventStore.Adapters.EventStore,
+          event_store: MyApp.EventStore
+        ],
+        pub_sub: :local,
+        registry: :local
+
+  Alternatively, you can include the event store, pubsub, and registry config
+  when defining the application:
+
       defmodule MyApp.Application do
         use Commanded.Application,
           otp_app: :my_app,
@@ -21,15 +35,12 @@ defmodule Commanded.Application do
             adapter: Commanded.EventStore.Adapters.EventStore,
             event_store: MyApp.EventStore
           ],
-          pubsub: :local
+          pubsub: :local,
+          registry: :local
 
         router MyApp.Router
       end
 
-  Could be configured with:
-
-      config :my_app, MyApp.Application
-        event_store: [adapter: MyApp.EventStore, event_store: MyApp.EventStore]
   """
 
   @type t :: module
@@ -41,8 +52,7 @@ defmodule Commanded.Application do
 
       {otp_app, config} = Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
 
-      {event_store_adapter, event_store_config, event_store} =
-        Commanded.EventStore.adapter(__MODULE__, config)
+      {event_store_adapter, event_store_config} = Commanded.EventStore.adapter(__MODULE__, config)
 
       {pubsub_adapter, pubsub_config} = Commanded.PubSub.pubsub_provider(__MODULE__, config)
 
@@ -56,8 +66,7 @@ defmodule Commanded.Application do
       defmodule EventStore do
         use Commanded.EventStore.Adapter,
           adapter: event_store_adapter,
-          config: event_store_config,
-          event_store: event_store
+          config: event_store_config
       end
 
       defmodule PubSub do
@@ -67,7 +76,8 @@ defmodule Commanded.Application do
       end
 
       defmodule Registration do
-        use Commanded.Registration.Adapter, adapter: registry_adapter
+        use Commanded.Registration.Adapter,
+          adapter: registry_adapter
       end
 
       def config do

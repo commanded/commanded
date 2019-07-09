@@ -55,7 +55,7 @@ defmodule Commanded.Application.Supervisor do
             registry.child_spec() ++
             [
               {Task.Supervisor, name: task_dispatcher_name},
-              Commanded.Aggregates.Supervisor,
+              {Commanded.Aggregates.Supervisor, application: application},
               Commanded.Subscriptions.Registry,
               {Commanded.Subscriptions, application: application, name: subscriptions_name}
             ]

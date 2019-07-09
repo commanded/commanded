@@ -57,6 +57,18 @@ defmodule Commanded.Registration do
   """
   @callback via_tuple(registry :: module, name :: term()) :: {:via, module(), name :: term()}
 
+  @doc false
+  def start_child(application, name, supervisor, child_spec) do
+    registry = Module.concat([application, Registration])
+    registry.start_child(name, supervisor, child_spec)
+  end
+
+  @doc false
+  def whereis_name(application, name) do
+    registry = Module.concat([application, Registration])
+    registry.whereis_name(name)
+  end
+
   @doc """
   Get the configured process registry.
 

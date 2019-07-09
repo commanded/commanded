@@ -6,7 +6,6 @@ defmodule Commanded.Commands.Dispatcher do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Commands.ExecutionResult
-  alias Commanded.Commands.TaskDispatcher
   alias Commanded.Middleware.Pipeline
 
   defmodule Payload do
@@ -76,8 +75,11 @@ defmodule Commanded.Commands.Dispatcher do
 
     context = to_execution_context(pipeline, payload)
 
+    task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
+
     task =
-      Task.Supervisor.async_nolink(TaskDispatcher, Aggregate, :execute, [
+      Task.Supervisor.async_nolink(task_dispatcher_name, Aggregate, :execute, [
+        application,
         aggregate_module,
         aggregate_uuid,
         context,

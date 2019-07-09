@@ -1,6 +1,7 @@
 defmodule Commanded.Aggregates.AggregateConcurrencyTest do
   use Commanded.MockEventStoreCase
 
+  alias Commanded.MockedApp
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.ExampleDomain.{BankAccount, OpenAccountHandler, DepositMoneyHandler}
@@ -9,19 +10,17 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
 
   setup do
     expect(MockEventStore, :subscribe_to, fn
-      _stream_uuid, _handler_name, handler, _subscribe_from ->
+      MockedApp.EventStore, _stream_uuid, _handler_name, handler, _subscribe_from ->
         {:ok, handler}
     end)
 
-    expect(MockEventStore, :subscribe, fn _aggregate_uuid -> :ok end)
+    expect(MockEventStore, :subscribe, fn MockedApp.EventStore, _aggregate_uuid -> :ok end)
 
     :ok
   end
 
   describe "concurrency error" do
-    setup [
-      :open_account
-    ]
+    setup [:open_account]
 
     test "should retry command", context do
       %{account_number: account_number} = context
@@ -39,13 +38,19 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         retry_attempts: 5
       }
 
-      # fail to append once
-      expect(MockEventStore, :append_to_stream, fn ^account_number, 1, _event_data ->
+      # Fail to append once
+      expect(MockEventStore, :append_to_stream, fn MockedApp.EventStore,
+                                                   ^account_number,
+                                                   1,
+                                                   _event_data ->
         {:error, :wrong_expected_version}
       end)
 
-      # return "missing" event
-      expect(MockEventStore, :stream_forward, fn ^account_number, 2, _batch_size ->
+      # Return "missing" event
+      expect(MockEventStore, :stream_forward, fn MockedApp.EventStore,
+                                                 ^account_number,
+                                                 2,
+                                                 _batch_size ->
         [
           %RecordedEvent{
             event_id: UUID.uuid4(),
@@ -64,14 +69,20 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         ]
       end)
 
-      # succeed on second attempt
-      expect(MockEventStore, :append_to_stream, fn ^account_number, 2, _event_data -> :ok end)
+      # Succeed on second attempt
+      expect(MockEventStore, :append_to_stream, fn MockedApp.EventStore,
+                                                   ^account_number,
+                                                   2,
+                                                   _event_data ->
+        :ok
+      end)
 
-      assert {:ok, 3, _events} = Aggregate.execute(BankAccount, account_number, context)
+      assert {:ok, 3, _events} =
+               Aggregate.execute(MockedApp, BankAccount, account_number, context)
 
-      assert Aggregate.aggregate_version(BankAccount, account_number) == 3
+      assert Aggregate.aggregate_version(MockedApp, BankAccount, account_number) == 3
 
-      assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+      assert Aggregate.aggregate_state(MockedApp, BankAccount, account_number) == %BankAccount{
                account_number: account_number,
                balance: 1_600,
                state: :active
@@ -82,11 +93,19 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       %{account_number: account_number} = context
 
       # fail to append to stream
-      expect(MockEventStore, :append_to_stream, 6, fn ^account_number, 1, _event_data ->
+      expect(MockEventStore, :append_to_stream, 6, fn MockedApp.EventStore,
+                                                      ^account_number,
+                                                      1,
+                                                      _event_data ->
         {:error, :wrong_expected_version}
       end)
 
-      expect(MockEventStore, :stream_forward, 6, fn ^account_number, 2, _batch_size -> [] end)
+      expect(MockEventStore, :stream_forward, 6, fn MockedApp.EventStore,
+                                                    ^account_number,
+                                                    2,
+                                                    _batch_size ->
+        []
+      end)
 
       command = %DepositMoney{
         account_number: account_number,
@@ -102,17 +121,28 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       }
 
       assert {:error, :too_many_attempts} =
-               Aggregate.execute(BankAccount, account_number, context)
+               Aggregate.execute(MockedApp, BankAccount, account_number, context)
     end
 
     defp open_account(_context) do
       account_number = UUID.uuid4()
 
-      expect(MockEventStore, :stream_forward, fn ^account_number, 1, _batch_size -> [] end)
-      expect(MockEventStore, :append_to_stream, fn ^account_number, 0, _event_data -> :ok end)
+      expect(MockEventStore, :stream_forward, fn MockedApp.EventStore,
+                                                 ^account_number,
+                                                 1,
+                                                 _batch_size ->
+        []
+      end)
+
+      expect(MockEventStore, :append_to_stream, fn MockedApp.EventStore,
+                                                   ^account_number,
+                                                   0,
+                                                   _event_data ->
+        :ok
+      end)
 
       {:ok, ^account_number} =
-        Commanded.Aggregates.Supervisor.open_aggregate(BankAccount, account_number)
+        Commanded.Aggregates.Supervisor.open_aggregate(MockedApp, BankAccount, account_number)
 
       command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
 
@@ -123,7 +153,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         retry_attempts: 1
       }
 
-      {:ok, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
+      {:ok, 1, _events} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
 
       [
         account_number: account_number
