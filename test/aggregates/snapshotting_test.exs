@@ -1,6 +1,10 @@
 defmodule Commanded.Aggregates.SnapshottingTest do
   use Commanded.StorageCase
 
+  import Commanded.ConfigureSnapshotting
+
+  alias Commanded.DefaultApp
+
   alias Commanded.Aggregates.{
     Aggregate,
     AppendItemsHandler,
@@ -17,20 +21,22 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   setup do
     on_exit(fn ->
-      unconfigure_snapshotting(ExampleAggregate)
+      unconfigure_snapshotting(DefaultApp, ExampleAggregate)
     end)
   end
 
   describe "with snapshotting disabled" do
     setup do
-      configure_snapshotting(ExampleAggregate, snapshot_every: nil)
+      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: nil)
+      start_supervised!(DefaultApp)
+      :ok
     end
 
     test "should not shapshot" do
       aggregate_uuid = UUID.uuid4()
       append_items(aggregate_uuid, 1)
 
-      assert EventStore.read_snapshot(aggregate_uuid) == {:error, :snapshot_not_found}
+      assert EventStore.read_snapshot(DefaultApp, aggregate_uuid) == {:error, :snapshot_not_found}
     end
 
     test "should ignore existing snapshot" do
@@ -55,27 +61,31 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "with zero shapshot interval" do
     setup do
-      configure_snapshotting(ExampleAggregate, snapshot_every: 0)
+      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 0)
+      start_supervised!(DefaultApp)
+      :ok
     end
 
     test "should not shapshot when set to 0" do
       aggregate_uuid = UUID.uuid4()
       append_items(aggregate_uuid, 1)
 
-      assert EventStore.read_snapshot(aggregate_uuid) == {:error, :snapshot_not_found}
+      assert EventStore.read_snapshot(DefaultApp, aggregate_uuid) == {:error, :snapshot_not_found}
     end
   end
 
   describe "with snapshotting configured" do
     setup do
-      configure_snapshotting(ExampleAggregate, snapshot_every: 10)
+      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 10)
+      start_supervised!(DefaultApp)
+      :ok
     end
 
     test "should not shapshot when fewer snapshot interval" do
       aggregate_uuid = UUID.uuid4()
       append_items(aggregate_uuid, 9)
 
-      assert EventStore.read_snapshot(aggregate_uuid) == {:error, :snapshot_not_found}
+      assert EventStore.read_snapshot(DefaultApp, aggregate_uuid) == {:error, :snapshot_not_found}
     end
 
     test "should shapshot when exactly snapshot interval" do
@@ -84,7 +94,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
       assert_aggregate_version(ExampleAggregate, aggregate_uuid, 10)
 
-      assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
+      assert {:ok, snapshot} = EventStore.read_snapshot(DefaultApp, aggregate_uuid)
 
       assert snapshot == %SnapshotData{
                source_uuid: aggregate_uuid,
@@ -104,7 +114,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
       assert_aggregate_version(ExampleAggregate, aggregate_uuid, 11)
 
-      assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
+      assert {:ok, snapshot} = EventStore.read_snapshot(DefaultApp, aggregate_uuid)
 
       assert snapshot == %SnapshotData{
                source_uuid: aggregate_uuid,
@@ -123,17 +133,17 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
       append_items(aggregate_uuid, 10)
       assert_aggregate_version(ExampleAggregate, aggregate_uuid, 10)
-      assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
+      assert {:ok, snapshot} = EventStore.read_snapshot(DefaultApp, aggregate_uuid)
       assert snapshot.source_version == 10
 
       append_items(aggregate_uuid, 1)
       assert_aggregate_version(ExampleAggregate, aggregate_uuid, 11)
-      assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
+      assert {:ok, snapshot} = EventStore.read_snapshot(DefaultApp, aggregate_uuid)
       assert snapshot.source_version == 10
 
       append_items(aggregate_uuid, 10)
       assert_aggregate_version(ExampleAggregate, aggregate_uuid, 21)
-      assert {:ok, snapshot} = EventStore.read_snapshot(aggregate_uuid)
+      assert {:ok, snapshot} = EventStore.read_snapshot(DefaultApp, aggregate_uuid)
 
       assert snapshot == %SnapshotData{
                source_uuid: aggregate_uuid,
@@ -150,7 +160,9 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "restore snapshot" do
     setup do
-      configure_snapshotting(ExampleAggregate, snapshot_every: 10)
+      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 10)
+      start_supervised!(DefaultApp)
+      :ok
     end
 
     test "should restore state from events when no snapshot" do
@@ -207,7 +219,10 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "mismatched snapshot versions" do
     setup do
-      configure_snapshotting(ExampleAggregate, snapshot_every: 10, snapshot_version: 2)
+      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 10, snapshot_version: 2)
+
+      start_supervised!(DefaultApp)
+      :ok
     end
 
     test "should ignore older snapshot versions" do
@@ -238,7 +253,10 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "decode snapshot data" do
     setup do
-      configure_snapshotting(SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)
+      configure_snapshotting(DefaultApp, SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)
+
+      start_supervised!(DefaultApp)
+      :ok
     end
 
     test "should parse datetime" do
@@ -262,36 +280,32 @@ defmodule Commanded.Aggregates.SnapshottingTest do
         function: :execute
       }
 
-      {:ok, ^aggregate_uuid} = Supervisor.open_aggregate(SnapshotAggregate, aggregate_uuid)
+      {:ok, ^aggregate_uuid} =
+        Supervisor.open_aggregate(DefaultApp, SnapshotAggregate, aggregate_uuid)
 
       {:ok, _count, _events} =
-        Aggregate.execute(SnapshotAggregate, aggregate_uuid, execution_context)
+        Aggregate.execute(DefaultApp, SnapshotAggregate, aggregate_uuid, execution_context)
     end
   end
 
   # Assert aggregate's state equals the given expected state.
   defp assert_aggregate_state(aggregate_module, aggregate_uuid, expected_state) do
-    assert Aggregate.aggregate_state(aggregate_module, aggregate_uuid) == expected_state
+    assert Aggregate.aggregate_state(DefaultApp, aggregate_module, aggregate_uuid) ==
+             expected_state
   end
 
   # Assert aggregate's version equals the given expected version.
   defp assert_aggregate_version(aggregate_module, aggregate_uuid, expected_version) do
-    assert Aggregate.aggregate_version(aggregate_module, aggregate_uuid) == expected_version
+    assert Aggregate.aggregate_version(DefaultApp, aggregate_module, aggregate_uuid) ==
+             expected_version
   end
 
   # Restart the aggregate process
   defp restart_aggregate(aggregate_module, aggregate_uuid) do
-    assert :ok = Aggregate.shutdown(aggregate_module, aggregate_uuid)
+    assert :ok = Aggregate.shutdown(DefaultApp, aggregate_module, aggregate_uuid)
 
-    assert {:ok, ^aggregate_uuid} = Supervisor.open_aggregate(aggregate_module, aggregate_uuid)
-  end
-
-  defp configure_snapshotting(aggregate_module, opts) do
-    Application.put_env(:commanded, aggregate_module, opts)
-  end
-
-  defp unconfigure_snapshotting(aggregate_module) do
-    Application.delete_env(:commanded, aggregate_module)
+    assert {:ok, ^aggregate_uuid} =
+             Supervisor.open_aggregate(DefaultApp, aggregate_module, aggregate_uuid)
   end
 
   defp append_items(aggregate_uuid, count) do
@@ -301,10 +315,11 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       function: :handle
     }
 
-    {:ok, ^aggregate_uuid} = Supervisor.open_aggregate(ExampleAggregate, aggregate_uuid)
+    {:ok, ^aggregate_uuid} =
+      Supervisor.open_aggregate(DefaultApp, ExampleAggregate, aggregate_uuid)
 
     {:ok, _count, _events} =
-      Aggregate.execute(ExampleAggregate, aggregate_uuid, execution_context)
+      Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, execution_context)
   end
 
   defp snapshot_aggregate(aggregate_uuid, aggregate_version, aggregate_state, metadata \\ %{})
@@ -318,6 +333,6 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       metadata: metadata
     }
 
-    :ok = Commanded.EventStore.record_snapshot(snapshot)
+    :ok = Commanded.EventStore.record_snapshot(DefaultApp, snapshot)
   end
 end

@@ -173,6 +173,12 @@ defmodule Commanded.EventStore do
     event_store.read_snapshot(source_uuid)
   end
 
+  @doc false
+  def record_snapshot(application, snapshot) do
+    event_store = Module.concat([application, EventStore])
+    event_store.record_snapshot(snapshot)
+  end
+
   @doc """
   Get the configured event store adapter for the given application.
   """

@@ -29,12 +29,16 @@ defmodule Commanded.Aggregates.Aggregate do
 
   ### Example
 
-  In `config/config.exs` enable snapshots for `ExampleAggregate` after every ten
-  events:
+  In `config/config.exs` enable snapshots for `MyApp.ExampleAggregate` after
+  every ten events:
 
-      config :commanded, ExampleAggregate,
-        snapshot_every: 10,
-        snapshot_version: 1
+      config :my_app, MyApp.Application,
+        snapshotting: %{
+          MyApp.ExampleAggregate => [
+            snapshot_every: 10,
+            snapshot_version: 1
+          ]
+        }
 
   """
 
@@ -62,10 +66,7 @@ defmodule Commanded.Aggregates.Aggregate do
     lifespan_timeout: :infinity
   ]
 
-  def start_link(args) do
-    opts = [name: args[:name]]
-
-    application = Keyword.fetch!(args, :application)
+  def start_link(config, args) do
     aggregate_module = Keyword.fetch!(args, :aggregate_module)
     aggregate_uuid = Keyword.fetch!(args, :aggregate_uuid)
 
@@ -73,15 +74,18 @@ defmodule Commanded.Aggregates.Aggregate do
       raise "aggregate_module must be an atom and aggregate_uuid must be a string"
     end
 
-    snapshotting =
-      Snapshotting.new(application, aggregate_uuid, snapshot_options(aggregate_module))
+    application = Keyword.fetch!(config, :application)
+    snapshotting = Keyword.get(config, :snapshotting, %{})
+    snapshot_options = Map.get(snapshotting, aggregate_module, [])
 
     aggregate = %Aggregate{
       application: application,
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
-      snapshotting: snapshotting
+      snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
     }
+
+    opts = [name: args[:name]]
 
     GenServer.start_link(__MODULE__, aggregate, opts)
   end
@@ -541,9 +545,10 @@ defmodule Commanded.Aggregates.Aggregate do
     EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
   end
 
-  # get the snapshot options for the aggregate defined in environment config.
-  defp snapshot_options(aggregate_module),
-    do: Application.get_env(:commanded, aggregate_module, [])
+  # Get the snapshot options for the aggregate defined in environment config.
+  defp snapshot_options(aggregate_module) do
+    Application.get_env(:commanded, aggregate_module, [])
+  end
 
   defp via_name(application, aggregate_module, aggregate_uuid) do
     name = name(application, aggregate_module, aggregate_uuid)

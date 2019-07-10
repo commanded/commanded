@@ -5,14 +5,19 @@ defmodule Commanded.Aggregates.ExampleAggregate do
             last_index: 0
 
   defmodule Commands do
-    defmodule(AppendItems, do: defstruct(count: 0))
-    defmodule(NoOp, do: defstruct(count: 0))
+    defmodule AppendItems do
+      defstruct count: 0
+    end
+
+    defmodule NoOp do
+      defstruct count: 0
+    end
   end
 
   defmodule Events do
     defmodule ItemAppended do
       @derive Jason.Encoder
-      defstruct([:index])
+      defstruct [:index]
     end
   end
 

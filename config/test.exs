@@ -19,11 +19,10 @@ config :commanded, InMemory, serializer: JsonSerializer
 
 config :commanded, Commanded.TestApplication,
   event_store: [adapter: InMemory, serializer: JsonSerializer],
-  pubsub: :local
+  pubsub: :local,
+  registry: :local
 
-# config :commanded, Commanded.TestApplication,
-#   event_store: [adapter: EventStore, event_store: MyApp.EventStore]
-
-config :commanded, Commanded.Aggregates.LifespanAggregate,
-  snapshot_every: 2,
-  snapshot_version: 1
+config :commanded, Commanded.DefaultApp,
+  event_store: [adapter: InMemory, serializer: JsonSerializer],
+  pubsub: :local,
+  registry: :local

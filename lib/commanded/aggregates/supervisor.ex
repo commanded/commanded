@@ -62,7 +62,7 @@ defmodule Commanded.Aggregates.Supervisor do
   def open_aggregate(_application, _aggregate_module, aggregate_uuid),
     do: {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
 
-  def init(_arg) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+  def init(args) do
+    DynamicSupervisor.init(strategy: :one_for_one, extra_arguments: [args])
   end
 end
