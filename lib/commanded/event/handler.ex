@@ -302,7 +302,10 @@ defmodule Commanded.Event.Handler do
       @doc false
       def init, do: :ok
 
-      defoverridable init: 0
+      @doc false
+      def before_reset, do: :ok
+
+      defoverridable init: 0, before_reset: 0
     end
   end
 
@@ -400,6 +403,31 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
+  def handle_info(:reset, %Handler{} = state) do
+    %Handler{
+      handler_module: handler_module
+    } = state
+
+    case handler_module.before_reset() do
+      :ok ->
+        try do
+          state = state |> reset_subscription() |> subscribe_to_events()
+
+          {:noreply, state}
+        catch
+          {:error, reason} ->
+            {:stop, reason, state}
+        end
+
+      {:stop, reason} ->
+        Logger.debug(fn ->
+          describe(state) <> " `before_reset/0` callback has requested to stop. (reason: #{inspect(reason)})"
+        end)
+        {:stop, reason, state}
+    end
+  end
+
+  @doc false
   # Subscription to event store has successfully subscribed, init event handler
   def handle_info({:subscribed, subscription}, %Handler{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
@@ -451,6 +479,22 @@ defmodule Commanded.Event.Handler do
     %Handler{consistency: consistency, handler_name: name} = state
 
     Subscriptions.register(name, consistency)
+  end
+
+  defp reset_subscription(%Handler{} = state) do
+    %Handler{
+      handler_name: handler_name,
+      subscribe_to: subscribe_to,
+      subscription_ref: subscription_ref,
+      subscription: subscription,
+    } = state
+
+    Process.demonitor(subscription_ref)
+
+    :ok = EventStore.unsubscribe(subscription)
+    :ok = EventStore.delete_subscription(subscribe_to, handler_name)
+
+    %Handler{state | last_seen_event: 0, subscription: nil, subscription_ref: nil}
   end
 
   defp subscribe_to_events(%Handler{} = state) do

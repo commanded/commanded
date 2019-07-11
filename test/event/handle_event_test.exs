@@ -8,7 +8,7 @@ defmodule Commanded.Event.HandleEventTest do
   alias Commanded.Event.{AppendingEventHandler, UninterestingEvent}
   alias Commanded.Helpers.EventFactory
   alias Commanded.Helpers.{ProcessHelper, Wait}
-  alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
+  alias Commanded.ExampleDomain.BankAccount.{BankAccountHandler, AccountBalanceHandler}
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
 
   describe "balance handler" do
@@ -59,6 +59,56 @@ defmodule Commanded.Event.HandleEventTest do
 
       Wait.until(fn ->
         assert AccountBalanceHandler.current_balance() == 1_050
+      end)
+    end
+
+    test "An event handler can be reset (:origin mode)" do
+      stream_uuid = UUID.uuid4()
+      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+
+      :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
+
+      {:ok, handler} = BankAccountHandler.start_link()
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["ACC123"]
+      end)
+
+      :ok = BankAccountHandler.change_prefix("PREF_")
+
+      send(handler, :reset)
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["PREF_ACC123"]
+      end)
+    end
+
+    test "An event handler can be reset (:current mode)" do
+      stream_uuid = UUID.uuid4()
+
+      # Ignored events
+      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+      :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
+
+      {:ok, handler} = BankAccountHandler.start_link(start_from: :current)
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == []
+      end)
+
+      :ok = BankAccountHandler.change_prefix("PREF_")
+
+      send(handler, :reset)
+
+      new_event = [%BankAccountOpened{account_number: "ACC1234", initial_balance: 1_000}]
+      :ok = EventStore.append_to_stream(stream_uuid, 1, to_event_data(new_event))
+
+      wait_for_event(BankAccountOpened, fn event, recorded_event ->
+        event.account_number == "ACC1234" and recorded_event.event_number == 2
+      end)
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["PREF_ACC1234"]
       end)
     end
   end
