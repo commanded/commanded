@@ -1,7 +1,7 @@
 defmodule Commanded.ProcessManagers.ExampleProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.{ExampleProcessManager, ExampleRouter}
+  alias Commanded.ProcessManagers.{ExampleApp, ExampleProcessManager}
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
 
   alias Commanded.ProcessManagers.ExampleAggregate.Events.{
@@ -14,8 +14,8 @@ defmodule Commanded.ProcessManagers.ExampleProcessManager do
   }
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: "ExampleProcessManager",
-    router: ExampleRouter
+    application: ExampleApp,
+    name: "ExampleProcessManager"
 
   @derive Jason.Encoder
   defstruct [:status, items: []]

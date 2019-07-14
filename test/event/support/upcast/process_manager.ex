@@ -12,14 +12,20 @@ defmodule Commanded.Event.Upcast.ProcessManager do
     dispatch Ok, to: Aggregate, identity: :id
   end
 
+  defmodule Application do
+    use Commanded.Application, otp_app: :commanded
+
+    router(Router)
+  end
+
   @derive Jason.Encoder
   defstruct []
 
   alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: "UpcastProcessManager",
-    router: Router
+    application: Application,
+    name: "UpcastProcessManager"
 
   def interested?(%EventOne{process_id: process_id}), do: {:start, process_id}
   def interested?(%EventTwo{process_id: process_id}), do: {:start, process_id}

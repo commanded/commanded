@@ -545,11 +545,6 @@ defmodule Commanded.Aggregates.Aggregate do
     EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
   end
 
-  # Get the snapshot options for the aggregate defined in environment config.
-  defp snapshot_options(aggregate_module) do
-    Application.get_env(:commanded, aggregate_module, [])
-  end
-
   defp via_name(application, aggregate_module, aggregate_uuid) do
     name = name(application, aggregate_module, aggregate_uuid)
     via_tuple(application, name)

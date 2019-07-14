@@ -51,17 +51,16 @@ defmodule Commanded.Application do
       @behaviour Commanded.Application
 
       {otp_app, config} = Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
-
       {event_store_adapter, event_store_config} = Commanded.EventStore.adapter(__MODULE__, config)
-
       {pubsub_adapter, pubsub_config} = Commanded.PubSub.pubsub_provider(__MODULE__, config)
-
       registry_adapter = Commanded.Registration.registry_provider(__MODULE__, config)
 
       @otp_app otp_app
       @event_store_adapter event_store_adapter
       @pubsub_adapter pubsub_adapter
       @registry_adapter registry_adapter
+
+      use Commanded.Commands.CompositeRouter
 
       defmodule EventStore do
         use Commanded.EventStore.Adapter,
@@ -119,10 +118,6 @@ defmodule Commanded.Application do
       def stop(pid, timeout \\ 5000) do
         Supervisor.stop(pid, :normal, timeout)
       end
-
-      def dispatch(command, opts \\ []) do
-        :ok
-      end
     end
   end
 
@@ -162,7 +157,7 @@ defmodule Commanded.Application do
   @doc """
   Dispatch a registered command.
   """
-  @callback dispatch(command :: struct, opts :: Keyword.t()) ::
+  @callback dispatch(command :: struct, timeout_or_opts :: integer | :infinity | Keyword.t()) ::
               :ok
               | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:ok, aggregate_version :: non_neg_integer()}

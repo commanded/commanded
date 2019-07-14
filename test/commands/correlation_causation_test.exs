@@ -4,56 +4,56 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
   import Commanded.Assertions.EventAssertions
 
   alias Commanded.Commands.OpenAccountBonusHandler
+  alias Commanded.DefaultApp
   alias Commanded.EventStore
-  alias Commanded.ExampleDomain.{
-    BankRouter,
-    TransferMoneyProcessManager,
-  }
-  alias Commanded.ExampleDomain.BankAccount.Commands.{
-    OpenAccount,
-    WithdrawMoney,
-  }
-  alias Commanded.ExampleDomain.BankAccount.Events.{
-    MoneyDeposited,
-  }
+  alias Commanded.ExampleDomain.BankRouter
+  alias Commanded.ExampleDomain.TransferMoneyProcessManager
+  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
+  alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
-  alias Commanded.Helpers.{CommandAuditMiddleware,ProcessHelper}
+  alias Commanded.Helpers.CommandAuditMiddleware
+  alias Commanded.Helpers.ProcessHelper
 
   setup do
-    CommandAuditMiddleware.start_link()
-    CommandAuditMiddleware.reset()
+    {:ok, audit} = CommandAuditMiddleware.start_link()
 
-    {:ok, process_manager} = TransferMoneyProcessManager.start_link()
+    start_supervised!(DefaultApp)
+    start_supervised!(TransferMoneyProcessManager)
 
-    on_exit fn ->
-      ProcessHelper.shutdown(process_manager)
-    end
+    on_exit(fn ->
+      ProcessHelper.shutdown(audit)
+    end)
+
+    :ok
   end
 
   describe "`causation_id`" do
     test "should be `nil` when not provided" do
       open_account = %OpenAccount{account_number: "ACC123", initial_balance: 500}
 
-      :ok = BankRouter.dispatch(open_account, causation_id: nil)
+      :ok = BankRouter.dispatch(open_account, application: DefaultApp, causation_id: nil)
 
-      assert [nil] = CommandAuditMiddleware.dispatched_commands(&(&1.causation_id))
+      assert [nil] = CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
     end
 
     test "should be copied to dispatched command" do
       causation_id = UUID.uuid4()
       open_account = %OpenAccount{account_number: "ACC123", initial_balance: 500}
 
-      :ok = BankRouter.dispatch(open_account, causation_id: causation_id)
+      :ok = BankRouter.dispatch(open_account, application: DefaultApp, causation_id: causation_id)
 
       # a command's `causation_id` is set by the value passed to command dispatch
-      assert [^causation_id] = CommandAuditMiddleware.dispatched_commands(&(&1.causation_id))
+      assert [^causation_id] = CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
     end
 
     test "should be set from `command_uuid` on created event" do
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500})
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 500}
 
-      [command_uuid] = CommandAuditMiddleware.dispatched_commands(&(&1.command_uuid))
-      [event] = EventStore.stream_forward("ACC123") |> Enum.to_list()
+      :ok = BankRouter.dispatch(command, application: DefaultApp)
+
+      [command_uuid] = CommandAuditMiddleware.dispatched_commands(& &1.command_uuid)
+      [event] = EventStore.stream_forward(DefaultApp, "ACC123") |> Enum.to_list()
 
       # an event's `causation_id` is the dispatched command's `command_uuid`
       assert event.causation_id == command_uuid
@@ -62,46 +62,74 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
     test "should be copied onto commands/events by process manager" do
       transfer_uuid = UUID.uuid4()
 
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500})
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC456", initial_balance: 100})
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500},
+          application: DefaultApp
+        )
+
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC456", initial_balance: 100},
+          application: DefaultApp
+        )
 
       CommandAuditMiddleware.reset()
 
-      :ok = BankRouter.dispatch(%TransferMoney{transfer_uuid: transfer_uuid, debit_account: "ACC123", credit_account: "ACC456", amount: 100})
+      :ok =
+        BankRouter.dispatch(
+          %TransferMoney{
+            transfer_uuid: transfer_uuid,
+            debit_account: "ACC123",
+            credit_account: "ACC456",
+            amount: 100
+          },
+          application: DefaultApp
+        )
 
-      assert_receive_event MoneyDeposited, fn event -> assert event.transfer_uuid == transfer_uuid end
+      assert_receive_event(MoneyDeposited, fn event ->
+        assert event.transfer_uuid == transfer_uuid
+      end)
 
       # withdraw money command's `causation_id` should be money transfer requested event's id
-      transfer_requested = EventStore.stream_forward(transfer_uuid) |> Enum.at(0)
-      [_, causation_id, _] = CommandAuditMiddleware.dispatched_commands(&(&1.causation_id))
+      transfer_requested = EventStore.stream_forward(DefaultApp, transfer_uuid) |> Enum.at(0)
+      [_, causation_id, _] = CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
       assert causation_id == transfer_requested.event_id
     end
   end
 
   describe "`correlation_id`" do
     test "should default to a generated UUID when not provided" do
-      open_account = %OpenAccount{account_number: "ACC123", initial_balance: 500}
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 500}
 
-      :ok = BankRouter.dispatch(open_account, correlation_id: nil)
+      :ok = BankRouter.dispatch(command, application: DefaultApp, correlation_id: nil)
 
-      assert [correlation_id] = CommandAuditMiddleware.dispatched_commands(&(&1.correlation_id))
+      assert [correlation_id] = CommandAuditMiddleware.dispatched_commands(& &1.correlation_id)
       refute is_nil(correlation_id)
       assert correlation_id |> UUID.string_to_binary!() |> is_binary()
     end
 
     test "should be copied to dispatched command" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 500}
       correlation_id = UUID.uuid4()
 
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500}, correlation_id: correlation_id)
+      :ok = BankRouter.dispatch(command, application: DefaultApp, correlation_id: correlation_id)
 
-      assert [^correlation_id] = CommandAuditMiddleware.dispatched_commands(&(&1.correlation_id))
+      assert [^correlation_id] = CommandAuditMiddleware.dispatched_commands(& &1.correlation_id)
     end
 
     test "should be set on all created events" do
       correlation_id = UUID.uuid4()
 
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500}, correlation_id: correlation_id)
-      :ok = BankRouter.dispatch(%WithdrawMoney{account_number: "ACC123", amount: 1_000}, correlation_id: correlation_id)
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500},
+          application: DefaultApp,
+          correlation_id: correlation_id
+        )
+
+      :ok =
+        BankRouter.dispatch(%WithdrawMoney{account_number: "ACC123", amount: 1_000},
+          application: DefaultApp,
+          correlation_id: correlation_id
+        )
 
       events = EventStore.stream_forward("ACC123") |> Enum.to_list()
       assert length(events) == 3
@@ -115,18 +143,37 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       correlation_id = UUID.uuid4()
       transfer_uuid = UUID.uuid4()
 
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500})
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC456", initial_balance: 100})
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500},
+          application: DefaultApp
+        )
+
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC456", initial_balance: 100},
+          application: DefaultApp
+        )
 
       CommandAuditMiddleware.reset()
 
-      :ok = BankRouter.dispatch(%TransferMoney{transfer_uuid: transfer_uuid, debit_account: "ACC123", credit_account: "ACC456", amount: 100}, correlation_id: correlation_id)
+      :ok =
+        BankRouter.dispatch(
+          %TransferMoney{
+            transfer_uuid: transfer_uuid,
+            debit_account: "ACC123",
+            credit_account: "ACC456",
+            amount: 100
+          },
+          application: DefaultApp,
+          correlation_id: correlation_id
+        )
 
-      assert_receive_event MoneyDeposited, fn event -> assert event.transfer_uuid == transfer_uuid end
+      assert_receive_event(MoneyDeposited, fn event ->
+        assert event.transfer_uuid == transfer_uuid
+      end)
 
       # `correlation_id` should be the same for all commands & events related to money transfer
       assert [correlation_id, correlation_id, correlation_id] =
-        CommandAuditMiddleware.dispatched_commands(&(&1.correlation_id))
+               CommandAuditMiddleware.dispatched_commands(& &1.correlation_id)
 
       event = EventStore.stream_forward(transfer_uuid) |> Enum.at(0)
       assert event.correlation_id == correlation_id
@@ -139,43 +186,55 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
     test "should copy `correlation_id` from handled event" do
       correlation_id = UUID.uuid4()
 
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500}, correlation_id: correlation_id)
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500},
+          application: DefaultApp,
+          correlation_id: correlation_id
+        )
 
-      assert_receive_event MoneyDeposited, fn event ->
+      assert_receive_event(MoneyDeposited, fn event ->
         assert event.account_number == "ACC123"
         assert event.amount == 100
-      end
+      end)
 
-      money_deposited = EventStore.stream_forward("ACC123") |> Enum.to_list() |> Enum.at(-1)
+      money_deposited =
+        EventStore.stream_forward(DefaultApp, "ACC123") |> Enum.to_list() |> Enum.at(-1)
 
       assert money_deposited.correlation_id == correlation_id
     end
 
     test "should copy `causation_id` from handled event" do
-      :ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500})
+      :ok =
+        BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 500},
+          application: DefaultApp
+        )
 
-      assert_receive_event MoneyDeposited, fn event ->
+      assert_receive_event(MoneyDeposited, fn event ->
         assert event.account_number == "ACC123"
         assert event.amount == 100
-      end
+      end)
 
       [account_opened, money_deposited] = EventStore.stream_forward("ACC123") |> Enum.to_list()
 
       # should set command causation id as handled event id
-      [_causation_id, causation_id] = CommandAuditMiddleware.dispatched_commands(&(&1.causation_id))
+      [_causation_id, causation_id] =
+        CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
+
       assert causation_id == account_opened.event_id
 
       # should set created event causation id as the command uuid
-      [_command_uuid, command_uuid] = CommandAuditMiddleware.dispatched_commands(&(&1.command_uuid))
+      [_command_uuid, command_uuid] =
+        CommandAuditMiddleware.dispatched_commands(& &1.command_uuid)
+
       assert money_deposited.causation_id == command_uuid
     end
 
     def start_account_bonus_handler(_context) do
       {:ok, handler} = OpenAccountBonusHandler.start_link()
 
-      on_exit fn ->
+      on_exit(fn ->
         ProcessHelper.shutdown(handler)
-      end
+      end)
     end
   end
 end

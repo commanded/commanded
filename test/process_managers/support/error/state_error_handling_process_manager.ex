@@ -1,13 +1,13 @@
 defmodule Commanded.ProcessManagers.StateErrorHandlingProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.{StateErrorHandlingProcessManager, ExampleRouter}
+  alias Commanded.ProcessManagers.{ExampleApp, StateErrorHandlingProcessManager}
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.AttemptProcess
   alias Commanded.ProcessManagers.ErrorAggregate.Events.ProcessStarted
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: "StateErrorHandlingProcessManager",
-    router: ExampleRouter
+    application: ExampleApp,
+    name: "StateErrorHandlingProcessManager"
 
   defstruct [:process_uuid, :reply_to]
 

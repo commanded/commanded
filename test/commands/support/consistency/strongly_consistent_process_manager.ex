@@ -1,10 +1,10 @@
 defmodule Commanded.Commands.StronglyConsistentProcessManager do
-  alias Commanded.Commands.{ConsistencyRouter, StronglyConsistentProcessManager}
+  alias Commanded.Commands.{ConsistencyApp, StronglyConsistentProcessManager}
 
   use Commanded.ProcessManagers.ProcessManager,
+    application: ConsistencyApp,
     name: __MODULE__,
-    consistency: :strong,
-    router: ConsistencyRouter
+    consistency: :strong
 
   @derive Jason.Encoder
   defstruct [

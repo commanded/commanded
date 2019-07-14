@@ -3,12 +3,12 @@ defmodule Commanded.ProcessManagers.TimeoutProcessManager do
 
   alias Commanded.ProcessManagers.ExampleAggregate.Events.Started
   alias Commanded.ProcessManagers.ExampleAggregate.Events.Stopped
-  alias Commanded.ProcessManagers.ExampleRouter
+  alias Commanded.ProcessManagers.ExampleApp
   alias Commanded.ProcessManagers.TimeoutProcessManager
 
   use Commanded.ProcessManagers.ProcessManager,
+    application: ExampleApp,
     name: "TimeoutProcessManager",
-    router: ExampleRouter,
     idle_timeout: :timer.minutes(1)
 
   @derive Jason.Encoder

@@ -1,8 +1,8 @@
 defmodule Commanded.ProcessManagers.ResumeProcessManager do
   @moduledoc false
   use Commanded.ProcessManagers.ProcessManager,
-    name: "resume-process-manager",
-    router: ResumeRouter
+    application: Commanded.ProcessManagers.ResumeApp,
+    name: "resume-process-manager"
 
   @derive Jason.Encoder
   defstruct status_history: []

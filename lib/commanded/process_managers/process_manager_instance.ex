@@ -10,7 +10,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
 
   defstruct [
-    :command_dispatcher,
+    :application,
     :idle_timeout,
     :process_router,
     :process_manager_name,
@@ -24,7 +24,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     process_manager_module = Keyword.fetch!(opts, :process_manager_module)
 
     state = %ProcessManagerInstance{
-      command_dispatcher: Keyword.fetch!(opts, :command_dispatcher),
+      application: Keyword.fetch!(opts, :application),
       idle_timeout: Keyword.fetch!(opts, :idle_timeout),
       process_router: Keyword.fetch!(opts, :process_router),
       process_manager_name: Keyword.fetch!(opts, :process_manager_name),
@@ -37,9 +37,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   def init(%ProcessManagerInstance{} = state) do
-    GenServer.cast(self(), :fetch_state)
-
-    {:ok, state}
+    {:ok, state, {:continue, :fetch_state}}
   end
 
   @doc """
@@ -72,6 +70,28 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     GenServer.call(process_manager, :process_state)
   end
 
+  @doc """
+  Attempt to fetch intial process state from snapshot storage.
+  """
+  def handle_continue(:fetch_state, %ProcessManagerInstance{} = state) do
+    %ProcessManagerInstance{application: application} = state
+
+    state =
+      case EventStore.read_snapshot(application, process_state_uuid(state)) do
+        {:ok, snapshot} ->
+          %ProcessManagerInstance{
+            state
+            | process_state: snapshot.data,
+              last_seen_event: snapshot.source_version
+          }
+
+        {:error, :snapshot_not_found} ->
+          state
+      end
+
+    {:noreply, state}
+  end
+
   @doc false
   def handle_call(:stop, _from, %ProcessManagerInstance{} = state) do
     :ok = delete_state(state)
@@ -92,26 +112,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %ProcessManagerInstance{idle_timeout: idle_timeout, last_seen_event: last_seen_event} = state
 
     {:reply, is_nil(last_seen_event), state, idle_timeout}
-  end
-
-  @doc """
-  Attempt to fetch intial process state from snapshot storage
-  """
-  def handle_cast(:fetch_state, %ProcessManagerInstance{} = state) do
-    state =
-      case EventStore.read_snapshot(process_state_uuid(state)) do
-        {:ok, snapshot} ->
-          %ProcessManagerInstance{
-            state
-            | process_state: snapshot.data,
-              last_seen_event: snapshot.source_version
-          }
-
-        {:error, :snapshot_not_found} ->
-          state
-      end
-
-    {:noreply, state}
   end
 
   @doc """
@@ -277,11 +277,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp dispatch_commands([], _opts, _state, _last_event, _context), do: :ok
 
   defp dispatch_commands([command | pending_commands], opts, state, last_event, context) do
+    %ProcessManagerInstance{application: application} = state
+
     Logger.debug(fn ->
       describe(state) <> " attempting to dispatch command: #{inspect(command)}"
     end)
 
-    case state.command_dispatcher.dispatch(command, opts) do
+    case application.dispatch(command, opts) do
       :ok ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
@@ -361,20 +363,25 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   defp persist_state(source_version, %ProcessManagerInstance{} = state) do
     %ProcessManagerInstance{
+      application: application,
       process_manager_module: process_manager_module,
       process_state: process_state
     } = state
 
-    EventStore.record_snapshot(%SnapshotData{
+    snapshot = %SnapshotData{
       source_uuid: process_state_uuid(state),
       source_version: source_version,
       source_type: Atom.to_string(process_manager_module),
       data: process_state
-    })
+    }
+
+    EventStore.record_snapshot(application, snapshot)
   end
 
   defp delete_state(%ProcessManagerInstance{} = state) do
-    EventStore.delete_snapshot(process_state_uuid(state))
+    %ProcessManagerInstance{application: application} = state
+
+    EventStore.delete_snapshot(application, process_state_uuid(state))
   end
 
   defp ack_event(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do

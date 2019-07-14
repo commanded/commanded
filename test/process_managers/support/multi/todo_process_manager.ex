@@ -1,11 +1,11 @@
 defmodule Commanded.ProcessManagers.TodoProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.{TodoRouter, TodoProcessManager}
+  alias Commanded.ProcessManagers.{TodoApp, TodoProcessManager}
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: __MODULE__,
-    router: TodoRouter
+    application: TodoApp,
+    name: __MODULE__
 
   @derive Jason.Encoder
   defstruct [:todo_uuid]

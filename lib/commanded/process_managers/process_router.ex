@@ -19,7 +19,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     @moduledoc false
 
     defstruct [
-      :command_dispatcher,
+      :application,
       :consistency,
       :event_timeout,
       :idle_timeout,
@@ -37,17 +37,17 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     ]
   end
 
-  def start_link(process_manager_name, process_manager_module, command_dispatcher, opts \\ []) do
-    name = {ProcessRouter, process_manager_name}
+  def start_link(application, name, module, opts \\ []) do
+    name = {application, ProcessRouter, name}
 
     state = %State{
-      process_manager_name: process_manager_name,
-      process_manager_module: process_manager_module,
-      command_dispatcher: command_dispatcher,
-      consistency: opts[:consistency] || :eventual,
-      subscribe_from: opts[:start_from] || :origin,
-      event_timeout: opts[:event_timeout],
-      idle_timeout: opts[:idle_timeout] || :infinity
+      application: application,
+      process_manager_name: name,
+      process_manager_module: module,
+      consistency: Keyword.get(opts, :consistency, :eventual),
+      subscribe_from: Keyword.get(opts, :start_from, :origin),
+      event_timeout: Keyword.get(opts, :event_timeout),
+      idle_timeout: Keyword.get(opts, :idle_timeout, :infinity)
     }
 
     Registration.start_link(name, __MODULE__, state)
@@ -447,7 +447,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   defp start_process_manager(process_uuid, %State{} = state) do
     %State{
-      command_dispatcher: command_dispatcher,
+      application: application,
       idle_timeout: idle_timeout,
       process_managers: process_managers,
       process_manager_name: process_manager_name,
@@ -456,7 +456,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     } = state
 
     opts = [
-      command_dispatcher: command_dispatcher,
+      application: application,
       idle_timeout: idle_timeout,
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
@@ -466,7 +466,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     {:ok, process_manager} = Supervisor.start_process_manager(supervisor, opts)
 
-    Process.monitor(process_manager)
+    _ref = Process.monitor(process_manager)
 
     state = %State{
       state

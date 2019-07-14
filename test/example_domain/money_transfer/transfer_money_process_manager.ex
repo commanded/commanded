@@ -2,6 +2,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   @moduledoc false
 
   use Commanded.ProcessManagers.ProcessManager,
+    application: Commanded.ExampleDomain.BankApp,
     name: __MODULE__,
     router: Commanded.ExampleDomain.BankRouter
 

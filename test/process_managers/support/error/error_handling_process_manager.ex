@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
 
   alias Commanded.ProcessManagers.{ErrorHandlingProcessManager, ErrorRouter, FailureContext}
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.{AttemptProcess, ContinueProcess}
+  alias Commanded.ProcessManagers.ErrorApp
 
   alias Commanded.ProcessManagers.ErrorAggregate.Events.{
     ProcessContinued,
@@ -12,8 +13,8 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   }
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: "ErrorHandlingProcessManager",
-    router: ErrorRouter
+    application: ErrorApp,
+    name: "ErrorHandlingProcessManager"
 
   @derive Jason.Encoder
   defstruct [:process_uuid]
