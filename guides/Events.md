@@ -238,3 +238,26 @@ defimpl Commanded.Event.Upcaster, for: HistoricalEvent do
   end
 end
 ```
+
+## Reset an EventHandler
+
+An event handler can be reset (using mix task), it will restart the event store subscription from the configured
+`start_from`. This allow an individual handler to be restart while the app is still running.
+
+You can define a `before_reset/1` method that will be called before resetting the event handler.
+
+```elixir
+defmodule ExampleHandler do
+  use Commanded.Event.Handler, name: __MODULE__
+
+  require Logger
+
+  alias Commanded.Event.FailureContext
+
+  def before_reset do
+    # Do something
+    :ok
+  end
+
+end
+```

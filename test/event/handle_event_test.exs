@@ -257,4 +257,30 @@ defmodule Commanded.Event.HandleEventTest do
       end
     """)
   end
+
+  describe "Mix task must be able to reset" do
+    test "Can reset an event handler" do
+      stream_uuid = UUID.uuid4()
+      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+
+      :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
+
+      {:ok, _handler} = BankAccountHandler.start_link()
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["ACC123"]
+      end)
+
+      :ok = BankAccountHandler.change_prefix("PREF_")
+      pid = Commanded.Registration.whereis_name({Commanded.Event.Handler, "Commanded.ExampleDomain.BankAccount.BankAccountHandler"})
+
+      assert :undefined != pid
+
+      Mix.Tasks.Commanded.Reset.run(["Commanded.ExampleDomain.BankAccount.BankAccountHandler"])
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["PREF_ACC123"]
+      end)
+    end
+  end
 end
