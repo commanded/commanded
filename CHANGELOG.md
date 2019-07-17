@@ -1,5 +1,11 @@
 # Changelog
 
+## Next release
+
+### Bug fixes
+
+- Fix regression in `Commanded.Middleware.Logger.delta/1` ([#295](https://github.com/commanded/commanded/pull/295)).
+
 ## v0.19.0
 
 ### Enhancements
