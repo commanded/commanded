@@ -258,16 +258,20 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   # Register this process manager as a subscription with the given consistency
   defp register_subscription(%State{} = state) do
-    %State{consistency: consistency, process_manager_name: name} = state
+    %State{application: application, consistency: consistency, process_manager_name: name} = state
 
-    Subscriptions.register(name, consistency)
+    Subscriptions.register(application, name, consistency)
   end
 
   defp subscribe_to_events(%State{} = state) do
-    %State{process_manager_name: process_manager_name, subscribe_from: subscribe_from} = state
+    %State{
+      application: application,
+      process_manager_name: process_manager_name,
+      subscribe_from: subscribe_from
+    } = state
 
     {:ok, subscription} =
-      EventStore.subscribe_to(:all, process_manager_name, self(), subscribe_from)
+      EventStore.subscribe_to(application, :all, process_manager_name, self(), subscribe_from)
 
     subscription_ref = Process.monitor(subscription)
 
@@ -501,11 +505,15 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   defp do_ack_event(event, %State{} = state) do
-    %State{consistency: consistency, process_manager_name: name, subscription: subscription} =
-      state
+    %State{
+      application: application,
+      consistency: consistency,
+      process_manager_name: name,
+      subscription: subscription
+    } = state
 
-    :ok = EventStore.ack_event(subscription, event)
-    :ok = Subscriptions.ack_event(name, consistency, event)
+    :ok = EventStore.ack_event(application, subscription, event)
+    :ok = Subscriptions.ack_event(application, name, consistency, event)
   end
 
   # Delegate event to process instance who will ack event processing on success

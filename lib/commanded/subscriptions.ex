@@ -22,8 +22,8 @@ defmodule Commanded.Subscriptions do
     GenServer.start_link(__MODULE__, subscriptions_opts, start_opts)
   end
 
-  defdelegate register(name, consistency), to: Subscriptions.Registry
-  defdelegate all(), to: Subscriptions.Registry
+  defdelegate register(application, name, consistency), to: Subscriptions.Registry
+  defdelegate all(application), to: Subscriptions.Registry
 
   @doc """
   Acknowledge receipt and sucessful processing of the given event by the named
@@ -40,13 +40,19 @@ defmodule Commanded.Subscriptions do
   end
 
   @doc false
-  def reset, do: GenServer.call(__MODULE__, :reset)
+  def reset(application) do
+    name = name(application)
+
+    GenServer.call(name, :reset)
+  end
 
   @doc """
   Have all the registered handlers processed the given event?
   """
-  def handled?(stream_uuid, stream_version, opts \\ []) do
-    GenServer.call(__MODULE__, {:handled?, stream_uuid, stream_version, opts})
+  def handled?(application, stream_uuid, stream_version, opts \\ []) do
+    name = name(application)
+
+    GenServer.call(name, {:handled?, stream_uuid, stream_version, opts})
   end
 
   @doc """
@@ -62,14 +68,22 @@ defmodule Commanded.Subscriptions do
 
   Returns `:ok` on success, or `{:error, :timeout}` on failure due to timeout.
   """
-  def wait_for(stream_uuid, stream_version, opts \\ [], timeout \\ default_consistency_timeout()) do
-    :ok = GenServer.call(__MODULE__, {:subscribe, stream_uuid, stream_version, opts, self()})
+  def wait_for(
+        application,
+        stream_uuid,
+        stream_version,
+        opts \\ [],
+        timeout \\ default_consistency_timeout()
+      ) do
+    name = name(application)
+
+    :ok = GenServer.call(name, {:subscribe, stream_uuid, stream_version, opts, self()})
 
     receive do
       {:ok, ^stream_uuid, ^stream_version} -> :ok
     after
       timeout ->
-        :ok = GenServer.call(__MODULE__, {:unsubscribe, self()})
+        :ok = GenServer.call(name, {:unsubscribe, self()})
         {:error, :timeout}
     end
   end
@@ -188,7 +202,9 @@ defmodule Commanded.Subscriptions do
          exclude,
          %Subscriptions{} = state
        ) do
-    Subscriptions.Registry.all()
+    %Subscriptions{application: application} = state
+
+    Subscriptions.Registry.all(application)
     |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclude, pid) end)
     |> Enum.filter(fn {name, _pid} ->
       # Optionally filter subscriptions to those provided by the `consistency` option
@@ -291,6 +307,8 @@ defmodule Commanded.Subscriptions do
   defp parse_exclude(exclude), do: exclude |> List.wrap() |> MapSet.new()
 
   defp monotonic_time, do: System.monotonic_time(:second)
+
+  defp name(application), do: Module.concat([application, __MODULE__])
 
   @default_ttl :timer.hours(1)
   @default_consistency_timeout :timer.seconds(5)

@@ -3,7 +3,7 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
 
   defmodule ExampleHandler do
     use Commanded.Event.Handler,
-      application: Commanded.DefaultApp,
+      application: Commanded.MockedApp,
       name: "ExampleHandler"
   end
 
@@ -45,7 +45,11 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
   defp start_handler(subscription) do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn :all, "ExampleHandler", handler, :origin ->
+    expect(MockEventStore, :subscribe_to, fn _event_store,
+                                             :all,
+                                             "ExampleHandler",
+                                             handler,
+                                             :origin ->
       send(handler, {:subscribed, subscription})
       send(reply_to, {:subscribed, subscription})
 

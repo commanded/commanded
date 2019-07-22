@@ -1,21 +1,18 @@
 defmodule Commanded.Commands.CompositeRouterTest do
   use Commanded.StorageCase
 
-  alias Commanded.Commands.Composite.BankAccountRouter
   alias Commanded.Commands.Composite.CompositeCompositeRouter
   alias Commanded.Commands.Composite.ExampleCompositeRouter
-  alias Commanded.Commands.Composite.MoneyTransferRouter
   alias Commanded.Commands.Composite.UnregisteredCommand
   alias Commanded.Commands.ExecutionResult
   alias Commanded.DefaultApp
-  alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney, WithdrawMoney}
-  alias Commanded.ExampleDomain.MoneyTransfer
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
 
   describe "composite router" do
     setup do
       start_supervised!(DefaultApp)
+
       :ok
     end
 

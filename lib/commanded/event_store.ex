@@ -85,12 +85,12 @@ defmodule Commanded.EventStore do
   Subscribe to all streams:
 
       {:ok, subscription} =
-        Commanded.EventStore.subscribe_to(:all, "Example", self(), :current)
+        Commanded.EventStore.subscribe_to(MyApp, :all, "Example", self(), :current)
 
   Subscribe to a single stream:
 
       {:ok, subscription} =
-        Commanded.EventStore.subscribe_to("stream1", "Example", self(), :origin)
+        Commanded.EventStore.subscribe_to(MyApp, "stream1", "Example", self(), :origin)
 
   """
   @callback subscribe_to(
@@ -117,7 +117,7 @@ defmodule Commanded.EventStore do
 
   ## Example
 
-      :ok = Commanded.EventStore.unsubscribe(subscription)
+      :ok = Commanded.EventStore.unsubscribe(MyApp, subscription)
 
   """
   @callback unsubscribe(event_store, subscription) :: :ok
@@ -127,7 +127,7 @@ defmodule Commanded.EventStore do
 
   ## Example
 
-      :ok = Commanded.EventStore.delete_subscription(:all, "Example")
+      :ok = Commanded.EventStore.delete_subscription(MyApp, :all, "Example")
 
   """
   @callback delete_subscription(event_store, stream_uuid | :all, subscription_name) ::
@@ -201,6 +201,11 @@ defmodule Commanded.EventStore do
   @doc false
   def record_snapshot(application, snapshot) do
     application.__event_store_adapter__().record_snapshot(snapshot)
+  end
+
+  @doc false
+  def delete_snapshot(application, source_uuid) do
+    application.__event_store_adapter__().delete_snapshot(source_uuid)
   end
 
   @doc """

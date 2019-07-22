@@ -1,15 +1,19 @@
 defmodule Commanded.Event.Upcast.ProcessManager do
-  defmodule(Ok, do: defstruct([:id]))
+  defmodule Ok do
+    defstruct [:id]
+  end
 
   defmodule Aggregate do
     defstruct []
+
     def execute(_, _), do: []
     def apply(agg, _), do: agg
   end
 
   defmodule Router do
     use Commanded.Commands.Router
-    dispatch Ok, to: Aggregate, identity: :id
+
+    dispatch(Ok, to: Aggregate, identity: :id)
   end
 
   defmodule Application do
@@ -40,6 +44,7 @@ defmodule Commanded.Event.Upcast.ProcessManager do
 
   defp send_reply(%{reply_to: reply_to} = e) do
     send(:erlang.list_to_pid(reply_to), e)
+
     %Ok{id: UUID.uuid4()}
   end
 end

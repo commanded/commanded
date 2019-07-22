@@ -43,7 +43,7 @@ defmodule Commanded.PubSub do
 
   @doc false
   def broadcast(application, topic, message) do
-    application.__pubsub_adapter__().subscribe(topic, message)
+    application.__pubsub_adapter__().broadcast(topic, message)
   end
 
   @doc """

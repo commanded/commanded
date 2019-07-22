@@ -5,11 +5,11 @@ defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
   alias Commanded.Event.DefaultErrorEventHandler
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankRouter
-  alias Commanded.Helpers.{CommandAuditMiddleware, ProcessHelper}
+  alias Commanded.Helpers.CommandAuditMiddleware
 
   setup do
-    start_supervised!(DefaultApp)
     start_supervised!(CommandAuditMiddleware)
+    start_supervised!(DefaultApp)
 
     :ok
   end

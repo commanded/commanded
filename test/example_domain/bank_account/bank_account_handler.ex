@@ -2,7 +2,7 @@ defmodule Commanded.ExampleDomain.BankAccount.BankAccountHandler do
   @moduledoc false
 
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: Commanded.ExampleDomain.BankApp,
     name: __MODULE__,
     start_from: :origin
 
@@ -20,7 +20,9 @@ defmodule Commanded.ExampleDomain.BankAccount.BankAccountHandler do
     Agent.update(__MODULE__, fn state -> %{state | accounts: []} end)
   end
 
-  def handle(%BankAccountOpened{account_number: account_number}, _metadata) do
+  def handle(%BankAccountOpened{} = event, _metadata) do
+    %BankAccountOpened{account_number: account_number} = event
+
     Agent.update(__MODULE__, fn %{prefix: prefix, accounts: accounts} = state ->
       %{state | accounts: accounts ++ [prefix <> account_number]}
     end)

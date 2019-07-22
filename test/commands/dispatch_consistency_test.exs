@@ -12,18 +12,18 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     StronglyConsistentProcessManager
   }
 
+  alias Commanded.Commands.ConsistencyApp
   alias Commanded.DefaultApp
   alias Commanded.EventStore
   alias Commanded.Helpers.ProcessHelper
-
-  alias ConsistencyAggregateRoot.{
-    ConsistencyCommand,
-    NoOpCommand,
-    RequestDispatchCommand
-  }
+  alias ConsistencyAggregateRoot.ConsistencyCommand
+  alias ConsistencyAggregateRoot.NoOpCommand
+  alias ConsistencyAggregateRoot.RequestDispatchCommand
 
   setup do
     start_supervised!(DefaultApp)
+    start_supervised!(ConsistencyApp)
+
     :ok
   end
 
@@ -32,9 +32,9 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
     test "should wait for strongly consistent event handler to handle event" do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 0}
+      opts = [application: DefaultApp, consistency: :strong]
 
-      assert :ok =
-               ConsistencyRouter.dispatch(command, application: DefaultApp, consistency: :strong)
+      assert :ok = ConsistencyRouter.dispatch(command, opts)
     end
 
     # default consistency timeout set to 100ms test config
@@ -77,7 +77,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
       assert :ok = ConsistencyRouter.dispatch(command, opts)
     end
 
-    # default consistency timeout set to 100ms test config
+    # Default consistency timeout set to 100ms test config
     test "should timeout waiting for strongly consistent event handler to handle event" do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}
       opts = [application: DefaultApp, consistency: ["OptionalStronglyConsistentEventHandler"]]
@@ -113,7 +113,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
       assert aggregate_uuid == "example-prefix-" <> uuid
 
-      recorded_events = EventStore.stream_forward(aggregate_uuid) |> Enum.to_list()
+      recorded_events = EventStore.stream_forward(DefaultApp, aggregate_uuid) |> Enum.to_list()
       assert length(recorded_events) == 1
     end
   end

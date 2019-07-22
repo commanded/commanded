@@ -154,7 +154,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
       event
 
-    %ProcessManagerInstance{idle_timeout: idle_timeout} = state
+    %ProcessManagerInstance{application: application, idle_timeout: idle_timeout} = state
 
     case handle_event(event, state) do
       {:error, error} ->
@@ -170,7 +170,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
       commands ->
         # Copy event id, as causation id, and correlation id from handled event.
-        opts = [causation_id: event_id, correlation_id: correlation_id]
+        opts = [application: application, causation_id: event_id, correlation_id: correlation_id]
 
         with :ok <- commands |> List.wrap() |> dispatch_commands(opts, state, event) do
           process_state = mutate_state(event, state)
@@ -396,6 +396,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_uuid: process_uuid
     } = state
 
-    "#{process_manager_name}-#{process_uuid}"
+    inspect(process_manager_name) <> "-" <> inspect(process_uuid)
   end
 end

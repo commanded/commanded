@@ -1,10 +1,18 @@
 defmodule Commanded.Event.HandlerConfigTest do
   use Commanded.StorageCase
 
+  alias Commanded.DefaultApp
+
   defmodule DefaultConfigHandler do
     use Commanded.Event.Handler,
-      application: Commanded.DefaultApp,
+      application: DefaultApp,
       name: __MODULE__
+  end
+
+  setup do
+    start_supervised!(DefaultApp)
+
+    :ok
   end
 
   test "should default to `:eventual` consistency and start from `:origin`" do
@@ -90,21 +98,22 @@ defmodule Commanded.Event.HandlerConfigTest do
 
   defmodule InvalidConfiguredHandler do
     use Commanded.Event.Handler,
-      application: Commanded.DefaultApp,
+      application: DefaultApp,
       name: __MODULE__,
       invalid_config_option: "invalid"
   end
 
   test "should validate provided config" do
-    assert_raise RuntimeError,
-                 "Commanded.Event.HandlerConfigTest.InvalidConfiguredHandler specifies invalid options: [:invalid_config_option]",
-                 fn ->
-                   Code.eval_string("""
-                     alias Commanded.Event.HandlerConfigTest.InvalidConfiguredHandler
+    expected_error =
+      "Commanded.Event.HandlerConfigTest.InvalidConfiguredHandler specifies invalid options: [:invalid_config_option]"
 
-                     {:ok, _pid} = InvalidConfiguredHandler.start_link()
-                   """)
-                 end
+    assert_raise ArgumentError, expected_error, fn ->
+      Code.eval_string("""
+        alias Commanded.Event.HandlerConfigTest.InvalidConfiguredHandler
+
+        {:ok, _pid} = InvalidConfiguredHandler.start_link()
+      """)
+    end
   end
 
   defp assert_config(handler, expected_config) do

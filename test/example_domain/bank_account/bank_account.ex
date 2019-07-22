@@ -1,5 +1,6 @@
 defmodule Commanded.ExampleDomain.BankAccount do
   @moduledoc false
+
   @derive Jason.Encoder
   defstruct [:account_number, :state, balance: 0]
 

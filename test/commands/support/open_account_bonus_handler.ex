@@ -1,6 +1,8 @@
 defmodule Commanded.Commands.OpenAccountBonusHandler do
+  alias Commanded.ExampleDomain.BankApp
+
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: BankApp,
     name: "OpenAccountBonus"
 
   alias Commanded.ExampleDomain.BankRouter
@@ -18,6 +20,7 @@ defmodule Commanded.Commands.OpenAccountBonusHandler do
     }
 
     BankRouter.dispatch(deposit_welcome_bonus,
+      application: BankApp,
       causation_id: causation_id,
       correlation_id: correlation_id
     )

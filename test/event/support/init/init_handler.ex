@@ -1,6 +1,6 @@
 defmodule Commanded.Event.InitHandler do
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: Commanded.MockedApp,
     name: __MODULE__
 
   def init do

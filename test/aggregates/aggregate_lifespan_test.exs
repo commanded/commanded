@@ -33,7 +33,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
 
       pid = Registration.whereis_name(DefaultApp, {DefaultApp, LifespanAggregate, aggregate_uuid})
       ref = Process.monitor(pid)
-      reply_to = self() |> :erlang.pid_to_list()
+      reply_to = :erlang.pid_to_list(self())
 
       %{aggregate_uuid: aggregate_uuid, pid: pid, ref: ref, reply_to: reply_to}
     end

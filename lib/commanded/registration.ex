@@ -58,6 +58,11 @@ defmodule Commanded.Registration do
   @callback via_tuple(registry :: module, name :: term()) :: {:via, module(), name :: term()}
 
   @doc false
+  def supervisor_child_spec(application, module, arg) do
+    application.__registry_adapter__().supervisor_child_spec(module, arg)
+  end
+
+  @doc false
   def start_link(application, name, module, args) do
     application.__registry_adapter__().start_link(name, module, args)
   end

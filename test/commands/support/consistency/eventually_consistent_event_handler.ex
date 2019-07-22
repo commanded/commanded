@@ -16,13 +16,16 @@ defmodule Commanded.Commands.EventuallyConsistentEventHandler do
   }
 
   def handle(%ConsistencyEvent{}, _metadata) do
-    # simulate slow event handler
+    # Simulate slow event handler
     :timer.sleep(:infinity)
+
     :ok
   end
 
-  # handle event by dispatching a command
+  # Handle event by dispatching a command.
   def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
-    ConsistencyRouter.dispatch(%ConsistencyCommand{uuid: uuid, delay: delay})
+    command = %ConsistencyCommand{uuid: uuid, delay: delay}
+
+    ConsistencyRouter.dispatch(command, application: Commanded.DefaultApp)
   end
 end

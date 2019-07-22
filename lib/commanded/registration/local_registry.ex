@@ -1,13 +1,13 @@
 defmodule Commanded.Registration.LocalRegistry do
   @moduledoc """
   Local process registration, restricted to a single node, using Elixir's
-  [Registry](https://hexdocs.pm/elixir/Registry.html).
+  `Registry` module.
   """
 
   @behaviour Commanded.Registration
 
   @doc """
-  Return an optional supervisor spec for the registry
+  Return a supervisor spec for the registry.
   """
   @impl Commanded.Registration
   def child_spec(registry) do
@@ -81,15 +81,17 @@ defmodule Commanded.Registration.LocalRegistry do
   @impl Commanded.Registration
   def whereis_name(registry, name) do
     registry_name = registry_name(registry)
+
     Registry.whereis_name({registry_name, name})
   end
 
   @doc """
-  Return a `:via` tuple to route a message to a process by its registered name
+  Return a `:via` tuple to route a message to a process by its registered name.
   """
   @impl Commanded.Registration
   def via_tuple(registry, name) do
     registry_name = registry_name(registry)
+
     {:via, Registry, {registry_name, name}}
   end
 

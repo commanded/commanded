@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
   use Commanded.StorageCase
 
+  alias Commanded.ProcessManagers.ExampleApp
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Start
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
   alias Commanded.ProcessManagers.ExampleRouter
@@ -8,13 +9,20 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
   alias Commanded.ProcessManagers.TimeoutProcessManager
   alias Commanded.Helpers.Wait
 
+  setup do
+    start_supervised!(ExampleApp)
+
+    :ok
+  end
+
   describe "process manager idle timeout" do
     test "should shutdown instance after inactivity" do
       {:ok, pm} = TimeoutProcessManager.start_link(idle_timeout: 50)
 
       aggregate_uuid = UUID.uuid4()
+      start = %Start{aggregate_uuid: aggregate_uuid}
 
-      :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+      :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
       instance = wait_for_process_instance(pm, aggregate_uuid)
 
@@ -26,12 +34,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
       {:ok, pm} = TimeoutProcessManager.start_link(idle_timeout: 10_000)
 
       aggregate_uuid = UUID.uuid4()
+      start = %Start{aggregate_uuid: aggregate_uuid}
+      stop = %Stop{aggregate_uuid: aggregate_uuid}
 
-      :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+      :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
       instance = wait_for_process_instance(pm, aggregate_uuid)
 
-      :ok = ExampleRouter.dispatch(%Stop{aggregate_uuid: aggregate_uuid})
+      :ok = ExampleRouter.dispatch(stop, application: ExampleApp)
 
       ref = Process.monitor(instance)
       assert_receive {:DOWN, ^ref, :process, ^instance, :normal}
@@ -43,8 +53,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
       {:ok, pm} = TimeoutProcessManager.start_link(idle_timeout: :infinity)
 
       aggregate_uuid = UUID.uuid4()
+      start = %Start{aggregate_uuid: aggregate_uuid}
 
-      :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+      :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
       instance = wait_for_process_instance(pm, aggregate_uuid)
 
@@ -56,12 +67,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
       {:ok, pm} = TimeoutProcessManager.start_link(idle_timeout: :infinity)
 
       aggregate_uuid = UUID.uuid4()
+      start = %Start{aggregate_uuid: aggregate_uuid}
+      stop = %Stop{aggregate_uuid: aggregate_uuid}
 
-      :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+      :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
       instance = wait_for_process_instance(pm, aggregate_uuid)
 
-      :ok = ExampleRouter.dispatch(%Stop{aggregate_uuid: aggregate_uuid})
+      :ok = ExampleRouter.dispatch(stop, application: ExampleApp)
 
       ref = Process.monitor(instance)
       assert_receive {:DOWN, ^ref, :process, ^instance, :normal}

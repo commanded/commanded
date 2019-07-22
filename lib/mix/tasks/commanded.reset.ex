@@ -2,9 +2,20 @@ defmodule Mix.Tasks.Commanded.Reset do
   @moduledoc """
   Reset an event handler.
 
-  ## Example
+  ## Usage
 
-      mix commanded.reset MyApp.MyEventHandler
+      mix commanded.reset --app <app> --handler <handler>
+
+  ## Examples
+
+      mix commanded.reset --app MyApp --handler MyHandler
+      mix commanded.reset -a MyApp -h MyHandler
+
+  ## Command line options
+
+    * `-a`, `--app` - the Commanded application
+    * `-h`, `--handler` - the event handler to reset
+    * `-q`, `--quiet` - do not log output
 
   """
 
@@ -12,18 +23,60 @@ defmodule Mix.Tasks.Commanded.Reset do
 
   @shortdoc "Reset an event handler to its start_from"
 
+  @switches [
+    app: :string,
+    handler: :string,
+    quiet: :boolean
+  ]
+
+  @aliases [
+    a: :app,
+    h: :handler,
+    q: :quiet
+  ]
+
   @doc false
   def run(args) do
-    module = args |> List.first()
+    {parsed, _args} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
-    {:ok, _} = Application.ensure_all_started(:commanded)
+    app = Keyword.get(parsed, :app)
+    handler = Keyword.get(parsed, :handler)
 
-    case Commanded.Registration.whereis_name({Commanded.Event.Handler, module}) do
+    unless app && handler do
+      Mix.raise("""
+      Reset requires an application and handler, use "mix commanded.reset --app <app> --handler <handler>"
+      """)
+    end
+
+    app = String.to_atom("Elixir." <> app)
+    handler = String.to_atom("Elixir." <> handler)
+
+    reset(app, handler, parsed)
+  end
+
+  defp reset(app, handler, opts) do
+    case app.start_link() do
+      {:ok, _pid} ->
+        :ok
+
+      {:error, {:already_started, _pid}} ->
+        :ok
+
+      {:error, error} ->
+        Mix.raise("Failed to start " <> inspect(app) <> " due to: " <> inspect(error))
+    end
+
+    quiet = Keyword.get(opts, :quiet, false)
+
+    handler_name = handler.__name__()
+    registry_name = Commanded.Event.Handler.name(app, handler_name)
+
+    case Commanded.Registration.whereis_name(app, registry_name) do
       :undefined ->
-        IO.puts("No process found for #{module}")
+        unless quiet, do: Mix.shell().info("No process found for #{inspect(handler)}")
 
       pid ->
-        IO.puts("Resetting #{module}")
+        unless quiet, do: Mix.shell().info("Resetting #{inspect(handler)}")
         send(pid, :reset)
     end
   end

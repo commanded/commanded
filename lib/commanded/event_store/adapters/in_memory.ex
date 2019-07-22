@@ -324,13 +324,19 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   def handle_call(:reset!, _from, %State{} = state) do
-    %State{serializer: serializer, persistent_subscriptions: subscriptions} = state
+    %State{
+      event_store: event_store,
+      serializer: serializer,
+      persistent_subscriptions: subscriptions
+    } = state
 
     for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
       :ok = stop_subscription(subscriber, state)
     end
 
-    {:reply, :ok, %State{serializer: serializer}}
+    initial_state = %State{event_store: event_store, serializer: serializer}
+
+    {:reply, :ok, initial_state}
   end
 
   @impl GenServer

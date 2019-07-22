@@ -1,7 +1,8 @@
 defmodule Commanded.ProcessManagers.ExampleProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.{ExampleApp, ExampleProcessManager}
+  alias Commanded.ProcessManagers.ExampleApp
+  alias Commanded.ProcessManagers.ExampleProcessManager
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
 
   alias Commanded.ProcessManagers.ExampleAggregate.Events.{

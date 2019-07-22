@@ -1,10 +1,13 @@
 defmodule Commanded.EventStore.Adapters.InMemory.SubscriptionTest do
-  use Commanded.EventStore.SubscriptionTestCase
-
   alias Commanded.EventStore.Adapters.InMemory
 
+  use Commanded.EventStore.SubscriptionTestCase, event_store: InMemory
+
   setup do
-    InMemory.reset!()
+    child_spec = InMemory.child_spec(InMemory, serializer: Commanded.Serialization.JsonSerializer)
+
+    for child <- child_spec, do: start_supervised!(child)
+
     :ok
   end
 

@@ -48,6 +48,7 @@ defmodule Commanded.Application.Supervisor do
       {:ok, config} ->
         task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
         subscriptions_name = Module.concat([application, Commanded.Subscriptions])
+        registry_name = Module.concat([application, Commanded.Subscriptions.Registry])
         snapshotting = Keyword.get(config, :snapshotting, %{})
 
         children =
@@ -58,7 +59,7 @@ defmodule Commanded.Application.Supervisor do
               {Task.Supervisor, name: task_dispatcher_name},
               {Commanded.Aggregates.Supervisor,
                application: application, snapshotting: snapshotting},
-              Commanded.Subscriptions.Registry,
+              {Commanded.Subscriptions.Registry, application: application, name: registry_name},
               {Commanded.Subscriptions, application: application, name: subscriptions_name}
             ]
 

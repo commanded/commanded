@@ -11,6 +11,16 @@ defmodule Commanded.Helpers.CommandAuditMiddleware do
               failed: []
   end
 
+  def child_spec(_opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5_000
+    }
+  end
+
   def start_link do
     Agent.start_link(fn -> %AuditLog{} end, name: __MODULE__)
   end

@@ -8,8 +8,8 @@ defmodule Commanded.Registration.RegisteredSupervisor do
     DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
-  def start_child(name) do
-    Registration.start_child(name, __MODULE__, {RegisteredServer, []})
+  def start_child(application, name) do
+    Registration.start_child(application, name, __MODULE__, {RegisteredServer, []})
   end
 
   def init(:ok) do

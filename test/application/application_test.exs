@@ -1,7 +1,6 @@
 defmodule Commanded.ApplicationTest do
   use ExUnit.Case
 
-  alias Commanded.EventStore.Adapters.InMemory
   alias Commanded.EventStore.EventData
   alias Commanded.ExampleApplication
 
@@ -16,8 +15,8 @@ defmodule Commanded.ApplicationTest do
       defstruct [:name]
     end
 
-    test "should return configured event store" do
-      assert ExampleApplication.__event_store_adapter__() == InMemory
+    test "should expose event store adapter" do
+      assert ExampleApplication.__event_store_adapter__() == ExampleApplication.EventStore
     end
 
     test "should define an event store adapter" do
@@ -36,8 +35,16 @@ defmodule Commanded.ApplicationTest do
       assert :ok = ExampleApplication.EventStore.append_to_stream("1", 0, events)
     end
 
+    test "should expose pubsub adapter" do
+      assert ExampleApplication.__pubsub_adapter__() == ExampleApplication.PubSub
+    end
+
     test "should define a pubsub adapter" do
       assert_implements(ExampleApplication.PubSub, Commanded.PubSub.Adapter)
+    end
+
+    test "should expose registry adapter" do
+      assert ExampleApplication.__registry_adapter__() == ExampleApplication.Registration
     end
 
     test "should define a registration adapter" do

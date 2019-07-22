@@ -27,14 +27,15 @@ defmodule Commanded.Assertions.EventAssertions do
   ## Example
 
       assert_correlated(
+        BankApp,
         BankAccountOpened, fn opened -> opened.id == 1 end,
         InitialAmountDeposited, fn deposited -> deposited.id == 2 end
       )
 
   """
-  def assert_correlated(event_type_a, predicate_a, event_type_b, predicate_b) do
-    assert_receive_event(event_type_a, predicate_a, fn _event_a, metadata_a ->
-      assert_receive_event(event_type_b, predicate_b, fn _event_b, metadata_b ->
+  def assert_correlated(application, event_type_a, predicate_a, event_type_b, predicate_b) do
+    assert_receive_event(application, event_type_a, predicate_a, fn _event_a, metadata_a ->
+      assert_receive_event(application, event_type_b, predicate_b, fn _event_b, metadata_b ->
         assert metadata_a.correlation_id == metadata_b.correlation_id
       end)
     end)
@@ -46,13 +47,13 @@ defmodule Commanded.Assertions.EventAssertions do
 
   ## Example
 
-      assert_receive_event(BankAccountOpened, fn opened ->
+      assert_receive_event(BankApp, BankAccountOpened, fn opened ->
         assert opened.account_number == "ACC123"
       end)
 
   """
-  def assert_receive_event(event_type, assertion_fn) do
-    assert_receive_event(event_type, fn _event -> true end, assertion_fn)
+  def assert_receive_event(application, event_type, assertion_fn) do
+    assert_receive_event(application, event_type, fn _event -> true end, assertion_fn)
   end
 
   @doc """
@@ -61,20 +62,20 @@ defmodule Commanded.Assertions.EventAssertions do
 
   ## Example
 
-      assert_receive_event(BankAccountOpened,
+      assert_receive_event(BankApp, BankAccountOpened,
         fn opened -> opened.account_number == "ACC123" end,
         fn opened ->
           assert opened.balance == 1_000
         end)
 
   """
-  def assert_receive_event(event_type, predicate_fn, assertion_fn) do
+  def assert_receive_event(application, event_type, predicate_fn, assertion_fn) do
     unless Code.ensure_compiled?(event_type) do
       raise ExUnit.AssertionError, "Event #{inspect(event_type)} not found"
     end
 
-    with_subscription(fn subscription ->
-      do_assert_receive(subscription, event_type, predicate_fn, assertion_fn)
+    with_subscription(application, fn subscription ->
+      do_assert_receive(application, subscription, event_type, predicate_fn, assertion_fn)
     end)
   end
 
@@ -88,30 +89,35 @@ defmodule Commanded.Assertions.EventAssertions do
 
   Refute that `ExampleEvent` is created by `some_func/0` function:
 
-      refute_receive_event(ExampleEvent) do
+      refute_receive_event(ExampleApp, ExampleEvent) do
         some_func()
       end
 
   Refute that `ExampleEvent` matching given predicate is created by
   `some_func/0` function:
 
-      refute_receive_event(ExampleEvent,
+      refute_receive_event(ExampleApp, ExampleEvent,
         predicate: fn event -> event.foo == :foo end) do
         some_func()
       end
 
   """
-  defmacro refute_receive_event(event_type, opts \\ [], do: block) do
+  defmacro refute_receive_event(application, event_type, opts \\ [], do: block) do
     predicate = Keyword.get(opts, :predicate)
     timeout = Keyword.get(opts, :timeout, default_refute_receive_timeout())
 
     quote do
       task =
         Task.async(fn ->
-          with_subscription(fn subscription ->
+          with_subscription(unquote(application), fn subscription ->
             predicate = unquote(predicate) || fn _event -> true end
 
-            do_refute_receive_event(subscription, unquote(event_type), predicate)
+            do_refute_receive_event(
+              unquote(application),
+              subscription,
+              unquote(event_type),
+              predicate
+            )
           end)
         end)
 
@@ -132,11 +138,11 @@ defmodule Commanded.Assertions.EventAssertions do
 
   ## Examples
 
-      wait_for_event BankAccountOpened
+      wait_for_event(BankApp, BankAccountOpened)
 
   """
-  def wait_for_event(event_type) do
-    wait_for_event(event_type, fn _event -> true end)
+  def wait_for_event(application, event_type) do
+    wait_for_event(application, event_type, fn _event -> true end)
   end
 
   @doc """
@@ -145,34 +151,35 @@ defmodule Commanded.Assertions.EventAssertions do
 
   ## Examples
 
-      wait_for_event(BankAccountOpened, fn opened ->
+      wait_for_event(BankApp, BankAccountOpened, fn opened ->
         opened.account_number == "ACC123"
       end)
 
   """
-  def wait_for_event(event_type, predicate_fn) when is_function(predicate_fn) do
-    with_subscription(fn subscription ->
-      do_wait_for_event(subscription, event_type, predicate_fn)
+  def wait_for_event(application, event_type, predicate_fn) when is_function(predicate_fn) do
+    with_subscription(application, fn subscription ->
+      do_wait_for_event(application, subscription, event_type, predicate_fn)
     end)
   end
 
   @doc false
-  def with_subscription(callback_fun) when is_function(callback_fun, 1) do
+  def with_subscription(application, callback_fun) when is_function(callback_fun, 1) do
     subscription_name = UUID.uuid4()
 
-    {:ok, subscription} = EventStore.subscribe_to(:all, subscription_name, self(), :origin)
+    {:ok, subscription} =
+      EventStore.subscribe_to(application, :all, subscription_name, self(), :origin)
 
     assert_receive {:subscribed, ^subscription}, default_receive_timeout()
 
     try do
       apply(callback_fun, [subscription])
     after
-      :ok = EventStore.unsubscribe(subscription)
-      :ok = EventStore.delete_subscription(:all, subscription_name)
+      :ok = EventStore.unsubscribe(application, subscription)
+      :ok = EventStore.delete_subscription(application, :all, subscription_name)
     end
   end
 
-  defp do_assert_receive(subscription, event_type, predicate_fn, assertion_fn) do
+  defp do_assert_receive(application, subscription, event_type, predicate_fn, assertion_fn) do
     assert_receive {:events, received_events}, default_receive_timeout()
 
     case find_expected_event(received_events, event_type, predicate_fn) do
@@ -186,13 +193,13 @@ defmodule Commanded.Assertions.EventAssertions do
         end
 
       nil ->
-        :ok = ack_events(subscription, received_events)
+        :ok = ack_events(application, subscription, received_events)
 
-        do_assert_receive(subscription, event_type, predicate_fn, assertion_fn)
+        do_assert_receive(application, subscription, event_type, predicate_fn, assertion_fn)
     end
   end
 
-  def do_refute_receive_event(subscription, event_type, predicate_fn) do
+  def do_refute_receive_event(application, subscription, event_type, predicate_fn) do
     receive do
       {:events, events} ->
         case find_expected_event(events, event_type, predicate_fn) do
@@ -200,14 +207,14 @@ defmodule Commanded.Assertions.EventAssertions do
             {:error, data}
 
           nil ->
-            :ok = ack_events(subscription, events)
+            :ok = ack_events(application, subscription, events)
 
-            do_refute_receive_event(subscription, event_type, predicate_fn)
+            do_refute_receive_event(application, subscription, event_type, predicate_fn)
         end
     end
   end
 
-  defp do_wait_for_event(subscription, event_type, predicate_fn) do
+  defp do_wait_for_event(application, subscription, event_type, predicate_fn) do
     assert_receive {:events, received_events}, default_receive_timeout()
 
     case find_expected_event(received_events, event_type, predicate_fn) do
@@ -215,9 +222,9 @@ defmodule Commanded.Assertions.EventAssertions do
         expected_event
 
       nil ->
-        :ok = ack_events(subscription, received_events)
+        :ok = ack_events(application, subscription, received_events)
 
-        do_wait_for_event(subscription, event_type, predicate_fn)
+        do_wait_for_event(application, subscription, event_type, predicate_fn)
     end
   end
 
@@ -236,8 +243,13 @@ defmodule Commanded.Assertions.EventAssertions do
     end)
   end
 
-  defp ack_events(subscription, events),
-    do: EventStore.ack_event(subscription, List.last(events))
+  defp ack_events(_application, _subscription, []), do: :ok
+
+  defp ack_events(application, subscription, [event]),
+    do: EventStore.ack_event(application, subscription, event)
+
+  defp ack_events(application, subscription, [_event | events]),
+    do: ack_events(application, subscription, events)
 
   defp default_receive_timeout,
     do: Application.get_env(:commanded, :assert_receive_event_timeout, 1_000)

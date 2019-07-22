@@ -45,7 +45,7 @@ defmodule Commanded.Commands.Dispatcher do
       |> to_pipeline()
       |> before_dispatch(payload)
 
-    # don't allow command execution if pipeline has been halted
+    # Stop command execution if pipeline has been halted
     unless Pipeline.halted?(pipeline) do
       pipeline
       |> execute(payload)
@@ -162,13 +162,11 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp before_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
-    pipeline
-    |> Pipeline.chain(:before_dispatch, middleware)
+    Pipeline.chain(pipeline, :before_dispatch, middleware)
   end
 
   defp after_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
-    pipeline
-    |> Pipeline.chain(:after_dispatch, middleware)
+    Pipeline.chain(pipeline, :after_dispatch, middleware)
   end
 
   defp after_failure(%Pipeline{response: {:error, error}} = pipeline, %Payload{} = payload) do
@@ -191,8 +189,9 @@ defmodule Commanded.Commands.Dispatcher do
     |> Pipeline.chain(:after_failure, middleware)
   end
 
-  defp after_failure(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
-    pipeline
-    |> Pipeline.chain(:after_failure, middleware)
+  defp after_failure(%Pipeline{} = pipeline, %Payload{} = payload) do
+    %Payload{middleware: middleware} = payload
+
+    Pipeline.chain(pipeline, :after_failure, middleware)
   end
 end

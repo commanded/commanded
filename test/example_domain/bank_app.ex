@@ -1,5 +1,6 @@
 defmodule Commanded.ExampleDomain.BankApp do
   alias Commanded.EventStore.Adapters.InMemory
+  alias Commanded.ExampleDomain.BankRouter
   alias Commanded.Serialization.JsonSerializer
 
   use Commanded.Application,
@@ -10,4 +11,6 @@ defmodule Commanded.ExampleDomain.BankApp do
     ],
     pubsub: :local,
     registry: :local
+
+  router(BankRouter)
 end

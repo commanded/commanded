@@ -1,17 +1,13 @@
 defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
   @moduledoc false
 
-  alias Commanded.ExampleDomain.BankApp
-
   use Commanded.Event.Handler,
-    application: BankApp,
+    application: Commanded.ExampleDomain.BankApp,
     name: __MODULE__
 
-  alias Commanded.ExampleDomain.BankAccount.Events.{
-    BankAccountOpened,
-    MoneyDeposited,
-    MoneyWithdrawn
-  }
+  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Commanded.ExampleDomain.BankAccount.Events.MoneyWithdrawn
 
   def init do
     with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
@@ -43,7 +39,7 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
     try do
       Agent.get(__MODULE__, fn balance -> balance end)
     catch
-      # catch agent not started exits, return `nil` balance
+      # Catch agent not started exits, return `nil` balance
       :exit, _reason ->
         nil
     end

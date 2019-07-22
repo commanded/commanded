@@ -3,23 +3,31 @@ defmodule Commanded.ProcessManagers.ResumeProcessManagerTest do
 
   import Commanded.Assertions.EventAssertions
 
-  alias Commanded.Helpers.{ProcessHelper,Wait}
-  alias Commanded.ProcessManagers.{ProcessRouter,ProcessManagerInstance}
-  alias Commanded.ProcessManagers.{ResumeRouter,ResumeProcessManager}
-  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess,ResumeProcess}
-  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted,ProcessResumed}
+  alias Commanded.Helpers.{ProcessHelper, Wait}
+  alias Commanded.ProcessManagers.ResumeApp
+  alias Commanded.ProcessManagers.{ProcessRouter, ProcessManagerInstance}
+  alias Commanded.ProcessManagers.{ResumeRouter, ResumeProcessManager}
+  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess, ResumeProcess}
+  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted, ProcessResumed}
+
+  setup do
+    start_supervised!(ResumeApp)
+
+    :ok
+  end
 
   test "should resume a process manager with same state when process restarts" do
-    process_uuid = UUID.uuid4
-
     {:ok, process_router} = ResumeProcessManager.start_link()
 
-    :ok = ResumeRouter.dispatch(%StartProcess{process_uuid: process_uuid, status: "start"})
+    process_uuid = UUID.uuid4()
+    command = %StartProcess{process_uuid: process_uuid, status: "start"}
 
-    assert_receive_event ProcessStarted, fn event ->
+    :ok = ResumeRouter.dispatch(command, application: ResumeApp)
+
+    assert_receive_event(ResumeApp, ProcessStarted, fn event ->
       assert event.process_uuid == process_uuid
       assert event.status == "start"
-    end
+    end)
 
     # wait for process instance to receive event
     Wait.until(fn ->
@@ -36,9 +44,11 @@ defmodule Commanded.ProcessManagers.ResumeProcessManagerTest do
 
     {:ok, process_router} = ResumeProcessManager.start_link()
 
-    :ok = ResumeRouter.dispatch(%ResumeProcess{process_uuid: process_uuid, status: "resume"})
+    command = %ResumeProcess{process_uuid: process_uuid, status: "resume"}
 
-    wait_for_event(ProcessResumed, fn event -> event.process_uuid == process_uuid end)
+    :ok = ResumeRouter.dispatch(command, application: ResumeApp)
+
+    wait_for_event(ResumeApp, ProcessResumed, fn event -> event.process_uuid == process_uuid end)
 
     Wait.until(fn ->
       process_instance = ProcessRouter.process_instance(process_router, process_uuid)

@@ -4,22 +4,10 @@ defmodule Commanded.PubSub.LocalPubSubTest do
   use PubSubTestCase, pubsub: LocalPubSub
 
   setup do
-    Application.put_env(:commanded, :pubsub, :local)
+    child_spec = LocalPubSub.child_spec(LocalPubSub, [])
 
-    pubsub_pid =
-      case Process.whereis(LocalPubSub) do
-        nil ->
-          {:ok, pid} = Supervisor.start_link(LocalPubSub.child_spec(), strategy: :one_for_one)
-          pid
+    for child <- child_spec, do: start_supervised!(child)
 
-        pid ->
-          pid
-      end
-
-    on_exit(fn ->
-      Application.delete_env(:commanded, :pubsub)
-    end)
-
-    [pubsub_pid: pubsub_pid]
+    :ok
   end
 end

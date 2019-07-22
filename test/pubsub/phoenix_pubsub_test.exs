@@ -4,29 +4,11 @@ defmodule Commanded.PubSub.PhoenixPubSubTest do
   use PubSubTestCase, pubsub: PhoenixPubSub
 
   setup do
-    Application.put_env(
-      :commanded,
-      :pubsub,
-      phoenix_pubsub: [
-        adapter: Phoenix.PubSub.PG2,
-        pool_size: 1
-      ]
-    )
+    config = [adapter: Phoenix.PubSub.PG2, pool_size: 1]
+    child_spec = PhoenixPubSub.child_spec(PhoenixPubSub, config)
 
-    pubsub_pid =
-      case Process.whereis(PhoenixPubSub) do
-        nil ->
-          {:ok, pid} = Supervisor.start_link(PhoenixPubSub.child_spec(), strategy: :one_for_one)
-          pid
+    for child <- child_spec, do: start_supervised!(child)
 
-        pid ->
-          pid
-      end
-
-    on_exit(fn ->
-      Application.delete_env(:commanded, :pubsub)
-    end)
-
-    [pubsub_pid: pubsub_pid]
+    :ok
   end
 end

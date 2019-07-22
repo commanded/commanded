@@ -20,20 +20,26 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
     Pipeline.assign(pipeline, :dispatcher_pid, self())
   end
 
-  def after_dispatch(%Pipeline{consistency: :eventual} = pipeline), do: pipeline
+  def after_dispatch(%Pipeline{consistency: :eventual} = pipeline),
+    do: pipeline
 
-  def after_dispatch(%Pipeline{assigns: %{events: []}} = pipeline), do: pipeline
+  def after_dispatch(%Pipeline{assigns: %{events: []}} = pipeline),
+    do: pipeline
 
-  def after_dispatch(%Pipeline{consistency: consistency, assigns: assigns} = pipeline) do
-    %{
-      aggregate_uuid: aggregate_uuid,
-      aggregate_version: aggregate_version,
-      dispatcher_pid: dispatcher_pid
-    } = assigns
+  def after_dispatch(%Pipeline{} = pipeline) do
+    %Pipeline{
+      application: application,
+      consistency: consistency,
+      assigns: %{
+        aggregate_uuid: aggregate_uuid,
+        aggregate_version: aggregate_version,
+        dispatcher_pid: dispatcher_pid
+      }
+    } = pipeline
 
     opts = [consistency: consistency, exclude: dispatcher_pid]
-    
-    case Subscriptions.wait_for(aggregate_uuid, aggregate_version, opts) do
+
+    case Subscriptions.wait_for(application, aggregate_uuid, aggregate_version, opts) do
       :ok ->
         pipeline
 

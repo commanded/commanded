@@ -1,7 +1,7 @@
 defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.{ErrorHandlingProcessManager, ErrorRouter, FailureContext}
+  alias Commanded.ProcessManagers.{ErrorHandlingProcessManager, FailureContext}
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.{AttemptProcess, ContinueProcess}
   alias Commanded.ProcessManagers.ErrorApp
 

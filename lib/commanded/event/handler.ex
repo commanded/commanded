@@ -337,8 +337,9 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
-  def parse_name(module, name) when name in [nil, ""],
-    do: raise("#{inspect(module)} expects `:name` to be given")
+  def parse_name(module, name) when name in [nil, ""] do
+    raise ArgumentError, inspect(module) <> " expects :name option"
+  end
 
   def parse_name(_module, name) when is_binary(name), do: name
   def parse_name(_module, name), do: inspect(name)
@@ -351,10 +352,11 @@ defmodule Commanded.Event.Handler do
       |> Keyword.split([:consistency, :start_from, :subscribe_to] ++ additional_allowed_opts)
 
     if Enum.any?(invalid) do
-      raise "#{inspect(module)} specifies invalid options: #{inspect(Keyword.keys(invalid))}"
-    else
-      valid
+      raise ArgumentError,
+            inspect(module) <> " specifies invalid options: " <> inspect(Keyword.keys(invalid))
     end
+
+    valid
   end
 
   # Include default `handle/2` and `error/3` callback functions in module
@@ -399,7 +401,7 @@ defmodule Commanded.Event.Handler do
     Registration.start_link(application, name, __MODULE__, handler)
   end
 
-  defp name(application, name), do: {application, __MODULE__, name}
+  def name(application, handler_name), do: {application, __MODULE__, handler_name}
 
   @doc false
   def init(%Handler{} = state) do
@@ -433,9 +435,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def handle_info(:reset, %Handler{} = state) do
-    %Handler{
-      handler_module: handler_module
-    } = state
+    %Handler{handler_module: handler_module} = state
 
     case handler_module.before_reset() do
       :ok ->
@@ -504,9 +504,9 @@ defmodule Commanded.Event.Handler do
 
   # Register this event handler as a subscription with the given consistency
   defp register_subscription(%Handler{} = state) do
-    %Handler{consistency: consistency, handler_name: name} = state
+    %Handler{application: application, consistency: consistency, handler_name: name} = state
 
-    Subscriptions.register(name, consistency)
+    Subscriptions.register(application, name, consistency)
   end
 
   defp reset_subscription(%Handler{} = state) do
@@ -658,7 +658,7 @@ defmodule Commanded.Event.Handler do
     } = state
 
     :ok = EventStore.ack_event(application, subscription, event)
-    :ok = Subscriptions.ack_event(handler_name, consistency, event)
+    :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
   end
 
   @enrich_metadata_fields [

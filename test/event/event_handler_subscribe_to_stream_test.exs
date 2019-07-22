@@ -2,6 +2,7 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
   use Commanded.StorageCase
 
   alias Commanded.EventStore
+  alias Commanded.DefaultApp
 
   defmodule AnEvent do
     @derive Jason.Encoder
@@ -10,7 +11,7 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
 
   defmodule SingleStreamEventHandler do
     use Commanded.Event.Handler,
-      application: Commanded.DefaultApp,
+      application: DefaultApp,
       name: __MODULE__,
       subscribe_to: "stream2"
 
@@ -25,9 +26,10 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
 
   describe "single stream event handler" do
     setup do
-      {:ok, handler} = SingleStreamEventHandler.start_link()
+      start_supervised!(DefaultApp)
+      start_supervised!(SingleStreamEventHandler)
 
-      [handler: handler]
+      :ok
     end
 
     test "should be only be notified of events appended to subscribed stream" do
@@ -43,7 +45,7 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
   end
 
   defp append_events_to_stream(stream_uuid, count) do
-    reply_to = self() |> :erlang.pid_to_list()
+    reply_to = :erlang.pid_to_list(self())
 
     events =
       1..count
@@ -52,6 +54,6 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
       end)
       |> Commanded.Event.Mapper.map_to_event_data()
 
-    EventStore.append_to_stream(stream_uuid, :any_version, events)
+    EventStore.append_to_stream(DefaultApp, stream_uuid, :any_version, events)
   end
 end

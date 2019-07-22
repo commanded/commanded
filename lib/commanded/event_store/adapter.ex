@@ -50,7 +50,7 @@ defmodule Commanded.EventStore.Adapter do
             subscriber,
             start_from
           )
-          when is_binary(subscription_name) and is_pid(subscriber) do
+          when (stream_uuid == :all or is_binary(stream_uuid)) and is_pid(subscriber) do
         @adapter.subscribe_to(
           __MODULE__,
           stream_uuid,

@@ -8,6 +8,8 @@ defmodule Commanded.Middleware.Pipeline do
 
   ## Pipeline fields
 
+    - `application` - the Commanded application.
+    
     - `assigns` - shared user data as a map.
 
     - `causation_id` - an optional UUID used to identify the cause of the
@@ -38,18 +40,20 @@ defmodule Commanded.Middleware.Pipeline do
     - `response` - sets the response to send back to the caller.
 
   """
-
-  defstruct assigns: %{},
-            causation_id: nil,
-            correlation_id: nil,
-            command: nil,
-            command_uuid: nil,
-            consistency: nil,
-            halted: false,
-            identity: nil,
-            identity_prefix: nil,
-            metadata: nil,
-            response: nil
+  defstruct [
+    :application,
+    :causation_id,
+    :correlation_id,
+    :command,
+    :command_uuid,
+    :consistency,
+    :identity,
+    :identity_prefix,
+    :metadata,
+    :response,
+    assigns: %{},
+    halted: false
+  ]
 
   alias Commanded.Middleware.Pipeline
 

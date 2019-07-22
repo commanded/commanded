@@ -3,6 +3,7 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
 
   alias Commanded.EventStore.Adapters.InMemory
   alias Commanded.EventStore.EventData
+  alias Commanded.Serialization.JsonSerializer
 
   defmodule BankAccountOpened do
     @derive Jason.Encoder
@@ -10,7 +11,10 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
   end
 
   setup do
-    InMemory.reset!()
+    start_supervised!(
+      {InMemory, event_store: InMemory, serializer: JsonSerializer, name: InMemory}
+    )
+
     :ok
   end
 
@@ -20,10 +24,10 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
       initial = :sys.get_state(pid)
       events = [build_event(1)]
 
-      :ok = InMemory.append_to_stream("stream", 0, events)
+      :ok = InMemory.append_to_stream(InMemory, "stream", 0, events)
       after_event = :sys.get_state(pid)
 
-      InMemory.reset!()
+      InMemory.reset!(InMemory)
       after_reset = :sys.get_state(pid)
 
       assert initial == after_reset

@@ -9,12 +9,15 @@ defmodule Commanded.Event.HandlerInitTest do
   setup do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn :all, _handler_name, handler, _subscribe_from ->
+    subscribe_to = fn _event_store, :all, _handler_name, handler, _subscribe_from ->
       {:ok, handler}
-    end)
+    end
+
+    expect(MockEventStore, :subscribe_to, subscribe_to)
 
     {:ok, agent} = Agent.start_link(fn -> reply_to end, name: InitHandler)
-    {:ok, handler} = InitHandler.start_link()
+
+    handler = start_supervised!(InitHandler)
 
     [agent: agent, handler: handler]
   end
