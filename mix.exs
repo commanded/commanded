@@ -13,6 +13,7 @@ defmodule Commanded.Mixfile do
       description: description(),
       docs: docs(),
       package: package(),
+      aliases: aliases(),
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() == :prod,
@@ -115,6 +116,11 @@ defmodule Commanded.Mixfile do
         "GitHub" => "https://github.com/commanded/commanded",
         "Docs" => "https://hexdocs.pm/commanded/"
       }
+    ]
+  end
+
+  defp aliases do
+    [
     ]
   end
 end
