@@ -2,7 +2,9 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
   use Commanded.MockEventStoreCase
 
   defmodule ExampleHandler do
-    use Commanded.Event.Handler, name: "ExampleHandler"
+    use Commanded.Event.Handler,
+      application: Commanded.DefaultApp,
+      name: "ExampleHandler"
   end
 
   setup do

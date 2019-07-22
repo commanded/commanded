@@ -1,17 +1,15 @@
 defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
   use Commanded.StorageCase
 
+  alias Commanded.DefaultApp
   alias Commanded.Event.DefaultErrorEventHandler
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankRouter
   alias Commanded.Helpers.{CommandAuditMiddleware, ProcessHelper}
 
   setup do
-    {:ok, pid} = CommandAuditMiddleware.start_link()
-
-    on_exit fn ->
-      ProcessHelper.shutdown(pid)
-    end
+    start_supervised!(DefaultApp)
+    start_supervised!(CommandAuditMiddleware)
 
     :ok
   end
@@ -24,7 +22,9 @@ defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
     Process.unlink(handler)
     ref = Process.monitor(handler)
 
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number, initial_balance: 1_000})
+    command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+
+    :ok = BankRouter.dispatch(command, application: DefaultApp)
 
     assert_receive {:DOWN, ^ref, _, _, _}
     refute Process.alive?(handler)

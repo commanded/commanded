@@ -311,8 +311,10 @@ You can set causation and correlation ids when dispatching a command:
 When dispatching a command in an event handler, you should copy these values from the event your are processing:
 
 ```elixir
-defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: "ExampleHandler"
+defmodule ExampleHandler do  
+  use Commanded.Event.Handler,
+    application: ExampleApp, 
+    name: "ExampleHandler"
 
   def handle(%AnEvent{..}, %{event_id: causation_id, correlation_id: correlation_id}) do
     ExampleRouter.dispatch(%ExampleCommand{..},

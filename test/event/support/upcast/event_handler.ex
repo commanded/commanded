@@ -1,5 +1,7 @@
 defmodule Commanded.Event.Upcast.EventHandler do
-  use Commanded.Event.Handler, name: __MODULE__
+  use Commanded.Event.Handler,
+    application: Commanded.DefaultApp,
+    name: __MODULE__
 
   alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour}
 

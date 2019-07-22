@@ -2,11 +2,17 @@ defmodule Event.UpcasterTest do
   use Commanded.StorageCase
 
   alias Commanded.Aggregates.Aggregate
+  alias Commanded.DefaultApp
   alias Commanded.EventStore
   alias Commanded.EventStore.EventData
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
   alias Commanded.Event.Upcast.UpcastAggregate
+
+  setup do
+    start_supervised!(DefaultApp)
+    :ok
+  end
 
   describe "upcast events from event store stream forward" do
     test "will not upcast an event without an upcaster" do
@@ -36,7 +42,7 @@ defmodule Event.UpcasterTest do
     alias Commanded.Event.Upcast.EventHandler
 
     setup do
-      {:ok, handler} = EventHandler.start_link()
+      handler = start_supervised!(EventHandler)
 
       [
         handler: handler,
@@ -62,7 +68,7 @@ defmodule Event.UpcasterTest do
     alias Commanded.Event.Upcast.ProcessManager
 
     setup do
-      {:ok, manager} = ProcessManager.start_link()
+      manager = start_supervised!(ProcessManager)
 
       [
         manager: manager,
@@ -90,7 +96,8 @@ defmodule Event.UpcasterTest do
   describe "upcast events received by aggregate" do
     test "should receive upcasted events" do
       args = [aggregate_module: UpcastAggregate, aggregate_uuid: "upcast"]
-      {:ok, pid} = Aggregate.start_link(args)
+
+      pid = start_supervised!({Aggregate, args})
 
       event = %RecordedEvent{
         event_id: UUID.uuid4(),

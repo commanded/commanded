@@ -42,11 +42,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def event_store(application, _config) do
-    Module.concat([application, __MODULE__])
-  end
-
-  @impl Commanded.EventStore
   def child_spec(event_store, config) do
     supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
     config = Keyword.merge(config, event_store: event_store, name: event_store)

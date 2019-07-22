@@ -3,8 +3,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
 
   use Commanded.ProcessManagers.ProcessManager,
     application: Commanded.ExampleDomain.BankApp,
-    name: __MODULE__,
-    router: Commanded.ExampleDomain.BankRouter
+    name: __MODULE__
 
   @derive Jason.Encoder
   defstruct [:transfer_uuid, :debit_account, :credit_account, :amount, :status]

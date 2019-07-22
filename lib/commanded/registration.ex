@@ -58,15 +58,18 @@ defmodule Commanded.Registration do
   @callback via_tuple(registry :: module, name :: term()) :: {:via, module(), name :: term()}
 
   @doc false
+  def start_link(application, name, module, args) do
+    application.__registry_adapter__().start_link(name, module, args)
+  end
+
+  @doc false
   def start_child(application, name, supervisor, child_spec) do
-    registry = Module.concat([application, Registration])
-    registry.start_child(name, supervisor, child_spec)
+    application.__registry_adapter__().start_child(name, supervisor, child_spec)
   end
 
   @doc false
   def whereis_name(application, name) do
-    registry = Module.concat([application, Registration])
-    registry.whereis_name(name)
+    application.__registry_adapter__().whereis_name(name)
   end
 
   @doc """

@@ -3,6 +3,7 @@ defmodule Commanded.Event.HandlerConfigTest do
 
   defmodule DefaultConfigHandler do
     use Commanded.Event.Handler,
+      application: Commanded.DefaultApp,
       name: __MODULE__
   end
 
@@ -25,6 +26,7 @@ defmodule Commanded.Event.HandlerConfigTest do
 
   defmodule ExampleHandler do
     use Commanded.Event.Handler,
+      application: Commanded.DefaultApp,
       name: __MODULE__,
       consistency: :strong,
       start_from: :current,
@@ -88,6 +90,7 @@ defmodule Commanded.Event.HandlerConfigTest do
 
   defmodule InvalidConfiguredHandler do
     use Commanded.Event.Handler,
+      application: Commanded.DefaultApp,
       name: __MODULE__,
       invalid_config_option: "invalid"
   end

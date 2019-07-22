@@ -39,6 +39,7 @@ defmodule Commanded.PubSub.LocalPubSub do
     name = local_pubsub_name(pubsub)
 
     {:ok, _} = Registry.register(name, topic, [])
+
     :ok
   end
 

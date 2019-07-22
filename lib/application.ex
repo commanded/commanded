@@ -85,15 +85,15 @@ defmodule Commanded.Application do
       end
 
       def __event_store_adapter__ do
-        @event_store_adapter
+        EventStore
       end
 
       def __pubsub_adapter__ do
-        @pubsub_adapter
+        PubSub
       end
 
       def __registry_adapter__ do
-        @registry_adapter
+        Registration
       end
 
       def child_spec(opts) do

@@ -9,7 +9,10 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
   end
 
   defmodule SingleStreamEventHandler do
-    use Commanded.Event.Handler, name: __MODULE__, subscribe_to: "stream2"
+    use Commanded.Event.Handler,
+      application: Commanded.DefaultApp,
+      name: __MODULE__,
+      subscribe_to: "stream2"
 
     def handle(%AnEvent{} = event, _metadata) do
       %AnEvent{stream_uuid: stream_uuid, reply_to: reply_to} = event

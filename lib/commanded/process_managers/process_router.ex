@@ -50,7 +50,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       idle_timeout: Keyword.get(opts, :idle_timeout, :infinity)
     }
 
-    Registration.start_link(name, __MODULE__, state)
+    Registration.start_link(application, name, __MODULE__, state)
   end
 
   @impl GenServer

@@ -1,5 +1,7 @@
 defmodule Commanded.Event.InitHandler do
-  use Commanded.Event.Handler, name: __MODULE__
+  use Commanded.Event.Handler,
+    application: Commanded.DefaultApp,
+    name: __MODULE__
 
   def init do
     send(reply_to(), {:init, self()})

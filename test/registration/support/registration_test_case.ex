@@ -2,11 +2,14 @@ defmodule Commanded.RegistrationTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
+    alias Commanded.DefaultApp
     alias Commanded.Registration
     alias Commanded.Registration.{RegisteredServer, RegisteredSupervisor}
 
     setup %{registry: registry} do
       Application.put_env(:commanded, :registry, registry)
+
+      start_supervised!(DefaultApp)
 
       {:ok, supervisor} = RegisteredSupervisor.start_link()
 
@@ -68,7 +71,7 @@ defmodule Commanded.RegistrationTestCase do
     end
 
     defp start_link(name) do
-      Registration.start_link(name, RegisteredServer, [])
+      Registration.start_link(DefaultApp, name, RegisteredServer, [])
     end
   end
 end

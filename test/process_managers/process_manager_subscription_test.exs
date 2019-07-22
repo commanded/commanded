@@ -1,13 +1,12 @@
 defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
   use Commanded.MockEventStoreCase
 
-  defmodule ExampleRouter do
-  end
+  alias Commanded.ProcessManagers.ExampleApp
 
   defmodule ExampleProcessManager do
     use Commanded.ProcessManagers.ProcessManager,
-      name: "ExampleProcessManager",
-      router: ExampleRouter
+      application: ExampleApp,
+      name: "ExampleProcessManager"
 
     @derive Jason.Encoder
     defstruct [:data]

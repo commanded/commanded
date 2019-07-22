@@ -9,5 +9,5 @@ defmodule Commanded.MockedApp do
     registry: :local,
     pubsub: :local
 
-  router(Commanded.Commands.MockRouter)
+  # router(Commanded.Commands.MockRouter)
 end

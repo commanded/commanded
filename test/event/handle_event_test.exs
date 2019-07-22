@@ -13,14 +13,11 @@ defmodule Commanded.Event.HandleEventTest do
 
   describe "balance handler" do
     setup do
-      {:ok, handler} = AccountBalanceHandler.start_link()
+      start_supervised!(BankApp)
+      handler = start_supervised!(AccountBalanceHandler)
 
       Wait.until(fn ->
         assert AccountBalanceHandler.subscribed?()
-      end)
-
-      on_exit(fn ->
-        ProcessHelper.shutdown(handler)
       end)
 
       [handler: handler]
@@ -41,9 +38,7 @@ defmodule Commanded.Event.HandleEventTest do
       end)
     end
 
-    test "should ignore uninterested events" do
-      {:ok, handler} = AccountBalanceHandler.start_link()
-
+    test "should ignore uninterested events", %{handler: handler} do
       # include uninterested events within those the handler is interested in
       events = [
         %UninterestingEvent{},
@@ -62,13 +57,11 @@ defmodule Commanded.Event.HandleEventTest do
       end)
     end
 
-    test "An event handler can be reset (:origin mode)" do
+    test "An event handler can be reset (:origin mode)", %{handler: handler} do
       stream_uuid = UUID.uuid4()
       initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
 
       :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
-
-      {:ok, handler} = BankAccountHandler.start_link()
 
       Wait.until(fn ->
         assert BankAccountHandler.current_accounts() == ["ACC123"]
@@ -90,7 +83,7 @@ defmodule Commanded.Event.HandleEventTest do
       initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
       :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
 
-      {:ok, handler} = BankAccountHandler.start_link(start_from: :current)
+      handler = start_supervised!({BankAccountHandler, start_from: :current})
 
       Wait.until(fn ->
         assert BankAccountHandler.current_accounts() == []
@@ -113,14 +106,6 @@ defmodule Commanded.Event.HandleEventTest do
     end
   end
 
-  defp to_event_data(events) do
-    Commanded.Event.Mapper.map_to_event_data(events,
-      causation_id: UUID.uuid4(),
-      correlation_id: UUID.uuid4(),
-      metadata: %{}
-    )
-  end
-
   describe "appending handler" do
     setup do
       on_exit(fn ->
@@ -137,13 +122,15 @@ defmodule Commanded.Event.HandleEventTest do
 
       wait_for_event(BankAccountOpened)
 
-      {:ok, handler} = AppendingEventHandler.start_link(start_from: :current)
+      handler = start_supervised!({AppendingEventHandler, start_from: :current})
 
       assert GenServer.call(handler, :last_seen_event) == nil
 
       :ok = EventStore.append_to_stream(stream_uuid, 1, to_event_data(new_events))
 
-      wait_for_event(MoneyDeposited, fn event, recorded_event -> event.amount == 50 and recorded_event.event_number == 2 end)
+      wait_for_event(MoneyDeposited, fn event, recorded_event ->
+        event.amount == 50 and recorded_event.event_number == 2
+      end)
 
       Wait.until(fn ->
         assert AppendingEventHandler.received_events() == new_events
@@ -166,7 +153,7 @@ defmodule Commanded.Event.HandleEventTest do
 
       :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
 
-      {:ok, _handler} = AppendingEventHandler.start_link(start_from: :origin)
+      handler = start_supervised!({AppendingEventHandler, start_from: :origin})
 
       :ok = EventStore.append_to_stream(stream_uuid, 1, to_event_data(new_events))
 
@@ -188,7 +175,7 @@ defmodule Commanded.Event.HandleEventTest do
     end
 
     test "should ignore already seen events" do
-      {:ok, handler} = AppendingEventHandler.start_link()
+      handler = start_supervised!(AppendingEventHandler)
 
       events = [
         %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},
@@ -240,11 +227,21 @@ defmodule Commanded.Event.HandleEventTest do
     end
   end
 
+  test "should ensure an application is provided" do
+    assert_raise RuntimeError, "UnnamedEventHandler expects `:name` to be given", fn ->
+      Code.eval_string("""
+        defmodule NoAppEventHandler do
+          use Commanded.Event.Handler, name: __MODULE__,
+        end
+      """)
+    end
+  end
+
   test "should ensure an event handler name is provided" do
     assert_raise RuntimeError, "UnnamedEventHandler expects `:name` to be given", fn ->
       Code.eval_string("""
         defmodule UnnamedEventHandler do
-          use Commanded.Event.Handler
+          use Commanded.Event.Handler, application: Commanded.DefaultApp,
         end
       """)
     end
@@ -253,7 +250,7 @@ defmodule Commanded.Event.HandleEventTest do
   test "should allow using event handler module as name" do
     Code.eval_string("""
       defmodule EventHandler do
-        use Commanded.Event.Handler, name: __MODULE__
+        use Commanded.Event.Handler, application: Commanded.DefaultApp, name: __MODULE__
       end
     """)
   end
@@ -265,14 +262,18 @@ defmodule Commanded.Event.HandleEventTest do
 
       :ok = EventStore.append_to_stream(stream_uuid, 0, to_event_data(initial_events))
 
-      {:ok, _handler} = BankAccountHandler.start_link()
+      start_supervised!(BankAccountHandler)
 
       Wait.until(fn ->
         assert BankAccountHandler.current_accounts() == ["ACC123"]
       end)
 
       :ok = BankAccountHandler.change_prefix("PREF_")
-      pid = Commanded.Registration.whereis_name({Commanded.Event.Handler, "Commanded.ExampleDomain.BankAccount.BankAccountHandler"})
+
+      pid =
+        Commanded.Registration.whereis_name(
+          {Commanded.Event.Handler, "Commanded.ExampleDomain.BankAccount.BankAccountHandler"}
+        )
 
       assert :undefined != pid
 
@@ -282,5 +283,13 @@ defmodule Commanded.Event.HandleEventTest do
         assert BankAccountHandler.current_accounts() == ["PREF_ACC123"]
       end)
     end
+  end
+
+  defp to_event_data(events) do
+    Commanded.Event.Mapper.map_to_event_data(events,
+      causation_id: UUID.uuid4(),
+      correlation_id: UUID.uuid4(),
+      metadata: %{}
+    )
   end
 end

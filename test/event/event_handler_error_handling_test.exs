@@ -1,10 +1,13 @@
 defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   use Commanded.StorageCase
 
+  alias Commanded.DefaultApp
   alias Commanded.Event.{ErrorEventHandler, ErrorRouter}
   alias Commanded.Event.ErrorAggregate.Commands.{RaiseError, RaiseException}
 
   setup do
+    start_supervised!(DefaultApp)
+
     {:ok, handler} = ErrorEventHandler.start_link()
 
     Process.unlink(handler)

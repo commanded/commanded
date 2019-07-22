@@ -47,23 +47,22 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
              "Commanded.ExampleDomain.TransferMoneyProcessManager"
   end
 
-  test "should ensure a process manager name is provided" do
+  test "should ensure a process manager application is provided" do
     assert_raise RuntimeError, "UnnamedProcessManager expects `:name` to be given", fn ->
       Code.eval_string("""
         defmodule UnnamedProcessManager do
-          use Commanded.ProcessManagers.ProcessManager,
-            router: Commanded.ExampleDomain.BankRouter
+          use Commanded.ProcessManagers.ProcessManager, name: __MODULE__
         end
       """)
     end
   end
 
-  test "should ensure a process manager router is provided" do
-    assert_raise RuntimeError, "NoRouterProcessManager expects `:router` to be given", fn ->
+  test "should ensure a process manager name is provided" do
+    assert_raise RuntimeError, "UnnamedProcessManager expects `:name` to be given", fn ->
       Code.eval_string("""
-        defmodule NoRouterProcessManager do
+        defmodule UnnamedProcessManager do
           use Commanded.ProcessManagers.ProcessManager,
-            name: "MyProcessManager"
+            application: Commanded.DefaultApp
         end
       """)
     end
@@ -73,8 +72,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
     Code.eval_string("""
       defmodule MyProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
-          name: __MODULE__,
-          router: Commanded.ExampleDomain.BankRouter
+          application: Commanded.DefaultApp,
+          name: __MODULE__
       end
     """)
   end

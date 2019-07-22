@@ -4,16 +4,17 @@ defmodule Commanded.PubSub do
   """
 
   @type application :: module
+  @type pubsub :: module
 
   @doc """
   Return an optional supervisor spec for pub/sub.
   """
-  @callback child_spec(application, config :: Keyword.t()) :: [:supervisor.child_spec()]
+  @callback child_spec(pubsub, config :: Keyword.t()) :: [:supervisor.child_spec()]
 
   @doc """
   Subscribes the caller to the PubSub adapter's topic.
   """
-  @callback subscribe(application, topic :: String.t()) :: :ok | {:error, term}
+  @callback subscribe(pubsub, topic :: String.t()) :: :ok | {:error, term}
 
   @doc """
   Broadcasts message on given topic.
@@ -22,29 +23,27 @@ defmodule Commanded.PubSub do
     * `message` - The payload of the broadcast
 
   """
-  @callback broadcast(application, topic :: String.t(), message :: term) :: :ok | {:error, term}
+  @callback broadcast(pubsub, topic :: String.t(), message :: term) :: :ok | {:error, term}
 
   @doc """
   Track the current process under the given `topic`, uniquely identified by
   `key`.
   """
-  @callback track(application, topic :: String.t(), key :: term) :: :ok | {:error, term}
+  @callback track(pubsub, topic :: String.t(), key :: term) :: :ok | {:error, term}
 
   @doc """
   List tracked PIDs for a given topic.
   """
-  @callback list(application, topic :: String.t()) :: [{term, pid}]
+  @callback list(pubsub, topic :: String.t()) :: [{term, pid}]
 
   @doc false
   def subscribe(application, topic) do
-    pubsub = Module.concat([application, PubSub])
-    pubsub.subscribe(topic)
+    application.__pubsub_adapter__().subscribe(topic)
   end
 
   @doc false
   def broadcast(application, topic, message) do
-    pubsub = Module.concat([application, PubSub])
-    pubsub.subscribe(topic, message)
+    application.__pubsub_adapter__().subscribe(topic, message)
   end
 
   @doc """

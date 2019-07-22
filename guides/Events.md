@@ -29,7 +29,9 @@ Use pattern matching to match on each type of event you are interested in. A cat
 
 ```elixir
 defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: "ExampleHandler"
+  use Commanded.Event.Handler,
+    application: ExampleApp,
+    name: "ExampleHandler"
 
   def handle(%AnEvent{..}, _metadata) do
     # ... process the event
@@ -51,7 +53,10 @@ You can choose to start the event handler's event store subscription from the `:
 ```elixir
 defmodule ExampleHandler do
   # Define `start_from` as one of :origin, :current, or an explicit event number (e.g. 1234)
-  use Commanded.Event.Handler, name: "ExampleHandler", start_from: :origin
+  use Commanded.Event.Handler,
+    application: ExampleApp,
+    name: "ExampleHandler",
+    start_from: :origin
 end
 ```
 
@@ -72,6 +77,7 @@ By default event handlers will subscribe to all events appended to any stream. P
 ```elixir
 defmodule ExampleHandler do
   use Commanded.Event.Handler,
+    application: ExampleApp,
     name: __MODULE__,
     subscribe_to: "stream1234"
 end
@@ -87,7 +93,9 @@ This callback function must return `:ok`, any other return value will terminate 
 
 ```elixir
 defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: "ExampleHandler"
+  use Commanded.Event.Handler,
+    application: ExampleApp,
+    name: "ExampleHandler"
 
   def init do
     # optional initialisation
@@ -113,7 +121,9 @@ The default behaviour if you don't provide an `error/3` callback is to stop the 
 
 ```elixir
 defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: __MODULE__
+  use Commanded.Event.Handler,
+    application: ExampleApp,
+    name: __MODULE__
 
   require Logger
 
@@ -168,7 +178,9 @@ These key/value metadata pairs will use atom keys to differentiate them from the
 
 ```elixir
 defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: "ExampleHandler"
+  use Commanded.Event.Handler,
+    application: ExampleApp,
+    name: "ExampleHandler"
 
   def handle(event, metadata) do
     IO.inspect(metadata)
@@ -196,6 +208,7 @@ You can specify an event handler's consistency guarantee using the `consistency`
 ```elixir
 defmodule ExampleHandler do
   use Commanded.Event.Handler,
+    application: ExampleApp,
     name: "ExampleHandler",
     consistency: :eventual
 ```
@@ -248,7 +261,9 @@ You can define a `before_reset/1` method that will be called before resetting th
 
 ```elixir
 defmodule ExampleHandler do
-  use Commanded.Event.Handler, name: __MODULE__
+  use Commanded.Event.Handler,
+    application: ExampleApp,
+    name: __MODULE__
 
   require Logger
 

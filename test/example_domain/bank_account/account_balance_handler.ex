@@ -1,7 +1,11 @@
 defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
   @moduledoc false
 
-  use Commanded.Event.Handler, name: __MODULE__
+  alias Commanded.ExampleDomain.BankApp
+
+  use Commanded.Event.Handler,
+    application: BankApp,
+    name: __MODULE__
 
   alias Commanded.ExampleDomain.BankAccount.Events.{
     BankAccountOpened,
@@ -9,29 +13,27 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
     MoneyWithdrawn
   }
 
-  @agent_name {:global, __MODULE__}
-
   def init do
-    with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: @agent_name) do
+    with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
       :ok
     end
   end
 
   def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
-    Agent.update(@agent_name, fn _ -> initial_balance end)
+    Agent.update(__MODULE__, fn _ -> initial_balance end)
   end
 
   def handle(%MoneyDeposited{balance: balance}, _metadata) do
-    Agent.update(@agent_name, fn _ -> balance end)
+    Agent.update(__MODULE__, fn _ -> balance end)
   end
 
   def handle(%MoneyWithdrawn{balance: balance}, _metadata) do
-    Agent.update(@agent_name, fn _ -> balance end)
+    Agent.update(__MODULE__, fn _ -> balance end)
   end
 
   def subscribed? do
     try do
-      Agent.get(@agent_name, fn _ -> true end)
+      Agent.get(__MODULE__, fn _ -> true end)
     catch
       :exit, _reason -> false
     end
@@ -39,7 +41,7 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
 
   def current_balance do
     try do
-      Agent.get(@agent_name, fn balance -> balance end)
+      Agent.get(__MODULE__, fn balance -> balance end)
     catch
       # catch agent not started exits, return `nil` balance
       :exit, _reason ->

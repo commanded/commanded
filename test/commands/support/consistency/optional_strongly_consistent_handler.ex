@@ -1,5 +1,6 @@
 defmodule Commanded.Commands.OptionalStronglyConsistentEventHandler do
   use Commanded.Event.Handler,
+    application: Commanded.DefaultApp,
     name: "OptionalStronglyConsistentEventHandler",
     consistency: :strong
 

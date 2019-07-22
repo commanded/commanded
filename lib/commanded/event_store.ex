@@ -151,32 +151,56 @@ defmodule Commanded.EventStore do
 
   @doc false
   def append_to_stream(application, stream_uuid, expected_version, events) do
-    event_store = Module.concat([application, EventStore])
-    event_store.append_to_stream(stream_uuid, expected_version, events)
+    application.__event_store_adapter__().append_to_stream(stream_uuid, expected_version, events)
   end
 
   @doc false
   def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
-    event_store = Module.concat([application, EventStore])
-    event_store.stream_forward(stream_uuid, start_version, read_batch_size)
+    application.__event_store_adapter__().stream_forward(
+      stream_uuid,
+      start_version,
+      read_batch_size
+    )
   end
 
   @doc false
   def subscribe(application, stream_uuid) do
-    event_store = Module.concat([application, EventStore])
-    event_store.subscribe(stream_uuid)
+    application.__event_store_adapter__().subscribe(stream_uuid)
+  end
+
+  @doc false
+  def subscribe_to(application, stream_uuid, subscription_name, subscriber, start_from) do
+    application.__event_store_adapter__().subscribe_to(
+      stream_uuid,
+      subscription_name,
+      subscriber,
+      start_from
+    )
+  end
+
+  @doc false
+  def ack_event(application, subscription, event) do
+    application.__event_store_adapter__().ack_event(subscription, event)
+  end
+
+  @doc false
+  def unsubscribe(application, subscription) do
+    application.__event_store_adapter__().unsubscribe(subscription)
+  end
+
+  @doc false
+  def delete_subscription(application, subscribe_to, handler_name) do
+    application.__event_store_adapter__().delete_subscription(subscribe_to, handler_name)
   end
 
   @doc false
   def read_snapshot(application, source_uuid) do
-    event_store = Module.concat([application, EventStore])
-    event_store.read_snapshot(source_uuid)
+    application.__event_store_adapter__().read_snapshot(source_uuid)
   end
 
   @doc false
   def record_snapshot(application, snapshot) do
-    event_store = Module.concat([application, EventStore])
-    event_store.record_snapshot(snapshot)
+    application.__event_store_adapter__().record_snapshot(snapshot)
   end
 
   @doc """
