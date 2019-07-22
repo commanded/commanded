@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Enhancements
+
+- Reset event handler mix task `mix commanded.reset MyApp.Handler` ([#293](https://github.com/commanded/commanded/pull/293)).
+
 ### Bug fixes
 
 - Fix regression in `Commanded.Middleware.Logger.delta/1` ([#295](https://github.com/commanded/commanded/pull/295)).
