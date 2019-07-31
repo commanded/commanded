@@ -1,9 +1,7 @@
 if Code.ensure_loaded?(Phoenix.PubSub) do
   defmodule Commanded.PubSub.PhoenixPubSub do
     @moduledoc """
-    Pub/sub adapter using Phoenix's distributed pub/sub and presence platform [1].
-
-    [1] https://hex.pm/packages/phoenix_pubsub
+    Pub/sub adapter using Phoenix's distributed pub/sub and presence platform.
 
     To use Phoenix pub/sub you must add it as a dependency in your project's
     `mix.exs` file:
@@ -37,6 +35,8 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     @behaviour Commanded.PubSub
 
     defmodule Tracker do
+      @moduledoc false
+
       @behaviour Phoenix.Tracker
 
       def start_link(opts) do

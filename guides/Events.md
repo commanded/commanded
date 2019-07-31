@@ -1,4 +1,4 @@
-# Event handling
+# Events
 
 ## Domain events
 

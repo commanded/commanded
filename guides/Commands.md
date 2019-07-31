@@ -1,6 +1,4 @@
-# Command registration and dispatch
-
-## Commands
+# Commands
 
 You need to create a module per command and define the fields using `defstruct`:
 
