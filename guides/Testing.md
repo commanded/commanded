@@ -36,7 +36,7 @@ In the second case, we also provide a predicate function that we can use to narr
 import Commanded.Assertions.EventAssertions
 
 test "ensure any event of this type is published" do
-  :ok = Router.dispatch(%Command{id: 4, date: Date.today})
+  :ok = MyApp.dispatch(%Command{id: 4, date: Date.today})
 
   assert_receive_event(MyApp, Event, fn event ->
     assert event.id == 4
@@ -44,13 +44,15 @@ test "ensure any event of this type is published" do
 end
 
 test "ensure an event is published matching the given predicate" do
-  :ok = Router.dispatch(%Command{id: 4, date: Date.today})
+  :ok = MyApp.dispatch(%Command{id: 4, date: Date.today})
 
   assert_receive_event(
     MyApp,
     Event,
     fn event -> event.id == 4 end,
-    fn event -> assert event.date == Date.today end
+    fn event ->
+      assert event.date == Date.today
+    end
   )
 end
 ```
@@ -63,7 +65,7 @@ Use the `wait_for_event/2` and `wait_for_event/3` functions to pause until a spe
 import Commanded.Assertions.EventAssertions
 
 test "pause until specific event is published" do
-  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
+  :ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
 
   wait_for_event(BankApp, BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
 end
@@ -79,7 +81,7 @@ For this purpose, Commanded provides `assert_correlated/4` which can be used to 
 import Commanded.Assertions.EventAssertions
 
 test "make sure two events are correlated" do
-  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
+  :ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
 
   assert_correlated(
     BankApp,
@@ -104,13 +106,13 @@ alias Commanded.Aggregates.Aggregate
 test "make sure aggregate state are what we wanted" do
   account_number = "ACC123"
 
-  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: account_number, initial_balance: 1_000})
-  :ok = BankRouter.dispatch(%WithdrawnMoney{account_number: account_number, amount: 200})
+  :ok = BankApp.dispatch(%OpenBankAccount{account_number: account_number, initial_balance: 1_000})
+  :ok = BankApp.dispatch(%WithdrawnMoney{account_number: account_number, amount: 200})
 
   wait_for_event(BankApp, BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
   wait_for_event(BankApp, MoneyWithdrawn, fn withdrawn -> withdrawn.balance == 800 end)
 
-  assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+  assert Aggregate.aggregate_state(BankApp, BankAccount, account_number) == %BankAccount{
     account_number: account_number,
     balance: 800,
     state: :active

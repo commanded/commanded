@@ -90,7 +90,7 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleEvent do
   """
   def decode(%ExampleEvent{datetime: datetime} = event) do
     {:ok, dt, _} = DateTime.from_iso8601(datetime)
-    
+
     %ExampleEvent{event | datetime: dt}
   end
 end
@@ -107,19 +107,23 @@ Configure your own serializer in `config/config.exs` for the event store you are
 - Postgres EventStore:
 
   ```elixir
-  config :eventstore, EventStore.Storage, serializer: MyApp.MessagePackSerializer
+  config :my_app, MyApp.EventStore, serializer: MyApp.MessagePackSerializer
   ```
 
 - Event Store:
 
   ```elixir
-  config :commanded_extreme_adapter, serializer: MyApp.MessagePackSerializer
+  config :my_app, MyApp, serializer: MyApp.MessagePackSerializer
   ```
 
 - In-memory event store:
 
   ```elixir
-  config :commanded, Commanded.EventStore.Adapters.InMemory, serializer: MyApp.MessagePackSerializer
+  config :my_app, MyApp,
+    event_store: [
+      adapter: Commanded.EventStore.Adapters.InMemory,
+      serializer: MyApp.MessagePackSerializer
+    ]
   ```
 
 You *should not* change serialization format once your app has been deployed to production since Commanded will not be able to deserialize any existing events or snapshot data. In this scenario, to change serialization format you would need to also migrate your event store to the new format.

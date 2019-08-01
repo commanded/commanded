@@ -16,17 +16,30 @@ defmodule Commanded.Commands.Router do
           identity: :account_number
       end
 
-    Once configured, you can dispatch a command using the module:
-
-      :ok = BankRouter.dispatch(%OpenAccount{
-        account_number: "ACC123",
-        initial_balance: 1_000
-      })
-
   The `to` option determines which module receives the command being dispatched.
   This command handler module must implement a `handle/2` function. It receives
   the aggregate's state and the command to execute. Usually the command handler
   module will forward the command to the aggregate.
+
+  Once configured, you can either dispatch a command using the module by and
+  specify the application:
+
+      :ok = BankRouter.dispatch(%OpenAccount{
+        account_number: "ACC123",
+        initial_balance: 1_000
+      }, application: BankApp)
+
+  Or, more simply you should include the router module in your application:
+
+      defmodule BankApp do
+        use Commanded.Application, otp_app: :my_app
+
+        router MyApp.Router
+      end
+
+  Then dispatch commands using the app:
+
+      :ok = BankApp.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 
   ## Dispatch command directly to an aggregate
 
@@ -80,8 +93,8 @@ defmodule Commanded.Commands.Router do
     - `:eventual` (default) - don't block command dispatch while waiting for
       event handlers
 
-        :ok = BankRouter.dispatch(command)
-        :ok = BankRouter.dispatch(command, consistency: :eventual)
+        :ok = BankApp.dispatch(command)
+        :ok = BankApp.dispatch(command, consistency: :eventual)
 
     - `:strong` - block command dispatch until all strongly
       consistent event handlers and process managers have successfully processed
@@ -90,7 +103,7 @@ defmodule Commanded.Commands.Router do
       Use this when you have event handlers that update read models you need to
       query immediately after dispatching the command.
 
-        :ok = BankRouter.dispatch(command, consistency: :strong)
+        :ok = BankApp.dispatch(command, consistency: :strong)
 
     - Provide an explicit list of event handler and process manager modules (or
       their configured names), containing only those handlers you'd like to wait
@@ -98,8 +111,8 @@ defmodule Commanded.Commands.Router do
       configured consistency setting.
 
       ```elixir
-      :ok = BankRouter.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
-      :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+      :ok = BankApp.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
+      :ok = BankApp.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
       ```
 
       Note you cannot opt-in to strong consistency for a handler that has been
@@ -110,7 +123,7 @@ defmodule Commanded.Commands.Router do
   You can optionally choose to include the aggregate's version as part of the
   dispatch result by setting `include_aggregate_version` true.
 
-      {:ok, aggregate_version} = BankRouter.dispatch(command, include_aggregate_version: true)
+      {:ok, aggregate_version} = BankApp.dispatch(command, include_aggregate_version: true)
 
   This is useful when you need to wait for an event handler (e.g. a read model
   projection) to be up-to-date before continuing or querying its data.
@@ -120,7 +133,7 @@ defmodule Commanded.Commands.Router do
   You can also choose to include the execution result as part of the dispatch result by
   setting `include_execution_result` true.
 
-      {:ok, execution_result} = Router.dispatch(command, include_execution_result: true)
+      {:ok, execution_result} = BankApp.dispatch(command, include_execution_result: true)
 
   Or by setting `include_execution_result` in your application config file:
 
@@ -136,7 +149,7 @@ defmodule Commanded.Commands.Router do
 
   Supply a map containing key/value pairs comprising the metadata:
 
-      :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
+      :ok = BankApp.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
   """
 
@@ -153,6 +166,12 @@ defmodule Commanded.Commands.Router do
       @registered_commands []
       @registered_identities %{}
       @registered_middleware []
+      @include_aggregate_version Application.get_env(
+                                   :commanded,
+                                   :include_aggregate_version,
+                                   false
+                                 )
+      @include_execution_result Application.get_env(:commanded, :include_execution_result, false)
 
       @default [
         middleware: [
@@ -160,10 +179,8 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ConsistencyGuarantee
         ],
         consistency: Application.get_env(:commanded, :default_consistency, :eventual),
-        include_aggregate_version:
-          Application.get_env(:commanded, :include_aggregate_version, false),
-        include_execution_result:
-          Application.get_env(:commanded, :include_execution_result, false),
+        include_aggregate_version: @include_aggregate_version,
+        include_execution_result: @include_execution_result,
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},

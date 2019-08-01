@@ -10,7 +10,9 @@ You can use the [Commanded Ecto projections](https://github.com/commanded/comman
 
 ```elixir
 defmodule MyApp.ExampleProjector do
-  use Commanded.Projections.Ecto, name: "ExampleProjector"
+  use Commanded.Projections.Ecto,
+    application: MyApp.ExampleApp,
+    name: "ExampleProjector"
 
   project %AnEvent{name: name}, _metadata do
     Ecto.Multi.insert(multi, :example_projection, %ExampleProjection{name: name})
@@ -33,6 +35,7 @@ Configure the `consistency` option in your projector:
 ```elixir
 defmodule MyApp.ExampleProjector do
   use Commanded.Projections.Ecto,
+    application: MyApp.ExampleApp,
     name: "ExampleProjector",
     consistency: :strong
 end

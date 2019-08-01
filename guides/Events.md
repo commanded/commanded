@@ -161,7 +161,7 @@ end
 The `handle/2` function in your handler receives the domain event and a map of metadata associated with that event. You can provide the metadata key/value pairs when dispatching a command:
 
 ```elixir
-:ok = ExampleRouter.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
+:ok = ExampleApp.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
 ```
 
 In addition to the metadata key/values you provide, the following system values will be included in the metadata passed to an event handler:

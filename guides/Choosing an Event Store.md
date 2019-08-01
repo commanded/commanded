@@ -4,7 +4,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
 
 - PostgreSQL-based Elixir [EventStore](https://github.com/commanded/eventstore) ([adapter](https://github.com/commanded/commanded-eventstore-adapter)).
 
-- Greg Young's [Event Store](https://eventstore.org/) ([adapter](https://github.com/commanded/commanded-extreme-adapter)).
+- [Event Store](https://eventstore.org/) ([adapter](https://github.com/commanded/commanded-extreme-adapter)).
 
 There is also an [in-memory event store adapter](https://github.com/commanded/commanded/wiki/In-memory-event-store) for *test use only*.
 
@@ -18,9 +18,9 @@ Use [EventStore Adapter](https://github.com/commanded/commanded-eventstore-adapt
 
 ---
 
-## Greg Young's Event Store
+## Event Store
 
-Use [Extreme Adapter](https://github.com/commanded/commanded-extreme-adapter) to persist events to [Event Store](https://eventstore.org/): an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
+Use the [Extreme Adapter](https://github.com/commanded/commanded-extreme-adapter) to persist events to [Event Store](https://eventstore.org/): an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
 
 The quickest way to get started with Event Store is by using their official [Event Store Docker container](https://store.docker.com/community/images/eventstore/eventstore).
 

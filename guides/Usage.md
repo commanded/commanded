@@ -4,6 +4,7 @@ Commanded provides the building blocks for you to create your own Elixir applica
 
 A separate guide is provided for each of the components you can build:
 
+- Application.
 - Aggregates.
 - Commands, registration and dispatch.
 - Events and handlers.
@@ -60,7 +61,9 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
       # State mutators
 
-      def apply(%BankAccount{} = account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}) do
+      def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
+        %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
+
         %BankAccount{account |
           account_number: account_number,
           balance: initial_balance
@@ -79,7 +82,21 @@ Here's an example bank account opening feature built using Commanded to demonstr
     end
     ```
 
-5. Create an event handler module that updates a bank account balance:
+5. Define an application to host the aggregate and supporting processes:
+
+    ```elixir
+    defmodule BankApp do
+      use Commanded.Application,
+        otp_app: :bank,
+        event_store: [adapter: Commanded.EventStore.Adapters.InMemory]
+
+      router BankRouter
+    end
+    ```
+
+    This application is configured to use in-memory event store included with Commanded for testing.
+
+6. Create an event handler module that updates a bank account balance:
 
     ```elixir
     defmodule AccountBalanceHandler do
@@ -103,8 +120,17 @@ Here's an example bank account opening feature built using Commanded to demonstr
     end
     ```
 
+7. Start the application and event handler processes:
+
+    ```elixir
+    {:ok, _pid} = BankApp.start_link()
+    {:ok, _pid} = AccountBalanceHandler.start_link()
+    ```
+
+    In a real application you would use a supervisor to start these processes.
+
 Finally, we can dispatch a command to open a new bank account:
 
 ```elixir
-:ok = BankRouter.dispatch(%OpenBankAccount{account_number: "ACC123456", initial_balance: 1_000})
+:ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123456", initial_balance: 1_000})
 ```

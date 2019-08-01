@@ -2,16 +2,15 @@ defmodule Commanded.Application do
   @moduledoc """
   Defines a Commanded application.
 
-  An application
+  The application expects at least an `:otp_app` option to be specified. It
+  should point to an OTP application that has the application configuration.
 
-  When used, the application expects the `:otp_app` and `:event_store` as
-  options. The `:otp_app` should point to an OTP application that has
-  the application configuration. For example, the application:
+  For example, the application:
 
       defmodule MyApp.Application do
         use Commanded.Application, otp_app: :my_app
 
-        router MyApp.Router
+        router(MyApp.Router)
       end
 
   Could be configured with:
@@ -38,7 +37,7 @@ defmodule Commanded.Application do
           pubsub: :local,
           registry: :local
 
-        router MyApp.Router
+        router(MyApp.Router)
       end
 
   """
@@ -138,11 +137,11 @@ defmodule Commanded.Application do
   @callback config() :: Keyword.t()
 
   @doc """
-  Starts the application supervisor and returns `{:ok, pid}` or just `:ok` if
-  nothing needs to be done.
+  Starts the application supervisor.
 
-  Returns `{:error, {:already_started, pid}}` if the application is already
-  started or `{:error, term}` in case anything else goes wrong.
+  Returns `{:ok, pid}` on sucess, `{:error, {:already_started, pid}}` if the
+  application is already started, or `{:error, term}` in case anything else goes
+  wrong.
   """
   @callback start_link(opts :: Keyword.t()) ::
               {:ok, pid}

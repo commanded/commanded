@@ -25,9 +25,9 @@ end
 
 ## Command dispatch and routing
 
-A router module is used to route and dispatch commands to their registered command handler or aggregate module.
+A router module is used to route commands to their registered command handler and aggregate module.
 
-You create a router module, using `Commanded.Commands.Router`, and register each command with its associated handler:
+You create a router module using `Commanded.Commands.Router` and register each command with its associated handler:
 
 ```elixir
 defmodule BankRouter do
@@ -49,6 +49,16 @@ defmodule BankRouter do
 end
 ```
 
+A router must be registered with its associated application using the `router` macro, as shown below:
+
+```elixir
+defmodule BankApp do
+  use Commanded.Application, otp_app: :bank_app
+
+  router BankRouter
+end
+```
+
 ## Command handlers
 
 A command handler receives the aggregate and the command being executed. It allows you to validate, authorize, and/or enrich the command with additional data before executing the appropriate aggregate module function.
@@ -59,7 +69,9 @@ The command handler must implement the `Commanded.Commands.Handler` behaviour co
 defmodule OpenAccountHandler do
   @behaviour Commanded.Commands.Handler
 
-  def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
+  def handle(%BankAccount{} = aggregate, %OpenAccount{} = command) do
+    %OpenAccount{account_number: account_number, initial_balance: initial_balance} = command
+
     BankAccount.open_account(aggregate, account_number, initial_balance)
   end
 end
@@ -83,10 +95,18 @@ The aggregate must implement an `execute/2` function that receives the aggregate
 
 ### Dispatching commands
 
-You dispatch a command to its registered aggregate using the router:
+You dispatch a command to its registered aggregate using the application:
 
 ```elixir
-:ok = BankRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+:ok = BankApp.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+```
+
+Optionally, you can dispatch a command using the router by providing the application as an option:
+
+```elixir
+command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+:ok = BankRouter.dispatch(command, application: BankApp)
 ```
 
 ### Define aggregate identity
@@ -150,7 +170,7 @@ open_account = %OpenAccount{
   initial_balance: 1_000
 }
 
-:ok = BankRouter.dispatch(open_account)
+:ok = BankApp.dispatch(open_account)
 ```
 
 ### Timeouts
@@ -177,7 +197,7 @@ You can override the timeout value during command dispatch. This example is disp
 ```elixir
 open_account = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
 
-:ok = BankRouter.dispatch(open_account, timeout: 2_000)
+:ok = BankApp.dispatch(open_account, timeout: 2_000)
 ```
 
 ### Multi-command registration
@@ -207,14 +227,14 @@ In Commanded, the available options during command dispatch are:
   - `:eventual` (default) - don't block command dispatch and don't wait for any event handlers, regardless of their own consistency configuration.
 
     ```elixir
-    :ok = BankRouter.dispatch(command)
-    :ok = BankRouter.dispatch(command, consistency: :eventual)
+    :ok = BankApp.dispatch(command)
+    :ok = BankApp.dispatch(command, consistency: :eventual)
     ```
 
   - `:strong` - block command dispatch until all strongly consistent event handlers and process managers have successfully processed all events created by the command.
 
     ```elixir
-    :ok = BankRouter.dispatch(command, consistency: :strong)
+    :ok = BankApp.dispatch(command, consistency: :strong)
     ```
 
     Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
@@ -222,8 +242,8 @@ In Commanded, the available options during command dispatch are:
   - Provide an explicit list of event handler and process manager modules (or their configured names), containing only those handlers you'd like to wait for. No other handlers will be awaited on, regardless of their own configured consistency setting.
 
     ```elixir
-    :ok = BankRouter.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
-    :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+    :ok = BankApp.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
+    :ok = BankApp.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
     ```
 
     Note you cannot opt-in to strong consistency for a handler that has been configured as eventually consistent.
@@ -251,7 +271,7 @@ This will effect command dispatch, event handlers, and process managers where a 
 By opting-in to strong consistency you may encounter an additional error reply from command dispatch:
 
 ```elixir
-case BankRouter.dispatch(command, consistency: :strong) do
+case BankApp.dispatch(command, consistency: :strong) do
   :ok -> # ... all ok
   {:error, :consistency_timeout} -> # command ok, handlers have not yet executed
 end
@@ -268,8 +288,7 @@ config :commanded,
 
 ### Dispatch returning execution result
 
-You can choose to include the execution result as part of the dispatch result by
-setting `include_execution_result` true:
+You can choose to include the execution result as part of the dispatch result by setting `include_execution_result` true:
 
 ```elixir
 {
@@ -280,17 +299,17 @@ setting `include_execution_result` true:
     events: events,
     metadata: metadata
   }
-} = BankRouter.dispatch(command, include_execution_result: true)
+} = BankApp.dispatch(command, include_execution_result: true)
 ```
 
-You can use this if you need to get information from the events produced by the aggregate without waiting for the events to be projected.
+This is useful if you need to get information from the events produced by the aggregate.
 
 ### Dispatch returning aggregate version
 
 You can optionally choose to include the aggregate's version as part of the dispatch result by setting the  `include_aggregate_version` option to true:
 
 ```elixir
-{:ok, aggregate_version} = BankRouter.dispatch(command, include_aggregate_version: true)
+{:ok, aggregate_version} = BankApp.dispatch(command, include_aggregate_version: true)
 ```
 
 This is useful when you need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
@@ -305,7 +324,7 @@ To assist with monitoring and debugging your deployed application it is useful t
 You can set causation and correlation ids when dispatching a command:
 
 ```elixir
-:ok = ExampleRouter.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
+:ok = BankApp.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
 ```
 
 When dispatching a command in an event handler, you should copy these values from the event your are processing:
@@ -313,11 +332,13 @@ When dispatching a command in an event handler, you should copy these values fro
 ```elixir
 defmodule ExampleHandler do  
   use Commanded.Event.Handler,
-    application: ExampleApp, 
+    application: ExampleApp,
     name: "ExampleHandler"
 
   def handle(%AnEvent{..}, %{event_id: causation_id, correlation_id: correlation_id}) do
-    ExampleRouter.dispatch(%ExampleCommand{..},
+    command = %ExampleCommand{..}
+
+    BankApp.dispatch(command,
       causation_id: causation_id,
       correlation_id: correlation_id,
     )
@@ -334,7 +355,7 @@ You can use [Commanded audit middleware](https://github.com/commanded/commanded-
 It's helpful for debugging to have additional metadata associated with events issued by a command. You can set it when dispatching a command:
 
 ```elixir
-:ok = ExampleRouter.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
+:ok = BankApp.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
 ```
 
 Note, due metadata serialization you should expect that only: strings, numbers, and boolean values are preserved; any other value will be converted to a string.
@@ -447,8 +468,16 @@ defmodule ApplicationRouter do
 end
 ```
 
+```elixir
+defmodule BankApp do
+  use Commanded.Application, otp_app: :bank_app
+
+  router ApplicationRouter
+end
+```
+
 Command dispatch works the same as any other router:
 
 ```elixir
-:ok = ApplicationRouter.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+:ok = BankApp.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
 ```

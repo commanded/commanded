@@ -24,4 +24,12 @@ Commanded can be installed from hex as follows.
     $ mix deps.get
     ```
 
-4. Configure one of the supported event stores by following the "Choosing an Event Store" guide.
+4. Define a Commanded application module for your app, see the "Application" guide for details.
+
+    ```elixir
+    defmodule MyApp.Application do
+      use Commanded.Application, otp_app: :my_app
+    end
+    ```
+
+5. Configure one of the supported event stores by following the "Choosing an Event Store" guide.
