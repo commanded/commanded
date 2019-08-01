@@ -1,29 +1,33 @@
 defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @moduledoc false
 
-  use GenServer
+  use GenServer, restart: :temporary
 
   require Logger
 
-  alias Commanded.ProcessManagers.{ProcessRouter, ProcessManagerInstance, FailureContext}
+  alias Commanded.ProcessManagers.{ProcessRouter, FailureContext}
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
 
-  defstruct [
-    :application,
-    :idle_timeout,
-    :process_router,
-    :process_manager_name,
-    :process_manager_module,
-    :process_uuid,
-    :process_state,
-    :last_seen_event
-  ]
+  defmodule State do
+    @moduledoc false
+
+    defstruct [
+      :application,
+      :idle_timeout,
+      :process_router,
+      :process_manager_name,
+      :process_manager_module,
+      :process_uuid,
+      :process_state,
+      :last_seen_event
+    ]
+  end
 
   def start_link(opts) do
     process_manager_module = Keyword.fetch!(opts, :process_manager_module)
 
-    state = %ProcessManagerInstance{
+    state = %State{
       application: Keyword.fetch!(opts, :application),
       idle_timeout: Keyword.fetch!(opts, :idle_timeout),
       process_router: Keyword.fetch!(opts, :process_router),
@@ -36,7 +40,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     GenServer.start_link(__MODULE__, state)
   end
 
-  def init(%ProcessManagerInstance{} = state) do
+  def init(%State{} = state) do
     {:ok, state, {:continue, :fetch_state}}
   end
 
@@ -73,13 +77,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Attempt to fetch intial process state from snapshot storage.
   """
-  def handle_continue(:fetch_state, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{application: application} = state
+  def handle_continue(:fetch_state, %State{} = state) do
+    %State{application: application} = state
 
     state =
       case EventStore.read_snapshot(application, process_state_uuid(state)) do
         {:ok, snapshot} ->
-          %ProcessManagerInstance{
+          %State{
             state
             | process_state: snapshot.data,
               last_seen_event: snapshot.source_version
@@ -93,7 +97,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
-  def handle_call(:stop, _from, %ProcessManagerInstance{} = state) do
+  def handle_call(:stop, _from, %State{} = state) do
     :ok = delete_state(state)
 
     # Stop the process with a normal reason
@@ -101,15 +105,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
-  def handle_call(:process_state, _from, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{idle_timeout: idle_timeout, process_state: process_state} = state
+  def handle_call(:process_state, _from, %State{} = state) do
+    %State{idle_timeout: idle_timeout, process_state: process_state} = state
 
     {:reply, process_state, state, idle_timeout}
   end
 
   @doc false
-  def handle_call(:new?, _from, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{idle_timeout: idle_timeout, last_seen_event: last_seen_event} = state
+  def handle_call(:new?, _from, %State{} = state) do
+    %State{idle_timeout: idle_timeout, last_seen_event: last_seen_event} = state
 
     {:reply, is_nil(last_seen_event), state, idle_timeout}
   end
@@ -117,7 +121,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Handle the given event, using the process manager module, against the current process state
   """
-  def handle_cast({:process_event, event}, %ProcessManagerInstance{} = state) do
+  def handle_cast({:process_event, event}, %State{} = state) do
     case event_already_seen?(event, state) do
       true -> process_seen_event(event, state)
       false -> process_unseen_event(event, state)
@@ -125,36 +129,36 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
-  def handle_info(:timeout, %ProcessManagerInstance{} = state) do
+  def handle_info(:timeout, %State{} = state) do
     Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
 
     {:stop, :normal, state}
   end
 
-  defp event_already_seen?(%RecordedEvent{}, %ProcessManagerInstance{last_seen_event: nil}),
+  defp event_already_seen?(%RecordedEvent{}, %State{last_seen_event: nil}),
     do: false
 
-  defp event_already_seen?(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do
+  defp event_already_seen?(%RecordedEvent{} = event, %State{} = state) do
     %RecordedEvent{event_number: event_number} = event
-    %ProcessManagerInstance{last_seen_event: last_seen_event} = state
+    %State{last_seen_event: last_seen_event} = state
 
     event_number <= last_seen_event
   end
 
   # Already seen event, so just ack
-  defp process_seen_event(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{idle_timeout: idle_timeout} = state
+  defp process_seen_event(%RecordedEvent{} = event, %State{} = state) do
+    %State{idle_timeout: idle_timeout} = state
 
     :ok = ack_event(event, state)
 
     {:noreply, state, idle_timeout}
   end
 
-  defp process_unseen_event(event, %ProcessManagerInstance{} = state, context \\ %{}) do
+  defp process_unseen_event(event, %State{} = state, context \\ %{}) do
     %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
       event
 
-    %ProcessManagerInstance{application: application, idle_timeout: idle_timeout} = state
+    %State{application: application, idle_timeout: idle_timeout} = state
 
     case handle_event(event, state) do
       {:error, error} ->
@@ -175,7 +179,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         with :ok <- commands |> List.wrap() |> dispatch_commands(opts, state, event) do
           process_state = mutate_state(event, state)
 
-          state = %ProcessManagerInstance{
+          state = %State{
             state
             | process_state: process_state,
               last_seen_event: event_number
@@ -194,10 +198,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   # Process instance is given the event and returns applicable commands
   # (may be none, one or many).
-  defp handle_event(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do
+  defp handle_event(%RecordedEvent{} = event, %State{} = state) do
     %RecordedEvent{data: data} = event
 
-    %ProcessManagerInstance{
+    %State{
       process_manager_module: process_manager_module,
       process_state: process_state
     } = state
@@ -212,7 +216,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp handle_event_error(error, failed_event, state, context) do
     %RecordedEvent{data: data} = failed_event
 
-    %ProcessManagerInstance{
+    %State{
       idle_timeout: idle_timeout,
       process_manager_module: process_manager_module
     } = state
@@ -266,10 +270,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   # update the process instance's state by applying the event
-  defp mutate_state(%RecordedEvent{data: data}, %ProcessManagerInstance{
-         process_manager_module: process_manager_module,
-         process_state: process_state
-       }) do
+  defp mutate_state(%RecordedEvent{} = event, %State{} = state) do
+    %RecordedEvent{data: data} = event
+
+    %State{
+      process_manager_module: process_manager_module,
+      process_state: process_state
+    } = state
+
     process_manager_module.apply(process_state, data)
   end
 
@@ -277,7 +285,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp dispatch_commands([], _opts, _state, _last_event, _context), do: :ok
 
   defp dispatch_commands([command | pending_commands], opts, state, last_event, context) do
-    %ProcessManagerInstance{application: application} = state
+    %State{application: application} = state
 
     Logger.debug(fn ->
       describe(state) <> " attempting to dispatch command: #{inspect(command)}"
@@ -309,7 +317,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp dispatch_failure(error, failed_command, opts, state, failure_context) do
-    %ProcessManagerInstance{process_manager_module: process_manager_module} = state
+    %State{process_manager_module: process_manager_module} = state
     %FailureContext{pending_commands: pending_commands, last_event: last_event} = failure_context
 
     case process_manager_module.error(error, failed_command, failure_context) do
@@ -358,11 +366,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
-  defp describe(%ProcessManagerInstance{process_manager_module: process_manager_module}),
+  defp describe(%State{process_manager_module: process_manager_module}),
     do: inspect(process_manager_module)
 
-  defp persist_state(source_version, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{
+  defp persist_state(source_version, %State{} = state) do
+    %State{
       application: application,
       process_manager_module: process_manager_module,
       process_state: process_state
@@ -378,20 +386,20 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     EventStore.record_snapshot(application, snapshot)
   end
 
-  defp delete_state(%ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{application: application} = state
+  defp delete_state(%State{} = state) do
+    %State{application: application} = state
 
     EventStore.delete_snapshot(application, process_state_uuid(state))
   end
 
-  defp ack_event(%RecordedEvent{} = event, %ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{process_router: process_router} = state
+  defp ack_event(%RecordedEvent{} = event, %State{} = state) do
+    %State{process_router: process_router} = state
 
     ProcessRouter.ack_event(process_router, event, self())
   end
 
-  defp process_state_uuid(%ProcessManagerInstance{} = state) do
-    %ProcessManagerInstance{
+  defp process_state_uuid(%State{} = state) do
+    %State{
       process_manager_name: process_manager_name,
       process_uuid: process_uuid
     } = state

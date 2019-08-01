@@ -173,9 +173,9 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   @doc false
   @impl GenServer
   def handle_info({:events, events}, %State{} = state) do
-    Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
-
     %State{pending_events: pending_events} = state
+
+    Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
 
     unseen_events =
       events
