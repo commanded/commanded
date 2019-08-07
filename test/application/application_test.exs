@@ -6,8 +6,9 @@ defmodule Commanded.ApplicationTest do
 
   describe "a Commanded application" do
     setup do
-      start_supervised!(ExampleApplication)
-      :ok
+      pid = start_supervised!(ExampleApplication)
+
+      [pid: pid]
     end
 
     defmodule Event do
@@ -15,7 +16,11 @@ defmodule Commanded.ApplicationTest do
       defstruct [:name]
     end
 
-    test "should expose event store adapter" do
+    test "should not allow the application to be started more than once", %{pid: pid} do
+      assert {:error, {:already_started, ^pid}} = ExampleApplication.start_link()
+    end
+
+    test "should expose an event store adapter" do
       assert ExampleApplication.__event_store_adapter__() == ExampleApplication.EventStore
     end
 
@@ -35,7 +40,7 @@ defmodule Commanded.ApplicationTest do
       assert :ok = ExampleApplication.EventStore.append_to_stream("1", 0, events)
     end
 
-    test "should expose pubsub adapter" do
+    test "should expose a pubsub adapter" do
       assert ExampleApplication.__pubsub_adapter__() == ExampleApplication.PubSub
     end
 
@@ -43,7 +48,7 @@ defmodule Commanded.ApplicationTest do
       assert_implements(ExampleApplication.PubSub, Commanded.PubSub.Adapter)
     end
 
-    test "should expose registry adapter" do
+    test "should expose a registry adapter" do
       assert ExampleApplication.__registry_adapter__() == ExampleApplication.Registration
     end
 
