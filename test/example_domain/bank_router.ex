@@ -17,12 +17,13 @@ defmodule Commanded.ExampleDomain.BankRouter do
 
   middleware CommandAuditMiddleware
 
+  # Bank account
   identify BankAccount, by: :account_number
-  identify MoneyTransfer, by: :transfer_uuid
-
   dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount
   dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount
   dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount
 
+  # Money transfer
+  identify MoneyTransfer, by: :transfer_uuid
   dispatch TransferMoney, to: TransferMoneyHandler, aggregate: MoneyTransfer
 end

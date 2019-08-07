@@ -13,17 +13,18 @@ defmodule Commanded.Commands.CompositeRouter do
       end
 
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
-      
+
       :ok = ExampleCompositeRouter.dispatch(command)
   """
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote do
       require Logger
 
       import unquote(__MODULE__)
 
       @registered_commands %{}
+      @application Keyword.get(unquote(opts), :application)
 
       @before_compile unquote(__MODULE__)
     end
@@ -31,7 +32,7 @@ defmodule Commanded.Commands.CompositeRouter do
 
   defmacro router(router_module) do
     quote location: :keep do
-      for command <- unquote(router_module).registered_commands() do
+      for command <- unquote(router_module).__registered_commands__() do
         case Map.get(@registered_commands, command) do
           nil ->
             @registered_commands Map.put(@registered_commands, command, unquote(router_module))
@@ -48,7 +49,7 @@ defmodule Commanded.Commands.CompositeRouter do
   defmacro __before_compile__(_env) do
     quote generated: true do
       @doc false
-      def registered_commands do
+      def __registered_commands__ do
         Enum.map(@registered_commands, fn {command, _router} -> command end)
       end
 
@@ -60,8 +61,19 @@ defmodule Commanded.Commands.CompositeRouter do
           __MODULE__,
           quote do
             @doc false
+            def dispatch(%unquote(command_module){} = command, :infinity) do
+              unquote(router).dispatch(command, application: @application, timeout: :infinity)
+            end
+
+            @doc false
+            def dispatch(%unquote(command_module){} = command, timeout)
+                when is_integer(timeout) do
+              unquote(router).dispatch(command, application: @application, timeout: timeout)
+            end
+
+            @doc false
             def dispatch(%unquote(command_module){} = command, opts) do
-              unquote(router).dispatch(command, opts)
+              unquote(router).dispatch(command, Keyword.put_new(opts, :application, @application))
             end
           end
         )
@@ -70,7 +82,7 @@ defmodule Commanded.Commands.CompositeRouter do
       @doc false
       def dispatch(command, _opts) do
         Logger.error(fn ->
-          "attempted to dispatch an unregistered command: #{inspect(command)}"
+          "attempted to dispatch an unregistered command: " <> inspect(command)
         end)
 
         {:error, :unregistered_command}

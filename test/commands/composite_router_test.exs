@@ -17,7 +17,7 @@ defmodule Commanded.Commands.CompositeRouterTest do
     end
 
     test "should register all commands" do
-      assert ExampleCompositeRouter.registered_commands() |> Enum.sort() == [
+      assert ExampleCompositeRouter.__registered_commands__() |> Enum.sort() == [
                DepositMoney,
                OpenAccount,
                WithdrawMoney,
@@ -92,11 +92,12 @@ defmodule Commanded.Commands.CompositeRouterTest do
   describe "composite router composed of composite router" do
     setup do
       start_supervised!(DefaultApp)
+
       :ok
     end
 
     test "should register all commands" do
-      assert CompositeCompositeRouter.registered_commands() |> Enum.sort() == [
+      assert CompositeCompositeRouter.__registered_commands__() |> Enum.sort() == [
                DepositMoney,
                OpenAccount,
                WithdrawMoney,

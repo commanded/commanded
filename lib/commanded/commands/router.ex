@@ -24,10 +24,9 @@ defmodule Commanded.Commands.Router do
   Once configured, you can either dispatch a command using the module by and
   specify the application:
 
-      :ok = BankRouter.dispatch(%OpenAccount{
-        account_number: "ACC123",
-        initial_balance: 1_000
-      }, application: BankApp)
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankRouter.dispatch(command, application: BankApp)
 
   Or, more simply you should include the router module in your application:
 
@@ -39,7 +38,9 @@ defmodule Commanded.Commands.Router do
 
   Then dispatch commands using the app:
 
-      :ok = BankApp.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000})
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankApp.dispatch(command)
 
   ## Dispatch command directly to an aggregate
 
@@ -156,31 +157,26 @@ defmodule Commanded.Commands.Router do
   @callback dispatch(struct, keyword()) ::
               :ok | {:ok, non_neg_integer()} | {:ok, struct} | {:error, term}
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote do
       require Logger
 
       import unquote(__MODULE__)
       @before_compile unquote(__MODULE__)
 
+      @application Keyword.get(unquote(opts), :application)
       @registered_commands []
       @registered_identities %{}
       @registered_middleware []
-      @include_aggregate_version Application.get_env(
-                                   :commanded,
-                                   :include_aggregate_version,
-                                   false
-                                 )
-      @include_execution_result Application.get_env(:commanded, :include_execution_result, false)
 
       @default [
         middleware: [
           Commanded.Middleware.ExtractAggregateIdentity,
           Commanded.Middleware.ConsistencyGuarantee
         ],
-        consistency: Application.get_env(:commanded, :default_consistency, :eventual),
-        include_aggregate_version: @include_aggregate_version,
-        include_execution_result: @include_execution_result,
+        consistency: get_env(:default_consistency, :eventual),
+        include_aggregate_version: get_env(:include_aggregate_version, false),
+        include_execution_result: get_env(:include_execution_result, false),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
@@ -364,9 +360,8 @@ defmodule Commanded.Commands.Router do
         invalid ->
           raise ArgumentError,
             message:
-              "Invalid `lifespan` configured for #{inspect(unquote(aggregate))}: #{
+              "Invalid `lifespan` configured for #{inspect(unquote(aggregate))}: " <>
                 inspect(invalid)
-              }"
       end
 
       unless function_exported?(unquote(handler), unquote(function), 2) do
@@ -394,7 +389,9 @@ defmodule Commanded.Commands.Router do
         do: do_dispatch(command, opts)
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
-        application = Keyword.fetch!(opts, :application)
+        unless application = Keyword.get(opts, :application, @application) do
+          raise ArgumentError, message: "no :application provided"
+        end
 
         causation_id = Keyword.get(opts, :causation_id)
         correlation_id = Keyword.get(opts, :correlation_id) || UUID.uuid4()
@@ -458,7 +455,7 @@ defmodule Commanded.Commands.Router do
   defmacro __before_compile__(_env) do
     quote generated: true do
       @doc false
-      def registered_commands, do: @registered_commands
+      def __registered_commands__, do: @registered_commands
 
       @doc """
       Dispatch the given command to the registered handler.
@@ -532,7 +529,7 @@ defmodule Commanded.Commands.Router do
       defp unregistered_command(command) do
         _ =
           Logger.error(fn ->
-            "attempted to dispatch an unregistered command: #{inspect(command)}"
+            "attempted to dispatch an unregistered command: " <> inspect(command)
           end)
 
         {:error, :unregistered_command}
@@ -546,6 +543,9 @@ defmodule Commanded.Commands.Router do
       raise "module `#{inspect(module)}` does not exist, perhaps you forgot to `alias` the namespace"
     end
   end
+
+  @doc false
+  def get_env(name, default \\ nil), do: Application.get_env(:commanded, name, default)
 
   defp parse_opts([{:to, aggregate_or_handler} | opts], result) do
     case Keyword.pop(opts, :aggregate) do

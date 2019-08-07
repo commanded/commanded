@@ -1,6 +1,7 @@
 defmodule Commanded.ApplicationTest do
   use ExUnit.Case
 
+  alias Commanded.Application
   alias Commanded.EventStore.EventData
   alias Commanded.ExampleApplication
 
@@ -16,12 +17,12 @@ defmodule Commanded.ApplicationTest do
       defstruct [:name]
     end
 
-    test "should not allow the application to be started more than once", %{pid: pid} do
+    test "should not allow an application to be started more than once", %{pid: pid} do
       assert {:error, {:already_started, ^pid}} = ExampleApplication.start_link()
     end
 
     test "should expose an event store adapter" do
-      assert ExampleApplication.__event_store_adapter__() == ExampleApplication.EventStore
+      assert Application.event_store_adapter(ExampleApplication) == ExampleApplication.EventStore
     end
 
     test "should define an event store adapter" do
@@ -41,7 +42,7 @@ defmodule Commanded.ApplicationTest do
     end
 
     test "should expose a pubsub adapter" do
-      assert ExampleApplication.__pubsub_adapter__() == ExampleApplication.PubSub
+      assert Application.pubsub_adapter(ExampleApplication) == ExampleApplication.PubSub
     end
 
     test "should define a pubsub adapter" do
@@ -49,7 +50,7 @@ defmodule Commanded.ApplicationTest do
     end
 
     test "should expose a registry adapter" do
-      assert ExampleApplication.__registry_adapter__() == ExampleApplication.Registration
+      assert Application.registry_adapter(ExampleApplication) == ExampleApplication.Registration
     end
 
     test "should define a registration adapter" do

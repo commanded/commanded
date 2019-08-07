@@ -36,14 +36,16 @@ defmodule Commanded.PubSub do
   """
   @callback list(pubsub, topic :: String.t()) :: [{term, pid}]
 
+  alias Commanded.Application
+
   @doc false
   def subscribe(application, topic) do
-    application.__pubsub_adapter__().subscribe(topic)
+    Application.pubsub_adapter(application).subscribe(topic)
   end
 
   @doc false
   def broadcast(application, topic, message) do
-    application.__pubsub_adapter__().broadcast(topic, message)
+    Application.pubsub_adapter(application).broadcast(topic, message)
   end
 
   @doc """

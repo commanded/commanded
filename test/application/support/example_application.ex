@@ -8,4 +8,8 @@ defmodule Commanded.ExampleApplication do
       adapter: InMemory,
       serializer: JsonSerializer
     ]
+
+  alias Commanded.ExampleDomain.BankRouter
+
+  router(BankRouter)
 end

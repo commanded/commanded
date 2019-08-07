@@ -55,11 +55,13 @@ defmodule Commanded.Application do
       registry_adapter = Commanded.Registration.registry_provider(__MODULE__, config)
 
       @otp_app otp_app
+      @name Keyword.get(opts, :name, __MODULE__)
       @event_store_adapter event_store_adapter
       @pubsub_adapter pubsub_adapter
       @registry_adapter registry_adapter
 
-      use Commanded.Commands.CompositeRouter
+      use Commanded.Commands.CompositeRouter,
+        application: __MODULE__
 
       defmodule EventStore do
         use Commanded.EventStore.Adapter,
@@ -81,18 +83,6 @@ defmodule Commanded.Application do
       def config do
         {:ok, config} = Commanded.Application.Supervisor.runtime_config(__MODULE__, @otp_app, [])
         config
-      end
-
-      def __event_store_adapter__ do
-        EventStore
-      end
-
-      def __pubsub_adapter__ do
-        PubSub
-      end
-
-      def __registry_adapter__ do
-        Registration
       end
 
       def child_spec(opts) do
@@ -163,4 +153,13 @@ defmodule Commanded.Application do
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}
+
+  @doc false
+  def event_store_adapter(application), do: Module.concat([application, EventStore])
+
+  @doc false
+  def pubsub_adapter(application), do: Module.concat([application, PubSub])
+
+  @doc false
+  def registry_adapter(application), do: Module.concat([application, Registration])
 end

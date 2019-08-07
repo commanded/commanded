@@ -149,14 +149,20 @@ defmodule Commanded.EventStore do
   """
   @callback delete_snapshot(event_store, source_uuid) :: :ok | {:error, error}
 
+  alias Commanded.Application
+
   @doc false
   def append_to_stream(application, stream_uuid, expected_version, events) do
-    application.__event_store_adapter__().append_to_stream(stream_uuid, expected_version, events)
+    Application.event_store_adapter(application).append_to_stream(
+      stream_uuid,
+      expected_version,
+      events
+    )
   end
 
   @doc false
   def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
-    application.__event_store_adapter__().stream_forward(
+    Application.event_store_adapter(application).stream_forward(
       stream_uuid,
       start_version,
       read_batch_size
@@ -165,12 +171,12 @@ defmodule Commanded.EventStore do
 
   @doc false
   def subscribe(application, stream_uuid) do
-    application.__event_store_adapter__().subscribe(stream_uuid)
+    Application.event_store_adapter(application).subscribe(stream_uuid)
   end
 
   @doc false
   def subscribe_to(application, stream_uuid, subscription_name, subscriber, start_from) do
-    application.__event_store_adapter__().subscribe_to(
+    Application.event_store_adapter(application).subscribe_to(
       stream_uuid,
       subscription_name,
       subscriber,
@@ -180,32 +186,32 @@ defmodule Commanded.EventStore do
 
   @doc false
   def ack_event(application, subscription, event) do
-    application.__event_store_adapter__().ack_event(subscription, event)
+    Application.event_store_adapter(application).ack_event(subscription, event)
   end
 
   @doc false
   def unsubscribe(application, subscription) do
-    application.__event_store_adapter__().unsubscribe(subscription)
+    Application.event_store_adapter(application).unsubscribe(subscription)
   end
 
   @doc false
   def delete_subscription(application, subscribe_to, handler_name) do
-    application.__event_store_adapter__().delete_subscription(subscribe_to, handler_name)
+    Application.event_store_adapter(application).delete_subscription(subscribe_to, handler_name)
   end
 
   @doc false
   def read_snapshot(application, source_uuid) do
-    application.__event_store_adapter__().read_snapshot(source_uuid)
+    Application.event_store_adapter(application).read_snapshot(source_uuid)
   end
 
   @doc false
   def record_snapshot(application, snapshot) do
-    application.__event_store_adapter__().record_snapshot(snapshot)
+    Application.event_store_adapter(application).record_snapshot(snapshot)
   end
 
   @doc false
   def delete_snapshot(application, source_uuid) do
-    application.__event_store_adapter__().delete_snapshot(source_uuid)
+    Application.event_store_adapter(application).delete_snapshot(source_uuid)
   end
 
   @doc """
