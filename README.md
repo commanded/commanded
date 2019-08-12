@@ -26,6 +26,7 @@ Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any u
 You can help support Commanded by helping to fund its ongoing development, new features, and releases.
 
 - [Become a backer or sponsor on OpenCollective](https://opencollective.com/commanded).
+- [View sponsors & backers](BACKERS.md)
 
 ---
 
