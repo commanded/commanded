@@ -234,14 +234,16 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @callback apply(process_manager, domain_event) :: process_manager
 
   @doc """
-  Called when a command dispatch returns an error.
+  Called when a command dispatch or event handling returns an error.
 
-  The `c:error/3` function allows you to control how command dispatch failures
-  are handled. The function is passed the command dispatch error (e.g. `{:error,
-  :failure}`), the failed command, and a failure context struct
-  (see `Commanded.ProcessManagers.FailureContext` for details). This contains a
-  context map you can use to pass transient state between failures. For example
-  it can be used to count the number of failures.
+  The `c:error/3` function allows you to control how command dispatch and event
+  handling failures are handled. The function is passed the error (e.g.
+  `{:error, :failure}`), the failed command (during failed dispatch) or failed
+  event (during failed event handling), and a failure context struct (see
+  `Commanded.ProcessManagers.FailureContext` for details).
+
+  The failure context contains a context map you can use to pass transient state
+  between failures. For example it can be used to count the number of failures.
 
   You can return one of the following responses depending upon the
   error severity:
@@ -269,8 +271,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   """
   @callback error(
-              error :: term(),
-              failed_command :: command,
+              error :: {:error, term()},
+              failure_source :: command | domain_event,
               failure_context :: FailureContext.t()
             ) ::
               {:retry, context :: map()}
