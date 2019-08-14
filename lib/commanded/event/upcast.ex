@@ -1,4 +1,6 @@
 defmodule Commanded.Event.Upcast do
+  @moduledoc false
+
   alias Commanded.Event.Upcaster
   alias Commanded.EventStore.RecordedEvent
 

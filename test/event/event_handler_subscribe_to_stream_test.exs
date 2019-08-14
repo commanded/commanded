@@ -47,7 +47,7 @@ defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
       |> Enum.map(fn _i ->
         %AnEvent{reply_to: reply_to, stream_uuid: stream_uuid}
       end)
-      |> Commanded.Event.Mapper.map_to_event_data([])
+      |> Commanded.Event.Mapper.map_to_event_data()
 
     EventStore.append_to_stream(stream_uuid, :any_version, events)
   end

@@ -130,7 +130,7 @@ defmodule Commanded.Mixfile do
         Events: [
           Commanded.Event.FailureContext,
           Commanded.Event.Handler,
-          Commanded.Event.Upcast,
+          Commanded.Event.Mapper,
           Commanded.Event.Upcaster
         ],
         "Process Managers": [
@@ -158,6 +158,9 @@ defmodule Commanded.Mixfile do
           Commanded.Serialization.JsonDecoder,
           Commanded.Serialization.JsonSerializer,
           Commanded.Serialization.ModuleNameTypeProvider
+        ],
+        Tasks: [
+          Mix.Tasks.Commanded.Reset
         ],
         Middleware: [
           Commanded.Middleware,

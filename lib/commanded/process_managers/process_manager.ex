@@ -1,6 +1,6 @@
 defmodule Commanded.ProcessManagers.ProcessManager do
   @moduledoc """
-  Behaviour to define a process manager.
+  Macro used to define a process manager.
 
   A process manager is responsible for coordinating one or more aggregates.
   It handles events and dispatches commands in response. Process managers have
@@ -14,23 +14,19 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:apply/2`
   - `c:error/3`
 
-  ## Example
+  ### Example
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
           name: "ExampleProcessManager",
           router: ExampleRouter
 
-        def interested?(%AnEvent{...}) do
-          # ...
-        end
+        def interested?(%AnEvent{uuid: uuid}), do: {:start, uuid}
 
-        def handle(%ExampleProcessManager{...}, %AnEvent{...}) do
-          # ...
-        end
-
-        def apply(%ExampleProcessManager{...}, %AnEvent{...}) do
-          # ...
+        def handle(%ExampleProcessManager{}, %ExampleEvent{}) do
+          [
+            %ExampleCommand{}
+          ]
         end
 
         def error({:error, failure}, %ExampleEvent{}, _failure_context) do
@@ -42,11 +38,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         end
       end
 
-  Start the process manager (or configure as a worker inside a [Supervisor](supervision.html))
+  Start the process manager (or configure as a worker inside a
+  [Supervisor](supervision.html))
 
       {:ok, process_manager} = ExampleProcessManager.start_link()
 
-  # Error handling
+  ## Error handling
 
   You can define an `c:error/3` callback function to handle any errors or
   exceptions during event handling or returned by commands dispatched from your
@@ -63,7 +60,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   event handler function or command dispatch. You should supervise your
   process managers to ensure they are restarted on error.
 
-  ## Example
+  ### Example
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
@@ -85,53 +82,78 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         end
       end
 
-    # Idle process timeouts
+  ## Idle process timeouts
 
-    Each instance of a process manager will run indefinitely once started. To
-    reduce memory usage you can configure an idle timeout, in milliseconds,
-    after which the process will be shutdown.
+  Each instance of a process manager will run indefinitely once started. To
+  reduce memory usage you can configure an idle timeout, in milliseconds,
+  after which the process will be shutdown.
 
-    The process will be restarted whenever another event is routed to it and its
-    state will be rehydrated from the instance snapshot.
+  The process will be restarted whenever another event is routed to it and its
+  state will be rehydrated from the instance snapshot.
 
-    ## Example
+  ### Example
 
-        defmodule ExampleProcessManager do
-          use Commanded.ProcessManagers.ProcessManager,
-            name: "ExampleProcessManager",
-            router: ExampleRouter,
-            idle_timeout: :timer.minutes(10)
-        end
+      defmodule ExampleProcessManager do
+        use Commanded.ProcessManagers.ProcessManager,
+          name: "ExampleProcessManager",
+          router: ExampleRouter,
+          idle_timeout: :timer.minutes(10)
+      end
 
-  # Consistency
+  ## Event handling timeout
+
+  You can configure a timeout for event handling to ensure that events are
+  processed in a timely manner without getting stuck.
+
+  An `event_timeout` option, defined in milliseconds, may be provided when using
+  the `Commanded.ProcessManagers.ProcessManager` macro at compile time:
+
+      defmodule TransferMoneyProcessManager do
+        use Commanded.ProcessManagers.ProcessManager,
+          name: "TransferMoneyProcessManager",
+          router: BankRouter,
+          event_timeout: :timer.minutes(10)
+      end
+
+  Or may be configured when starting a process manager:
+
+      {:ok, _pid} = TransferMoneyProcessManager.start_link(
+        event_timeout: :timer.hours(1)
+      )
+
+  After the timeout has elapsed, indicating the process manager has not
+  processed an event within the configured period, the process manager is
+  stopped. The process manager will be restarted if supervised and will retry
+  the event, this should help resolve transient problems.
+
+  ## Consistency
 
   For each process manager you can define its consistency, as one of either
   `:strong` or `:eventual`.
 
-  This setting is used when dispatching commands and specifying the `consistency`
-  option.
+  This setting is used when dispatching commands and specifying the
+  `consistency` option.
 
   When you dispatch a command using `:strong` consistency, after successful
-  command dispatch the process will block until all process managers configured to
-  use `:strong` consistency have processed the domain events created by the
+  command dispatch the process will block until all process managers configured
+  to use `:strong` consistency have processed the domain events created by the
   command.
 
   The default setting is `:eventual` consistency. Command dispatch will return
   immediately upon confirmation of event persistence, not waiting for any
   process managers.
 
-  ## Example
+  ### Example
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
           name: "ExampleProcessManager",
           router: BankRouter
           consistency: :strong
-
-        # ...
       end
 
-  Please read the [Process managers](process-managers.html) guide for more details.
+  Please read the [Process managers](process-managers.html) guide for more
+  detail.
   """
 
   alias Commanded.ProcessManagers.FailureContext
@@ -197,7 +219,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   The `c:handle/2` function can be omitted if you do not need to dispatch a
   command and are only mutating the process manager's state.
   """
-  @callback handle(process_manager, domain_event) :: list(command)
+  @callback handle(process_manager, domain_event) :: command | list(command) | {:error, term}
 
   @doc """
   Mutate the process manager's state by applying the domain event.

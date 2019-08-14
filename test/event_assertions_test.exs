@@ -111,7 +111,7 @@ defmodule Commanded.EventAssertionsTest do
   end
 
   defp append_events(stream_uuid, events) do
-    event_data = Commanded.Event.Mapper.map_to_event_data(events, [])
+    event_data = Commanded.Event.Mapper.map_to_event_data(events)
 
     EventStore.append_to_stream(stream_uuid, :any_version, event_data)
   end

@@ -8,7 +8,7 @@
 
 ### Bug fixes
 
-- Fix regression in `Commanded.Middleware.Logger.delta/1` ([#295](https://github.com/commanded/commanded/pull/295)).
+- Fix regression in `Commanded.Middleware.Logger.delta` ([#295](https://github.com/commanded/commanded/pull/295)).
 
 ## v0.19.0
 
@@ -19,7 +19,7 @@
 - Add `.formatter.exs` to Hex package ([#247](https://github.com/commanded/commanded/pull/247)).
 - Event upcasting ([#263](https://github.com/commanded/commanded/pull/263)).
 - Support `:ok` tagged tuple events from aggregate ([#268](https://github.com/commanded/commanded/pull/268)).
-- Modify `Commanded.Registration.start_child/3` to pass a child_spec ([#273](https://github.com/commanded/commanded/pull/273)).
+- Modify `Commanded.Registration.start_child` to pass a child_spec ([#273](https://github.com/commanded/commanded/pull/273)).
 - Add `supervisor_child_spec/2` to `Commanded.Registration` behaviour ([#277](https://github.com/commanded/commanded/pull/277)) used by [Commanded Horde Registry](https://github.com/uberbrodt/commanded_horde_registry).
 - Ensure Commanded can be compiled when optional Jason dependency is not present ([#286](https://github.com/commanded/commanded/pull/286)).
 - Fix Aggregate initialization races ([#287](https://github.com/commanded/commanded/pull/287)).
