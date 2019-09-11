@@ -18,7 +18,7 @@ Could be configured with:
 
 ```elixir
 # config/config.exs
-config :my_app, MyApp.Application
+config :my_app, MyApp.Application,
   event_store: [
     adapter: Commanded.EventStore.Adapters.EventStore,
     event_store: MyApp.EventStore
