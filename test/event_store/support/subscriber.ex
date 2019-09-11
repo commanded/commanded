@@ -1,25 +1,26 @@
 defmodule Commanded.EventStore.Subscriber do
   use GenServer
 
+  alias Commanded.EventStore
   alias Commanded.EventStore.Subscriber
 
   defmodule State do
-    defstruct [:event_store, :owner, :subscription, received_events: [], subscribed?: false]
+    defstruct [:application, :owner, :subscription, received_events: [], subscribed?: false]
   end
 
   alias Subscriber.State
 
-  def start_link(event_store, owner) do
-    state = %State{event_store: event_store, owner: owner}
+  def start_link(application, owner) do
+    state = %State{application: application, owner: owner}
 
     GenServer.start_link(__MODULE__, state)
   end
 
   def init(%State{} = state) do
-    %State{event_store: event_store} = state
+    %State{application: application} = state
 
     {:ok, subscription} =
-      event_store.subscribe_to(event_store, :all, "subscriber", self(), :origin)
+      EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
     {:ok, %State{state | subscription: subscription}}
   end
@@ -52,7 +53,7 @@ defmodule Commanded.EventStore.Subscriber do
 
   def handle_info({:events, events}, %State{} = state) do
     %State{
-      event_store: event_store,
+      application: application,
       owner: owner,
       received_events: received_events,
       subscription: subscription
@@ -62,7 +63,7 @@ defmodule Commanded.EventStore.Subscriber do
 
     state = %State{state | received_events: received_events ++ events}
 
-    event_store.ack_event(event_store, subscription, List.last(events))
+    EventStore.ack_event(application, subscription, List.last(events))
 
     {:noreply, state}
   end

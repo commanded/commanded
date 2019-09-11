@@ -2,7 +2,7 @@ defmodule Commanded.EventStore.SnapshotTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
-    alias Commanded.DefaultApp
+    alias Commanded.EventStore
     alias Commanded.EventStore.SnapshotData
 
     defmodule BankAccountOpened do
@@ -10,52 +10,52 @@ defmodule Commanded.EventStore.SnapshotTestCase do
       defstruct [:account_number, :initial_balance]
     end
 
-    setup do
-      start_supervised!(DefaultApp)
+    setup %{application: application} do
+      start_supervised!(application)
 
       :ok
     end
 
     describe "record a snapshot" do
-      test "should record the snapshot", %{event_store: event_store} do
+      test "should record the snapshot", %{application: application} do
         snapshot = build_snapshot_data(100)
 
-        assert :ok = event_store.record_snapshot(event_store, snapshot)
+        assert :ok = EventStore.record_snapshot(application, snapshot)
       end
     end
 
     describe "read a snapshot" do
-      test "should read the snapshot", %{event_store: event_store} do
+      test "should read the snapshot", %{application: application} do
         snapshot1 = build_snapshot_data(100)
         snapshot2 = build_snapshot_data(101)
         snapshot3 = build_snapshot_data(102)
 
-        assert :ok == event_store.record_snapshot(event_store, snapshot1)
-        assert :ok == event_store.record_snapshot(event_store, snapshot2)
-        assert :ok == event_store.record_snapshot(event_store, snapshot3)
+        assert :ok == EventStore.record_snapshot(application, snapshot1)
+        assert :ok == EventStore.record_snapshot(application, snapshot2)
+        assert :ok == EventStore.record_snapshot(application, snapshot3)
 
-        {:ok, snapshot} = event_store.read_snapshot(event_store, snapshot3.source_uuid)
+        {:ok, snapshot} = EventStore.read_snapshot(application, snapshot3.source_uuid)
 
         assert snapshot_timestamps_within_delta?(snapshot, snapshot3, 60)
       end
 
-      test "should error when snapshot does not exist", %{event_store: event_store} do
-        {:error, :snapshot_not_found} = event_store.read_snapshot(event_store, "doesnotexist")
+      test "should error when snapshot does not exist", %{application: application} do
+        {:error, :snapshot_not_found} = EventStore.read_snapshot(application, "doesnotexist")
       end
     end
 
     describe "delete a snapshot" do
-      test "should delete the snapshot", %{event_store: event_store} do
+      test "should delete the snapshot", %{application: application} do
         snapshot1 = build_snapshot_data(100)
 
-        assert :ok == event_store.record_snapshot(event_store, snapshot1)
-        {:ok, snapshot} = event_store.read_snapshot(event_store, snapshot1.source_uuid)
+        assert :ok == EventStore.record_snapshot(application, snapshot1)
+        {:ok, snapshot} = EventStore.read_snapshot(application, snapshot1.source_uuid)
 
         assert snapshot_timestamps_within_delta?(snapshot, snapshot1, 60)
-        assert :ok == event_store.delete_snapshot(event_store, snapshot1.source_uuid)
+        assert :ok == EventStore.delete_snapshot(application, snapshot1.source_uuid)
 
         assert {:error, :snapshot_not_found} ==
-                 event_store.read_snapshot(event_store, snapshot1.source_uuid)
+                 EventStore.read_snapshot(application, snapshot1.source_uuid)
       end
     end
 
