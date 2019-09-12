@@ -21,7 +21,7 @@ defmodule Commanded.Application do
           adapter: Commanded.EventStore.Adapters.EventStore,
           event_store: MyApp.EventStore
         ],
-        pub_sub: :local,
+        pubsub: :local,
         registry: :local
 
   Alternatively, you can include the event store, pubsub, and registry config
@@ -50,8 +50,8 @@ defmodule Commanded.Application do
       @behaviour Commanded.Application
 
       {otp_app, config} = Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
-      {event_store_adapter, event_store_config} = Commanded.EventStore.adapter(__MODULE__, config)
-      {pubsub_adapter, pubsub_config} = Commanded.PubSub.pubsub_provider(__MODULE__, config)
+      event_store_adapter = Commanded.EventStore.adapter(__MODULE__, config)
+      pubsub_adapter = Commanded.PubSub.pubsub_provider(__MODULE__, config)
       registry_adapter = Commanded.Registration.registry_provider(__MODULE__, config)
 
       @otp_app otp_app
@@ -65,14 +65,12 @@ defmodule Commanded.Application do
 
       defmodule EventStore do
         use Commanded.EventStore.Adapter,
-          adapter: event_store_adapter,
-          config: event_store_config
+          adapter: event_store_adapter
       end
 
       defmodule PubSub do
         use Commanded.PubSub.Adapter,
-          adapter: pubsub_adapter,
-          config: pubsub_config
+          adapter: pubsub_adapter
       end
 
       defmodule Registration do

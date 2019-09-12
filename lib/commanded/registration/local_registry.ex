@@ -10,7 +10,7 @@ defmodule Commanded.Registration.LocalRegistry do
   Return a supervisor spec for the registry.
   """
   @impl Commanded.Registration
-  def child_spec(registry) do
+  def child_spec(registry, _config) do
     registry_name = registry_name(registry)
 
     [

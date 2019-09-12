@@ -7,7 +7,7 @@ defmodule Commanded.Registration.Adapter do
 
       @behaviour Commanded.Registration.Adapter
 
-      def child_spec, do: @adapter.child_spec(__MODULE__)
+      def child_spec(config), do: @adapter.child_spec(__MODULE__, config)
 
       def supervisor_child_spec(module, arg),
         do: @adapter.supervisor_child_spec(__MODULE__, module, arg)
@@ -26,7 +26,7 @@ defmodule Commanded.Registration.Adapter do
   @doc """
   Return an optional supervisor spec for the registry.
   """
-  @callback child_spec() :: [:supervisor.child_spec()]
+  @callback child_spec(config :: Keyword.t()) :: [:supervisor.child_spec()]
 
   @doc """
   Use to start a supervisor.

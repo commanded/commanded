@@ -4,11 +4,10 @@ defmodule Commanded.PubSub.Adapter do
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @adapter Keyword.fetch!(opts, :adapter)
-      @config Keyword.fetch!(opts, :config)
 
       @behaviour Commanded.PubSub.Adapter
 
-      def child_spec, do: @adapter.child_spec(__MODULE__, @config)
+      def child_spec(config), do: @adapter.child_spec(__MODULE__, config)
 
       def subscribe(topic), do: @adapter.subscribe(__MODULE__, topic)
 
@@ -23,7 +22,7 @@ defmodule Commanded.PubSub.Adapter do
   @doc """
   Return an optional supervisor spec for pub/sub.
   """
-  @callback child_spec() :: [:supervisor.child_spec()]
+  @callback child_spec(config :: Keyword.t()) :: [:supervisor.child_spec()]
 
   @doc """
   Subscribes the caller to the PubSub topic.

@@ -46,7 +46,9 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
 
       def init(opts) do
         server = Keyword.fetch!(opts, :pubsub_server)
-        {:ok, %{pubsub_server: server, node_name: Phoenix.PubSub.node_name(server)}}
+        state = %{pubsub_server: server, node_name: Phoenix.PubSub.node_name(server)}
+
+        {:ok, state}
       end
 
       def handle_diff(_diff, state) do
@@ -62,7 +64,8 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
       pubsub_name = pubsub_name(pubsub)
       tracker_name = tracker_name(pubsub)
 
-      phoenix_pubsub_config = Keyword.put(config, :name, pubsub_name)
+      phoenix_pubsub_config =
+        config |> Keyword.get(:phoenix_pubsub) |> Keyword.put(:name, pubsub_name)
 
       {adapter, phoenix_pubsub_config} = Keyword.pop(phoenix_pubsub_config, :adapter)
 

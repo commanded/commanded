@@ -4,7 +4,7 @@ defmodule Commanded.PubSub.PhoenixPubSubTest do
   use PubSubTestCase, pubsub: PhoenixPubSub
 
   setup do
-    config = [adapter: Phoenix.PubSub.PG2, pool_size: 1]
+    config = [phoenix_pubsub: [adapter: Phoenix.PubSub.PG2, pool_size: 1]]
     child_spec = PhoenixPubSub.child_spec(PhoenixPubSub, config)
 
     for child <- child_spec, do: start_supervised!(child)

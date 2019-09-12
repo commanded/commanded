@@ -4,8 +4,9 @@ defmodule Commanded.Commands.CommandTimeoutTest do
   alias Commanded.DefaultApp
   alias Commanded.Commands.{TimeoutRouter, TimeoutCommand}
 
-  setup_all do
+  setup do
     start_supervised!(DefaultApp)
+
     :ok
   end
 

@@ -23,7 +23,7 @@ config :my_app, MyApp.Application,
     adapter: Commanded.EventStore.Adapters.EventStore,
     event_store: MyApp.EventStore
   ],
-  pub_sub: :local,
+  pubsub: :local,
   registry: :local
 ```
 
@@ -43,3 +43,15 @@ defmodule MyApp.Application do
   router(MyApp.Router)
 end
 ```
+
+Finally, you can provide an optional `init/1` function to provide runtime configuration.
+
+```elixir
+defmodule MyApp.Application do
+  use Commanded.Application, otp_app: :my_app
+
+  def init(config) do
+    {:ok, config}
+  end
+end
+````

@@ -223,7 +223,7 @@ defmodule Commanded.EventStore do
       raise ArgumentError, "missing :event_store option on use Commanded.Application"
     end
 
-    {adapter, config} = Keyword.pop(event_store, :adapter)
+    {adapter, _config} = Keyword.pop(event_store, :adapter)
 
     unless Code.ensure_compiled?(adapter) do
       raise ArgumentError,
@@ -231,6 +231,6 @@ defmodule Commanded.EventStore do
               "ensure it is correct and it is included as a project dependency"
     end
 
-    {adapter, config}
+    adapter
   end
 end

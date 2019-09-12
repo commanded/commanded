@@ -53,14 +53,14 @@ defmodule Commanded.PubSub do
 
   Defaults to a local pub/sub, restricted to running on a single node.
   """
-  @spec pubsub_provider(application, config :: Keyword.t()) :: {module(), Keyword.t()}
+  @spec pubsub_provider(application, config :: Keyword.t()) :: module()
   def pubsub_provider(application, config) do
     case Keyword.get(config, :pubsub, :local) do
       :local ->
-        {Commanded.PubSub.LocalPubSub, []}
+        Commanded.PubSub.LocalPubSub
 
       provider when is_atom(provider) ->
-        {provider, []}
+        provider
 
       config ->
         if Keyword.keyword?(config) do
@@ -70,8 +70,8 @@ defmodule Commanded.PubSub do
                     "invalid Phoenix pubsub configuration #{inspect(config)} for application " <>
                       inspect(application)
 
-            phoenix_pubsub ->
-              {Commanded.PubSub.PhoenixPubSub, phoenix_pubsub}
+            _phoenix_pubsub ->
+              Commanded.PubSub.PhoenixPubSub
           end
         else
           raise ArgumentError,

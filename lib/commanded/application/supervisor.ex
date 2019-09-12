@@ -3,6 +3,8 @@ defmodule Commanded.Application.Supervisor do
 
   use Supervisor
 
+  alias Commanded.Application.Config
+
   @doc """
   Retrieves the compile time configuration.
   """
@@ -46,15 +48,17 @@ defmodule Commanded.Application.Supervisor do
   def init({application, otp_app, event_store, pubsub, registry, opts}) do
     case runtime_config(application, otp_app, opts) do
       {:ok, config} ->
+        :ok = Config.associate(self(), config)
+
         task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
         subscriptions_name = Module.concat([application, Commanded.Subscriptions])
         registry_name = Module.concat([application, Commanded.Subscriptions.Registry])
         snapshotting = Keyword.get(config, :snapshotting, %{})
 
         children =
-          event_store.child_spec() ++
-            pubsub.child_spec() ++
-            registry.child_spec() ++
+          event_store.child_spec(Keyword.get(config, :event_store, [])) ++
+            pubsub.child_spec(Keyword.get(config, :pubsub, [])) ++
+            registry.child_spec(Keyword.get(config, :registry, [])) ++
             [
               {Task.Supervisor, name: task_dispatcher_name},
               {Commanded.Aggregates.Supervisor,

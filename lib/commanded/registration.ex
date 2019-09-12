@@ -15,7 +15,7 @@ defmodule Commanded.Registration do
   @doc """
   Return an optional supervisor spec for the registry
   """
-  @callback child_spec(registry :: module) :: [:supervisor.child_spec()]
+  @callback child_spec(registry :: module, config :: Keyword.t()) :: [:supervisor.child_spec()]
 
   @doc """
   Use to start a supervisor.

@@ -1,19 +1,19 @@
 defmodule Commanded.EventStore.Adapter do
   @moduledoc false
 
+  alias Commanded.Application.Config
+  alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
+  alias Commanded.Event.Upcast
+
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       @adapter Keyword.fetch!(opts, :adapter)
-      @config Keyword.fetch!(opts, :config)
-      @event_store {__MODULE__, @config}
+      @application __MODULE__ |> Module.split() |> Enum.drop(-1) |> Module.concat()
 
       @behaviour Commanded.EventStore.Adapter
 
-      alias Commanded.EventStore
-      alias Commanded.EventStore.{RecordedEvent, SnapshotData}
-
-      def child_spec do
-        @adapter.child_spec(__MODULE__, @config)
+      def child_spec(config) do
+        @adapter.child_spec(__MODULE__, config)
       end
 
       def append_to_stream(stream_uuid, expected_version, events)
@@ -21,7 +21,12 @@ defmodule Commanded.EventStore.Adapter do
                  (is_integer(expected_version) or
                     expected_version in [:any_version, :no_stream, :stream_exists]) and
                  is_list(events) do
-        @adapter.append_to_stream(@event_store, stream_uuid, expected_version, events)
+        @adapter.append_to_stream(
+          {__MODULE__, config()},
+          stream_uuid,
+          expected_version,
+          events
+        )
       end
 
       def stream_forward(
@@ -32,9 +37,12 @@ defmodule Commanded.EventStore.Adapter do
           when is_binary(stream_uuid) and
                  is_integer(start_version) and
                  is_integer(read_batch_size) do
-        alias Commanded.Event.Upcast
-
-        case @adapter.stream_forward(@event_store, stream_uuid, start_version, read_batch_size) do
+        case @adapter.stream_forward(
+               {__MODULE__, config()},
+               stream_uuid,
+               start_version,
+               read_batch_size
+             ) do
           {:error, _} = error -> error
           stream -> Upcast.upcast_event_stream(stream)
         end
@@ -42,7 +50,7 @@ defmodule Commanded.EventStore.Adapter do
 
       def subscribe(stream_uuid)
           when stream_uuid == :all or is_binary(stream_uuid) do
-        @adapter.subscribe(@event_store, stream_uuid)
+        @adapter.subscribe({__MODULE__, config()}, stream_uuid)
       end
 
       def subscribe_to(
@@ -53,7 +61,7 @@ defmodule Commanded.EventStore.Adapter do
           )
           when (stream_uuid == :all or is_binary(stream_uuid)) and is_pid(subscriber) do
         @adapter.subscribe_to(
-          @event_store,
+          {__MODULE__, config()},
           stream_uuid,
           subscription_name,
           subscriber,
@@ -62,38 +70,41 @@ defmodule Commanded.EventStore.Adapter do
       end
 
       def ack_event(pid, %RecordedEvent{} = event) when is_pid(pid) do
-        @adapter.ack_event(@event_store, pid, event)
+        @adapter.ack_event({__MODULE__, config()}, pid, event)
       end
 
       def unsubscribe(subscription) do
-        @adapter.unsubscribe(@event_store, subscription)
+        @adapter.unsubscribe({__MODULE__, config()}, subscription)
       end
 
       def delete_subscription(stream_uuid, subscription_name) do
-        @adapter.delete_subscription(@event_store, stream_uuid, subscription_name)
+        @adapter.delete_subscription(
+          {__MODULE__, config()},
+          stream_uuid,
+          subscription_name
+        )
       end
 
       def read_snapshot(source_uuid) when is_binary(source_uuid) do
-        @adapter.read_snapshot(@event_store, source_uuid)
+        @adapter.read_snapshot({__MODULE__, config()}, source_uuid)
       end
 
       def record_snapshot(%SnapshotData{} = snapshot) do
-        @adapter.record_snapshot(@event_store, snapshot)
+        @adapter.record_snapshot({__MODULE__, config()}, snapshot)
       end
 
       def delete_snapshot(source_uuid) when is_binary(source_uuid) do
-        @adapter.delete_snapshot(@event_store, source_uuid)
+        @adapter.delete_snapshot({__MODULE__, config()}, source_uuid)
       end
+
+      defp config, do: Config.get(@application, :event_store)
     end
   end
-
-  alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
-  alias Commanded.EventStore.SnapshotData
 
   @doc """
   Return a child spec defining all processes required by the event store.
   """
-  @callback child_spec() :: [:supervisor.child_spec()]
+  @callback child_spec(config :: Keyword.t()) :: [:supervisor.child_spec()]
 
   @doc """
   Append one or more events to a stream atomically.
