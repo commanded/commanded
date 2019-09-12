@@ -50,15 +50,14 @@ defmodule Commanded.Application do
       @behaviour Commanded.Application
 
       {otp_app, config} = Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
+
       event_store_adapter = Commanded.EventStore.adapter(__MODULE__, config)
       pubsub_adapter = Commanded.PubSub.pubsub_provider(__MODULE__, config)
       registry_adapter = Commanded.Registration.registry_provider(__MODULE__, config)
 
       @otp_app otp_app
+      @config config
       @name Keyword.get(opts, :name, __MODULE__)
-      @event_store_adapter event_store_adapter
-      @pubsub_adapter pubsub_adapter
-      @registry_adapter registry_adapter
 
       use Commanded.Commands.CompositeRouter,
         application: __MODULE__
@@ -79,7 +78,9 @@ defmodule Commanded.Application do
       end
 
       def config do
-        {:ok, config} = Commanded.Application.Supervisor.runtime_config(__MODULE__, @otp_app, [])
+        {:ok, config} =
+          Commanded.Application.Supervisor.runtime_config(__MODULE__, @otp_app, @config, [])
+
         config
       end
 
@@ -98,6 +99,7 @@ defmodule Commanded.Application do
           EventStore,
           PubSub,
           Registration,
+          @config,
           opts
         )
       end

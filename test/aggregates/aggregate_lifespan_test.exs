@@ -1,8 +1,6 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use Commanded.StorageCase
 
-  import Commanded.ConfigureSnapshotting
-
   alias Commanded.Aggregates.{DefaultLifespanRouter, LifespanAggregate, LifespanRouter}
   alias Commanded.Aggregates.LifespanAggregate.{Command, Event}
   alias Commanded.DefaultApp
@@ -10,19 +8,14 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Registration
 
-  setup do
-    on_exit(fn ->
-      unconfigure_snapshotting(DefaultApp, LifespanAggregate)
-    end)
-  end
-
   describe "aggregate lifespan" do
     setup do
       aggregate_uuid = UUID.uuid4()
 
-      configure_snapshotting(DefaultApp, LifespanAggregate, snapshot_every: 2, snapshot_version: 1)
-
-      start_supervised!(DefaultApp)
+      start_supervised!(
+        {DefaultApp,
+         snapshotting: %{LifespanAggregate => [snapshot_every: 2, snapshot_version: 1]}}
+      )
 
       {:ok, ^aggregate_uuid} =
         Commanded.Aggregates.Supervisor.open_aggregate(

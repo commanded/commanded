@@ -20,11 +20,11 @@ defmodule Commanded.Application.Supervisor do
   @doc """
   Retrieves the runtime configuration.
   """
-  def runtime_config(application, otp_app, opts) do
+  def runtime_config(application, otp_app, config, opts) do
     config =
-      Application.get_env(otp_app, application, [])
+      config
       |> Keyword.merge(opts)
-      |> Keyword.merge(otp_app: otp_app)
+      |> Keyword.put(:otp_app, otp_app)
 
     case application_init(application, config) do
       {:ok, config} -> {:ok, config}
@@ -35,18 +35,18 @@ defmodule Commanded.Application.Supervisor do
   @doc """
   Starts the application supervisor.
   """
-  def start_link(application, otp_app, event_store, pubsub, registry, opts) do
+  def start_link(application, otp_app, event_store, pubsub, registry, config, opts) do
     sup_opts = if name = Keyword.get(opts, :name, application), do: [name: name], else: []
 
     Supervisor.start_link(
       __MODULE__,
-      {application, otp_app, event_store, registry, pubsub, opts},
+      {application, otp_app, event_store, registry, pubsub, config, opts},
       sup_opts
     )
   end
 
-  def init({application, otp_app, event_store, pubsub, registry, opts}) do
-    case runtime_config(application, otp_app, opts) do
+  def init({application, otp_app, event_store, pubsub, registry, config, opts}) do
+    case runtime_config(application, otp_app, config, opts) do
       {:ok, config} ->
         :ok = Config.associate(self(), config)
 

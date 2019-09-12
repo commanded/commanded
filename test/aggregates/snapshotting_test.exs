@@ -1,8 +1,6 @@
 defmodule Commanded.Aggregates.SnapshottingTest do
   use Commanded.StorageCase
 
-  import Commanded.ConfigureSnapshotting
-
   alias Commanded.DefaultApp
 
   alias Commanded.Aggregates.{
@@ -19,16 +17,10 @@ defmodule Commanded.Aggregates.SnapshottingTest do
   alias Commanded.EventStore
   alias Commanded.EventStore.SnapshotData
 
-  setup do
-    on_exit(fn ->
-      unconfigure_snapshotting(DefaultApp, ExampleAggregate)
-    end)
-  end
-
   describe "with snapshotting disabled" do
     setup do
-      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: nil)
-      start_supervised!(DefaultApp)
+      start_supervised!({DefaultApp, snapshotting: %{ExampleAggregate => [snapshot_every: nil]}})
+
       :ok
     end
 
@@ -61,8 +53,8 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "with zero shapshot interval" do
     setup do
-      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 0)
-      start_supervised!(DefaultApp)
+      start_supervised!({DefaultApp, snapshotting: %{ExampleAggregate => [snapshot_every: 0]}})
+
       :ok
     end
 
@@ -76,8 +68,8 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "with snapshotting configured" do
     setup do
-      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 10)
-      start_supervised!(DefaultApp)
+      start_supervised!({DefaultApp, snapshotting: %{ExampleAggregate => [snapshot_every: 10]}})
+
       :ok
     end
 
@@ -160,8 +152,8 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "restore snapshot" do
     setup do
-      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 10)
-      start_supervised!(DefaultApp)
+      start_supervised!({DefaultApp, snapshotting: %{ExampleAggregate => [snapshot_every: 10]}})
+
       :ok
     end
 
@@ -219,9 +211,11 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "mismatched snapshot versions" do
     setup do
-      configure_snapshotting(DefaultApp, ExampleAggregate, snapshot_every: 10, snapshot_version: 2)
+      start_supervised!(
+        {DefaultApp,
+         snapshotting: %{ExampleAggregate => [snapshot_every: 10, snapshot_version: 2]}}
+      )
 
-      start_supervised!(DefaultApp)
       :ok
     end
 
@@ -253,9 +247,11 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
   describe "decode snapshot data" do
     setup do
-      configure_snapshotting(DefaultApp, SnapshotAggregate, snapshot_every: 1, snapshot_version: 1)
+      start_supervised!(
+        {DefaultApp,
+         snapshotting: %{SnapshotAggregate => [snapshot_every: 1, snapshot_version: 1]}}
+      )
 
-      start_supervised!(DefaultApp)
       :ok
     end
 
