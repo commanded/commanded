@@ -7,17 +7,22 @@ defmodule Commanded.Subscriptions.Registry do
 
   use GenServer
 
-  def start_link(arg) do
-    GenServer.start_link(__MODULE__, arg, name: __MODULE__)
+  def start_link(opts) do
+    {start_opts, registry_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
+
+    GenServer.start_link(__MODULE__, registry_opts, start_opts)
   end
 
   @doc """
   Register an event store subscription with the given consistency guarantee.
   """
-  def register(name, consistency)
-  def register(_name, :eventual), do: :ok
-  def register(name, :strong) do
-    true = :ets.insert(__MODULE__, {name, self()})
+  def register(application, name, consistency)
+  def register(_application, _name, :eventual), do: :ok
+
+  def register(application, name, :strong) do
+    table_name = table_name(application)
+
+    true = :ets.insert(table_name, {name, self()})
 
     :ok
   end
@@ -25,13 +30,20 @@ defmodule Commanded.Subscriptions.Registry do
   @doc """
   Get all registered subscriptions.
   """
-  def all do
-    :ets.tab2list(__MODULE__)
+  def all(application) do
+    application
+    |> table_name()
+    |> :ets.tab2list()
   end
 
-  def init(_arg) do
-    table = :ets.new(__MODULE__, [:set, :public, :named_table])
+  def init(args) do
+    application = Keyword.fetch!(args, :application)
+
+    table_name = table_name(application)
+    table = :ets.new(table_name, [:set, :public, :named_table])
 
     {:ok, table}
   end
+
+  defp table_name(application), do: Module.concat([application, __MODULE__])
 end

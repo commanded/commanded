@@ -1,13 +1,12 @@
 defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
   use Commanded.MockEventStoreCase
 
-  defmodule ExampleRouter do
-  end
+  alias Commanded.MockedApp
 
   defmodule ExampleProcessManager do
     use Commanded.ProcessManagers.ProcessManager,
-      name: "ExampleProcessManager",
-      router: ExampleRouter
+      application: MockedApp,
+      name: "ExampleProcessManager"
 
     @derive Jason.Encoder
     defstruct [:data]
@@ -51,7 +50,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
   defp start_process_manager(subscription) do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn :all, "ExampleProcessManager", pm, :origin ->
+    expect(MockEventStore, :subscribe_to, fn _event_store,
+                                             :all,
+                                             {Commanded.MockedApp,
+                                              Commanded.ProcessManagers.ProcessRouter,
+                                              "ExampleProcessManager"},
+                                             pm,
+                                             :origin ->
       send(pm, {:subscribed, subscription})
       send(reply_to, {:subscribed, subscription})
 

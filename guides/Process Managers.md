@@ -97,7 +97,9 @@ To prevent this you can choose to define the default error handling strategy as 
 
 ```elixir
 defmodule ExampleProcessManager do
-  use Commanded.ProcessManagers.ProcessManager, name: __MODULE__, router: Router
+  use Commanded.ProcessManagers.ProcessManager,
+    application: ExampleApp,
+    name: __MODULE__
 
   require Logger
 
@@ -119,8 +121,8 @@ Define an `error/3` callback function to determine how to handle errors during e
 ```elixir
 defmodule ExampleProcessManager do
   use Commanded.ProcessManagers.ProcessManager,
-    name: "ExampleProcessManager",
-    router: ExampleRouter
+    application: ExampleApp,
+    name: "ExampleProcessManager"
 
   # Stop process manager after three failures
   def error({:error, _failure}, _failed_message, %{context: %{failures: failures}})
@@ -144,8 +146,8 @@ The default behaviour if you don't provide an `error/3` callback is to stop the 
 ```elixir
 defmodule TransferMoneyProcessManager do
   use Commanded.ProcessManagers.ProcessManager,
-    name: "TransferMoneyProcessManager",
-    router: BankRouter
+    application: ExampleApp,
+    name: "TransferMoneyProcessManager"
 
   @derive Jason.Encoder
   defstruct [

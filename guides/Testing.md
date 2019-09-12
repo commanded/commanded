@@ -26,7 +26,7 @@ defp truncate_readstore_tables do
 
 ## Asserting that an event is published
 
-Often you'll want to make sure a given event is published. Commanded provides `assert_receive_event/2` and `assert_receive_event/3` functions in the `Commanded.Assertions.EventAssertions` module to help with this.
+Often you'll want to make sure a given event is published. Commanded provides `assert_receive_event/3` and `assert_receive_event/4` functions in the `Commanded.Assertions.EventAssertions` module to help with this.
 
 In the first case, we check that any event is received and use the argument as an assertion.
 
@@ -36,35 +36,38 @@ In the second case, we also provide a predicate function that we can use to narr
 import Commanded.Assertions.EventAssertions
 
 test "ensure any event of this type is published" do
-  :ok = Router.dispatch(%Command{id: 4, date: Date.today})
+  :ok = MyApp.dispatch(%Command{id: 4, date: Date.today})
 
-  assert_receive_event(Event, fn event ->
+  assert_receive_event(MyApp, Event, fn event ->
     assert event.id == 4
   end)
 end
 
 test "ensure an event is published matching the given predicate" do
-  :ok = Router.dispatch(%Command{id: 4, date: Date.today})
+  :ok = MyApp.dispatch(%Command{id: 4, date: Date.today})
 
   assert_receive_event(
+    MyApp,
     Event,
     fn event -> event.id == 4 end,
-    fn event -> assert event.date == Date.today end
+    fn event ->
+      assert event.date == Date.today
+    end
   )
 end
 ```
 
 ## Waiting for an event
 
-Use the `wait_for_event/1` and `wait_for_event/2` functions to pause until a specific type of event, or event type matching a given predicate, is received. This can help you deal with eventual consistency in your tests.
+Use the `wait_for_event/2` and `wait_for_event/3` functions to pause until a specific type of event, or event type matching a given predicate, is received. This can help you deal with eventual consistency in your tests.
 
 ```elixir
 import Commanded.Assertions.EventAssertions
 
 test "pause until specific event is published" do
-  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
+  :ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
 
-  wait_for_event(BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
+  wait_for_event(BankApp, BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
 end
 ```
 
@@ -78,9 +81,10 @@ For this purpose, Commanded provides `assert_correlated/4` which can be used to 
 import Commanded.Assertions.EventAssertions
 
 test "make sure two events are correlated" do
-  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
+  :ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123", initial_balance: 1_000})
 
   assert_correlated(
+    BankApp,
     BankAccountOpened, fn opened -> opened.account_number == "ACC123" end,
     InitialAmountDeposited, fn deposited -> deposited.account_number == "ACC123" end
   )
@@ -102,13 +106,13 @@ alias Commanded.Aggregates.Aggregate
 test "make sure aggregate state are what we wanted" do
   account_number = "ACC123"
 
-  :ok = BankRouter.dispatch(%OpenBankAccount{account_number: account_number, initial_balance: 1_000})
-  :ok = BankRouter.dispatch(%WithdrawnMoney{account_number: account_number, amount: 200})
+  :ok = BankApp.dispatch(%OpenBankAccount{account_number: account_number, initial_balance: 1_000})
+  :ok = BankApp.dispatch(%WithdrawnMoney{account_number: account_number, amount: 200})
 
-  wait_for_event(BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
-  wait_for_event(MoneyWithdrawn, fn withdrawn -> withdrawn.balance == 800 end)
+  wait_for_event(BankApp, BankAccountOpened, fn opened -> opened.account_number == "ACC123" end)
+  wait_for_event(BankApp, MoneyWithdrawn, fn withdrawn -> withdrawn.balance == 800 end)
 
-  assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+  assert Aggregate.aggregate_state(BankApp, BankAccount, account_number) == %BankAccount{
     account_number: account_number,
     balance: 800,
     state: :active

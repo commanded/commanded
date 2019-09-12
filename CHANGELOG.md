@@ -1,5 +1,11 @@
 # Changelog
 
+## Next release
+
+### Breaking changes
+
+- Support multiple Commanded apps ([#298](https://github.com/commanded/commanded/pull/298)).
+
 ## v0.19.1
 
 ### Enhancements

@@ -1,30 +1,37 @@
 # Supervision
 
-Use a supervisor to host your process managers and event handlers.
+Use a supervisor to host your Commanded application, process managers, and event handlers.
 
 ```elixir
 defmodule Bank.Supervisor do
   use Supervisor
 
-  def start_link do
-    Supervisor.start_link(__MODULE__, :ok)
+  def start_link(arg) do
+    Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
 
-  def init(:ok) do
+  @impl true
+  def init(_arg) do
     children = [
+      # Application
+      BankApp,
+
       # Process manager
-      worker(TransferMoneyProcessManager, [[start_from: :current]]),
+      TransferMoneyProcessManager,
 
       # Event handler
-      worker(AccountBalanceHandler, [[start_from: :origin]])
+      AccountBalanceHandler
+      
+      # Optionally, provide runtime configuration
+      {WelcomeEmailHandler, start_from: :current},
     ]
 
-    supervise(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 end
 ```
 
-Your application should start the supervisor.
+Your application should start the supervisor:
 
 ```elixir
 defmodule Bank do

@@ -1,5 +1,6 @@
 defmodule Commanded.Commands.StronglyConsistentEventHandler do
   use Commanded.Event.Handler,
+    application: Commanded.DefaultApp,
     name: "StronglyConsistentEventHandler",
     consistency: :strong
 
@@ -20,7 +21,7 @@ defmodule Commanded.Commands.StronglyConsistentEventHandler do
 
     command = %ConsistencyCommand{uuid: uuid, delay: delay}
 
-    ConsistencyRouter.dispatch(command, consistency: :strong)
+    ConsistencyRouter.dispatch(command, application: Commanded.DefaultApp, consistency: :strong)
   end
 
   def handle(%ConsistencyEvent{delay: delay}, _metadata) do

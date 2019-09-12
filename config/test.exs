@@ -1,5 +1,8 @@
 use Mix.Config
 
+alias Commanded.EventStore.Adapters.InMemory
+alias Commanded.Serialization.JsonSerializer
+
 config :logger, :console, level: :warn, format: "[$level] $message\n"
 
 config :ex_unit,
@@ -9,12 +12,19 @@ config :ex_unit,
 config :commanded,
   assert_receive_event_timeout: 100,
   refute_receive_event_timeout: 100,
-  dispatch_consistency_timeout: 100,
-  event_store_adapter: Commanded.EventStore.Adapters.InMemory
+  dispatch_consistency_timeout: 100
 
-config :commanded, Commanded.EventStore.Adapters.InMemory,
-  serializer: Commanded.Serialization.JsonSerializer
+default_app_config = [
+  event_store: [adapter: InMemory, serializer: JsonSerializer],
+  pubsub: :local,
+  registry: :local
+]
 
-config :commanded, Commanded.Aggregates.LifespanAggregate,
-  snapshot_every: 2,
-  snapshot_version: 1
+config :commanded, Commanded.Commands.ConsistencyApp, default_app_config
+config :commanded, Commanded.DefaultApp, default_app_config
+config :commanded, Commanded.Event.Upcast.ProcessManager.Application, default_app_config
+config :commanded, Commanded.ProcessManagers.ErrorApp, default_app_config
+config :commanded, Commanded.ProcessManagers.ExampleApp, default_app_config
+config :commanded, Commanded.ProcessManagers.ResumeApp, default_app_config
+config :commanded, Commanded.ProcessManagers.TodoApp, default_app_config
+config :commanded, Commanded.TestApplication, default_app_config

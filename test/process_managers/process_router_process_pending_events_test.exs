@@ -6,43 +6,46 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
 
   alias Commanded.EventStore
   alias Commanded.Helpers.Wait
-
-  alias Commanded.ProcessManagers.{
-    ExampleRouter,
-    ExampleProcessManager,
-    ProcessRouter,
-    ProcessManagerInstance
-  }
-
+  alias Commanded.ProcessManagers.ExampleApp
+  alias Commanded.ProcessManagers.ExampleRouter
+  alias Commanded.ProcessManagers.ExampleProcessManager
+  alias Commanded.ProcessManagers.ProcessRouter
+  alias Commanded.ProcessManagers.ProcessManagerInstance
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Publish, Start}
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.Interested
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.Started
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.Stopped
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.Uninterested
 
-  alias Commanded.ProcessManagers.ExampleAggregate.Events.{
-    Interested,
-    Started,
-    Stopped,
-    Uninterested
-  }
+  setup do
+    start_supervised!(ExampleApp)
+
+    :ok
+  end
 
   test "should start process manager instance and successfully dispatch command" do
     aggregate_uuid = UUID.uuid4()
 
     {:ok, process_router} = ExampleProcessManager.start_link()
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
-    # dispatch command to publish multiple events and trigger dispatch of the stop command
+    # Dispatch command to publish multiple events and trigger dispatch of the stop command
     :ok =
-      ExampleRouter.dispatch(%Publish{
-        aggregate_uuid: aggregate_uuid,
-        interesting: 10,
-        uninteresting: 1
-      })
+      ExampleRouter.dispatch(
+        %Publish{
+          aggregate_uuid: aggregate_uuid,
+          interesting: 10,
+          uninteresting: 1
+        },
+        application: ExampleApp
+      )
 
-    assert_receive_event(Stopped, fn event ->
+    assert_receive_event(ExampleApp, Stopped, fn event ->
       assert event.aggregate_uuid == aggregate_uuid
     end)
 
-    events = EventStore.stream_forward(aggregate_uuid) |> Enum.to_list()
+    events = EventStore.stream_forward(ExampleApp, aggregate_uuid) |> Enum.to_list()
 
     assert pluck(events, :data) == [
              %Started{aggregate_uuid: aggregate_uuid},
@@ -61,12 +64,12 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
            ]
 
     Wait.until(fn ->
-      # process instance should be stopped
+      # Process instance should be stopped
       assert ProcessRouter.process_instance(process_router, aggregate_uuid) ==
                {:error, :process_manager_not_found}
 
-      # process state snapshot should be deleted
-      assert EventStore.read_snapshot("example_process_manager-#{aggregate_uuid}") ==
+      # Process state snapshot should be deleted
+      assert EventStore.read_snapshot(ExampleApp, "example_process_manager-#{aggregate_uuid}") ==
                {:error, :snapshot_not_found}
     end)
   end
@@ -76,35 +79,44 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
 
     {:ok, process_router} = ExampleProcessManager.start_link()
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
-    # dispatch commands to publish a mix of interesting and uninteresting events for the process router
+    # Dispatch commands to publish a mix of interesting and uninteresting events for the process router
     :ok =
-      ExampleRouter.dispatch(%Publish{
-        aggregate_uuid: aggregate_uuid,
-        interesting: 0,
-        uninteresting: 2
-      })
-
-    :ok =
-      ExampleRouter.dispatch(%Publish{
-        aggregate_uuid: aggregate_uuid,
-        interesting: 0,
-        uninteresting: 2
-      })
+      ExampleRouter.dispatch(
+        %Publish{
+          aggregate_uuid: aggregate_uuid,
+          interesting: 0,
+          uninteresting: 2
+        },
+        application: ExampleApp
+      )
 
     :ok =
-      ExampleRouter.dispatch(%Publish{
-        aggregate_uuid: aggregate_uuid,
-        interesting: 10,
-        uninteresting: 0
-      })
+      ExampleRouter.dispatch(
+        %Publish{
+          aggregate_uuid: aggregate_uuid,
+          interesting: 0,
+          uninteresting: 2
+        },
+        application: ExampleApp
+      )
 
-    assert_receive_event(Stopped, fn event ->
+    :ok =
+      ExampleRouter.dispatch(
+        %Publish{
+          aggregate_uuid: aggregate_uuid,
+          interesting: 10,
+          uninteresting: 0
+        },
+        application: ExampleApp
+      )
+
+    assert_receive_event(ExampleApp, Stopped, fn event ->
       assert event.aggregate_uuid == aggregate_uuid
     end)
 
-    events = aggregate_uuid |> EventStore.stream_forward() |> Enum.to_list()
+    events = EventStore.stream_forward(ExampleApp, aggregate_uuid) |> Enum.to_list()
 
     assert pluck(events, :data) == [
              %Started{aggregate_uuid: aggregate_uuid},
@@ -126,7 +138,7 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
            ]
 
     Wait.until(fn ->
-      # process instance should be stopped
+      # Process instance should be stopped
       assert ProcessRouter.process_instance(process_router, aggregate_uuid) ==
                {:error, :process_manager_not_found}
     end)
@@ -135,31 +147,37 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
   test "should ignore past events when starting subscription from current" do
     aggregate_uuid = UUID.uuid4()
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     :ok =
-      ExampleRouter.dispatch(%Publish{
-        aggregate_uuid: aggregate_uuid,
-        interesting: 4,
-        uninteresting: 0
-      })
+      ExampleRouter.dispatch(
+        %Publish{
+          aggregate_uuid: aggregate_uuid,
+          interesting: 4,
+          uninteresting: 0
+        },
+        application: ExampleApp
+      )
 
-    wait_for_event(Interested, fn event -> event.index == 4 end)
+    wait_for_event(ExampleApp, Interested, fn event -> event.index == 4 end)
 
     {:ok, process_router} = ExampleProcessManager.start_link(start_from: :current)
 
     assert ProcessRouter.process_instances(process_router) == []
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     :ok =
-      ExampleRouter.dispatch(%Publish{
-        aggregate_uuid: aggregate_uuid,
-        interesting: 6,
-        uninteresting: 0
-      })
+      ExampleRouter.dispatch(
+        %Publish{
+          aggregate_uuid: aggregate_uuid,
+          interesting: 6,
+          uninteresting: 0
+        },
+        application: ExampleApp
+      )
 
-    wait_for_event(Interested, fn event -> event.index == 6 end)
+    wait_for_event(ExampleApp, Interested, fn event -> event.index == 6 end)
 
     Wait.until(fn ->
       process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)

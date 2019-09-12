@@ -1,10 +1,10 @@
 defmodule Commanded.ExampleDomain.OpenAccountHandler do
   @moduledoc false
 
+  @behaviour Commanded.Commands.Handler
+
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, CloseAccount}
-
-  @behaviour Commanded.Commands.Handler
 
   def handle(%BankAccount{} = aggregate, %OpenAccount{} = open_account) do
     BankAccount.open_account(aggregate, open_account)

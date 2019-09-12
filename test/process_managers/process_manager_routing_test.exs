@@ -12,15 +12,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
 
   setup do
     expect(MockEventStore, :subscribe_to, fn
-      :all, _name, pid, :origin ->
+      _event_store, :all, _name, pid, :origin ->
         send(pid, {:subscribed, self()})
 
         {:ok, self()}
     end)
 
-    stub(MockEventStore, :read_snapshot, fn _snapshot_uuid -> {:error, :snapshot_not_found} end)
-    stub(MockEventStore, :record_snapshot, fn _snapshot -> :ok end)
-    stub(MockEventStore, :ack_event, fn _pid, _event -> :ok end)
+    stub(MockEventStore, :read_snapshot, fn _event_store, _snapshot_uuid ->
+      {:error, :snapshot_not_found}
+    end)
+
+    stub(MockEventStore, :record_snapshot, fn _event_store, _snapshot -> :ok end)
+    stub(MockEventStore, :ack_event, fn _event_store, _pid, _event -> :ok end)
 
     {:ok, pid} = RoutingProcessManager.start_link()
 
@@ -70,7 +73,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
     end
 
     test "should stop instance on `:stop`", %{pid: pid, process_uuid: process_uuid} do
-      expect(MockEventStore, :delete_snapshot, fn _process_uuid -> :ok end)
+      expect(MockEventStore, :delete_snapshot, fn _event_store, _process_uuid -> :ok end)
 
       send_events(pid, [%Started{process_uuid: process_uuid, reply_to: self()}])
 

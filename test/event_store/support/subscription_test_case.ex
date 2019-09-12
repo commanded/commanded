@@ -13,15 +13,21 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       defstruct [:account_number, :initial_balance]
     end
 
+    setup %{application: application} do
+      start_supervised!(application)
+
+      :ok
+    end
+
     describe "transient subscription to single stream" do
-      test "should receive events appended to the stream" do
+      test "should receive events appended to the stream", %{application: application} do
         stream_uuid = UUID.uuid4()
 
-        assert :ok = EventStore.subscribe(stream_uuid)
+        assert :ok = EventStore.subscribe(application, stream_uuid)
 
-        :ok = EventStore.append_to_stream(stream_uuid, 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, stream_uuid, 0, build_events(1))
 
-        received_events = assert_receive_events(1, from: 1)
+        received_events = assert_receive_events(application, 1, from: 1)
 
         for %RecordedEvent{} = event <- received_events do
           assert event.stream_id == stream_uuid
@@ -30,9 +36,9 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert Enum.map(received_events, & &1.stream_version) == [1]
 
-        :ok = EventStore.append_to_stream(stream_uuid, 1, build_events(2))
+        :ok = EventStore.append_to_stream(application, stream_uuid, 1, build_events(2))
 
-        received_events = assert_receive_events(2, from: 2)
+        received_events = assert_receive_events(application, 2, from: 2)
 
         for %RecordedEvent{} = event <- received_events do
           assert event.stream_id == stream_uuid
@@ -41,9 +47,9 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         assert Enum.map(received_events, & &1.stream_version) == [2, 3]
 
-        :ok = EventStore.append_to_stream(stream_uuid, 3, build_events(3))
+        :ok = EventStore.append_to_stream(application, stream_uuid, 3, build_events(3))
 
-        received_events = assert_receive_events(3, from: 4)
+        received_events = assert_receive_events(application, 3, from: 4)
 
         for %RecordedEvent{} = event <- received_events do
           assert event.stream_id == stream_uuid
@@ -55,44 +61,44 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         refute_receive {:events, _received_events}
       end
 
-      test "should not receive events appended to another stream" do
+      test "should not receive events appended to another stream", %{application: application} do
         stream_uuid = UUID.uuid4()
         another_stream_uuid = UUID.uuid4()
 
-        assert :ok = EventStore.subscribe(stream_uuid)
+        assert :ok = EventStore.subscribe(application, stream_uuid)
 
-        :ok = EventStore.append_to_stream(another_stream_uuid, 0, build_events(1))
-        :ok = EventStore.append_to_stream(another_stream_uuid, 1, build_events(2))
+        :ok = EventStore.append_to_stream(application, another_stream_uuid, 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, another_stream_uuid, 1, build_events(2))
 
         refute_receive {:events, _received_events}
       end
     end
 
     describe "transient subscription to all streams" do
-      test "should receive events appended to any stream" do
-        assert :ok = EventStore.subscribe(:all)
+      test "should receive events appended to any stream", %{application: application} do
+        assert :ok = EventStore.subscribe(application, :all)
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
 
-        received_events = assert_receive_events(1, from: 1)
+        received_events = assert_receive_events(application, 1, from: 1)
         assert Enum.map(received_events, & &1.stream_id) == ["stream1"]
         assert Enum.map(received_events, & &1.stream_version) == [1]
 
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
 
-        received_events = assert_receive_events(2, from: 2)
+        received_events = assert_receive_events(application, 2, from: 2)
         assert Enum.map(received_events, & &1.stream_id) == ["stream2", "stream2"]
         assert Enum.map(received_events, & &1.stream_version) == [1, 2]
 
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        received_events = assert_receive_events(3, from: 4)
+        received_events = assert_receive_events(application, 3, from: 4)
         assert Enum.map(received_events, & &1.stream_id) == ["stream3", "stream3", "stream3"]
         assert Enum.map(received_events, & &1.stream_version) == [1, 2, 3]
 
-        :ok = EventStore.append_to_stream("stream1", 1, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream1", 1, build_events(2))
 
-        received_events = assert_receive_events(2, from: 7)
+        received_events = assert_receive_events(application, 2, from: 7)
         assert Enum.map(received_events, & &1.stream_id) == ["stream1", "stream1"]
         assert Enum.map(received_events, & &1.stream_version) == [2, 3]
 
@@ -101,237 +107,260 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
     end
 
     describe "subscribe to single stream" do
-      test "should receive `:subscribed` message once subscribed" do
-        {:ok, subscription} = EventStore.subscribe_to("stream1", "subscriber", self(), :origin)
+      test "should receive `:subscribed` message once subscribed", %{application: application} do
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, "stream1", "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
       end
 
-      test "should receive events appended to stream" do
-        {:ok, subscription} = EventStore.subscribe_to("stream1", "subscriber", self(), :origin)
+      test "should receive events appended to stream", %{application: application} do
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, "stream1", "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream1", 1, build_events(2))
-        :ok = EventStore.append_to_stream("stream1", 3, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 1, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream1", 3, build_events(3))
 
-        assert_receive_events(subscription, 1, from: 1)
-        assert_receive_events(subscription, 2, from: 2)
-        assert_receive_events(subscription, 3, from: 4)
+        assert_receive_events(application, subscription, 1, from: 1)
+        assert_receive_events(application, subscription, 2, from: 2)
+        assert_receive_events(application, subscription, 3, from: 4)
 
         refute_receive {:events, _received_events}
       end
 
-      test "should not receive events appended to another stream" do
-        {:ok, subscription} = EventStore.subscribe_to("stream1", "subscriber", self(), :origin)
+      test "should not receive events appended to another stream", %{application: application} do
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, "stream1", "subscriber", self(), :origin)
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        assert_receive_events(subscription, 1, from: 1)
+        assert_receive_events(application, subscription, 1, from: 1)
         refute_receive {:events, _received_events}
       end
 
-      test "should skip existing events when subscribing from current position" do
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream1", 1, build_events(2))
+      test "should skip existing events when subscribing from current position", %{
+        application: application
+      } do
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 1, build_events(2))
 
         wait_for_event_store()
 
-        {:ok, subscription} = EventStore.subscribe_to("stream1", "subscriber", self(), :current)
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, "stream1", "subscriber", self(), :current)
 
         assert_receive {:subscribed, ^subscription}
         refute_receive {:events, _events}
 
-        :ok = EventStore.append_to_stream("stream1", 3, build_events(3))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(3))
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream1", 3, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        assert_receive_events(subscription, 3, from: 4)
+        assert_receive_events(application, subscription, 3, from: 4)
         refute_receive {:events, _events}
       end
 
-      test "should receive events already apended to stream" do
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+      test "should receive events already apended to stream", %{application: application} do
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        {:ok, subscription} = EventStore.subscribe_to("stream3", "subscriber", self(), :origin)
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, "stream3", "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
 
-        assert_receive_events(subscription, 3, from: 1)
+        assert_receive_events(application, subscription, 3, from: 1)
 
-        :ok = EventStore.append_to_stream("stream3", 3, build_events(1))
-        :ok = EventStore.append_to_stream("stream3", 4, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream3", 3, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream3", 4, build_events(1))
 
-        assert_receive_events(subscription, 2, from: 4)
+        assert_receive_events(application, subscription, 2, from: 4)
         refute_receive {:events, _received_events}
       end
 
-      test "should prevent duplicate subscriptions" do
-        {:ok, _subscription} = EventStore.subscribe_to("stream1", "subscriber", self(), :origin)
+      test "should prevent duplicate subscriptions", %{application: application} do
+        {:ok, _subscription} =
+          EventStore.subscribe_to(application, "stream1", "subscriber", self(), :origin)
 
         assert {:error, :subscription_already_exists} ==
-                 EventStore.subscribe_to("stream1", "subscriber", self(), :origin)
+                 EventStore.subscribe_to(application, "stream1", "subscriber", self(), :origin)
       end
     end
 
     describe "subscribe to all streams" do
-      test "should receive `:subscribed` message once subscribed" do
-        {:ok, subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should receive `:subscribed` message once subscribed", %{application: application} do
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
       end
 
-      test "should receive events appended to any stream" do
-        {:ok, subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should receive events appended to any stream", %{application: application} do
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        assert_receive_events(subscription, 1, from: 1)
-        assert_receive_events(subscription, 2, from: 2)
-        assert_receive_events(subscription, 3, from: 4)
+        assert_receive_events(application, subscription, 1, from: 1)
+        assert_receive_events(application, subscription, 2, from: 2)
+        assert_receive_events(application, subscription, 3, from: 4)
 
         refute_receive {:events, _received_events}
       end
 
-      test "should receive events already appended to any stream" do
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+      test "should receive events already appended to any stream", %{application: application} do
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
 
         wait_for_event_store()
 
-        {:ok, subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
 
-        assert_receive_events(subscription, 1, from: 1)
-        assert_receive_events(subscription, 2, from: 2)
+        assert_receive_events(application, subscription, 1, from: 1)
+        assert_receive_events(application, subscription, 2, from: 2)
 
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        assert_receive_events(subscription, 3, from: 4)
+        assert_receive_events(application, subscription, 3, from: 4)
         refute_receive {:events, _received_events}
       end
 
-      test "should skip existing events when subscribing from current position" do
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+      test "should skip existing events when subscribing from current position", %{
+        application: application
+      } do
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
 
         wait_for_event_store()
 
-        {:ok, subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :current)
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :current)
 
         assert_receive {:subscribed, ^subscription}
         refute_receive {:events, _received_events}
 
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
-        assert_receive_events(subscription, 3, from: 4)
+        assert_receive_events(application, subscription, 3, from: 4)
 
         refute_receive {:events, _received_events}
       end
 
-      test "should prevent duplicate subscriptions" do
-        {:ok, _subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should prevent duplicate subscriptions", %{application: application} do
+        {:ok, _subscription} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert {:error, :subscription_already_exists} ==
-                 EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+                 EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
       end
     end
 
     describe "unsubscribe from all streams" do
-      test "should not receive further events appended to any stream" do
-        {:ok, subscription} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should not receive further events appended to any stream", %{application: application} do
+        {:ok, subscription} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription}
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
 
-        assert_receive_events(subscription, 1, from: 1)
+        assert_receive_events(application, subscription, 1, from: 1)
 
-        :ok = unsubscribe(subscription)
+        :ok = unsubscribe(application, subscription)
 
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(3))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(3))
 
         refute_receive {:events, _received_events}
       end
 
-      test "should resume subscription when subscribing again" do
-        {:ok, subscription1} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should resume subscription when subscribing again", %{application: application} do
+        {:ok, subscription1} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription1}
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
 
-        assert_receive_events(subscription1, 1, from: 1)
+        assert_receive_events(application, subscription1, 1, from: 1)
 
-        :ok = unsubscribe(subscription1)
+        :ok = unsubscribe(application, subscription1)
 
-        {:ok, subscription2} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+        {:ok, subscription2} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
 
         assert_receive {:subscribed, ^subscription2}
-        assert_receive_events(subscription2, 2, from: 2)
+        assert_receive_events(application, subscription2, 2, from: 2)
       end
     end
 
     describe "delete subscription" do
-      test "should be deleted" do
-        {:ok, subscription1} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should be deleted", %{application: application} do
+        {:ok, subscription1} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription1}
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
 
-        assert_receive_events(subscription1, 1, from: 1)
+        assert_receive_events(application, subscription1, 1, from: 1)
 
-        :ok = unsubscribe(subscription1)
+        :ok = unsubscribe(application, subscription1)
 
-        assert :ok = EventStore.delete_subscription(:all, "subscriber")
+        assert :ok = EventStore.delete_subscription(application, :all, "subscriber")
       end
 
-      test "should create new subscription after deletion" do
-        {:ok, subscription1} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+      test "should create new subscription after deletion", %{application: application} do
+        {:ok, subscription1} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         assert_receive {:subscribed, ^subscription1}
 
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
 
-        assert_receive_events(subscription1, 1, from: 1)
+        assert_receive_events(application, subscription1, 1, from: 1)
 
-        :ok = unsubscribe(subscription1)
+        :ok = unsubscribe(application, subscription1)
 
-        :ok = EventStore.delete_subscription(:all, "subscriber")
+        :ok = EventStore.delete_subscription(application, :all, "subscriber")
 
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(2))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(2))
 
         refute_receive {:events, _received_events}
 
-        {:ok, subscription2} = EventStore.subscribe_to(:all, "subscriber", self(), :origin)
+        {:ok, subscription2} =
+          EventStore.subscribe_to(application, :all, "subscriber", self(), :origin)
 
         # Should receive all events as subscription has been recreated from `:origin`
         assert_receive {:subscribed, ^subscription2}
-        assert_receive_events(subscription2, 1, from: 1)
-        assert_receive_events(subscription2, 2, from: 2)
+        assert_receive_events(application, subscription2, 1, from: 1)
+        assert_receive_events(application, subscription2, 2, from: 2)
       end
     end
 
     describe "resume subscription" do
-      test "should remember last seen event number when subscription resumes" do
-        :ok = EventStore.append_to_stream("stream1", 0, build_events(1))
-        :ok = EventStore.append_to_stream("stream2", 0, build_events(1))
+      test "should remember last seen event number when subscription resumes", %{
+        application: application
+      } do
+        :ok = EventStore.append_to_stream(application, "stream1", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream2", 0, build_events(1))
 
-        {:ok, subscriber} = Subscriber.start_link(self())
+        {:ok, subscriber} = Subscriber.start_link(application, self())
 
         assert_receive {:subscribed, _subscription}
         assert_receive {:events, received_events}
@@ -344,11 +373,11 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         stop_subscriber(subscriber)
 
-        {:ok, _subscriber} = Subscriber.start_link(self())
+        {:ok, _subscriber} = Subscriber.start_link(application, self())
 
         assert_receive {:subscribed, _subscription}
 
-        :ok = EventStore.append_to_stream("stream3", 0, build_events(1))
+        :ok = EventStore.append_to_stream(application, "stream3", 0, build_events(1))
 
         assert_receive {:events, received_events}
         assert length(received_events) == 1
@@ -359,8 +388,10 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
     end
 
     describe "subscription process" do
-      test "should not stop subscriber process when subscription down" do
-        {:ok, subscriber} = Subscriber.start_link(self())
+      test "should not stop subscriber process when subscription down", %{
+        application: application
+      } do
+        {:ok, subscriber} = Subscriber.start_link(application, self())
 
         ref = Process.monitor(subscriber)
 
@@ -372,8 +403,8 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         refute_receive {:DOWN, ^ref, :process, ^subscriber, _reason}
       end
 
-      test "should stop subscription process when subscriber down" do
-        {:ok, subscriber} = Subscriber.start_link(self())
+      test "should stop subscription process when subscriber down", %{application: application} do
+        {:ok, subscriber} = Subscriber.start_link(application, self())
 
         assert_receive {:subscribed, subscription}
 
@@ -385,8 +416,8 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       end
     end
 
-    defp unsubscribe(subscription) do
-      :ok = EventStore.unsubscribe(subscription)
+    defp unsubscribe(application, subscription) do
+      :ok = EventStore.unsubscribe(application, subscription)
 
       wait_for_event_store()
     end
@@ -405,11 +436,15 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       end
     end
 
-    defp assert_receive_events(subscription, expected_count, opts) do
-      assert_receive_events(expected_count, Keyword.put(opts, :subscription, subscription))
+    defp assert_receive_events(application, subscription, expected_count, opts) do
+      assert_receive_events(
+        application,
+        expected_count,
+        Keyword.put(opts, :subscription, subscription)
+      )
     end
 
-    defp assert_receive_events(expected_count, opts) do
+    defp assert_receive_events(application, expected_count, opts) do
       from_event_number = Keyword.get(opts, :from, 1)
 
       assert_receive {:events, received_events}
@@ -421,8 +456,11 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       end)
 
       case Keyword.get(opts, :subscription) do
-        nil -> :ok
-        subscription -> EventStore.ack_event(subscription, List.last(received_events))
+        nil ->
+          :ok
+
+        subscription ->
+          EventStore.ack_event(application, subscription, List.last(received_events))
       end
 
       case expected_count - length(received_events) do
@@ -432,6 +470,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         remaining when remaining > 0 ->
           received_events ++
             assert_receive_events(
+              application,
               remaining,
               Keyword.put(opts, :from, from_event_number + length(received_events))
             )

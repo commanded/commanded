@@ -3,10 +3,17 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Aggregates.Supervisor, as: AggregateSupervisor
+  alias Commanded.DefaultApp
   alias Commanded.{EventStore, Registration}
   alias Commanded.ExampleDomain.{BankAccount, OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+
+  setup do
+    start_supervised!(DefaultApp)
+
+    :ok
+  end
 
   describe "append event directly to aggregate stream" do
     setup [
@@ -15,9 +22,9 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
     ]
 
     test "should notify aggregate and mutate its state", %{account_number: account_number} do
-      assert Aggregate.aggregate_version(BankAccount, account_number) == 2
+      assert Aggregate.aggregate_version(DefaultApp, BankAccount, account_number) == 2
 
-      assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+      assert Aggregate.aggregate_state(DefaultApp, BankAccount, account_number) == %BankAccount{
                account_number: account_number,
                balance: 1_500,
                state: :active
@@ -25,8 +32,8 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
     end
 
     test "should ignore already seen events", %{account_number: account_number} do
-      pid = Registration.whereis_name({BankAccount, account_number})
-      events = account_number |> EventStore.stream_forward() |> Enum.to_list()
+      pid = Registration.whereis_name(DefaultApp, {DefaultApp, BankAccount, account_number})
+      events = EventStore.stream_forward(DefaultApp, account_number) |> Enum.to_list()
 
       # send already seen events multiple times, they should be ignored
       send(pid, {:events, events})
@@ -34,9 +41,9 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
       send(pid, {:events, events})
       send(pid, {:events, events})
 
-      assert Aggregate.aggregate_version(BankAccount, account_number) == 2
+      assert Aggregate.aggregate_version(DefaultApp, BankAccount, account_number) == 2
 
-      assert Aggregate.aggregate_state(BankAccount, account_number) == %BankAccount{
+      assert Aggregate.aggregate_state(DefaultApp, BankAccount, account_number) == %BankAccount{
                account_number: account_number,
                balance: 1_500,
                state: :active
@@ -46,12 +53,11 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
     test "should stop aggregate process when unexpected event received", %{
       account_number: account_number
     } do
-      pid = Registration.whereis_name({BankAccount, account_number})
+      pid = Registration.whereis_name(DefaultApp, {DefaultApp, BankAccount, account_number})
       ref = Process.monitor(pid)
 
       events =
-        account_number
-        |> EventStore.stream_forward()
+        EventStore.stream_forward(DefaultApp, account_number)
         |> Enum.to_list()
         |> Enum.map(fn recorded_event ->
           # specify invalid stream version
@@ -71,7 +77,8 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
   defp open_account(_context) do
     account_number = UUID.uuid4()
 
-    {:ok, ^account_number} = AggregateSupervisor.open_aggregate(BankAccount, account_number)
+    {:ok, ^account_number} =
+      AggregateSupervisor.open_aggregate(DefaultApp, BankAccount, account_number)
 
     context = %ExecutionContext{
       command: %OpenAccount{account_number: account_number, initial_balance: 1_000},
@@ -80,7 +87,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
       retry_attempts: 1
     }
 
-    {:ok, 1, _events} = Aggregate.execute(BankAccount, account_number, context)
+    {:ok, 1, _events} = Aggregate.execute(DefaultApp, BankAccount, account_number, context)
 
     [
       account_number: account_number
@@ -99,6 +106,6 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
       }
     }
 
-    EventStore.append_to_stream(account_number, 1, [event])
+    EventStore.append_to_stream(DefaultApp, account_number, 1, [event])
   end
 end

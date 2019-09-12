@@ -3,7 +3,7 @@ defmodule Commanded.Registration.RegisteredServer do
   use Commanded.Registration
 
   def start_link(args) do
-    name = args[:name]
+    name = Keyword.fetch!(args, :name)
 
     GenServer.start_link(__MODULE__, name, name: name)
   end

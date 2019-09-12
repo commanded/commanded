@@ -3,7 +3,7 @@ defmodule Commanded.Commands.Dispatcher do
 
   require Logger
 
-  alias Commanded.Aggregates
+  alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Commands.ExecutionResult
   alias Commanded.Middleware.Pipeline
@@ -12,6 +12,7 @@ defmodule Commanded.Commands.Dispatcher do
     @moduledoc false
 
     defstruct [
+      :application,
       :command,
       :command_uuid,
       :causation_id,
@@ -44,7 +45,7 @@ defmodule Commanded.Commands.Dispatcher do
       |> to_pipeline()
       |> before_dispatch(payload)
 
-    # don't allow command execution if pipeline has been halted
+    # Stop command execution if pipeline has been halted
     unless Pipeline.halted?(pipeline) do
       pipeline
       |> execute(payload)
@@ -61,20 +62,29 @@ defmodule Commanded.Commands.Dispatcher do
 
   defp execute(%Pipeline{} = pipeline, %Payload{} = payload) do
     %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline
-    %Payload{aggregate_module: aggregate_module, timeout: timeout} = payload
+
+    %Payload{application: application, aggregate_module: aggregate_module, timeout: timeout} =
+      payload
 
     {:ok, ^aggregate_uuid} =
-      Commanded.Aggregates.Supervisor.open_aggregate(aggregate_module, aggregate_uuid)
+      Commanded.Aggregates.Supervisor.open_aggregate(
+        application,
+        aggregate_module,
+        aggregate_uuid
+      )
 
     context = to_execution_context(pipeline, payload)
 
+    task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
+
     task =
-      Task.Supervisor.async_nolink(
-        Commanded.Commands.TaskDispatcher,
-        Aggregates.Aggregate,
-        :execute,
-        [aggregate_module, aggregate_uuid, context, timeout]
-      )
+      Task.Supervisor.async_nolink(task_dispatcher_name, Aggregate, :execute, [
+        application,
+        aggregate_module,
+        aggregate_uuid,
+        context,
+        timeout
+      ])
 
     result =
       case Task.yield(task, timeout) || Task.shutdown(task) do
@@ -152,13 +162,11 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp before_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
-    pipeline
-    |> Pipeline.chain(:before_dispatch, middleware)
+    Pipeline.chain(pipeline, :before_dispatch, middleware)
   end
 
   defp after_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
-    pipeline
-    |> Pipeline.chain(:after_dispatch, middleware)
+    Pipeline.chain(pipeline, :after_dispatch, middleware)
   end
 
   defp after_failure(%Pipeline{response: {:error, error}} = pipeline, %Payload{} = payload) do
@@ -181,8 +189,9 @@ defmodule Commanded.Commands.Dispatcher do
     |> Pipeline.chain(:after_failure, middleware)
   end
 
-  defp after_failure(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do
-    pipeline
-    |> Pipeline.chain(:after_failure, middleware)
+  defp after_failure(%Pipeline{} = pipeline, %Payload{} = payload) do
+    %Payload{middleware: middleware} = payload
+
+    Pipeline.chain(pipeline, :after_failure, middleware)
   end
 end

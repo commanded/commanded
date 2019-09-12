@@ -1,7 +1,7 @@
 defmodule Commanded.ProcessManagers.RoutingProcessManager do
   use Commanded.ProcessManagers.ProcessManager,
-    name: __MODULE__,
-    router: Commanded.Commands.MockRouter
+    application: Commanded.MockedApp,
+    name: __MODULE__
 
   defmodule Started do
     @enforce_keys [:process_uuid]

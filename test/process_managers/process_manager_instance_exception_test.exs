@@ -1,8 +1,14 @@
 defmodule Commanded.ProcessManagers.ProcessManagerInstanceExceptionTest do
   use Commanded.StorageCase
 
-  alias Commanded.ProcessManagers.{ExampleRouter, ExampleProcessManager}
+  alias Commanded.ProcessManagers.{ExampleApp, ExampleRouter, ExampleProcessManager}
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Error, Raise, Start}
+
+  setup do
+    start_supervised!(ExampleApp)
+
+    :ok
+  end
 
   test "should stop process router when handling event errors" do
     aggregate_uuid = UUID.uuid4()
@@ -12,8 +18,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceExceptionTest do
     Process.unlink(process_router)
     ref = Process.monitor(process_router)
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
-    :ok = ExampleRouter.dispatch(%Error{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
+    :ok = ExampleRouter.dispatch(%Error{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     # Should shutdown process
     assert_receive {:DOWN, ^ref, _, _, _}
@@ -27,8 +33,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceExceptionTest do
     Process.unlink(process_router)
     ref = Process.monitor(process_router)
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
-    :ok = ExampleRouter.dispatch(%Raise{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
+    :ok = ExampleRouter.dispatch(%Raise{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     # Should shutdown process
     assert_receive {:DOWN, ^ref, _, _, _}

@@ -6,14 +6,16 @@ defmodule Commanded.Snapshotting do
   alias Commanded.Snapshotting
 
   defstruct [
+    :application,
     :source_uuid,
     :snapshot_every,
     :snapshot_module_version,
     snapshot_version: 0
   ]
 
-  def new(source_uuid, opts) do
+  def new(application, source_uuid, opts) do
     %Snapshotting{
+      application: application,
       source_uuid: source_uuid,
       snapshot_every: Keyword.get(opts, :snapshot_every),
       snapshot_module_version: Keyword.get(opts, :snapshot_version, 1)
@@ -21,10 +23,10 @@ defmodule Commanded.Snapshotting do
   end
 
   def read_snapshot(%Snapshotting{} = snapshotting) do
-    %Snapshotting{source_uuid: source_uuid} = snapshotting
+    %Snapshotting{application: application, source_uuid: source_uuid} = snapshotting
 
     with :ok <- validate_configured(snapshotting),
-         {:ok, snapshot} <- EventStore.read_snapshot(source_uuid),
+         {:ok, snapshot} <- EventStore.read_snapshot(application, source_uuid),
          :ok <- validate_snapshot(snapshotting, snapshot) do
       {:ok, snapshot}
     end
@@ -35,8 +37,11 @@ defmodule Commanded.Snapshotting do
   """
   def take_snapshot(%Snapshotting{} = snapshotting, source_version, source_state)
       when is_number(source_version) do
-    %Snapshotting{source_uuid: source_uuid, snapshot_module_version: snapshot_module_version} =
-      snapshotting
+    %Snapshotting{
+      application: application,
+      source_uuid: source_uuid,
+      snapshot_module_version: snapshot_module_version
+    } = snapshotting
 
     snapshot = %SnapshotData{
       source_uuid: source_uuid,
@@ -46,7 +51,7 @@ defmodule Commanded.Snapshotting do
       metadata: %{"snapshot_module_version" => snapshot_module_version}
     }
 
-    case EventStore.record_snapshot(snapshot) do
+    case EventStore.record_snapshot(application, snapshot) do
       :ok -> {:ok, %Snapshotting{snapshotting | snapshot_version: source_version}}
       {:error, error} -> {:error, error}
     end

@@ -16,17 +16,31 @@ defmodule Commanded.Commands.Router do
           identity: :account_number
       end
 
-    Once configured, you can dispatch a command using the module:
-
-      :ok = BankRouter.dispatch(%OpenAccount{
-        account_number: "ACC123",
-        initial_balance: 1_000
-      })
-
   The `to` option determines which module receives the command being dispatched.
   This command handler module must implement a `handle/2` function. It receives
   the aggregate's state and the command to execute. Usually the command handler
   module will forward the command to the aggregate.
+
+  Once configured, you can either dispatch a command using the module by and
+  specify the application:
+
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankRouter.dispatch(command, application: BankApp)
+
+  Or, more simply you should include the router module in your application:
+
+      defmodule BankApp do
+        use Commanded.Application, otp_app: :my_app
+
+        router MyApp.Router
+      end
+
+  Then dispatch commands using the app:
+
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankApp.dispatch(command)
 
   ## Dispatch command directly to an aggregate
 
@@ -80,8 +94,8 @@ defmodule Commanded.Commands.Router do
     - `:eventual` (default) - don't block command dispatch while waiting for
       event handlers
 
-        :ok = BankRouter.dispatch(command)
-        :ok = BankRouter.dispatch(command, consistency: :eventual)
+        :ok = BankApp.dispatch(command)
+        :ok = BankApp.dispatch(command, consistency: :eventual)
 
     - `:strong` - block command dispatch until all strongly
       consistent event handlers and process managers have successfully processed
@@ -90,7 +104,7 @@ defmodule Commanded.Commands.Router do
       Use this when you have event handlers that update read models you need to
       query immediately after dispatching the command.
 
-        :ok = BankRouter.dispatch(command, consistency: :strong)
+        :ok = BankApp.dispatch(command, consistency: :strong)
 
     - Provide an explicit list of event handler and process manager modules (or
       their configured names), containing only those handlers you'd like to wait
@@ -98,8 +112,8 @@ defmodule Commanded.Commands.Router do
       configured consistency setting.
 
       ```elixir
-      :ok = BankRouter.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
-      :ok = BankRouter.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+      :ok = BankApp.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
+      :ok = BankApp.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
       ```
 
       Note you cannot opt-in to strong consistency for a handler that has been
@@ -110,7 +124,7 @@ defmodule Commanded.Commands.Router do
   You can optionally choose to include the aggregate's version as part of the
   dispatch result by setting `include_aggregate_version` true.
 
-      {:ok, aggregate_version} = BankRouter.dispatch(command, include_aggregate_version: true)
+      {:ok, aggregate_version} = BankApp.dispatch(command, include_aggregate_version: true)
 
   This is useful when you need to wait for an event handler (e.g. a read model
   projection) to be up-to-date before continuing or querying its data.
@@ -120,7 +134,7 @@ defmodule Commanded.Commands.Router do
   You can also choose to include the execution result as part of the dispatch result by
   setting `include_execution_result` true.
 
-      {:ok, execution_result} = Router.dispatch(command, include_execution_result: true)
+      {:ok, execution_result} = BankApp.dispatch(command, include_execution_result: true)
 
   Or by setting `include_execution_result` in your application config file:
 
@@ -136,20 +150,21 @@ defmodule Commanded.Commands.Router do
 
   Supply a map containing key/value pairs comprising the metadata:
 
-      :ok = BankRouter.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
+      :ok = BankApp.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
   """
 
   @callback dispatch(struct, keyword()) ::
               :ok | {:ok, non_neg_integer()} | {:ok, struct} | {:error, term}
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
     quote do
       require Logger
 
       import unquote(__MODULE__)
       @before_compile unquote(__MODULE__)
 
+      @application Keyword.get(unquote(opts), :application)
       @registered_commands []
       @registered_identities %{}
       @registered_middleware []
@@ -159,11 +174,9 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ExtractAggregateIdentity,
           Commanded.Middleware.ConsistencyGuarantee
         ],
-        consistency: Application.get_env(:commanded, :default_consistency, :eventual),
-        include_aggregate_version:
-          Application.get_env(:commanded, :include_aggregate_version, false),
-        include_execution_result:
-          Application.get_env(:commanded, :include_execution_result, false),
+        consistency: get_env(:default_consistency, :eventual),
+        include_aggregate_version: get_env(:include_aggregate_version, false),
+        include_execution_result: get_env(:include_execution_result, false),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
@@ -347,9 +360,8 @@ defmodule Commanded.Commands.Router do
         invalid ->
           raise ArgumentError,
             message:
-              "Invalid `lifespan` configured for #{inspect(unquote(aggregate))}: #{
+              "Invalid `lifespan` configured for #{inspect(unquote(aggregate))}: " <>
                 inspect(invalid)
-              }"
       end
 
       unless function_exported?(unquote(handler), unquote(function), 2) do
@@ -377,6 +389,10 @@ defmodule Commanded.Commands.Router do
         do: do_dispatch(command, opts)
 
       defp do_dispatch(%unquote(command_module){} = command, opts) do
+        unless application = Keyword.get(opts, :application, @application) do
+          raise ArgumentError, message: "no :application provided"
+        end
+
         causation_id = Keyword.get(opts, :causation_id)
         correlation_id = Keyword.get(opts, :correlation_id) || UUID.uuid4()
 
@@ -411,6 +427,7 @@ defmodule Commanded.Commands.Router do
         alias Commanded.Commands.Dispatcher.Payload
 
         payload = %Payload{
+          application: application,
           command: command,
           command_uuid: UUID.uuid4(),
           causation_id: causation_id,
@@ -438,7 +455,7 @@ defmodule Commanded.Commands.Router do
   defmacro __before_compile__(_env) do
     quote generated: true do
       @doc false
-      def registered_commands, do: @registered_commands
+      def __registered_commands__, do: @registered_commands
 
       @doc """
       Dispatch the given command to the registered handler.
@@ -512,7 +529,7 @@ defmodule Commanded.Commands.Router do
       defp unregistered_command(command) do
         _ =
           Logger.error(fn ->
-            "attempted to dispatch an unregistered command: #{inspect(command)}"
+            "attempted to dispatch an unregistered command: " <> inspect(command)
           end)
 
         {:error, :unregistered_command}
@@ -526,6 +543,9 @@ defmodule Commanded.Commands.Router do
       raise "module `#{inspect(module)}` does not exist, perhaps you forgot to `alias` the namespace"
     end
   end
+
+  @doc false
+  def get_env(name, default \\ nil), do: Application.get_env(:commanded, name, default)
 
   defp parse_opts([{:to, aggregate_or_handler} | opts], result) do
     case Keyword.pop(opts, :aggregate) do

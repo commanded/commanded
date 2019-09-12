@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerIntegrationTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankRouter
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
@@ -14,7 +15,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerIntegrationTest do
   alias Commanded.ProcessManagers.ProcessRouter
 
   setup do
-    CommandAuditMiddleware.start_link()
+    start_supervised!(CommandAuditMiddleware)
+    start_supervised!(BankApp)
+
     :ok
   end
 
@@ -23,41 +26,50 @@ defmodule Commanded.ProcessManagers.ProcessManagerIntegrationTest do
     account_number2 = UUID.uuid4()
     transfer_uuid = UUID.uuid4()
 
-    {:ok, process_router} = TransferMoneyProcessManager.start_link()
+    process_router = start_supervised!(TransferMoneyProcessManager)
 
     # Create two bank accounts
-    :ok =
-      BankRouter.dispatch(%OpenAccount{account_number: account_number1, initial_balance: 1_000})
-
-    :ok = BankRouter.dispatch(%OpenAccount{account_number: account_number2, initial_balance: 500})
+    :ok = open_account(account_number1, 1_000)
+    :ok = open_account(account_number2, 500)
 
     # Transfer funds between account 1 and account 2
-    :ok =
-      BankRouter.dispatch(%TransferMoney{
-        transfer_uuid: transfer_uuid,
-        debit_account: account_number1,
-        credit_account: account_number2,
-        amount: 100
-      })
+    :ok = transfer_funds(transfer_uuid, account_number1, account_number2, 100)
 
-    assert_receive_event(MoneyTransferRequested, fn event ->
+    assert_receive_event(BankApp, MoneyTransferRequested, fn event ->
       assert event.debit_account == account_number1
       assert event.credit_account == account_number2
       assert event.amount == 100
     end)
 
-    assert_receive_event(MoneyWithdrawn, fn event ->
+    assert_receive_event(BankApp, MoneyWithdrawn, fn event ->
       assert event.account_number == account_number1
       assert event.amount == 100
       assert event.balance == 900
     end)
 
-    assert_receive_event(MoneyDeposited, fn event ->
+    assert_receive_event(BankApp, MoneyDeposited, fn event ->
       assert event.account_number == account_number2
       assert event.amount == 100
       assert event.balance == 600
     end)
 
     assert [{^transfer_uuid, _}] = ProcessRouter.process_instances(process_router)
+  end
+
+  defp open_account(account_number, initial_balance) do
+    command = %OpenAccount{account_number: account_number, initial_balance: initial_balance}
+
+    BankRouter.dispatch(command, application: BankApp)
+  end
+
+  defp transfer_funds(transfer_uuid, from_account_number, to_account_number2, amount) do
+    command = %TransferMoney{
+      transfer_uuid: transfer_uuid,
+      debit_account: from_account_number,
+      credit_account: to_account_number2,
+      amount: amount
+    }
+
+    BankRouter.dispatch(command, application: BankApp)
   end
 end

@@ -47,6 +47,7 @@ defimpl Commanded.Serialization.JsonDecoder, for: SnapshotAggregate do
     %SnapshotAggregate{datetime: datetime} = state
 
     {:ok, dt, _} = DateTime.from_iso8601(datetime)
+
     %SnapshotAggregate{state | datetime: dt}
   end
 end

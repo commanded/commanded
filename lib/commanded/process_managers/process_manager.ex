@@ -18,8 +18,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
-          name: "ExampleProcessManager",
-          router: ExampleRouter
+          application: ExampleApp,
+          name: "ExampleProcessManager"
 
         def interested?(%AnEvent{uuid: uuid}), do: {:start, uuid}
 
@@ -64,8 +64,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
-          name: "ExampleProcessManager",
-          router: ExampleRouter
+          application: ExampleApp,
+          name: "ExampleProcessManager"
 
         # stop process manager after three failures
         def error({:error, _failure}, _failed_command, %{context: %{failures: failures}})
@@ -95,8 +95,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
-          name: "ExampleProcessManager",
-          router: ExampleRouter,
+          application: ExampleApp,
+          name: "ExampleProcessManager"
           idle_timeout: :timer.minutes(10)
       end
 
@@ -110,6 +110,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       defmodule TransferMoneyProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
+          application: ExampleApp,
           name: "TransferMoneyProcessManager",
           router: BankRouter,
           event_timeout: :timer.minutes(10)
@@ -147,8 +148,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
+          application: ExampleApp,
           name: "ExampleProcessManager",
-          router: BankRouter
           consistency: :strong
       end
 
@@ -293,15 +294,17 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       @behaviour ProcessManager
 
-      @opts unquote(opts) || []
-      @name Handler.parse_name(__MODULE__, @opts[:name])
-      @router @opts[:router] || raise("#{inspect(__MODULE__)} expects `:router` to be given")
+      {application, name} = ProcessManager.compile_config(__MODULE__, unquote(opts))
+
+      @opts unquote(opts)
+      @application application
+      @name name
 
       def start_link(opts \\ []) do
-        module_opts = Keyword.drop(@opts, [:name, :router])
+        module_opts = Keyword.drop(@opts, [:application, :name])
         opts = Handler.start_opts(__MODULE__, module_opts, opts, [:event_timeout, :idle_timeout])
 
-        ProcessRouter.start_link(@name, __MODULE__, @router, opts)
+        ProcessRouter.start_link(@application, @name, __MODULE__, opts)
       end
 
       @doc """
@@ -347,5 +350,17 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @doc false
       def error({:error, reason}, _command, _failure_context), do: {:stop, reason}
     end
+  end
+
+  def compile_config(module, opts) do
+    application = Keyword.get(opts, :application)
+
+    unless application do
+      raise ArgumentError, inspect(module) <> " expects :application option"
+    end
+
+    name = Handler.parse_name(module, Keyword.get(opts, :name))
+
+    {application, name}
   end
 end

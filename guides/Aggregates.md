@@ -158,7 +158,7 @@ defmodule BankAccount do
 
   alias Commanded.Aggregate.Multi
 
-  # public command API
+  # Public command API
 
   def execute(
     %BankAccount{state: :active} = account,
@@ -171,7 +171,7 @@ defmodule BankAccount do
     |> Multi.execute(&check_balance/1)
   end
 
-  # state mutators
+  # State mutators
 
   def apply(%BankAccount{} = state, %MoneyWithdrawn{balance: balance}),
     do: %BankAccount{state | balance: balance}
@@ -179,7 +179,7 @@ defmodule BankAccount do
   def apply(%BankAccount{} = state, %AccountOverdrawn{}),
     do: %BankAccount{state | state: :overdrawn}
 
-  # private helpers
+  # Private helpers
 
   defp withdraw_money(%BankAccount{account_number: account_number, balance: balance}, amount) do
     %MoneyWithdrawn{
@@ -194,6 +194,7 @@ defmodule BankAccount do
   do
     %AccountOverdrawn{account_number: account_number, balance: balance}
   end
+
   defp check_balance(%BankAccount{}), do: []
 end
 ```
@@ -208,22 +209,22 @@ This is a performance optimisation for aggregates that have a long lifetime or r
 
 Use the following options to configure snapshots for an aggregate:
 
-- `snapshot_every` - snapshot aggregate state every so many events. Use
-  `nil` to disable snapshotting, or exclude the configuration entirely.
+- `snapshot_every` - snapshot aggregate state every so many events. Use `nil` to disable snapshotting, or exclude the configuration entirely.
 
-- `snapshot_version` - a non-negative integer indicating the version of
-  the aggregate state snapshot. Incrementing this version forces any
-  earlier recorded snapshots to be ignored when rebuilding aggregate
-  state.
+- `snapshot_version` - a non-negative integer indicating the version of the aggregate state snapshot. Incrementing this version forces any earlier recorded snapshots to be ignored when rebuilding aggregate state.
 
 ### Example
 
 In `config/config.exs` enable snapshots for `ExampleAggregate` after every ten events:
 
 ```elixir
-config :commanded, ExampleAggregate
-  snapshot_every: 10,
-  snapshot_version: 1
+config :my_app, MyApp.Application,
+  snapshotting: %{
+    MyApp.ExampleAggregate => [
+      snapshot_every: 10,
+      snapshot_version: 1
+    ]
+  }
 ```
 
 ### Snapshot serialization
@@ -244,8 +245,11 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   @doc """
   Parse the datetime included in the aggregate state
   """
-  def decode(%ExampleAggregate{datetime: datetime} = state) do
+  def decode(%ExampleAggregate{} = state) do
+    %ExampleAggregate{datetime: datetime} = state
+
     {:ok, dt, _} = DateTime.from_iso8601(datetime)
+
     %ExampleAggregate{state | datetime: dt}
   end
 end

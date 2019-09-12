@@ -1,15 +1,25 @@
 defmodule Commanded.Event.Upcast.ProcessManager do
-  defmodule(Ok, do: defstruct([:id]))
+  defmodule Ok do
+    defstruct [:id]
+  end
 
   defmodule Aggregate do
     defstruct []
+
     def execute(_, _), do: []
     def apply(agg, _), do: agg
   end
 
   defmodule Router do
     use Commanded.Commands.Router
-    dispatch Ok, to: Aggregate, identity: :id
+
+    dispatch(Ok, to: Aggregate, identity: :id)
+  end
+
+  defmodule Application do
+    use Commanded.Application, otp_app: :commanded
+
+    router(Router)
   end
 
   @derive Jason.Encoder
@@ -18,8 +28,8 @@ defmodule Commanded.Event.Upcast.ProcessManager do
   alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
 
   use Commanded.ProcessManagers.ProcessManager,
-    name: "UpcastProcessManager",
-    router: Router
+    application: Application,
+    name: "UpcastProcessManager"
 
   def interested?(%EventOne{process_id: process_id}), do: {:start, process_id}
   def interested?(%EventTwo{process_id: process_id}), do: {:start, process_id}
@@ -34,6 +44,7 @@ defmodule Commanded.Event.Upcast.ProcessManager do
 
   defp send_reply(%{reply_to: reply_to} = e) do
     send(:erlang.list_to_pid(reply_to), e)
+
     %Ok{id: UUID.uuid4()}
   end
 end

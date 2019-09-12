@@ -3,19 +3,17 @@ defmodule Commanded.Aggregate.MultiTest do
 
   import Commanded.Enumerable
 
+  alias Commanded.DefaultApp
   alias Commanded.EventStore
   alias Commanded.Aggregate.Multi
   alias Commanded.Aggregate.Multi.BankAccount
   alias Commanded.Aggregate.Multi.BankAccount.Commands.{OpenAccount, WithdrawMoney}
   alias Commanded.Aggregate.Multi.BankAccount.Events.{BankAccountOpened, MoneyWithdrawn}
+  alias Commanded.Aggregate.MultiBankRouter
 
-  defmodule MultiBankRouter do
-    use Commanded.Commands.Router
-
-    alias Commanded.Aggregate.Multi.BankAccount
-    alias Commanded.Aggregate.Multi.BankAccount.Commands.{OpenAccount, WithdrawMoney}
-
-    dispatch [OpenAccount, WithdrawMoney], to: BankAccount, identity: :account_number
+  setup do
+    start_supervised!(DefaultApp)
+    :ok
   end
 
   test "should return `Commanded.Aggregate.Multi` from command" do
@@ -69,16 +67,13 @@ defmodule Commanded.Aggregate.MultiTest do
   test "should execute command using `Commanded.Aggregate.Multi` and return events" do
     account_number = UUID.uuid4()
 
-    assert :ok =
-             MultiBankRouter.dispatch(%OpenAccount{
-               account_number: account_number,
-               initial_balance: 1_000
-             })
+    command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+    assert :ok = MultiBankRouter.dispatch(command, application: DefaultApp)
 
-    assert :ok =
-             MultiBankRouter.dispatch(%WithdrawMoney{account_number: account_number, amount: 250})
+    command = %WithdrawMoney{account_number: account_number, amount: 250}
+    assert :ok = MultiBankRouter.dispatch(command, application: DefaultApp)
 
-    recorded_events = EventStore.stream_forward(account_number, 0) |> Enum.to_list()
+    recorded_events = EventStore.stream_forward(DefaultApp, account_number, 0) |> Enum.to_list()
 
     assert pluck(recorded_events, :data) == [
              %BankAccountOpened{account_number: account_number, balance: 1_000},
@@ -89,19 +84,15 @@ defmodule Commanded.Aggregate.MultiTest do
   test "should execute command using `Commanded.Aggregate.Multi` and return any error" do
     account_number = UUID.uuid4()
 
-    assert :ok =
-             MultiBankRouter.dispatch(%OpenAccount{
-               account_number: account_number,
-               initial_balance: 1_000
-             })
+    command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
+    assert :ok = MultiBankRouter.dispatch(command, application: DefaultApp)
+
+    command = %WithdrawMoney{account_number: account_number, amount: 1_100}
 
     assert {:error, :insufficient_funds_available} =
-             MultiBankRouter.dispatch(%WithdrawMoney{
-               account_number: account_number,
-               amount: 1_100
-             })
+             MultiBankRouter.dispatch(command, application: DefaultApp)
 
-    recorded_events = EventStore.stream_forward(account_number, 0) |> Enum.to_list()
+    recorded_events = EventStore.stream_forward(DefaultApp, account_number, 0) |> Enum.to_list()
 
     assert pluck(recorded_events, :data) == [
              %BankAccountOpened{account_number: account_number, balance: 1_000}

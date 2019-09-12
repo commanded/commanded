@@ -16,4 +16,15 @@ defmodule Commanded do
 
   Please check the [Getting Started](getting-started.html) and [Usage](usage.html) guides to learn more.
   """
+
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      Commanded.Application.Config
+    ]
+
+    opts = [strategy: :one_for_one, name: Commanded.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
 end

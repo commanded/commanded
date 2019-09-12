@@ -32,8 +32,7 @@ Configure your application to use the Swarm registry:
 
 ```elixir
 # config/config.exs
-config :commanded,
-  registry: Commanded.Registration.SwarmRegistry
+config :my_app, MyApp.Application, registry: Commanded.Registration.SwarmRegistry
 ```
 
 This uses the [Swarm](https://hex.pm/packages/swarm) to distribute process amongst the available nodes in the cluster.
@@ -44,23 +43,21 @@ First, add it as a dependency to your project's `mix.exs` file:
 
 ```elixir
 defp deps do
-  [
-    {:phoenix_pubsub, "~> 1.0"}
-  ]
+  [{:phoenix_pubsub, "~> 1.0"}]
 end
 ```
 
-Fetch mix deps and configure the pubsub settings in your environment config:
-file:
+Fetch mix deps and configure the pubsub settings for your application in the environment config file:
 
 ```elixir
 # `config/config.exs`
-config :commanded, pubsub: [
-  phoenix_pubsub: [
-    adapter: Phoenix.PubSub.PG2,
-    pool_size: 1
+config :my_app, MyApp.Application,
+  pubsub: [
+    phoenix_pubsub: [
+      adapter: Phoenix.PubSub.PG2,
+      pool_size: 1
+    ]
   ]
-]
 ```
 
 The PG2 adapter is preferable for cluster deployment since it is provided by Erlang and requires no further dependencies.
@@ -75,7 +72,7 @@ Since the nodes aren't connected, you are required to use the Redis adapter as a
 
 ```elixir
 # config/config.exs
-config :commanded,
+config :my_app, MyApp.Application,
   registry: :local,
   pubsub: [
     phoenix_pubsub: [

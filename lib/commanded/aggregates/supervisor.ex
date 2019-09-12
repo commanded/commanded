@@ -10,12 +10,15 @@ defmodule Commanded.Aggregates.Supervisor do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Registration
 
-  def child_spec(arg) do
-    Registration.supervisor_child_spec(__MODULE__, arg)
-  end
+  # def child_spec(arg) do
+  #   Registration.supervisor_child_spec(__MODULE__, arg)
+  # end
 
-  def start_link(arg) do
-    DynamicSupervisor.start_link(__MODULE__, arg, name: __MODULE__)
+  def start_link(args) do
+    application = Keyword.fetch!(args, :application)
+    name = Module.concat([application, __MODULE__])
+
+    DynamicSupervisor.start_link(__MODULE__, args, name: name)
   end
 
   @doc """
@@ -25,17 +28,23 @@ defmodule Commanded.Aggregates.Supervisor do
   Returns `{:ok, aggregate_uuid}` when a process is sucessfully started, or is
   already running.
   """
-  def open_aggregate(aggregate_module, aggregate_uuid)
-      when is_atom(aggregate_module) and is_binary(aggregate_uuid) do
+  def open_aggregate(application, aggregate_module, aggregate_uuid)
+      when is_atom(application) and is_atom(aggregate_module) and is_binary(aggregate_uuid) do
     Logger.debug(fn ->
       "Locating aggregate process for `#{inspect(aggregate_module)}` with UUID " <>
         inspect(aggregate_uuid)
     end)
 
-    name = Aggregate.name(aggregate_module, aggregate_uuid)
-    child_spec = {Aggregate, aggregate_module: aggregate_module, aggregate_uuid: aggregate_uuid}
+    module_name = Module.concat([application, __MODULE__])
+    aggregate_name = Aggregate.name(application, aggregate_module, aggregate_uuid)
 
-    case Registration.start_child(name, __MODULE__, child_spec) do
+    args = [
+      application: application,
+      aggregate_module: aggregate_module,
+      aggregate_uuid: aggregate_uuid
+    ]
+
+    case Registration.start_child(application, aggregate_name, module_name, {Aggregate, args}) do
       {:ok, _pid} ->
         {:ok, aggregate_uuid}
 
@@ -50,10 +59,10 @@ defmodule Commanded.Aggregates.Supervisor do
     end
   end
 
-  def open_aggregate(_aggregate_module, aggregate_uuid),
+  def open_aggregate(_application, _aggregate_module, aggregate_uuid),
     do: {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
 
-  def init(_arg) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+  def init(args) do
+    DynamicSupervisor.init(strategy: :one_for_one, extra_arguments: [args])
   end
 end

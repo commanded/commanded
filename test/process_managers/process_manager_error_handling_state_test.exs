@@ -1,25 +1,28 @@
 defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
   use Commanded.StorageCase
 
-  alias Commanded.ProcessManagers.{
-    StateErrorHandlingProcessManager,
-    ErrorRouter,
-  }
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess
+  alias Commanded.ProcessManagers.ErrorRouter
+  alias Commanded.ProcessManagers.ExampleApp
+  alias Commanded.ProcessManagers.StateErrorHandlingProcessManager
+
+  setup do
+    start_supervised!(ExampleApp)
+    start_supervised!(StateErrorHandlingProcessManager)
+
+    :ok
+  end
 
   test "should receive the aggregate state in the context" do
-    process_uuid = UUID.uuid4()
     command = %StartProcess{
-      process_uuid: process_uuid,
-      reply_to: reply_to(),
+      process_uuid: UUID.uuid4(),
+      reply_to: reply_to()
     }
 
-    {:ok, _process_router} = StateErrorHandlingProcessManager.start_link()
-
-    assert :ok = ErrorRouter.dispatch(command)
+    assert :ok = ErrorRouter.dispatch(command, application: ExampleApp)
 
     assert_receive :got_from_context
   end
 
-  defp reply_to, do: self() |> :erlang.pid_to_list()
+  defp reply_to, do: :erlang.pid_to_list(self())
 end

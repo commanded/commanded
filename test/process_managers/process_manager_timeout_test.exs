@@ -3,8 +3,17 @@ defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
 
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
-  alias Commanded.ProcessManagers.{ExampleRouter, ExampleProcessManager}
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Pause, Start}
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.Pause
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.Start
+  alias Commanded.ProcessManagers.ExampleApp
+  alias Commanded.ProcessManagers.ExampleProcessManager
+  alias Commanded.ProcessManagers.ExampleRouter
+
+  setup do
+    start_supervised!(ExampleApp)
+
+    :ok
+  end
 
   test "should not timeout and shutdown process manager by default" do
     aggregate_uuid = UUID.uuid4()
@@ -12,12 +21,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
     {:ok, process_router} = ExampleProcessManager.start_link()
     router_ref = Process.monitor(process_router)
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     process_instance = wait_for_process_instance(process_router, aggregate_uuid)
     instance_ref = Process.monitor(process_instance)
 
-    :ok = ExampleRouter.dispatch(%Pause{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Pause{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     # Should not shutdown process manager or instance
     refute_receive {:DOWN, ^router_ref, _, _, _}
@@ -32,12 +41,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
     router_ref = Process.monitor(process_router)
     Process.unlink(process_router)
 
-    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Start{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     process_instance = wait_for_process_instance(process_router, aggregate_uuid)
     instance_ref = Process.monitor(process_instance)
 
-    :ok = ExampleRouter.dispatch(%Pause{aggregate_uuid: aggregate_uuid})
+    :ok = ExampleRouter.dispatch(%Pause{aggregate_uuid: aggregate_uuid}, application: ExampleApp)
 
     # Should shutdown process manager and instance
     assert_receive {:DOWN, ^router_ref, _, _, :event_timeout}
