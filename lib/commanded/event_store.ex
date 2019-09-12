@@ -3,11 +3,12 @@ defmodule Commanded.EventStore do
   Defines the behaviour to be implemented by an event store adapter to be used by Commanded.
   """
 
+  alias Commanded.Application
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
   @type application :: module
-  @type event_store :: GenServer.server() | module
-  @type config :: Keyword.t()
+  @type opts :: Keyword.t()
+  @type event_store :: {module, opts}
   @type stream_uuid :: String.t()
   @type start_from :: :origin | :current | integer
   @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer
@@ -20,7 +21,7 @@ defmodule Commanded.EventStore do
   @doc """
   Return a child spec defining all processes required by the event store.
   """
-  @callback child_spec(application, config) :: [:supervisor.child_spec()]
+  @callback child_spec(module, opts) :: [:supervisor.child_spec()]
 
   @doc """
   Append one or more events to a stream atomically.
@@ -149,8 +150,6 @@ defmodule Commanded.EventStore do
   """
   @callback delete_snapshot(event_store, source_uuid) :: :ok | {:error, error}
 
-  alias Commanded.Application
-
   @doc false
   def append_to_stream(application, stream_uuid, expected_version, events) do
     Application.event_store_adapter(application).append_to_stream(
@@ -231,18 +230,6 @@ defmodule Commanded.EventStore do
             "event store adapter #{inspect(adapter)} was not compiled, " <>
               "ensure it is correct and it is included as a project dependency"
     end
-
-    # behaviours =
-    #   for {:behaviour, behaviours} <- adapter.__info__(:attributes),
-    #       behaviour <- behaviours,
-    #       do: behaviour
-    #
-    # unless Commanded.EventStore in behaviours do
-    #   raise ArgumentError,
-    #         "expected event store :adapter option given to Commanded.Application to implement behaviour Commanded.EventStore"
-    # end
-
-    # event_store = adapter.event_store(application, config)
 
     {adapter, config}
   end

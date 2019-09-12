@@ -10,10 +10,12 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
     defstruct [:account_number, :initial_balance]
   end
 
+  @config [name: InMemory, serializer: JsonSerializer]
+
   setup do
-    start_supervised!(
-      {InMemory, event_store: InMemory, serializer: JsonSerializer, name: InMemory}
-    )
+    for child <- InMemory.child_spec(InMemory, @config) do
+      start_supervised!(child)
+    end
 
     :ok
   end
@@ -24,7 +26,7 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
       initial = :sys.get_state(pid)
       events = [build_event(1)]
 
-      :ok = InMemory.append_to_stream(InMemory, "stream", 0, events)
+      :ok = InMemory.append_to_stream({InMemory, @config}, "stream", 0, events)
       after_event = :sys.get_state(pid)
 
       InMemory.reset!(InMemory)

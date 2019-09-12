@@ -10,11 +10,13 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
 
   setup do
     expect(MockEventStore, :subscribe_to, fn
-      MockedApp.EventStore, _stream_uuid, _handler_name, handler, _subscribe_from ->
+      {MockedApp.EventStore, _config}, _stream_uuid, _handler_name, handler, _subscribe_from ->
         {:ok, handler}
     end)
 
-    expect(MockEventStore, :subscribe, fn MockedApp.EventStore, _aggregate_uuid -> :ok end)
+    expect(MockEventStore, :subscribe, fn {MockedApp.EventStore, _config}, _aggregate_uuid ->
+      :ok
+    end)
 
     :ok
   end
@@ -39,7 +41,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       }
 
       # Fail to append once
-      expect(MockEventStore, :append_to_stream, fn MockedApp.EventStore,
+      expect(MockEventStore, :append_to_stream, fn {MockedApp.EventStore, _config},
                                                    ^account_number,
                                                    1,
                                                    _event_data ->
@@ -47,7 +49,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       end)
 
       # Return "missing" event
-      expect(MockEventStore, :stream_forward, fn MockedApp.EventStore,
+      expect(MockEventStore, :stream_forward, fn {MockedApp.EventStore, _config},
                                                  ^account_number,
                                                  2,
                                                  _batch_size ->
@@ -70,7 +72,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       end)
 
       # Succeed on second attempt
-      expect(MockEventStore, :append_to_stream, fn MockedApp.EventStore,
+      expect(MockEventStore, :append_to_stream, fn {MockedApp.EventStore, _config},
                                                    ^account_number,
                                                    2,
                                                    _event_data ->
@@ -93,14 +95,14 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       %{account_number: account_number} = context
 
       # fail to append to stream
-      expect(MockEventStore, :append_to_stream, 6, fn MockedApp.EventStore,
+      expect(MockEventStore, :append_to_stream, 6, fn {MockedApp.EventStore, _config},
                                                       ^account_number,
                                                       1,
                                                       _event_data ->
         {:error, :wrong_expected_version}
       end)
 
-      expect(MockEventStore, :stream_forward, 6, fn MockedApp.EventStore,
+      expect(MockEventStore, :stream_forward, 6, fn {MockedApp.EventStore, _config},
                                                     ^account_number,
                                                     2,
                                                     _batch_size ->
@@ -127,14 +129,14 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
     defp open_account(_context) do
       account_number = UUID.uuid4()
 
-      expect(MockEventStore, :stream_forward, fn MockedApp.EventStore,
+      expect(MockEventStore, :stream_forward, fn {MockedApp.EventStore, _config},
                                                  ^account_number,
                                                  1,
                                                  _batch_size ->
         []
       end)
 
-      expect(MockEventStore, :append_to_stream, fn MockedApp.EventStore,
+      expect(MockEventStore, :append_to_stream, fn {MockedApp.EventStore, _config},
                                                    ^account_number,
                                                    0,
                                                    _event_data ->

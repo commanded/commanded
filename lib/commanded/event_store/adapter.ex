@@ -5,6 +5,7 @@ defmodule Commanded.EventStore.Adapter do
     quote bind_quoted: [opts: opts] do
       @adapter Keyword.fetch!(opts, :adapter)
       @config Keyword.fetch!(opts, :config)
+      @event_store {__MODULE__, @config}
 
       @behaviour Commanded.EventStore.Adapter
 
@@ -20,7 +21,7 @@ defmodule Commanded.EventStore.Adapter do
                  (is_integer(expected_version) or
                     expected_version in [:any_version, :no_stream, :stream_exists]) and
                  is_list(events) do
-        @adapter.append_to_stream(__MODULE__, stream_uuid, expected_version, events)
+        @adapter.append_to_stream(@event_store, stream_uuid, expected_version, events)
       end
 
       def stream_forward(
@@ -33,7 +34,7 @@ defmodule Commanded.EventStore.Adapter do
                  is_integer(read_batch_size) do
         alias Commanded.Event.Upcast
 
-        case @adapter.stream_forward(__MODULE__, stream_uuid, start_version, read_batch_size) do
+        case @adapter.stream_forward(@event_store, stream_uuid, start_version, read_batch_size) do
           {:error, _} = error -> error
           stream -> Upcast.upcast_event_stream(stream)
         end
@@ -41,7 +42,7 @@ defmodule Commanded.EventStore.Adapter do
 
       def subscribe(stream_uuid)
           when stream_uuid == :all or is_binary(stream_uuid) do
-        @adapter.subscribe(__MODULE__, stream_uuid)
+        @adapter.subscribe(@event_store, stream_uuid)
       end
 
       def subscribe_to(
@@ -52,7 +53,7 @@ defmodule Commanded.EventStore.Adapter do
           )
           when (stream_uuid == :all or is_binary(stream_uuid)) and is_pid(subscriber) do
         @adapter.subscribe_to(
-          __MODULE__,
+          @event_store,
           stream_uuid,
           subscription_name,
           subscriber,
@@ -61,27 +62,27 @@ defmodule Commanded.EventStore.Adapter do
       end
 
       def ack_event(pid, %RecordedEvent{} = event) when is_pid(pid) do
-        @adapter.ack_event(__MODULE__, pid, event)
+        @adapter.ack_event(@event_store, pid, event)
       end
 
       def unsubscribe(subscription) do
-        @adapter.unsubscribe(__MODULE__, subscription)
+        @adapter.unsubscribe(@event_store, subscription)
       end
 
       def delete_subscription(stream_uuid, subscription_name) do
-        @adapter.delete_subscription(__MODULE__, stream_uuid, subscription_name)
+        @adapter.delete_subscription(@event_store, stream_uuid, subscription_name)
       end
 
       def read_snapshot(source_uuid) when is_binary(source_uuid) do
-        @adapter.read_snapshot(__MODULE__, source_uuid)
+        @adapter.read_snapshot(@event_store, source_uuid)
       end
 
       def record_snapshot(%SnapshotData{} = snapshot) do
-        @adapter.record_snapshot(__MODULE__, snapshot)
+        @adapter.record_snapshot(@event_store, snapshot)
       end
 
       def delete_snapshot(source_uuid) when is_binary(source_uuid) do
-        @adapter.delete_snapshot(__MODULE__, source_uuid)
+        @adapter.delete_snapshot(@event_store, source_uuid)
       end
     end
   end

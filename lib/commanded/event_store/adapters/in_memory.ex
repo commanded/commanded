@@ -11,7 +11,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     @moduledoc false
 
     defstruct [
-      :event_store,
+      :name,
       :serializer,
       persisted_events: [],
       streams: %{},
@@ -29,7 +29,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {start_opts, in_memory_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
 
     state = %State{
-      event_store: Keyword.fetch!(in_memory_opts, :event_store),
+      name: Keyword.fetch!(opts, :name),
       serializer: Keyword.get(in_memory_opts, :serializer)
     }
 
@@ -43,8 +43,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   @impl Commanded.EventStore
   def child_spec(event_store, config) do
-    supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
-    config = Keyword.merge(config, event_store: event_store, name: event_store)
+    supervisor_name = subscriptions_name(event_store)
+    config = Keyword.merge(config, name: event_store)
 
     [
       {DynamicSupervisor, strategy: :one_for_one, name: supervisor_name},
@@ -56,22 +56,27 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def append_to_stream(event_store, stream_uuid, expected_version, events) do
+  def append_to_stream({event_store, _config}, stream_uuid, expected_version, events) do
     GenServer.call(event_store, {:append, stream_uuid, expected_version, events})
   end
 
   @impl Commanded.EventStore
-  def stream_forward(event_store, stream_uuid, start_version \\ 0, _read_batch_size \\ 1_000) do
+  def stream_forward(
+        {event_store, _config},
+        stream_uuid,
+        start_version \\ 0,
+        _read_batch_size \\ 1_000
+      ) do
     GenServer.call(event_store, {:stream_forward, stream_uuid, start_version})
   end
 
   @impl Commanded.EventStore
-  def subscribe(event_store, stream_uuid) do
+  def subscribe({event_store, _config}, stream_uuid) do
     GenServer.call(event_store, {:subscribe, stream_uuid, self()})
   end
 
   @impl Commanded.EventStore
-  def subscribe_to(event_store, stream_uuid, subscription_name, subscriber, start_from) do
+  def subscribe_to({event_store, _config}, stream_uuid, subscription_name, subscriber, start_from) do
     subscription = %Subscription{
       stream_uuid: stream_uuid,
       name: subscription_name,
@@ -83,32 +88,32 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore
-  def ack_event(event_store, pid, event) do
+  def ack_event({event_store, _config}, pid, event) do
     GenServer.cast(event_store, {:ack_event, event, pid})
   end
 
   @impl Commanded.EventStore
-  def unsubscribe(event_store, subscription) do
+  def unsubscribe({event_store, _config}, subscription) do
     GenServer.call(event_store, {:unsubscribe, subscription})
   end
 
   @impl Commanded.EventStore
-  def delete_subscription(event_store, stream_uuid, subscription_name) do
+  def delete_subscription({event_store, _config}, stream_uuid, subscription_name) do
     GenServer.call(event_store, {:delete_subscription, stream_uuid, subscription_name})
   end
 
   @impl Commanded.EventStore
-  def read_snapshot(event_store, source_uuid) do
+  def read_snapshot({event_store, _config}, source_uuid) do
     GenServer.call(event_store, {:read_snapshot, source_uuid})
   end
 
   @impl Commanded.EventStore
-  def record_snapshot(event_store, snapshot) do
+  def record_snapshot({event_store, _config}, snapshot) do
     GenServer.call(event_store, {:record_snapshot, snapshot})
   end
 
   @impl Commanded.EventStore
-  def delete_snapshot(event_store, source_uuid) do
+  def delete_snapshot({event_store, _config}, source_uuid) do
     GenServer.call(event_store, {:delete_snapshot, source_uuid})
   end
 
@@ -325,7 +330,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   def handle_call(:reset!, _from, %State{} = state) do
     %State{
-      event_store: event_store,
+      name: name,
       serializer: serializer,
       persistent_subscriptions: subscriptions
     } = state
@@ -334,7 +339,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       :ok = stop_subscription(subscriber, state)
     end
 
-    initial_state = %State{event_store: event_store, serializer: serializer}
+    initial_state = %State{name: name, serializer: serializer}
 
     {:reply, :ok, initial_state}
   end
@@ -443,10 +448,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp persistent_subscription(%Subscription{} = subscription, %State{} = state) do
     %Subscription{name: subscription_name} = subscription
-    %State{event_store: event_store, persistent_subscriptions: subscriptions} = state
+    %State{name: name, persistent_subscriptions: subscriptions} = state
 
     subscription_spec = subscription |> Subscription.child_spec() |> Map.put(:restart, :temporary)
-    supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
+    supervisor_name = subscriptions_name(name)
 
     {:ok, pid} = DynamicSupervisor.start_child(supervisor_name, subscription_spec)
 
@@ -465,9 +470,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   defp stop_subscription(subscription, %State{} = state) do
-    %State{event_store: event_store} = state
+    %State{name: name} = state
 
-    supervisor_name = Module.concat([event_store, SubscriptionsSupervisor])
+    supervisor_name = subscriptions_name(name)
 
     DynamicSupervisor.terminate_child(supervisor_name, subscription)
   end
@@ -610,4 +615,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
         metadata: serializer.deserialize(metadata)
     }
   end
+
+  defp subscriptions_name(event_store), do: Module.concat([event_store, SubscriptionsSupervisor])
 end
