@@ -8,7 +8,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
 
 There is also an [in-memory event store adapter](https://github.com/commanded/commanded/wiki/In-memory-event-store) for *test use only*.
 
-Want to use a different event store? Then you will need to [write your own event store provider](#writing-your-own-event-store-provider).
+Want to use a different event store? Then you will need to write your own event store provider as described below.
 
 ---
 

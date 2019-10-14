@@ -10,7 +10,7 @@ Commanded can be installed from hex as follows.
     end
     ```
 
-2. Optionally add `jason` to make `Commanded.Serialization.JsonSerializer` available:
+2. Optionally add `jason` to support JSON serialization via `Commanded.Serialization.JsonSerializer`:
 
     ```elixir
     def deps do

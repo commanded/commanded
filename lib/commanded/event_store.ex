@@ -79,7 +79,7 @@ defmodule Commanded.EventStore do
   for a single aggregate.
 
   The subscriber must ack each received, and successfully processed event, using
-  `Commanded.EventStore.ack_event/2`.
+  `c:Commanded.EventStore.ack_event/3`.
 
   ## Examples
 
