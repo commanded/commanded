@@ -1,10 +1,14 @@
 # Changelog
 
-## Next release
+## v1.0.0-rc.0
 
 ### Breaking changes
 
 - Support multiple Commanded apps ([#298](https://github.com/commanded/commanded/pull/298)).
+
+### Upgrading
+
+[Follow the upgrade guide](guides/upgrades/0.19-1.0.md) to define and use your own Commanded application.
 
 ## v0.19.1
 
@@ -71,7 +75,7 @@
 - Fix typo in `include_execution_result` global router option ([#216](https://github.com/commanded/commanded/pull/216)).
 - Handle the `{:ok, _}` tuple dispatch result in process manager command dispatch ([#236](https://github.com/commanded/commanded/pull/236)).
 - Allow string keys for `Commanded.Middleware.Pipeline.assign_metadata/3`, atoms are being deprecated ([#228](https://github.com/commanded/commanded/pull/228))
-- Fix `Commanded.PubSub.subscribe/1` typespec ([#222](https://github.com/commanded/commanded/pull/222)).
+- Fix `Commanded.PubSub.subscribe` typespec ([#222](https://github.com/commanded/commanded/pull/222)).
 
 ### Breaking changes
 

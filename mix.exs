@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "0.19.1"
+  @version "1.0.0-rc.0"
 
   def project do
     [
@@ -52,15 +52,15 @@ defmodule Commanded.Mixfile do
     [
       {:elixir_uuid, "~> 1.2"},
 
-      # Build and test tools
-      {:dialyxir, "~> 0.5", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.20", only: :dev},
-      {:mix_test_watch, "~> 0.9", only: :dev},
-      {:mox, "~> 0.5", only: :test},
-
       # Optional dependencies
       {:jason, "~> 1.1", optional: true},
-      {:phoenix_pubsub, "~> 1.1", optional: true}
+      {:phoenix_pubsub, "~> 1.1", optional: true},
+
+      # Build and test tools
+      {:dialyxir, "~> 0.5", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev},
+      {:mix_test_watch, "~> 0.9", only: :dev},
+      {:mox, "~> 0.5", only: :test}
     ]
   end
 
@@ -81,6 +81,7 @@ defmodule Commanded.Mixfile do
         "guides/Getting Started.md",
         "guides/Choosing an Event Store.md",
         "guides/Usage.md",
+        "guides/Application.md",
         "guides/Aggregates.md",
         "guides/Commands.md",
         "guides/Events.md",
@@ -89,7 +90,11 @@ defmodule Commanded.Mixfile do
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
         "guides/Testing.md",
-        "guides/Deployment.md"
+        "guides/Deployment.md",
+        "guides/upgrades/0.19-1.0.md": [
+          filename: "0.19-1.0",
+          title: "Upgrade guide v0.19.x to v1.0"
+        ]
       ],
       groups_for_extras: [
         Introduction: [
@@ -98,6 +103,7 @@ defmodule Commanded.Mixfile do
           "guides/Usage.md"
         ],
         "Building blocks": [
+          "guides/Application.md",
           "guides/Aggregates.md",
           "guides/Commands.md",
           "guides/Events.md",
@@ -109,6 +115,9 @@ defmodule Commanded.Mixfile do
           "guides/Read Model Projections.md",
           "guides/Testing.md",
           "guides/Deployment.md"
+        ],
+        Upgrades: [
+          "guides/upgrades/0.19-1.0.md"
         ]
       ],
       groups_for_modules: [
