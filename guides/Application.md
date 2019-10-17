@@ -58,7 +58,7 @@ end
 
 ## Routing commands
 
-A Commanded application is also a composite router. The provides a `router` macro allowing you to define one or more router modules for command dispatch.
+A Commanded application is also a composite router. This provides the `router` macro allowing you to define one or more router modules for command dispatch.
 
 ```elixir
 defmodule MyApp.Application do
@@ -68,4 +68,10 @@ defmodule MyApp.Application do
   router(MyApp.Customers.Router)
   router(MyApp.Notifications.Router)
 end
+```
+
+Once you have defined a router, you can dispatch a command using the application module:
+
+```elixir
+:ok = MyApp.Application.dispatch(%RegisterCustomer{id: UUID.uuid4(), name: "Ben"})
 ```
