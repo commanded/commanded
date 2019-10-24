@@ -95,14 +95,6 @@ defmodule Commanded.Aggregates.Aggregate do
       when is_atom(application) and is_atom(aggregate_module) and is_binary(aggregate_uuid),
       do: {application, aggregate_module, aggregate_uuid}
 
-  @doc false
-  @impl GenServer
-  def init(%Aggregate{} = state) do
-    # Initial aggregate state is populated by loading its state snapshot and/or
-    # events from the event store.
-    {:ok, state, {:continue, :populate_aggregate_state}}
-  end
-
   @doc """
   Execute the given command against the aggregate.
 
@@ -162,6 +154,15 @@ defmodule Commanded.Aggregates.Aggregate do
   end
 
   @doc false
+  @impl GenServer
+  def init(%Aggregate{} = state) do
+    # Initial aggregate state is populated by loading its state snapshot and/or
+    # events from the event store.
+    {:ok, state, {:continue, :populate_aggregate_state}}
+  end
+
+  @doc false
+  @impl GenServer
   def handle_continue(:populate_aggregate_state, %Aggregate{} = state) do
     # Subscribe to aggregate's events to catch any events appended to its stream
     # by another process, such as directly appended to the event store.

@@ -37,13 +37,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     ]
   end
 
-  def start_link(application, name, module, opts \\ []) do
-    name = {application, ProcessRouter, name}
+  def start_link(application, process_name, process_module, opts \\ []) do
+    name = {application, ProcessRouter, process_name}
 
     state = %State{
       application: application,
-      process_manager_name: name,
-      process_manager_module: module,
+      process_manager_name: process_name,
+      process_manager_module: process_module,
       consistency: Keyword.get(opts, :consistency, :eventual),
       subscribe_from: Keyword.get(opts, :start_from, :origin),
       event_timeout: Keyword.get(opts, :event_timeout),
@@ -256,7 +256,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     {:stop, reason, state}
   end
 
-  # Register this process manager as a subscription with the given consistency
+  # Register this process manager as a subscription with the given consistency.
   defp register_subscription(%State{} = state) do
     %State{application: application, consistency: consistency, process_manager_name: name} = state
 

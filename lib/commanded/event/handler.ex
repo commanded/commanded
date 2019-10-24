@@ -404,14 +404,21 @@ defmodule Commanded.Event.Handler do
   def name(application, handler_name), do: {application, __MODULE__, handler_name}
 
   @doc false
+  @impl GenServer
   def init(%Handler{} = state) do
     :ok = register_subscription(state)
-    :ok = GenServer.cast(self(), :subscribe_to_events)
 
-    {:ok, state}
+    {:ok, state, {:continue, :subscribe_to_events}}
   end
 
   @doc false
+  @impl GenServer
+  def handle_continue(:subscribe_to_events, %Handler{} = state) do
+    {:noreply, subscribe_to_events(state)}
+  end
+
+  @doc false
+  @impl GenServer
   def handle_call(:last_seen_event, _from, %Handler{} = state) do
     %Handler{last_seen_event: last_seen_event} = state
 
@@ -419,6 +426,7 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
+  @impl GenServer
   def handle_call(:config, _from, %Handler{} = state) do
     %Handler{consistency: consistency, subscribe_from: subscribe_from, subscribe_to: subscribe_to} =
       state
@@ -429,11 +437,7 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
-  def handle_cast(:subscribe_to_events, %Handler{} = state) do
-    {:noreply, subscribe_to_events(state)}
-  end
-
-  @doc false
+  @impl GenServer
   def handle_info(:reset, %Handler{} = state) do
     %Handler{handler_module: handler_module} = state
 
@@ -460,6 +464,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   # Subscription to event store has successfully subscribed, init event handler
+  @impl GenServer
   def handle_info({:subscribed, subscription}, %Handler{subscription: subscription} = state) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
@@ -477,6 +482,7 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
+  @impl GenServer
   def handle_info({:events, events}, %Handler{} = state) do
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
@@ -495,6 +501,7 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
+  @impl GenServer
   def handle_info({:DOWN, ref, :process, _pid, reason}, %Handler{subscription_ref: ref} = state) do
     Logger.debug(fn -> describe(state) <> " subscription DOWN due to: #{inspect(reason)}" end)
 
@@ -502,7 +509,7 @@ defmodule Commanded.Event.Handler do
     {:stop, reason, state}
   end
 
-  # Register this event handler as a subscription with the given consistency
+  # Register this event handler as a subscription with the given consistency.
   defp register_subscription(%Handler{} = state) do
     %Handler{application: application, consistency: consistency, handler_name: name} = state
 

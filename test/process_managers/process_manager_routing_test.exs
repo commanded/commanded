@@ -12,7 +12,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
 
   setup do
     expect(MockEventStore, :subscribe_to, fn
-      _event_store, :all, _name, pid, :origin ->
+      _event_store, :all, name, pid, :origin ->
+        assert is_binary(name)
+        assert is_pid(pid)
+
         send(pid, {:subscribed, self()})
 
         {:ok, self()}
