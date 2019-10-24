@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.0-rc.1
+
+### Bug fixes
+
+- Fix process manager exception on start ([#307](https://github.com/commanded/commanded/pull/307)).
+
 ## v1.0.0-rc.0
 
 ### Breaking changes
