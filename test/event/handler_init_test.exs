@@ -9,7 +9,9 @@ defmodule Commanded.Event.HandlerInitTest do
   setup do
     reply_to = self()
 
-    subscribe_to = fn _event_store, :all, _handler_name, handler, _subscribe_from ->
+    subscribe_to = fn _event_store, :all, handler_name, handler, _subscribe_from ->
+      assert is_binary(handler_name)
+
       {:ok, handler}
     end
 

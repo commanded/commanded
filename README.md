@@ -19,13 +19,15 @@ You can use Commanded with one of the following event stores for persistence:
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
+Requires Erlang/OTP v21.0 and Elixir v1.6 or later.
+
 ---
 
 ### Supporting Commanded
 
 You can help support Commanded by helping to fund its ongoing development, new features, and releases.
 
-- [Become a backer or sponsor on OpenCollective](https://opencollective.com/commanded).
+- [Become a GitHub sponsor](https://github.com/sponsors/slashdotdash).
 - [View sponsors & backers](BACKERS.md)
 
 ---

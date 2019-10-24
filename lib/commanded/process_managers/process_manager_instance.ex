@@ -40,10 +40,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     GenServer.start_link(__MODULE__, state)
   end
 
-  def init(%State{} = state) do
-    {:ok, state, {:continue, :fetch_state}}
-  end
-
   @doc """
   Checks whether or not the process manager has already processed events
   """
@@ -74,9 +70,16 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     GenServer.call(process_manager, :process_state)
   end
 
+  @doc false
+  @impl GenServer
+  def init(%State{} = state) do
+    {:ok, state, {:continue, :fetch_state}}
+  end
+
   @doc """
   Attempt to fetch intial process state from snapshot storage.
   """
+  @impl GenServer
   def handle_continue(:fetch_state, %State{} = state) do
     %State{application: application} = state
 
@@ -97,6 +100,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
+  @impl GenServer
   def handle_call(:stop, _from, %State{} = state) do
     :ok = delete_state(state)
 
@@ -105,6 +109,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
+  @impl GenServer
   def handle_call(:process_state, _from, %State{} = state) do
     %State{idle_timeout: idle_timeout, process_state: process_state} = state
 
@@ -112,6 +117,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
+  @impl GenServer
   def handle_call(:new?, _from, %State{} = state) do
     %State{idle_timeout: idle_timeout, last_seen_event: last_seen_event} = state
 
@@ -121,6 +127,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Handle the given event, using the process manager module, against the current process state
   """
+  @impl GenServer
   def handle_cast({:process_event, event}, %State{} = state) do
     case event_already_seen?(event, state) do
       true -> process_seen_event(event, state)
@@ -129,6 +136,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc false
+  @impl GenServer
   def handle_info(:timeout, %State{} = state) do
     Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
 
