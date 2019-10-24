@@ -6,7 +6,7 @@ Commanded can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 1.0.0-rc.0"}]
+      [{:commanded, "~> 1.0.0-rc.1"}]
     end
     ```
 
