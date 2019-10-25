@@ -45,7 +45,6 @@ defmodule Commanded.EventStore.SerializationCase do
                  EventStore.stream_forward(application, stream_uuid)
                  |> Enum.to_list()
                  |> List.first()
-                 |> IO.inspect()
       end
     end
   end

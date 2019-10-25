@@ -19,8 +19,13 @@ if Code.ensure_loaded?(Jason) do
     Deserialize given JSON binary data to the expected type.
     """
     def deserialize(binary, config \\ []) do
-      options = Map.merge(%{keys: :atoms}, maybe_options(config))
       type = maybe_type(config)
+
+      options =
+        case type do
+          nil -> %{}
+          _type -> %{keys: :atoms} |> Map.merge(maybe_options(config))
+        end
 
       binary
       |> Jason.decode!(options)
