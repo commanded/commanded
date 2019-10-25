@@ -7,5 +7,6 @@ defmodule Commanded.JsonSerializerApplication do
     event_store: [
       adapter: InMemory,
       serializer: JsonSerializer
+      # encoding_options: %{escape: :unicode}
     ]
 end

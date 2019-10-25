@@ -33,8 +33,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     state = %State{
       name: Keyword.fetch!(opts, :name),
       serializer: Keyword.get(in_memory_opts, :serializer),
-      decoding_options: Keyword.get(in_memory_opts, :decoding_options),
-      encoding_options: Keyword.get(in_memory_opts, :encoding_options)
+      decoding_options: Keyword.get(in_memory_opts, :decoding_options, %{}),
+      encoding_options: Keyword.get(in_memory_opts, :encoding_options, %{})
     }
 
     GenServer.start_link(__MODULE__, state, start_opts)
@@ -583,22 +583,22 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp serialize(%RecordedEvent{} = recorded_event, %State{} = state) do
     %RecordedEvent{data: data, metadata: metadata} = recorded_event
-    %State{serializer: serializer} = state
+    %State{serializer: serializer, encoding_options: encoding_options} = state
 
     %RecordedEvent{
       recorded_event
-      | data: serializer.serialize(data),
+      | data: serializer.serialize(data, options: encoding_options),
         metadata: serializer.serialize(metadata)
     }
   end
 
   defp serialize(%SnapshotData{} = snapshot, %State{} = state) do
     %SnapshotData{data: data, metadata: metadata} = snapshot
-    %State{serializer: serializer, encoding_options: _encoding_options} = state
+    %State{serializer: serializer, encoding_options: encoding_options} = state
 
     %SnapshotData{
       snapshot
-      | data: serializer.serialize(data),
+      | data: serializer.serialize(data, options: encoding_options),
         metadata: serializer.serialize(metadata)
     }
   end
@@ -607,22 +607,22 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp deserialize(%RecordedEvent{} = recorded_event, %State{} = state) do
     %RecordedEvent{data: data, metadata: metadata, event_type: event_type} = recorded_event
-    %State{serializer: serializer} = state
+    %State{serializer: serializer, decoding_options: decoding_options} = state
 
     %RecordedEvent{
       recorded_event
-      | data: serializer.deserialize(data, type: event_type),
+      | data: serializer.deserialize(data, type: event_type, options: decoding_options),
         metadata: serializer.deserialize(metadata)
     }
   end
 
   defp deserialize(%SnapshotData{} = snapshot, %State{} = state) do
     %SnapshotData{data: data, metadata: metadata, source_type: source_type} = snapshot
-    %State{serializer: serializer} = state
+    %State{serializer: serializer, decoding_options: decoding_options} = state
 
     %SnapshotData{
       snapshot
-      | data: serializer.deserialize(data, type: source_type),
+      | data: serializer.deserialize(data, type: source_type, options: decoding_options),
         metadata: serializer.deserialize(metadata)
     }
   end

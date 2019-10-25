@@ -10,7 +10,7 @@ defmodule Commanded.EventStore.SerializationCase do
 
     defmodule BankAccountOpened do
       @derive Jason.Encoder
-      defstruct [:account_number, :initial_balance]
+      defstruct [:account_number, :initial_balance, :purpose]
     end
 
     setup %{application: application} do
@@ -23,14 +23,13 @@ defmodule Commanded.EventStore.SerializationCase do
       test "works with strict map", %{application: application} do
         stream_uuid = UUID.uuid4()
 
-        event =
-          %BankAccountOpened{
-            :account_number => "1",
-            :initial_balance => 1_000
-          }
-          |> IO.inspect()
+        event = %BankAccountOpened{
+          :account_number => "1",
+          :initial_balance => 1_000,
+          :purpose => "A pürpose"
+        }
 
-        event_date = %EventData{
+        event_data = %EventData{
           causation_id: UUID.uuid4(),
           correlation_id: UUID.uuid4(),
           event_type: "#{__MODULE__}.BankAccountOpened",
@@ -40,7 +39,7 @@ defmodule Commanded.EventStore.SerializationCase do
 
         assert :ok = EventStore.subscribe(application, stream_uuid)
 
-        :ok = EventStore.append_to_stream(application, stream_uuid, 0, event_data)
+        :ok = EventStore.append_to_stream(application, stream_uuid, 0, [event_data])
 
         assert read_event =
                  EventStore.stream_forward(application, stream_uuid)
