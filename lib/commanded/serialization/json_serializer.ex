@@ -10,8 +10,8 @@ if Code.ensure_loaded?(Jason) do
     @doc """
     Serialize given term to JSON binary data.
     """
-    def serialize(term) do
-      Jason.encode!(term)
+    def serialize(term, options \\ %{}) do
+      Jason.encode!(term, options)
     end
 
     @doc """

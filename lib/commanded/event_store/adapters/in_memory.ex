@@ -18,7 +18,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       transient_subscribers: %{},
       persistent_subscriptions: %{},
       snapshots: %{},
-      next_event_number: 1
+      next_event_number: 1,
+      encoding_options: %{},
+      decoding_options: %{}
     ]
   end
 
@@ -30,7 +32,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
     state = %State{
       name: Keyword.fetch!(opts, :name),
-      serializer: Keyword.get(in_memory_opts, :serializer)
+      serializer: Keyword.get(in_memory_opts, :serializer),
+      decoding_options: Keyword.get(in_memory_opts, :decoding_options),
+      encoding_options: Keyword.get(in_memory_opts, :encoding_options)
     }
 
     GenServer.start_link(__MODULE__, state, start_opts)
@@ -332,14 +336,21 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     %State{
       name: name,
       serializer: serializer,
-      persistent_subscriptions: subscriptions
+      persistent_subscriptions: subscriptions,
+      encoding_options: encoding_options,
+      decoding_options: decoding_options
     } = state
 
     for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
       :ok = stop_subscription(subscriber, state)
     end
 
-    initial_state = %State{name: name, serializer: serializer}
+    initial_state = %State{
+      name: name,
+      serializer: serializer,
+      encoding_options: encoding_options,
+      decoding_options: decoding_options
+    }
 
     {:reply, :ok, initial_state}
   end
@@ -583,7 +594,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp serialize(%SnapshotData{} = snapshot, %State{} = state) do
     %SnapshotData{data: data, metadata: metadata} = snapshot
-    %State{serializer: serializer} = state
+    %State{serializer: serializer, encoding_options: _encoding_options} = state
 
     %SnapshotData{
       snapshot
