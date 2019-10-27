@@ -134,7 +134,13 @@ defmodule Commanded.Aggregates.Aggregate do
       when is_atom(aggregate_module) and is_binary(aggregate_uuid) and
              (is_number(timeout) or timeout == :infinity) do
     name = via_name(application, aggregate_module, aggregate_uuid)
-    GenServer.call(name, {:execute_command, context}, timeout)
+
+    try do
+      GenServer.call(name, {:execute_command, context}, timeout)
+    catch
+      :exit, {:normal, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
+        {:exit, :normal, :aggregate_stopped}
+    end
   end
 
   @doc false

@@ -194,6 +194,24 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       assert_receive {:DOWN, ^ref, :process, _, :normal}
     end
 
+    test "should reopen the open_aggregate to execute command if it is stopped by the previous command", %{
+      aggregate_uuid: aggregate_uuid,
+      ref: ref
+    } do
+      command = %Command{uuid: aggregate_uuid, action: :noop, lifespan: :stop}
+
+      tasks =
+        for _i <- 1..3 do
+          Task.async(fn ->
+            :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+          end)
+        end
+
+      Task.yield_many(tasks)
+
+      assert_receive {:DOWN, ^ref, :process, _, :normal}
+    end
+
     test "should stop process when requested", %{
       aggregate_uuid: aggregate_uuid,
       ref: ref
