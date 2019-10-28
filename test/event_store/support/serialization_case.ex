@@ -2,11 +2,8 @@ defmodule Commanded.EventStore.SerializationCase do
   import Commanded.SharedTestCase
 
   define_tests do
-    alias Commanded.EventStore
     alias Commanded.EventStore.EventData
-    alias Commanded.EventStore.Subscriber
     alias Commanded.EventStore.RecordedEvent
-    alias Commanded.Helpers.ProcessHelper
 
     defmodule BankAccountOpened do
       @derive Jason.Encoder
