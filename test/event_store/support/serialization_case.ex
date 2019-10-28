@@ -60,8 +60,7 @@ defmodule Commanded.EventStore.SerializationCase do
                    events
                  )
 
-        %RecordedEvent{data: data} =
-          adapter_pid |> pluck_first_event_from_stream() |> IO.inspect(label: "FROM PLUCK")
+        %RecordedEvent{data: data} = adapter_pid |> pluck_first_event_from_stream()
 
         assert data =~ "p\\u00FCrpose"
       end
