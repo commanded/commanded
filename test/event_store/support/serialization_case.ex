@@ -80,11 +80,35 @@ defmodule Commanded.EventStore.SerializationCase do
     end
 
     describe "decoding_options" do
+      test "should work with no specified encoding_options", %{adapter: adapter, config: config} do
+        config = config |> Keyword.put_new(:decoding_options, %{})
+
+        start_adapter(adapter, config)
+
+        events =
+          %BankAccountOpened{initial_balance: 1_000}
+          |> build_event("#{__MODULE__}.BankAccountOpened")
+          |> List.wrap()
+
+        assert :ok =
+                 adapter.append_to_stream(
+                   {adapter, config},
+                   "stream",
+                   0,
+                   events
+                 )
+
+        %RecordedEvent{data: data} =
+          adapter.stream_forward({adapter, config}, "stream", 0) |> List.first()
+
+        assert %BankAccountOpened{initial_balance: 1_000} = data
+      end
+
       test "should be able to specify key options", %{adapter: adapter, config: config} do
         expected_value = "expected to change to string"
         config = config |> Keyword.put_new(:decoding_options, %{keys: :strings})
 
-        adapter_pid = start_adapter(adapter, config)
+        start_adapter(adapter, config)
 
         events =
           %{originally_atom: expected_value}
