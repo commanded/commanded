@@ -50,7 +50,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
   defp start_process_manager(subscription) do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn {Commanded.MockedApp.EventStore, _config},
+    expect(MockEventStore, :subscribe_to, fn _event_store_meta,
                                              :all,
                                              "ExampleProcessManager",
                                              pm,

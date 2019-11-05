@@ -10,33 +10,35 @@ defmodule Commanded.PubSub.LocalPubSub do
   This adapter will be used by default when none is specified in config.
   """
 
-  @behaviour Commanded.PubSub
+  @behaviour Commanded.PubSub.Adapter
 
   @doc """
   Start a `Registry` for local pub/sub.
   """
-  @impl Commanded.PubSub
-  def child_spec(pubsub, _config) do
-    local_pubsub_name = local_pubsub_name(pubsub)
-    local_tracker_name = local_tracker_name(pubsub)
+  @impl Commanded.PubSub.Adapter
+  def child_spec(application, _config) do
+    local_pubsub_name = Module.concat([application, LocalPubSub])
+    local_tracker_name = Module.concat([application, LocalPubSub.Tracker])
 
-    [
-      # Registry used for pub/sub
+    child_spec = [
+      # Registry used for local pub/sub
       {
         Registry,
         keys: :duplicate, name: local_pubsub_name, partitions: System.schedulers_online()
       },
-      # Registry used for presence tracking
+      # Registry used for process presence tracking
       {Registry, keys: :duplicate, name: local_tracker_name, partitions: 1}
     ]
+
+    {:ok, child_spec, %{pubsub_name: local_pubsub_name, tracker_name: local_tracker_name}}
   end
 
   @doc """
   Subscribes the caller to the topic.
   """
-  @impl Commanded.PubSub
-  def subscribe(pubsub, topic) when is_binary(topic) do
-    name = local_pubsub_name(pubsub)
+  @impl Commanded.PubSub.Adapter
+  def subscribe(adapter_meta, topic) when is_binary(topic) do
+    name = local_pubsub_name(adapter_meta)
 
     {:ok, _} = Registry.register(name, topic, [])
 
@@ -46,9 +48,9 @@ defmodule Commanded.PubSub.LocalPubSub do
   @doc """
   Broadcasts message on given topic.
   """
-  @impl Commanded.PubSub
-  def broadcast(pubsub, topic, message) when is_binary(topic) do
-    name = local_pubsub_name(pubsub)
+  @impl Commanded.PubSub.Adapter
+  def broadcast(adapter_meta, topic, message) when is_binary(topic) do
+    name = local_pubsub_name(adapter_meta)
 
     Registry.dispatch(name, topic, fn entries ->
       for {pid, _} <- entries, do: send(pid, message)
@@ -59,9 +61,9 @@ defmodule Commanded.PubSub.LocalPubSub do
   Track the current process under the given `topic`, uniquely identified by
   `key`.
   """
-  @impl Commanded.PubSub
-  def track(pubsub, topic, key) when is_binary(topic) do
-    name = local_tracker_name(pubsub)
+  @impl Commanded.PubSub.Adapter
+  def track(adapter_meta, topic, key) when is_binary(topic) do
+    name = local_tracker_name(adapter_meta)
 
     case Registry.match(name, topic, key) do
       [] ->
@@ -76,13 +78,13 @@ defmodule Commanded.PubSub.LocalPubSub do
   @doc """
   List tracked terms and associated PIDs for a given topic.
   """
-  @impl Commanded.PubSub
-  def list(pubsub, topic) when is_binary(topic) do
-    name = local_tracker_name(pubsub)
+  @impl Commanded.PubSub.Adapter
+  def list(adapter_meta, topic) when is_binary(topic) do
+    name = local_tracker_name(adapter_meta)
 
     Registry.lookup(name, topic) |> Enum.map(fn {pid, key} -> {key, pid} end)
   end
 
-  defp local_pubsub_name(pubsub), do: Module.concat([pubsub, LocalPubSub])
-  defp local_tracker_name(pubsub), do: Module.concat([pubsub, LocalPubSub.Tracker])
+  defp local_pubsub_name(adapter_meta), do: Map.get(adapter_meta, :pubsub_name)
+  defp local_tracker_name(adapter_meta), do: Map.get(adapter_meta, :tracker_name)
 end

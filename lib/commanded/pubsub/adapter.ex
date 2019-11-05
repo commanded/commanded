@@ -1,33 +1,21 @@
 defmodule Commanded.PubSub.Adapter do
-  @moduledoc false
+  @moduledoc """
+  Pub/sub behaviour for use by Commanded to subcribe to and broadcast messages.
+  """
 
-  defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
-      @adapter Keyword.fetch!(opts, :adapter)
-
-      @behaviour Commanded.PubSub.Adapter
-
-      def child_spec(config), do: @adapter.child_spec(__MODULE__, config)
-
-      def subscribe(topic), do: @adapter.subscribe(__MODULE__, topic)
-
-      def broadcast(topic, message), do: @adapter.broadcast(__MODULE__, topic, message)
-
-      def track(topic, key), do: @adapter.broadcast(__MODULE__, topic, key)
-
-      def list(topic), do: @adapter.list(__MODULE__, topic)
-    end
-  end
+  @type adapter_meta :: map
+  @type application :: Commanded.Application.t()
 
   @doc """
   Return an optional supervisor spec for pub/sub.
   """
-  @callback child_spec(config :: Keyword.t()) :: [:supervisor.child_spec()]
+  @callback child_spec(application, config :: Keyword.t()) ::
+              {:ok, [:supervisor.child_spec()], adapter_meta}
 
   @doc """
-  Subscribes the caller to the PubSub topic.
+  Subscribes the caller to the PubSub adapter's topic.
   """
-  @callback subscribe(topic :: String.t()) :: :ok | {:error, term}
+  @callback subscribe(adapter_meta, topic :: String.t()) :: :ok | {:error, term}
 
   @doc """
   Broadcasts message on given topic.
@@ -36,16 +24,16 @@ defmodule Commanded.PubSub.Adapter do
     * `message` - The payload of the broadcast
 
   """
-  @callback broadcast(topic :: String.t(), message :: term) :: :ok | {:error, term}
+  @callback broadcast(adapter_meta, topic :: String.t(), message :: term) :: :ok | {:error, term}
 
   @doc """
   Track the current process under the given `topic`, uniquely identified by
   `key`.
   """
-  @callback track(String.t(), key :: term) :: :ok | {:error, term}
+  @callback track(adapter_meta, topic :: String.t(), key :: term) :: :ok | {:error, term}
 
   @doc """
   List tracked PIDs for a given topic.
   """
-  @callback list(String.t()) :: [{term, pid}]
+  @callback list(adapter_meta, topic :: String.t()) :: [{term, pid}]
 end

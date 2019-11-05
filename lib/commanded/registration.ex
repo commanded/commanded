@@ -1,82 +1,42 @@
 defmodule Commanded.Registration do
-  @moduledoc """
-  Defines a behaviour for a process registry to be used by Commanded.
-
-  By default, Commanded will use a local process registry, defined in
-  `Commanded.Registration.LocalRegistry`, that uses Elixir's `Registry` module
-  for local process registration. This limits Commanded to only run on a single
-  node. However the `Commanded.Registration` behaviour can be implemented by a
-  library to provide distributed process registration to support running on a
-  cluster of nodes.
-  """
-
-  @type start_child_arg :: {module(), keyword} | module()
-
-  @doc """
-  Return an optional supervisor spec for the registry
-  """
-  @callback child_spec(registry :: module, config :: Keyword.t()) :: [:supervisor.child_spec()]
-
-  @doc """
-  Use to start a supervisor.
-  """
-  @callback supervisor_child_spec(registry :: module, module :: atom, arg :: any()) ::
-              :supervisor.child_spec()
-
-  @doc """
-  Starts a uniquely named child process of a supervisor using the given module
-  and args.
-
-  Registers the pid with the given name.
-  """
-  @callback start_child(
-              registry :: module,
-              name :: term(),
-              supervisor :: module(),
-              child_spec :: start_child_arg
-            ) ::
-              {:ok, pid} | {:error, term}
-
-  @doc """
-  Starts a uniquely named `GenServer` process for the given module and args.
-
-  Registers the pid with the given name.
-  """
-  @callback start_link(registry :: module, name :: term(), module :: module(), args :: any()) ::
-              {:ok, pid} | {:error, term}
-
-  @doc """
-  Get the pid of a registered name.
-
-  Returns `:undefined` if the name is unregistered.
-  """
-  @callback whereis_name(registry :: module, name :: term()) :: pid() | :undefined
-
-  @doc """
-  Return a `:via` tuple to route a message to a process by its registered name
-  """
-  @callback via_tuple(registry :: module, name :: term()) :: {:via, module(), name :: term()}
-
   alias Commanded.Application
+
+  @type application :: Commanded.Application.t()
+  @type config :: Keyword.t()
 
   @doc false
   def supervisor_child_spec(application, module, arg) do
-    Application.registry_adapter(application).supervisor_child_spec(module, arg)
+    {adapter, adapter_meta} = Application.registry_adapter(application)
+
+    adapter.supervisor_child_spec(adapter_meta, module, arg)
   end
 
   @doc false
   def start_link(application, name, module, args) do
-    Application.registry_adapter(application).start_link(name, module, args)
+    {adapter, adapter_meta} = Application.registry_adapter(application)
+
+    adapter.start_link(adapter_meta, name, module, args)
   end
 
   @doc false
   def start_child(application, name, supervisor, child_spec) do
-    Application.registry_adapter(application).start_child(name, supervisor, child_spec)
+    {adapter, adapter_meta} = Application.registry_adapter(application)
+
+    adapter.start_child(adapter_meta, name, supervisor, child_spec)
   end
 
   @doc false
   def whereis_name(application, name) do
-    Application.registry_adapter(application).whereis_name(name)
+    {adapter, adapter_meta} = Application.registry_adapter(application)
+
+    adapter.whereis_name(adapter_meta, name)
+  end
+
+  @doc false
+  def via_tuple(application, name) do
+    {adapter, adapter_meta} = Application.registry_adapter(application)
+
+    adapter.via_tuple(adapter_meta, name)
   end
 
   @doc """
@@ -84,20 +44,14 @@ defmodule Commanded.Registration do
 
   Defaults to a local registry, restricted to running on a single node.
   """
-  @spec registry_provider(application :: module, config :: Keyword.t()) :: module()
-  def registry_provider(application, config) do
-    registry = Keyword.get(config, :registry, :local)
-
-    unless registry do
-      raise ArgumentError, "missing :registry option on use Commanded.Application"
-    end
-
-    case registry do
+  @spec adapter(application, config) :: {module, config}
+  def adapter(application, config) do
+    case config do
       :local ->
-        Commanded.Registration.LocalRegistry
+        {Commanded.Registration.LocalRegistry, []}
 
       other when is_atom(other) ->
-        other
+        {other, []}
 
       _invalid ->
         raise ArgumentError,
@@ -106,7 +60,7 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Use the `Commanded.Registration` module to import the registry provider and
+  Use the `Commanded.Registration` module to import the registry adapter and
   via tuple functions.
   """
   defmacro __using__(_opts) do
@@ -118,34 +72,38 @@ defmodule Commanded.Registration do
   end
 
   @doc """
-  Allow a registry provider to handle the standard `GenServer` callback
+  Allow a registry adapter to handle the standard `GenServer` callback
   functions.
   """
   defmacro __before_compile__(_env) do
     quote generated: true, location: :keep do
       @doc false
       def handle_call(request, from, state) do
-        registry_provider(state).handle_call(request, from, state)
+        adapter = registry_adapter(state)
+
+        adapter.handle_call(request, from, state)
       end
 
       @doc false
       def handle_cast(request, state) do
-        registry_provider(state).handle_cast(request, state)
+        adapter = registry_adapter(state)
+
+        adapter.handle_cast(request, state)
       end
 
       @doc false
       def handle_info(msg, state) do
-        registry_provider(state).handle_info(msg, state)
+        adapter = registry_adapter(state)
+
+        adapter.handle_info(msg, state)
       end
 
-      defp registry_provider(state) do
-        Keyword.get(state, :registry)
-      end
+      defp registry_adapter(state) do
+        application = Map.get(state, :application)
 
-      defp via_tuple(application, name) do
-        alias Commanded.Application
+        {adapter, _adapter_meta} = Application.registry_adapter(application)
 
-        Application.registry_adapter(application).via_tuple(name)
+        adapter
       end
     end
   end

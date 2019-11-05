@@ -1,32 +1,21 @@
 defmodule Commanded.EventStore.Adapters.InMemoryTest do
-  use ExUnit.Case
+  use Commanded.EventStore.InMemoryTestCase
 
   alias Commanded.EventStore.Adapters.InMemory
   alias Commanded.EventStore.EventData
-  alias Commanded.Serialization.JsonSerializer
 
   defmodule BankAccountOpened do
     @derive Jason.Encoder
     defstruct [:account_number, :initial_balance]
   end
 
-  @config [name: InMemory, serializer: JsonSerializer]
-
-  setup do
-    for child <- InMemory.child_spec(InMemory, @config) do
-      start_supervised!(child)
-    end
-
-    :ok
-  end
-
   describe "reset!/0" do
-    test "wipes all data from memory" do
-      pid = Process.whereis(InMemory)
+    test "wipes all data from memory", %{event_store_meta: event_store_meta} do
+      pid = Process.whereis(InMemory.EventStore)
       initial = :sys.get_state(pid)
       events = [build_event(1)]
 
-      :ok = InMemory.append_to_stream({InMemory, @config}, "stream", 0, events)
+      :ok = InMemory.append_to_stream(event_store_meta, "stream", 0, events)
       after_event = :sys.get_state(pid)
 
       InMemory.reset!(InMemory)

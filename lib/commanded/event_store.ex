@@ -1,54 +1,41 @@
 defmodule Commanded.EventStore do
-  @moduledoc """
-  Defines the behaviour to be implemented by an event store adapter to be used by Commanded.
-  """
-
   alias Commanded.Application
-  alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
+  alias Commanded.Event.Upcast
 
-  @type application :: module
-  @type opts :: Keyword.t()
-  @type event_store :: {module, opts}
-  @type stream_uuid :: String.t()
-  @type start_from :: :origin | :current | integer
-  @type expected_version :: :any_version | :no_stream | :stream_exists | non_neg_integer
-  @type subscription_name :: String.t()
-  @type subscription :: any
-  @type subscriber :: pid
-  @type source_uuid :: String.t()
-  @type error :: term
-
-  @doc """
-  Return a child spec defining all processes required by the event store.
-  """
-  @callback child_spec(module, opts) :: [:supervisor.child_spec()]
+  @type application :: Commanded.Application.t()
+  @type config :: Keyword.t()
 
   @doc """
   Append one or more events to a stream atomically.
   """
-  @callback append_to_stream(
-              event_store,
-              stream_uuid,
-              expected_version,
-              events :: list(EventData.t())
-            ) ::
-              :ok
-              | {:error, :wrong_expected_version}
-              | {:error, error}
+  def append_to_stream(application, stream_uuid, expected_version, events) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.append_to_stream(
+      adapter_meta,
+      stream_uuid,
+      expected_version,
+      events
+    )
+  end
 
   @doc """
   Streams events from the given stream, in the order in which they were
   originally written.
   """
-  @callback stream_forward(
-              event_store,
-              stream_uuid,
-              start_version :: non_neg_integer,
-              read_batch_size :: non_neg_integer
-            ) ::
-              Enumerable.t()
-              | {:error, :stream_not_found}
-              | {:error, error}
+  def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    case adapter.stream_forward(
+           adapter_meta,
+           stream_uuid,
+           start_version,
+           read_batch_size
+         ) do
+      {:error, _error} = error -> error
+      stream -> Upcast.upcast_event_stream(stream)
+    end
+  end
 
   @doc """
   Create a transient subscription to a single event stream.
@@ -58,7 +45,11 @@ defmodule Commanded.EventStore do
 
   The subscriber does not need to acknowledge receipt of the events.
   """
-  @callback subscribe(event_store, stream_uuid | :all) :: :ok | {:error, error}
+  def subscribe(application, stream_uuid) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.subscribe(adapter_meta, stream_uuid)
+  end
 
   @doc """
   Create a persistent subscription to an event stream.
@@ -94,22 +85,27 @@ defmodule Commanded.EventStore do
         Commanded.EventStore.subscribe_to(MyApp, "stream1", "Example", self(), :origin)
 
   """
-  @callback subscribe_to(
-              event_store,
-              stream_uuid | :all,
-              subscription_name,
-              subscriber,
-              start_from
-            ) ::
-              {:ok, subscription}
-              | {:error, :subscription_already_exists}
-              | {:error, error}
+  def subscribe_to(application, stream_uuid, subscription_name, subscriber, start_from) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.subscribe_to(
+      adapter_meta,
+      stream_uuid,
+      subscription_name,
+      subscriber,
+      start_from
+    )
+  end
 
   @doc """
   Acknowledge receipt and successful processing of the given event received from
   a subscription to an event stream.
   """
-  @callback ack_event(event_store, pid, RecordedEvent.t()) :: :ok
+  def ack_event(application, subscription, event) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.ack_event(adapter_meta, subscription, event)
+  end
 
   @doc """
   Unsubscribe an existing subscriber from event notifications.
@@ -121,7 +117,11 @@ defmodule Commanded.EventStore do
       :ok = Commanded.EventStore.unsubscribe(MyApp, subscription)
 
   """
-  @callback unsubscribe(event_store, subscription) :: :ok
+  def unsubscribe(application, subscription) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.unsubscribe(adapter_meta, subscription)
+  end
 
   @doc """
   Delete an existing subscription.
@@ -131,106 +131,61 @@ defmodule Commanded.EventStore do
       :ok = Commanded.EventStore.delete_subscription(MyApp, :all, "Example")
 
   """
-  @callback delete_subscription(event_store, stream_uuid | :all, subscription_name) ::
-              :ok | {:error, :subscription_not_found} | {:error, error}
+  def delete_subscription(application, subscribe_to, handler_name) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.delete_subscription(adapter_meta, subscribe_to, handler_name)
+  end
 
   @doc """
   Read a snapshot, if available, for a given source.
   """
-  @callback read_snapshot(event_store, source_uuid) ::
-              {:ok, SnapshotData.t()} | {:error, :snapshot_not_found}
+  def read_snapshot(application, source_uuid) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.read_snapshot(adapter_meta, source_uuid)
+  end
 
   @doc """
   Record a snapshot of the data and metadata for a given source
   """
-  @callback record_snapshot(event_store, SnapshotData.t()) :: :ok | {:error, error}
+  def record_snapshot(application, snapshot) do
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.record_snapshot(adapter_meta, snapshot)
+  end
 
   @doc """
   Delete a previously recorded snapshot for a given source
   """
-  @callback delete_snapshot(event_store, source_uuid) :: :ok | {:error, error}
-
-  @doc false
-  def append_to_stream(application, stream_uuid, expected_version, events) do
-    Application.event_store_adapter(application).append_to_stream(
-      stream_uuid,
-      expected_version,
-      events
-    )
-  end
-
-  @doc false
-  def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
-    Application.event_store_adapter(application).stream_forward(
-      stream_uuid,
-      start_version,
-      read_batch_size
-    )
-  end
-
-  @doc false
-  def subscribe(application, stream_uuid) do
-    Application.event_store_adapter(application).subscribe(stream_uuid)
-  end
-
-  @doc false
-  def subscribe_to(application, stream_uuid, subscription_name, subscriber, start_from) do
-    Application.event_store_adapter(application).subscribe_to(
-      stream_uuid,
-      subscription_name,
-      subscriber,
-      start_from
-    )
-  end
-
-  @doc false
-  def ack_event(application, subscription, event) do
-    Application.event_store_adapter(application).ack_event(subscription, event)
-  end
-
-  @doc false
-  def unsubscribe(application, subscription) do
-    Application.event_store_adapter(application).unsubscribe(subscription)
-  end
-
-  @doc false
-  def delete_subscription(application, subscribe_to, handler_name) do
-    Application.event_store_adapter(application).delete_subscription(subscribe_to, handler_name)
-  end
-
-  @doc false
-  def read_snapshot(application, source_uuid) do
-    Application.event_store_adapter(application).read_snapshot(source_uuid)
-  end
-
-  @doc false
-  def record_snapshot(application, snapshot) do
-    Application.event_store_adapter(application).record_snapshot(snapshot)
-  end
-
-  @doc false
   def delete_snapshot(application, source_uuid) do
-    Application.event_store_adapter(application).delete_snapshot(source_uuid)
+    {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+    adapter.delete_snapshot(adapter_meta, source_uuid)
   end
 
   @doc """
   Get the configured event store adapter for the given application.
   """
-  def adapter(_application, config) do
-    event_store = Keyword.get(config, :event_store)
+  @spec adapter(application, config) :: {module, config}
+  def adapter(application, config)
 
-    unless event_store do
-      raise ArgumentError, "missing :event_store option on use Commanded.Application"
-    end
+  def adapter(application, nil) do
+    raise ArgumentError, "missing :event_store config for application " <> inspect(application)
+  end
 
-    {adapter, _config} = Keyword.pop(event_store, :adapter)
+  def adapter(application, config) do
+    {adapter, config} = Keyword.pop(config, :adapter)
 
     unless Code.ensure_compiled?(adapter) do
       raise ArgumentError,
-            "event store adapter #{inspect(adapter)} was not compiled, " <>
-              "ensure it is correct and it is included as a project dependency"
+            "event store adapter " <>
+              inspect(adapter) <>
+              " used by application " <>
+              inspect(application) <>
+              " was not compiled, ensure it is correct and it is included as a project dependency"
     end
 
-    adapter
+    {adapter, config}
   end
 end

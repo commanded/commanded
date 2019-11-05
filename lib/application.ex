@@ -51,31 +51,11 @@ defmodule Commanded.Application do
 
       {otp_app, config} = Commanded.Application.Supervisor.compile_config(__MODULE__, opts)
 
-      event_store_adapter = Commanded.EventStore.adapter(__MODULE__, config)
-      pubsub_adapter = Commanded.PubSub.pubsub_provider(__MODULE__, config)
-      registry_adapter = Commanded.Registration.registry_provider(__MODULE__, config)
-
       @otp_app otp_app
       @config config
       @name Keyword.get(opts, :name, __MODULE__)
 
-      use Commanded.Commands.CompositeRouter,
-        application: __MODULE__
-
-      defmodule EventStore do
-        use Commanded.EventStore.Adapter,
-          adapter: event_store_adapter
-      end
-
-      defmodule PubSub do
-        use Commanded.PubSub.Adapter,
-          adapter: pubsub_adapter
-      end
-
-      defmodule Registration do
-        use Commanded.Registration.Adapter,
-          adapter: registry_adapter
-      end
+      use Commanded.Commands.CompositeRouter, application: __MODULE__
 
       def config do
         {:ok, config} =
@@ -93,15 +73,7 @@ defmodule Commanded.Application do
       end
 
       def start_link(opts \\ []) do
-        Commanded.Application.Supervisor.start_link(
-          __MODULE__,
-          @otp_app,
-          EventStore,
-          PubSub,
-          Registration,
-          @config,
-          opts
-        )
+        Commanded.Application.Supervisor.start_link(__MODULE__, @otp_app, @config, opts)
       end
 
       def stop(pid, timeout \\ 5000) do
@@ -154,12 +126,17 @@ defmodule Commanded.Application do
               | {:error, :consistency_timeout}
               | {:error, reason :: term}
 
-  @doc false
-  def event_store_adapter(application), do: Module.concat([application, EventStore])
+  alias Commanded.Application.Config
 
   @doc false
-  def pubsub_adapter(application), do: Module.concat([application, PubSub])
+  @spec event_store_adapter(Commanded.Application.t()) :: {module, map}
+  def event_store_adapter(application), do: Config.get(application, :event_store)
 
   @doc false
-  def registry_adapter(application), do: Module.concat([application, Registration])
+  @spec pubsub_adapter(Commanded.Application.t()) :: {module, map}
+  def pubsub_adapter(application), do: Config.get(application, :pubsub)
+
+  @doc false
+  @spec registry_adapter(Commanded.Application.t()) :: {module, map}
+  def registry_adapter(application), do: Config.get(application, :registry)
 end

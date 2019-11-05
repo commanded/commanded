@@ -33,7 +33,7 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
 
     """
 
-    @behaviour Commanded.PubSub
+    @behaviour Commanded.PubSub.Adapter
 
     defmodule Tracker do
       @moduledoc false
@@ -59,19 +59,18 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     @doc """
     Start the configured Phoenix pub/sub adapter and a presence tracker.
     """
-    @impl Commanded.PubSub
-    def child_spec(pubsub, config) do
-      pubsub_name = pubsub_name(pubsub)
-      tracker_name = tracker_name(pubsub)
+    @impl Commanded.PubSub.Adapter
+    def child_spec(application, config) do
+      pubsub_name = Module.concat([application, PhoenixPubSub])
+      tracker_name = Module.concat([application, PhoenixPubSub.Tracker])
 
-      phoenix_pubsub_config =
-        config |> Keyword.get(:phoenix_pubsub) |> Keyword.put(:name, pubsub_name)
+      phoenix_pubsub_config = Keyword.put(config, :name, pubsub_name)
 
       {adapter, phoenix_pubsub_config} = Keyword.pop(phoenix_pubsub_config, :adapter)
 
       phoenix_pubsub_config = parse_config(phoenix_pubsub_config)
 
-      [
+      child_spec = [
         %{
           id: adapter,
           start: {adapter, :start_link, [phoenix_pubsub_config]},
@@ -83,14 +82,16 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
           type: :supervisor
         }
       ]
+
+      {:ok, child_spec, %{pubsub_name: pubsub_name, tracker_name: tracker_name}}
     end
 
     @doc """
     Subscribes the caller to the topic.
     """
-    @impl Commanded.PubSub
-    def subscribe(application, topic) when is_binary(topic) do
-      name = pubsub_name(application)
+    @impl Commanded.PubSub.Adapter
+    def subscribe(adapter_meta, topic) when is_binary(topic) do
+      name = pubsub_name(adapter_meta)
 
       Phoenix.PubSub.subscribe(name, topic)
     end
@@ -98,9 +99,9 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     @doc """
     Broadcasts message on given topic.
     """
-    @impl Commanded.PubSub
-    def broadcast(application, topic, message) when is_binary(topic) do
-      name = pubsub_name(application)
+    @impl Commanded.PubSub.Adapter
+    def broadcast(adapter_meta, topic, message) when is_binary(topic) do
+      name = pubsub_name(adapter_meta)
 
       Phoenix.PubSub.broadcast(name, topic, message)
     end
@@ -109,9 +110,9 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     Track the current process under the given `topic`, uniquely identified by
     `key`.
     """
-    @impl Commanded.PubSub
-    def track(application, topic, key) when is_binary(topic) do
-      name = tracker_name(application)
+    @impl Commanded.PubSub.Adapter
+    def track(adapter_meta, topic, key) when is_binary(topic) do
+      name = tracker_name(adapter_meta)
 
       case Phoenix.Tracker.track(name, self(), topic, key, %{pid: self()}) do
         {:ok, _ref} -> :ok
@@ -123,9 +124,9 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
     @doc """
     List tracked terms and associated PIDs for a given topic.
     """
-    @impl Commanded.PubSub
-    def list(application, topic) when is_binary(topic) do
-      name = tracker_name(application)
+    @impl Commanded.PubSub.Adapter
+    def list(adapter_meta, topic) when is_binary(topic) do
+      name = tracker_name(adapter_meta)
 
       Phoenix.Tracker.list(name, topic) |> Enum.map(fn {key, %{pid: pid}} -> {key, pid} end)
     end
@@ -143,7 +144,7 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
       end)
     end
 
-    defp pubsub_name(application), do: Module.concat([application, __MODULE__])
-    defp tracker_name(application), do: Module.concat([application, Tracker])
+    defp pubsub_name(adapter_meta), do: Map.get(adapter_meta, :pubsub_name)
+    defp tracker_name(adapter_meta), do: Map.get(adapter_meta, :tracker_name)
   end
 end
