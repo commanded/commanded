@@ -1,3 +1,6 @@
 defmodule Commanded.EventStore.Adapters.InMemory.SnapshotTest do
-  use Commanded.EventStore.SnapshotTestCase, application: InMemoryApplication
+  alias Commanded.EventStore.Adapters.InMemory
+
+  use Commanded.EventStore.InMemoryTestCase
+  use Commanded.EventStore.SnapshotTestCase, event_store: InMemory
 end

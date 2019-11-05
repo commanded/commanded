@@ -1,3 +1,6 @@
 defmodule Commanded.EventStore.Adapters.InMemory.AppendEventsTest do
-  use Commanded.EventStore.AppendEventsTestCase, application: InMemoryApplication
+  alias Commanded.EventStore.Adapters.InMemory
+
+  use Commanded.EventStore.InMemoryTestCase
+  use Commanded.EventStore.AppendEventsTestCase, event_store: InMemory
 end
