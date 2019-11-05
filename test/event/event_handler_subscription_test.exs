@@ -45,7 +45,7 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
   defp start_handler(subscription) do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn _event_store,
+    expect(MockEventStore, :subscribe_to, fn _event_store_meta,
                                              :all,
                                              "ExampleHandler",
                                              handler,

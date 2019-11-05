@@ -19,7 +19,7 @@ defmodule Commanded.MockEventStoreCase do
   setup do
     set_mox_global()
 
-    expect(MockEventStore, :child_spec, fn _event_store, _config -> [] end)
+    expect(MockEventStore, :child_spec, fn _event_store, _config -> {:ok, [], %{}} end)
 
     start_supervised!(MockedApp)
 

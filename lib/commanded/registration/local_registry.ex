@@ -4,25 +4,27 @@ defmodule Commanded.Registration.LocalRegistry do
   `Registry` module.
   """
 
-  @behaviour Commanded.Registration
+  @behaviour Commanded.Registration.Adapter
 
   @doc """
   Return a supervisor spec for the registry.
   """
-  @impl Commanded.Registration
-  def child_spec(registry, _config) do
-    registry_name = registry_name(registry)
+  @impl Commanded.Registration.Adapter
+  def child_spec(application, _config) do
+    registry_name = Module.concat([application, LocalRegistry])
 
-    [
+    child_spec = [
       {Registry, keys: :unique, name: registry_name}
     ]
+
+    {:ok, child_spec, %{registry_name: registry_name}}
   end
 
   @doc """
   Starts a supervisor.
   """
-  @impl Commanded.Registration
-  def supervisor_child_spec(_registry, module, arg) do
+  @impl Commanded.Registration.Adapter
+  def supervisor_child_spec(_adapter_meta, module, arg) do
     default = %{
       id: module,
       start: {module, :start_link, [arg]},
@@ -39,9 +41,9 @@ defmodule Commanded.Registration.LocalRegistry do
   Registers the pid with the given name.
   """
 
-  @impl Commanded.Registration
-  def start_child(registry, name, supervisor, child_spec) do
-    via_name = via_tuple(registry, name)
+  @impl Commanded.Registration.Adapter
+  def start_child(adapter_meta, name, supervisor, child_spec) do
+    via_name = via_tuple(adapter_meta, name)
 
     child_spec =
       case child_spec do
@@ -63,9 +65,9 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Registers the pid with the given name.
   """
-  @impl Commanded.Registration
-  def start_link(registry, name, module, args) do
-    via_name = via_tuple(registry, name)
+  @impl Commanded.Registration.Adapter
+  def start_link(adapter_meta, name, module, args) do
+    via_name = via_tuple(adapter_meta, name)
 
     case GenServer.start_link(module, args, name: via_name) do
       {:error, {:already_started, pid}} -> {:ok, pid}
@@ -78,9 +80,9 @@ defmodule Commanded.Registration.LocalRegistry do
 
   Returns `:undefined` if the name is unregistered.
   """
-  @impl Commanded.Registration
-  def whereis_name(registry, name) do
-    registry_name = registry_name(registry)
+  @impl Commanded.Registration.Adapter
+  def whereis_name(adapter_meta, name) do
+    registry_name = registry_name(adapter_meta)
 
     Registry.whereis_name({registry_name, name})
   end
@@ -88,9 +90,9 @@ defmodule Commanded.Registration.LocalRegistry do
   @doc """
   Return a `:via` tuple to route a message to a process by its registered name.
   """
-  @impl Commanded.Registration
-  def via_tuple(registry, name) do
-    registry_name = registry_name(registry)
+  @impl Commanded.Registration.Adapter
+  def via_tuple(adapter_meta, name) do
+    registry_name = registry_name(adapter_meta)
 
     {:via, Registry, {registry_name, name}}
   end
@@ -117,5 +119,5 @@ defmodule Commanded.Registration.LocalRegistry do
     end
   end
 
-  defp registry_name(registry), do: Module.concat([registry, LocalRegistry])
+  defp registry_name(adapter_meta), do: Map.get(adapter_meta, :registry_name)
 end

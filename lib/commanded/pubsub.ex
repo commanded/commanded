@@ -1,51 +1,21 @@
 defmodule Commanded.PubSub do
-  @moduledoc """
-  Pub/sub behaviour for use by Commanded to subcribe to and broadcast messages.
-  """
-
-  @type application :: module
-  @type pubsub :: module
-
-  @doc """
-  Return an optional supervisor spec for pub/sub.
-  """
-  @callback child_spec(pubsub, config :: Keyword.t()) :: [:supervisor.child_spec()]
-
-  @doc """
-  Subscribes the caller to the PubSub adapter's topic.
-  """
-  @callback subscribe(pubsub, topic :: String.t()) :: :ok | {:error, term}
-
-  @doc """
-  Broadcasts message on given topic.
-
-    * `topic` - The topic to broadcast to, ie: `"users:123"`
-    * `message` - The payload of the broadcast
-
-  """
-  @callback broadcast(pubsub, topic :: String.t(), message :: term) :: :ok | {:error, term}
-
-  @doc """
-  Track the current process under the given `topic`, uniquely identified by
-  `key`.
-  """
-  @callback track(pubsub, topic :: String.t(), key :: term) :: :ok | {:error, term}
-
-  @doc """
-  List tracked PIDs for a given topic.
-  """
-  @callback list(pubsub, topic :: String.t()) :: [{term, pid}]
-
   alias Commanded.Application
+
+  @type application :: Commanded.Application.t()
+  @type config :: Keyword.t() | atom
 
   @doc false
   def subscribe(application, topic) do
-    Application.pubsub_adapter(application).subscribe(topic)
+    {adapter, adapter_meta} = Application.pubsub_adapter(application)
+
+    adapter.subscribe(adapter_meta, topic)
   end
 
   @doc false
   def broadcast(application, topic, message) do
-    Application.pubsub_adapter(application).broadcast(topic, message)
+    {adapter, adapter_meta} = Application.pubsub_adapter(application)
+
+    adapter.broadcast(adapter_meta, topic, message)
   end
 
   @doc """
@@ -53,14 +23,14 @@ defmodule Commanded.PubSub do
 
   Defaults to a local pub/sub, restricted to running on a single node.
   """
-  @spec pubsub_provider(application, config :: Keyword.t()) :: module()
-  def pubsub_provider(application, config) do
-    case Keyword.get(config, :pubsub, :local) do
+  @spec adapter(application, config) :: {module, config}
+  def adapter(application, config) do
+    case config do
       :local ->
-        Commanded.PubSub.LocalPubSub
+        {Commanded.PubSub.LocalPubSub, []}
 
-      provider when is_atom(provider) ->
-        provider
+      adapter when is_atom(adapter) ->
+        {adapter, []}
 
       config ->
         if Keyword.keyword?(config) do
@@ -70,8 +40,8 @@ defmodule Commanded.PubSub do
                     "invalid Phoenix pubsub configuration #{inspect(config)} for application " <>
                       inspect(application)
 
-            _phoenix_pubsub ->
-              Commanded.PubSub.PhoenixPubSub
+            phoenix_pubsub_config ->
+              {Commanded.PubSub.PhoenixPubSub, phoenix_pubsub_config}
           end
         else
           raise ArgumentError,

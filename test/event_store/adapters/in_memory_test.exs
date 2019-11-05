@@ -13,20 +13,22 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
   @config [name: InMemory, serializer: JsonSerializer]
 
   setup do
-    for child <- InMemory.child_spec(InMemory, @config) do
+    {:ok, child_spec, adapter_meta} = InMemory.child_spec(InMemory, @config)
+
+    for child <- child_spec do
       start_supervised!(child)
     end
 
-    :ok
+    [adapter_meta: adapter_meta]
   end
 
   describe "reset!/0" do
-    test "wipes all data from memory" do
-      pid = Process.whereis(InMemory)
+    test "wipes all data from memory", %{adapter_meta: adapter_meta} do
+      pid = Process.whereis(InMemory.EventStore)
       initial = :sys.get_state(pid)
       events = [build_event(1)]
 
-      :ok = InMemory.append_to_stream({InMemory, @config}, "stream", 0, events)
+      :ok = InMemory.append_to_stream(adapter_meta, "stream", 0, events)
       after_event = :sys.get_state(pid)
 
       InMemory.reset!(InMemory)

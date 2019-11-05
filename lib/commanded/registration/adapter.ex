@@ -1,37 +1,30 @@
 defmodule Commanded.Registration.Adapter do
-  @moduledoc false
+  @moduledoc """
+  Defines a behaviour for a process registry to be used by Commanded.
 
-  defmacro __using__(opts) do
-    quote bind_quoted: [opts: opts] do
-      @adapter Keyword.fetch!(opts, :adapter)
+  By default, Commanded will use a local process registry, defined in
+  `Commanded.Registration.LocalRegistry`, that uses Elixir's `Registry` module
+  for local process registration. This limits Commanded to only run on a single
+  node. However the `Commanded.Registration` behaviour can be implemented by a
+  library to provide distributed process registration to support running on a
+  cluster of nodes.
+  """
 
-      @behaviour Commanded.Registration.Adapter
-
-      def child_spec(config), do: @adapter.child_spec(__MODULE__, config)
-
-      def supervisor_child_spec(module, arg),
-        do: @adapter.supervisor_child_spec(__MODULE__, module, arg)
-
-      def start_child(name, supervisor, child_spec),
-        do: @adapter.start_child(__MODULE__, name, supervisor, child_spec)
-
-      def start_link(name, module, args), do: @adapter.start_link(__MODULE__, name, module, args)
-
-      def whereis_name(name), do: @adapter.whereis_name(__MODULE__, name)
-
-      def via_tuple(name), do: @adapter.via_tuple(__MODULE__, name)
-    end
-  end
+  @type adapter_meta :: map
+  @type application :: Commanded.Application.t()
+  @type config :: Keyword.t()
+  @type start_child_arg :: {module(), keyword} | module()
 
   @doc """
-  Return an optional supervisor spec for the registry.
+  Return an optional supervisor spec for the registry
   """
-  @callback child_spec(config :: Keyword.t()) :: [:supervisor.child_spec()]
+  @callback child_spec(application, config) :: {:ok, [:supervisor.child_spec()], adapter_meta}
 
   @doc """
   Use to start a supervisor.
   """
-  @callback supervisor_child_spec(module :: atom, arg :: any()) :: :supervisor.child_spec()
+  @callback supervisor_child_spec(adapter_meta, module :: atom, arg :: any()) ::
+              :supervisor.child_spec()
 
   @doc """
   Starts a uniquely named child process of a supervisor using the given module
@@ -40,9 +33,10 @@ defmodule Commanded.Registration.Adapter do
   Registers the pid with the given name.
   """
   @callback start_child(
+              adapter_meta,
               name :: term(),
               supervisor :: module(),
-              child_spec :: Commanded.Registration.start_child_arg()
+              child_spec :: start_child_arg
             ) ::
               {:ok, pid} | {:error, term}
 
@@ -51,7 +45,7 @@ defmodule Commanded.Registration.Adapter do
 
   Registers the pid with the given name.
   """
-  @callback start_link(name :: term(), module :: module(), args :: any()) ::
+  @callback start_link(adapter_meta, name :: term(), module :: module(), args :: any()) ::
               {:ok, pid} | {:error, term}
 
   @doc """
@@ -59,10 +53,10 @@ defmodule Commanded.Registration.Adapter do
 
   Returns `:undefined` if the name is unregistered.
   """
-  @callback whereis_name(name :: term()) :: pid() | :undefined
+  @callback whereis_name(adapter_meta, name :: term()) :: pid() | :undefined
 
   @doc """
-  Return a `:via` tuple to route a message to a process by its registered name.
+  Return a `:via` tuple to route a message to a process by its registered name
   """
-  @callback via_tuple(name :: term()) :: {:via, module(), name :: term()}
+  @callback via_tuple(adapter_meta, name :: term()) :: {:via, module(), name :: term()}
 end

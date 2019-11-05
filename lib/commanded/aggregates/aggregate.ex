@@ -52,6 +52,7 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Event.Upcast
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
+  alias Commanded.Registration
   alias Commanded.Snapshotting
 
   @read_event_batch_size 100
@@ -548,7 +549,8 @@ defmodule Commanded.Aggregates.Aggregate do
 
   defp via_name(application, aggregate_module, aggregate_uuid) do
     name = name(application, aggregate_module, aggregate_uuid)
-    via_tuple(application, name)
+
+    Registration.via_tuple(application, name)
   end
 
   defp describe(%Aggregate{} = aggregate) do

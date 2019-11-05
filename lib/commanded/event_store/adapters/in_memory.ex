@@ -3,7 +3,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   An in-memory event store adapter useful for testing as no persistence provided.
   """
 
-  @behaviour Commanded.EventStore
+  @behaviour Commanded.EventStore.Adapter
 
   use GenServer
 
@@ -41,42 +41,54 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     {:ok, state}
   end
 
-  @impl Commanded.EventStore
-  def child_spec(event_store, config) do
-    supervisor_name = subscriptions_name(event_store)
-    config = Keyword.merge(config, name: event_store)
+  @impl Commanded.EventStore.Adapter
+  def child_spec(application, config) do
+    event_store_name = event_store_name(application)
+    supervisor_name = subscriptions_name(event_store_name)
 
-    [
+    config = Keyword.merge(config, name: event_store_name)
+
+    child_spec = [
       {DynamicSupervisor, strategy: :one_for_one, name: supervisor_name},
       %{
-        id: event_store,
+        id: event_store_name,
         start: {__MODULE__, :start_link, [config]}
       }
     ]
+
+    {:ok, child_spec, %{name: event_store_name}}
   end
 
-  @impl Commanded.EventStore
-  def append_to_stream({event_store, _config}, stream_uuid, expected_version, events) do
+  @impl Commanded.EventStore.Adapter
+  def append_to_stream(adapter_meta, stream_uuid, expected_version, events) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:append, stream_uuid, expected_version, events})
   end
 
-  @impl Commanded.EventStore
+  @impl Commanded.EventStore.Adapter
   def stream_forward(
-        {event_store, _config},
+        adapter_meta,
         stream_uuid,
         start_version \\ 0,
         _read_batch_size \\ 1_000
       ) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:stream_forward, stream_uuid, start_version})
   end
 
-  @impl Commanded.EventStore
-  def subscribe({event_store, _config}, stream_uuid) do
+  @impl Commanded.EventStore.Adapter
+  def subscribe(adapter_meta, stream_uuid) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:subscribe, stream_uuid, self()})
   end
 
-  @impl Commanded.EventStore
-  def subscribe_to({event_store, _config}, stream_uuid, subscription_name, subscriber, start_from) do
+  @impl Commanded.EventStore.Adapter
+  def subscribe_to(adapter_meta, stream_uuid, subscription_name, subscriber, start_from) do
+    event_store = event_store_name(adapter_meta)
+
     subscription = %Subscription{
       stream_uuid: stream_uuid,
       name: subscription_name,
@@ -87,37 +99,51 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(event_store, {:subscribe_to, subscription})
   end
 
-  @impl Commanded.EventStore
-  def ack_event({event_store, _config}, pid, event) do
+  @impl Commanded.EventStore.Adapter
+  def ack_event(adapter_meta, pid, event) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.cast(event_store, {:ack_event, event, pid})
   end
 
-  @impl Commanded.EventStore
-  def unsubscribe({event_store, _config}, subscription) do
+  @impl Commanded.EventStore.Adapter
+  def unsubscribe(adapter_meta, subscription) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:unsubscribe, subscription})
   end
 
-  @impl Commanded.EventStore
-  def delete_subscription({event_store, _config}, stream_uuid, subscription_name) do
+  @impl Commanded.EventStore.Adapter
+  def delete_subscription(adapter_meta, stream_uuid, subscription_name) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:delete_subscription, stream_uuid, subscription_name})
   end
 
-  @impl Commanded.EventStore
-  def read_snapshot({event_store, _config}, source_uuid) do
+  @impl Commanded.EventStore.Adapter
+  def read_snapshot(adapter_meta, source_uuid) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:read_snapshot, source_uuid})
   end
 
-  @impl Commanded.EventStore
-  def record_snapshot({event_store, _config}, snapshot) do
+  @impl Commanded.EventStore.Adapter
+  def record_snapshot(adapter_meta, snapshot) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:record_snapshot, snapshot})
   end
 
-  @impl Commanded.EventStore
-  def delete_snapshot({event_store, _config}, source_uuid) do
+  @impl Commanded.EventStore.Adapter
+  def delete_snapshot(adapter_meta, source_uuid) do
+    event_store = event_store_name(adapter_meta)
+
     GenServer.call(event_store, {:delete_snapshot, source_uuid})
   end
 
-  def reset!(event_store) do
+  def reset!(application) do
+    event_store = event_store_name(application)
+
     GenServer.call(event_store, :reset!)
   end
 
@@ -616,5 +642,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
-  defp subscriptions_name(event_store), do: Module.concat([event_store, SubscriptionsSupervisor])
+  defp event_store_name(adapter_meta) when is_map(adapter_meta),
+    do: Map.get(adapter_meta, :name)
+
+  defp event_store_name(application) when is_atom(application),
+    do: Module.concat([application, EventStore])
+
+  defp subscriptions_name(event_store),
+    do: Module.concat([event_store, SubscriptionsSupervisor])
 end

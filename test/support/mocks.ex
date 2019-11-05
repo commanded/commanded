@@ -1,2 +1,2 @@
-Mox.defmock(Commanded.EventStore.Adapters.Mock, for: Commanded.EventStore)
+Mox.defmock(Commanded.EventStore.Adapters.Mock, for: Commanded.EventStore.Adapter)
 Mox.defmock(Commanded.Commands.MockRouter, for: Commanded.Commands.Router)

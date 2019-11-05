@@ -2,7 +2,6 @@ defmodule Commanded.ApplicationTest do
   use ExUnit.Case
 
   alias Commanded.Application
-  alias Commanded.EventStore.EventData
   alias Commanded.ExampleApplication
 
   describe "a Commanded application" do
@@ -22,46 +21,24 @@ defmodule Commanded.ApplicationTest do
     end
 
     test "should expose an event store adapter" do
-      assert Application.event_store_adapter(ExampleApplication) == ExampleApplication.EventStore
-    end
-
-    test "should define an event store adapter" do
-      assert_implements(ExampleApplication.EventStore, Commanded.EventStore.Adapter)
-
-      events = [
-        %EventData{
-          correlation_id: UUID.uuid4(),
-          causation_id: UUID.uuid4(),
-          event_type: "#{__MODULE__}.Event",
-          data: %Event{name: "1"},
-          metadata: %{"metadata" => "value"}
-        }
-      ]
-
-      assert :ok = ExampleApplication.EventStore.append_to_stream("1", 0, events)
+      assert Application.event_store_adapter(ExampleApplication) ==
+               {Commanded.EventStore.Adapters.InMemory,
+                %{name: Commanded.ExampleApplication.EventStore}}
     end
 
     test "should expose a pubsub adapter" do
-      assert Application.pubsub_adapter(ExampleApplication) == ExampleApplication.PubSub
-    end
-
-    test "should define a pubsub adapter" do
-      assert_implements(ExampleApplication.PubSub, Commanded.PubSub.Adapter)
+      assert Application.pubsub_adapter(ExampleApplication) ==
+               {Commanded.PubSub.LocalPubSub,
+                %{
+                  pubsub_name: Commanded.ExampleApplication.LocalPubSub,
+                  tracker_name: Commanded.ExampleApplication.LocalPubSub.Tracker
+                }}
     end
 
     test "should expose a registry adapter" do
-      assert Application.registry_adapter(ExampleApplication) == ExampleApplication.Registration
+      assert Application.registry_adapter(ExampleApplication) ==
+               {Commanded.Registration.LocalRegistry,
+                %{registry_name: Commanded.ExampleApplication.LocalRegistry}}
     end
-
-    test "should define a registration adapter" do
-      assert_implements(ExampleApplication.Registration, Commanded.Registration.Adapter)
-    end
-  end
-
-  # Returns `true` if module implements behaviour.
-  defp assert_implements(module, behaviour) do
-    all = Keyword.take(module.__info__(:attributes), [:behaviour])
-
-    assert [behaviour] in Keyword.values(all)
   end
 end
