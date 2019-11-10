@@ -4,6 +4,10 @@ Build your aggregates using standard Elixir modules and functions, with structs 
 
 An aggregate is comprised of its state, public command functions, and state mutators.
 
+In a CQRS application all state must be derived from the published domain events. This prevents tight coupling between aggregate instances, such as querying for their state, and ensures their state isn't exposed.
+
+If an aggregate needs data owned by another aggregate, then you should lookup the data from a projection and include it in the command before dispatch. Usually this would be a projection into a read model built for querying. You can use Commanded Ecto projections to project events into a SQL database. 
+
 ## Aggregate state
 
 Use the `defstruct` keyword to define the aggregate state and fields.
