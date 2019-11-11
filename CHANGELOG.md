@@ -1,5 +1,10 @@
 # Changelog
 
+## Next release
+
+- Define adapter behaviour modules for event store, pubsub, and registry ([#311](https://github.com/commanded/commanded/pull/311)).
+- Fix commanded aggregate race ([#308](https://github.com/commanded/commanded/pull/308)).
+
 ## v1.0.0-rc.1
 
 ### Bug fixes
