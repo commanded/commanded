@@ -128,12 +128,7 @@ defmodule Commanded.Aggregates.Aggregate do
              (is_number(timeout) or timeout == :infinity) do
     name = via_name(application, aggregate_module, aggregate_uuid)
 
-    try do
-      GenServer.call(name, {:execute_command, context}, timeout)
-    catch
-      :exit, {:normal, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
-        {:exit, :normal, :aggregate_stopped}
-    end
+    GenServer.call(name, {:execute_command, context}, timeout)
   end
 
   @doc false

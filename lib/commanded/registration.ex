@@ -50,12 +50,16 @@ defmodule Commanded.Registration do
       :local ->
         {Commanded.Registration.LocalRegistry, []}
 
-      other when is_atom(other) ->
-        {other, []}
+      adapter when is_atom(adapter) ->
+        {adapter, []}
 
-      _invalid ->
-        raise ArgumentError,
-              "invalid :registry option for Commanded application " <> inspect(application)
+      config ->
+        if Keyword.keyword?(config) do
+          Keyword.pop(config, :adapter)
+        else
+          raise ArgumentError,
+                "invalid :registry option for Commanded application " <> inspect(application)
+        end
     end
   end
 

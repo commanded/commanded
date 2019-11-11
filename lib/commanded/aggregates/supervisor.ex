@@ -35,7 +35,7 @@ defmodule Commanded.Aggregates.Supervisor do
         inspect(aggregate_uuid)
     end)
 
-    module_name = Module.concat([application, __MODULE__])
+    supervisor_name = Module.concat([application, __MODULE__])
     aggregate_name = Aggregate.name(application, aggregate_module, aggregate_uuid)
 
     args = [
@@ -44,7 +44,7 @@ defmodule Commanded.Aggregates.Supervisor do
       aggregate_uuid: aggregate_uuid
     ]
 
-    case Registration.start_child(application, aggregate_name, module_name, {Aggregate, args}) do
+    case Registration.start_child(application, aggregate_name, supervisor_name, {Aggregate, args}) do
       {:ok, _pid} ->
         {:ok, aggregate_uuid}
 
