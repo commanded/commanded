@@ -89,6 +89,7 @@ defmodule Commanded.Commands.Dispatcher do
     result =
       case Task.yield(task, timeout) || Task.shutdown(task) do
         {:ok, reply} -> reply
+        {:exit, :normal, :aggregate_stopped} = error -> error
         {:exit, error} -> {:error, :aggregate_execution_failed, error}
         nil -> {:error, :aggregate_execution_timeout}
       end
@@ -100,6 +101,9 @@ defmodule Commanded.Commands.Dispatcher do
         |> Pipeline.assign(:events, events)
         |> after_dispatch(payload)
         |> respond_with_success(payload, events)
+
+      {:exit, :normal, :aggregate_stopped} ->
+        execute(pipeline, payload)
 
       {:error, error} ->
         pipeline
