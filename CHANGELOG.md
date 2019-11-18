@@ -4,6 +4,7 @@
 
 - Define adapter behaviour modules for event store, pubsub, and registry ([#311](https://github.com/commanded/commanded/pull/311)).
 - Fix commanded aggregate race ([#308](https://github.com/commanded/commanded/pull/308)).
+- Add `AggregateCase` ExUnit case template to support aggregate unit testing ([#315](https://github.com/commanded/commanded/pull/315)).
 
 ## v1.0.0-rc.1
 

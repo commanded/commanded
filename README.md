@@ -152,6 +152,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Miguel Palhas](https://github.com/naps62)
 - [Nigel Thorne](https://github.com/nigelthorne)
 - [Olafur Arason](https://github.com/olafura)
+- [Paolo Laurenti](https://github.com/PaoloLaurenti)
 - [Patrick Detlefsen](https://github.com/patrickdet)
 - [Phil Chen](https://github.com/fahchen)
 - [Raphaël Lustin](https://github.com/rlustin)
