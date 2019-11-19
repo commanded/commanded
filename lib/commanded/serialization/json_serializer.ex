@@ -17,11 +17,13 @@ if Code.ensure_loaded?(Jason) do
     @doc """
     Deserialize given JSON binary data to the expected type.
     """
-    def deserialize(binary, config \\ []) do
+    def deserialize(binary, config \\ [])
+
+    def deserialize(binary, config) do
       {type, opts} =
         case Keyword.get(config, :type) do
-          nil -> {nil, %{}}
-          type -> {TypeProvider.to_struct(type), %{keys: :atoms}}
+          nil -> {nil, []}
+          type -> {TypeProvider.to_struct(type), [keys: :atoms]}
         end
 
       binary

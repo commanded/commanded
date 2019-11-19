@@ -534,7 +534,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     end)
   end
 
-  defp catch_up(%Subscription{subscriber: nil}, _state), do: :ok
   defp catch_up(%Subscription{start_from: :current}, _state), do: :ok
 
   defp catch_up(%Subscription{stream_uuid: :all} = subscription, %State{} = state) do

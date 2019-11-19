@@ -44,12 +44,12 @@ defmodule Commanded.Event.Mapper do
   """
   def map_to_event_data(events, fields \\ [])
 
-  @spec map_to_event_data(list(event), map) :: list(EventData.t())
+  @spec map_to_event_data(list(event), Keyword.t()) :: list(EventData.t())
   def map_to_event_data(events, fields) when is_list(events) do
     Enum.map(events, &map_to_event_data(&1, fields))
   end
 
-  @spec map_to_event_data(struct, map) :: EventData.t()
+  @spec map_to_event_data(struct, Keyword.t()) :: EventData.t()
   def map_to_event_data(event, fields) do
     %EventData{
       causation_id: Keyword.get(fields, :causation_id),
@@ -63,7 +63,7 @@ defmodule Commanded.Event.Mapper do
   @doc """
   Map a list of `Commanded.EventStore.RecordedEvent` structs to their event data.
   """
-  @spec map_from_recorded_events(list(RecordedEvent.t())) :: event
+  @spec map_from_recorded_events(list(RecordedEvent.t())) :: [event]
   def map_from_recorded_events(recorded_events) when is_list(recorded_events) do
     Enum.map(recorded_events, &map_from_recorded_event/1)
   end

@@ -18,7 +18,8 @@ defmodule Commanded.Registration.Adapter do
   @doc """
   Return an optional supervisor spec for the registry
   """
-  @callback child_spec(application, config) :: {:ok, [:supervisor.child_spec()], adapter_meta}
+  @callback child_spec(application, config) ::
+              {:ok, [:supervisor.child_spec() | {module, term} | module], adapter_meta}
 
   @doc """
   Use to start a supervisor.

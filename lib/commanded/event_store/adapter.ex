@@ -20,7 +20,8 @@ defmodule Commanded.EventStore.Adapter do
   @doc """
   Return a child spec defining all processes required by the event store.
   """
-  @callback child_spec(application, config) :: {:ok, [:supervisor.child_spec()], adapter_meta}
+  @callback child_spec(application, config) ::
+              {:ok, [:supervisor.child_spec() | {module, term} | module], adapter_meta}
 
   @doc """
   Append one or more events to a stream atomically.

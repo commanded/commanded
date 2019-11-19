@@ -1,7 +1,16 @@
 language: elixir
 
+cache:
+  directories:
+  - priv/plts
+  - deps
+
 elixir:
-  - 1.9.2
+  - 1.9.4
 
 otp_release:
   - 22.0
+
+script:
+  - mix test
+  - travis_wait 30 mix dialyzer --halt-exit-status

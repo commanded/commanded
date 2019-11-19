@@ -17,6 +17,7 @@ defmodule Commanded.Mixfile do
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() == :prod,
+      dialyzer: dialyzer(),
       name: "Commanded",
       source_url: "https://github.com/commanded/commanded"
     ]
@@ -57,9 +58,9 @@ defmodule Commanded.Mixfile do
       {:phoenix_pubsub, "~> 1.1", optional: true},
 
       # Build and test tools
-      {:dialyxir, "~> 0.5", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0.0-rc.7", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev},
-      {:mix_test_watch, "~> 0.9", only: :dev},
+      {:mix_test_watch, "~> 1.0", only: :dev},
       {:mox, "~> 0.5", only: :test}
     ]
   end
@@ -210,5 +211,14 @@ defmodule Commanded.Mixfile do
 
   defp aliases do
     []
+  end
+
+  defp dialyzer do
+    [
+      ignore_warnings: ".dialyzer_ignore.exs",
+      plt_add_apps: [:ex_unit, :jason, :mix, :phoenix_pubsub],
+      plt_add_deps: :app_tree,
+      plt_file: {:no_warn, "priv/plts/commanded.plt"}
+    ]
   end
 end
