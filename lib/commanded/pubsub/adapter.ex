@@ -10,7 +10,7 @@ defmodule Commanded.PubSub.Adapter do
   Return an optional supervisor spec for pub/sub.
   """
   @callback child_spec(application, config :: Keyword.t()) ::
-              {:ok, [:supervisor.child_spec()], adapter_meta}
+              {:ok, [:supervisor.child_spec() | {module, term} | module], adapter_meta}
 
   @doc """
   Subscribes the caller to the PubSub adapter's topic.
