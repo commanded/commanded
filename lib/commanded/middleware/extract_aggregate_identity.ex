@@ -1,7 +1,7 @@
 defmodule Commanded.Middleware.ExtractAggregateIdentity do
   @moduledoc """
-  A `Commanded.Middleware` that extracts the target aggregate's identity from
-  the command.
+  An internal `Commanded.Middleware` that extracts the target aggregate's
+  identity from the command.
   """
 
   @behaviour Commanded.Middleware

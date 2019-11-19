@@ -1,17 +1,29 @@
 defmodule Commanded.PubSub do
+  @moduledoc """
+  Use the pubsub configured for a Commanded application.
+  """
+
   alias Commanded.Application
 
   @type application :: Commanded.Application.t()
   @type config :: Keyword.t() | atom
 
-  @doc false
+  @doc """
+  Subscribes the caller to the PubSub adapter's topic.
+  """
   def subscribe(application, topic) do
     {adapter, adapter_meta} = Application.pubsub_adapter(application)
 
     adapter.subscribe(adapter_meta, topic)
   end
 
-  @doc false
+  @doc """
+  Broadcasts message on given topic.
+
+    * `topic` - The topic to broadcast to, ie: `"users:123"`
+    * `message` - The payload of the broadcast
+
+  """
   def broadcast(application, topic, message) do
     {adapter, adapter_meta} = Application.pubsub_adapter(application)
 

@@ -1,7 +1,7 @@
 defmodule Commanded.Middleware.ConsistencyGuarantee do
   @moduledoc """
-  A `Commanded.Middleware` that blocks after successful command dispatch until
-  the requested dispatch consistency has been met.
+  An internal `Commanded.Middleware` that blocks after successful command
+  dispatch until the requested dispatch consistency has been met.
 
   Only applies when the requested consistency is `:strong`. Has no effect for
   `:eventual` consistency.

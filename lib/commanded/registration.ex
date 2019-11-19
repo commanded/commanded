@@ -1,4 +1,8 @@
 defmodule Commanded.Registration do
+  @moduledoc """
+  Use the process registry configured for a Commanded application.
+  """
+
   alias Commanded.Application
 
   @type application :: Commanded.Application.t()

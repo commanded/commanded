@@ -1,6 +1,7 @@
 defmodule Commanded.Middleware.Logger do
   @moduledoc """
-  A `Commanded.Middleware` that logs each stage of the command dispatch using the Elixir `Logger`:
+  A `Commanded.Middleware` that logs each stage of the command dispatch using
+  the Elixir `Logger`:
 
   - Before dispatch.
   - After successful dispatch.

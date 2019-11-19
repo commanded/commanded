@@ -179,6 +179,7 @@ defmodule Commanded.Mixfile do
           Commanded.Middleware.Pipeline
         ],
         Testing: [
+          Commanded.AggregateCase,
           Commanded.Assertions.EventAssertions
         ]
       ]

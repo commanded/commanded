@@ -1,4 +1,8 @@
 defmodule Commanded.EventStore do
+  @moduledoc """
+  Use the event store configured for a Commanded application.
+  """
+
   alias Commanded.Application
   alias Commanded.Event.Upcast
 
@@ -70,7 +74,7 @@ defmodule Commanded.EventStore do
   for a single aggregate.
 
   The subscriber must ack each received, and successfully processed event, using
-  `c:Commanded.EventStore.ack_event/3`.
+  `Commanded.EventStore.ack_event/3`.
 
   ## Examples
 
