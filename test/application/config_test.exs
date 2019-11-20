@@ -3,6 +3,7 @@ defmodule Commanded.Application.ConfigTest do
 
   alias Commanded.Application.Config
   alias Commanded.ExampleApplication
+  alias Commanded.Helpers.Wait
 
   describe "a Commanded application" do
     setup do
@@ -29,6 +30,20 @@ defmodule Commanded.Application.ConfigTest do
       assert {Commanded.Registration.LocalRegistry,
               %{registry_name: Commanded.ExampleApplication.LocalRegistry}} ==
                Config.get(ExampleApplication, :registry)
+    end
+
+    test "should remove config when application stopped" do
+      :ok = stop_supervised(ExampleApplication)
+
+      Wait.until(fn ->
+        assert_raise(
+          RuntimeError,
+          "could not lookup Commanded.ExampleApplication because it was not started or it does not exist",
+          fn ->
+            Config.get(ExampleApplication, :event_store)
+          end
+        )
+      end)
     end
   end
 end

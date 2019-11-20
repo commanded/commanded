@@ -11,11 +11,6 @@ defmodule Commanded.ApplicationTest do
       [pid: pid]
     end
 
-    defmodule Event do
-      @derive Jason.Encoder
-      defstruct [:name]
-    end
-
     test "should not allow an application to be started more than once", %{pid: pid} do
       assert {:error, {:already_started, ^pid}} = ExampleApplication.start_link()
     end

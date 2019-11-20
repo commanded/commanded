@@ -52,7 +52,7 @@ defmodule Commanded.Application.Supervisor do
         {pubsub_child_spec, config} = pubsub_child_spec(application, config)
         {registry_child_spec, config} = registry_child_spec(application, config)
 
-        :ok = Config.associate(self(), config)
+        :ok = Config.associate(self(), application, config)
 
         children =
           event_store_child_spec ++
