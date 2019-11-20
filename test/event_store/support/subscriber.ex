@@ -1,7 +1,6 @@
 defmodule Commanded.EventStore.Subscriber do
   use GenServer
 
-  alias Commanded.EventStore
   alias Commanded.EventStore.Subscriber
 
   defmodule State do
