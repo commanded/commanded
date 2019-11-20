@@ -42,7 +42,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         command: command,
         handler: DepositMoneyHandler,
         function: :handle,
-        retry_attempts: 5
+        retry_attempts: 1
       }
 
       # Fail to append once

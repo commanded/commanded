@@ -10,10 +10,6 @@ defmodule Commanded.Aggregates.Supervisor do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Registration
 
-  # def child_spec(arg) do
-  #   Registration.supervisor_child_spec(__MODULE__, arg)
-  # end
-
   def start_link(args) do
     application = Keyword.fetch!(args, :application)
     name = Module.concat([application, __MODULE__])

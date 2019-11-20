@@ -33,15 +33,30 @@ defmodule Commanded.Aggregates.ExecutionContext do
   """
 
   alias Commanded.Aggregates.DefaultLifespan
+  alias Commanded.Aggregates.ExecutionContext
 
   defstruct [
     :command,
-    :retry_attempts,
     :causation_id,
     :correlation_id,
     :function,
     :handler,
+    retry_attempts: 0,
     lifespan: DefaultLifespan,
-    metadata: %{},
+    metadata: %{}
   ]
+
+  def retry(%ExecutionContext{retry_attempts: nil}),
+    do: {:error, :too_many_attempts}
+
+  def retry(%ExecutionContext{retry_attempts: retry_attempts}) when retry_attempts <= 0,
+    do: {:error, :too_many_attempts}
+
+  def retry(%ExecutionContext{} = context) do
+    %ExecutionContext{retry_attempts: retry_attempts} = context
+
+    context = %ExecutionContext{context | retry_attempts: retry_attempts - 1}
+
+    {:ok, context}
+  end
 end

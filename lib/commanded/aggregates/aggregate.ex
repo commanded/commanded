@@ -128,7 +128,12 @@ defmodule Commanded.Aggregates.Aggregate do
              (is_number(timeout) or timeout == :infinity) do
     name = via_name(application, aggregate_module, aggregate_uuid)
 
-    GenServer.call(name, {:execute_command, context}, timeout)
+    try do
+      GenServer.call(name, {:execute_command, context}, timeout)
+    catch
+      :exit, {:normal, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
+        {:exit, {:normal, :aggregate_stopped}}
+    end
   end
 
   @doc false
@@ -436,18 +441,8 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp execute_command(%ExecutionContext{retry_attempts: retry_attempts}, %Aggregate{} = state)
-       when retry_attempts < 0,
-       do: {{:error, :too_many_attempts}, state}
-
   defp execute_command(%ExecutionContext{} = context, %Aggregate{} = state) do
-    %ExecutionContext{
-      command: command,
-      handler: handler,
-      function: function,
-      retry_attempts: retry_attempts
-    } = context
-
+    %ExecutionContext{command: command, handler: handler, function: function} = context
     %Aggregate{aggregate_version: expected_version, aggregate_state: aggregate_state} = state
 
     Logger.debug(fn -> describe(state) <> " executing command: #{inspect(command)}" end)
@@ -478,13 +473,23 @@ defmodule Commanded.Aggregates.Aggregate do
 
     case reply do
       {:error, :wrong_expected_version} ->
-        Logger.debug(fn -> describe(state) <> " wrong expected version, retrying command" end)
-
-        # fetch missing events from event store
+        # Fetch missing events from event store
         state = rebuild_from_events(state)
 
-        # retry command, but decrement retry attempts (to prevent infinite retries)
-        execute_command(%ExecutionContext{context | retry_attempts: retry_attempts - 1}, state)
+        # Retry command if there are any attempts left
+        case ExecutionContext.retry(context) do
+          {:ok, context} ->
+            Logger.debug(fn -> describe(state) <> " wrong expected version, retrying command" end)
+
+            execute_command(context, state)
+
+          reply ->
+            Logger.debug(fn ->
+              describe(state) <> " wrong expected version, but not retrying command"
+            end)
+
+            {reply, state}
+        end
 
       reply ->
         {reply, state}

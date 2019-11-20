@@ -24,9 +24,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
 
       :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
-      instance = wait_for_process_instance(pm, aggregate_uuid)
+      {instance, ref} = wait_for_process_instance(pm, aggregate_uuid)
 
-      ref = Process.monitor(instance)
       assert_receive {:DOWN, ^ref, :process, ^instance, :normal}
     end
 
@@ -39,11 +38,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
 
       :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
-      instance = wait_for_process_instance(pm, aggregate_uuid)
+      {instance, ref} = wait_for_process_instance(pm, aggregate_uuid)
 
       :ok = ExampleRouter.dispatch(stop, application: ExampleApp)
 
-      ref = Process.monitor(instance)
       assert_receive {:DOWN, ^ref, :process, ^instance, :normal}
     end
   end
@@ -57,9 +55,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
 
       :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
-      instance = wait_for_process_instance(pm, aggregate_uuid)
+      {instance, ref} = wait_for_process_instance(pm, aggregate_uuid)
 
-      ref = Process.monitor(instance)
       refute_receive {:DOWN, ^ref, :process, ^instance, :normal}
     end
 
@@ -72,11 +69,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
 
       :ok = ExampleRouter.dispatch(start, application: ExampleApp)
 
-      instance = wait_for_process_instance(pm, aggregate_uuid)
+      {instance, ref} = wait_for_process_instance(pm, aggregate_uuid)
 
       :ok = ExampleRouter.dispatch(stop, application: ExampleApp)
 
-      ref = Process.monitor(instance)
       assert_receive {:DOWN, ^ref, :process, ^instance, :normal}
     end
   end
@@ -86,7 +82,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
       with instance <- ProcessRouter.process_instance(pm, process_uuid) do
         assert is_pid(instance)
 
-        instance
+        ref = Process.monitor(instance)
+
+        {instance, ref}
       end
     end)
   end
