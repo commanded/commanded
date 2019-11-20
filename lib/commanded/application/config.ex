@@ -7,11 +7,11 @@ defmodule Commanded.Application.Config do
     GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
-  def associate(pid, value) when is_pid(pid) do
-    GenServer.call(__MODULE__, {:associate, pid, value})
+  def associate(pid, application, value) when is_pid(pid) and is_atom(application) do
+    GenServer.call(__MODULE__, {:associate, pid, application, value})
   end
 
-  def get(application, setting) do
+  def get(application, setting) when is_atom(application) and is_atom(setting) do
     application |> lookup() |> Keyword.get(setting)
   end
 
@@ -23,32 +23,25 @@ defmodule Commanded.Application.Config do
   end
 
   @impl GenServer
-  def handle_call({:associate, pid, value}, _from, table) do
+  def handle_call({:associate, pid, application, config}, _from, table) do
     ref = Process.monitor(pid)
-    true = :ets.insert(table, {pid, ref, value})
+    true = :ets.insert(table, {application, pid, ref, config})
 
     {:reply, :ok, table}
   end
 
   @impl GenServer
   def handle_info({:DOWN, ref, _type, pid, _reason}, table) do
-    [{^pid, ^ref, _}] = :ets.lookup(table, pid)
-    :ets.delete(table, pid)
+    [[application]] = :ets.match(table, {:"$1", pid, ref, :_})
+    :ets.delete(table, application)
 
     {:noreply, table}
   end
 
-  defp lookup(application) when is_atom(application) do
-    case GenServer.whereis(application) do
-      pid when is_pid(pid) ->
-        lookup(pid)
-
-      nil ->
-        raise "could not lookup #{inspect(application)} because it was not started or it does not exist"
-    end
-  end
-
-  defp lookup(pid) when is_pid(pid) do
-    :ets.lookup_element(__MODULE__, pid, 3)
+  defp lookup(application) do
+    :ets.lookup_element(__MODULE__, application, 4)
+  rescue
+    ArgumentError ->
+      raise "could not lookup #{inspect(application)} because it was not started or it does not exist"
   end
 end

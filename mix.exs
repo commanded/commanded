@@ -30,7 +30,7 @@ defmodule Commanded.Mixfile do
     ]
   end
 
-  defp elixirc_paths(:test),
+  defp elixirc_paths(env) when env in [:bench, :test],
     do: [
       "lib",
       "test/aggregates/support",
@@ -58,10 +58,11 @@ defmodule Commanded.Mixfile do
       {:phoenix_pubsub, "~> 1.1", optional: true},
 
       # Build and test tools
+      {:benchfella, "~> 0.3", only: :bench},
       {:dialyxir, "~> 1.0.0-rc.7", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev},
-      {:mox, "~> 0.5", only: :test}
+      {:mox, "~> 0.5", only: [:bench, :test]}
     ]
   end
 

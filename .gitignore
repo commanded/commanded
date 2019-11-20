@@ -9,3 +9,5 @@ erl_crash.dump
 .elixir_ls
 /priv/plts/*.plt
 /priv/plts/*.plt.hash
+/bench/graphs
+/bench/snapshots
