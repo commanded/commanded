@@ -3,6 +3,8 @@ defmodule Commanded.ApplicationTest do
 
   alias Commanded.Application
   alias Commanded.ExampleApplication
+  alias Commanded.RuntimeConfiguredApplication
+  alias Commanded.UnconfiguredApplication
 
   describe "a Commanded application" do
     setup do
@@ -34,6 +36,37 @@ defmodule Commanded.ApplicationTest do
       assert Application.registry_adapter(ExampleApplication) ==
                {Commanded.Registration.LocalRegistry,
                 %{registry_name: Commanded.ExampleApplication.LocalRegistry}}
+    end
+
+    test "should allow application config to be provided by `init/1` callback function" do
+      start_supervised!(RuntimeConfiguredApplication)
+
+      assert Application.event_store_adapter(RuntimeConfiguredApplication) ==
+               {Commanded.EventStore.Adapters.InMemory,
+                %{name: Commanded.RuntimeConfiguredApplication.EventStore}}
+
+      assert Application.pubsub_adapter(RuntimeConfiguredApplication) ==
+               {Commanded.PubSub.PhoenixPubSub,
+                %{
+                  pubsub_name: Commanded.RuntimeConfiguredApplication.PhoenixPubSub,
+                  tracker_name: Commanded.RuntimeConfiguredApplication.PhoenixPubSub.Tracker
+                }}
+
+      assert Application.registry_adapter(RuntimeConfiguredApplication) ==
+               {Commanded.Registration.LocalRegistry,
+                %{registry_name: Commanded.RuntimeConfiguredApplication.LocalRegistry}}
+    end
+
+    test "should fail to start unconfigured application" do
+      Process.flag(:trap_exit, true)
+
+      UnconfiguredApplication.start_link()
+
+      assert_receive {:EXIT, _pid,
+                      {%ArgumentError{
+                         message:
+                           "missing :event_store config for application Commanded.UnconfiguredApplication"
+                       }, _}}
     end
   end
 end
