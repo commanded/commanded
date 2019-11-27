@@ -20,7 +20,7 @@
 
 ### Upgrading
 
-[Follow the upgrade guide](guides/upgrades/0.19-1.0.md) to define and use your own Commanded application.
+[Follow the upgrade guide](https://hexdocs.pm/commanded/1.0.0/0.19-1.0.html) to define and use your own Commanded application.
 
 ---
 
