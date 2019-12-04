@@ -282,10 +282,11 @@ defmodule Commanded.Event.Handler do
 
       @doc false
       def start_link(opts \\ []) do
+        application = Keyword.get(opts, :application, @application)
         module_opts = Keyword.drop(@opts, [:application, :name])
         opts = Handler.start_opts(__MODULE__, module_opts, opts)
 
-        Handler.start_link(@application, @name, __MODULE__, opts)
+        Handler.start_link(application, @name, __MODULE__, opts)
       end
 
       @doc """
@@ -301,7 +302,7 @@ defmodule Commanded.Event.Handler do
       """
       def child_spec(opts) do
         default = %{
-          id: {__MODULE__, @name},
+          id: {__MODULE__, Keyword.get(opts, :application, :default), @name},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker
@@ -349,7 +350,9 @@ defmodule Commanded.Event.Handler do
     {valid, invalid} =
       module_opts
       |> Keyword.merge(local_opts)
-      |> Keyword.split([:consistency, :start_from, :subscribe_to] ++ additional_allowed_opts)
+      |> Keyword.split(
+        [:application, :consistency, :start_from, :subscribe_to] ++ additional_allowed_opts
+      )
 
     if Enum.any?(invalid) do
       raise ArgumentError,
