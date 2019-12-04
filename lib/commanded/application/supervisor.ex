@@ -36,29 +36,29 @@ defmodule Commanded.Application.Supervisor do
   Starts the application supervisor.
   """
   def start_link(application, otp_app, config, opts) do
-    sup_opts = if name = Keyword.get(opts, :name, application), do: [name: name], else: []
+    name = Keyword.get(opts, :name, application)
 
     Supervisor.start_link(
       __MODULE__,
-      {application, otp_app, config, opts},
-      sup_opts
+      {application, otp_app, config, opts, name},
+      name: name
     )
   end
 
-  def init({application, otp_app, config, opts}) do
+  def init({application, otp_app, config, opts, name}) do
     case runtime_config(application, otp_app, config, opts) do
       {:ok, config} ->
-        {event_store_child_spec, config} = event_store_child_spec(application, config)
-        {pubsub_child_spec, config} = pubsub_child_spec(application, config)
-        {registry_child_spec, config} = registry_child_spec(application, config)
+        {event_store_child_spec, config} = event_store_child_spec(name, config)
+        {pubsub_child_spec, config} = pubsub_child_spec(name, config)
+        {registry_child_spec, config} = registry_child_spec(name, config)
 
-        :ok = Config.associate(self(), application, config)
+        :ok = Config.associate(self(), name, config)
 
         children =
           event_store_child_spec ++
             pubsub_child_spec ++
             registry_child_spec ++
-            commanded_child_spec(application, config)
+            app_child_spec(name, config)
 
         Supervisor.init(children, strategy: :one_for_one)
 
@@ -67,47 +67,47 @@ defmodule Commanded.Application.Supervisor do
     end
   end
 
-  defp commanded_child_spec(application, config) do
-    task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
-    subscriptions_name = Module.concat([application, Commanded.Subscriptions])
-    registry_name = Module.concat([application, Commanded.Subscriptions.Registry])
+  defp app_child_spec(name, config) do
+    task_dispatcher_name = Module.concat([name, Commanded.Commands.TaskDispatcher])
+    subscriptions_name = Module.concat([name, Commanded.Subscriptions])
+    registry_name = Module.concat([name, Commanded.Subscriptions.Registry])
     snapshotting = Keyword.get(config, :snapshotting, %{})
 
     [
       {Task.Supervisor, name: task_dispatcher_name},
-      {Commanded.Aggregates.Supervisor, application: application, snapshotting: snapshotting},
-      {Commanded.Subscriptions.Registry, application: application, name: registry_name},
-      {Commanded.Subscriptions, application: application, name: subscriptions_name}
+      {Commanded.Aggregates.Supervisor, application: name, snapshotting: snapshotting},
+      {Commanded.Subscriptions.Registry, application: name, name: registry_name},
+      {Commanded.Subscriptions, application: name, name: subscriptions_name}
     ]
   end
 
-  defp event_store_child_spec(application, config) do
+  defp event_store_child_spec(name, config) do
     {adapter, adapter_config} =
-      Commanded.EventStore.adapter(application, Keyword.get(config, :event_store))
+      Commanded.EventStore.adapter(name, Keyword.get(config, :event_store))
 
-    {:ok, child_spec, adapter_meta} = adapter.child_spec(application, adapter_config)
+    {:ok, child_spec, adapter_meta} = adapter.child_spec(name, adapter_config)
 
     config = Keyword.put(config, :event_store, {adapter, adapter_meta})
 
     {child_spec, config}
   end
 
-  defp pubsub_child_spec(application, config) do
+  defp pubsub_child_spec(name, config) do
     {adapter, adapter_config} =
-      Commanded.PubSub.adapter(application, Keyword.get(config, :pubsub, :local))
+      Commanded.PubSub.adapter(name, Keyword.get(config, :pubsub, :local))
 
-    {:ok, child_spec, adapter_meta} = adapter.child_spec(application, adapter_config)
+    {:ok, child_spec, adapter_meta} = adapter.child_spec(name, adapter_config)
 
     config = Keyword.put(config, :pubsub, {adapter, adapter_meta})
 
     {child_spec, config}
   end
 
-  defp registry_child_spec(application, config) do
+  defp registry_child_spec(name, config) do
     {adapter, adapter_config} =
-      Commanded.Registration.adapter(application, Keyword.get(config, :registry, :local))
+      Commanded.Registration.adapter(name, Keyword.get(config, :registry, :local))
 
-    {:ok, child_spec, adapter_meta} = adapter.child_spec(application, adapter_config)
+    {:ok, child_spec, adapter_meta} = adapter.child_spec(name, adapter_config)
 
     config = Keyword.put(config, :registry, {adapter, adapter_meta})
 

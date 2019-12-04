@@ -13,6 +13,10 @@ defmodule Commanded.ApplicationTest do
       [pid: pid]
     end
 
+    test "should register process using application name", %{pid: pid} do
+      assert Process.whereis(ExampleApplication) == pid
+    end
+
     test "should not allow an application to be started more than once", %{pid: pid} do
       assert {:error, {:already_started, ^pid}} = ExampleApplication.start_link()
     end
