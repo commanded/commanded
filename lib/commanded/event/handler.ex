@@ -301,8 +301,10 @@ defmodule Commanded.Event.Handler do
 
       """
       def child_spec(opts) do
+        application = Keyword.get(opts, :application, @application)
+
         default = %{
-          id: {__MODULE__, Keyword.get(opts, :application, :default), @name},
+          id: {__MODULE__, application, @name},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker

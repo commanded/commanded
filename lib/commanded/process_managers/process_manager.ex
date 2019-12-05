@@ -301,10 +301,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @name name
 
       def start_link(opts \\ []) do
+        application = Keyword.get(opts, :application, @application)
         module_opts = Keyword.drop(@opts, [:application, :name])
         opts = Handler.start_opts(__MODULE__, module_opts, opts, [:event_timeout, :idle_timeout])
 
-        ProcessRouter.start_link(@application, @name, __MODULE__, opts)
+        ProcessRouter.start_link(application, @name, __MODULE__, opts)
       end
 
       @doc """
@@ -319,8 +320,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       """
       def child_spec(opts) do
+        application = Keyword.get(opts, :application, @application)
+
         default = %{
-          id: {__MODULE__, @name},
+          id: {__MODULE__, application, @name},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker
