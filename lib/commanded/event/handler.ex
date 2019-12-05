@@ -52,6 +52,12 @@ defmodule Commanded.Event.Handler do
   to send transactional emails to an already deployed system containing many
   historical events.
 
+  The `start_from` option only applies when the subscription is initially
+  created, the first time the handler starts. Whenever the handler restarts the
+  subscription will resume from the next event after the last successfully
+  processed event. Restarting an event handler does not restart its
+  subscription.
+
   ### Example
 
   Set the `start_from` option (`:origin`, `:current`, or an explicit event
@@ -68,7 +74,6 @@ defmodule Commanded.Event.Handler do
   starting your handler:
 
       {:ok, _handler} = ExampleHandler.start_link(start_from: :current)
-
 
   ### Subscribing to an individual stream
 
@@ -184,6 +189,8 @@ defmodule Commanded.Event.Handler do
 
   ### Example
 
+  Define an event handler with `:strong` consistency:
+
       defmodule ExampleHandler do
         use Commanded.Event.Handler,
           application: ExampleApp,
@@ -191,6 +198,32 @@ defmodule Commanded.Event.Handler do
           consistency: :strong
       end
 
+  ## Dynamic application
+
+  An event handler's application can be provided as an option to `start_link/1`.
+  This can be used to start the same handler multiple times, but using a
+  separate Commanded application (and event store).
+
+  ### Example
+
+  Start a separate event handler process for each tenant, guaranteeing that the
+  data and processing remains isolated between tenants.
+
+      for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _handler} = ExampleHandler.start_link(application: tenant)
+      end
+
+  Typically you would start the event handlers using a supervisor:
+
+      handlers =
+        for tenant <- [:tenant1, :tenant2, :tenant3] do
+          {ExampleHandler, application: tenant}
+        end
+
+      Supervisor.start_link(handlers, strategy: :one_for_one)
+
+  The above examples require three named Commanded applications to have already
+  been started.
   """
 
   use GenServer

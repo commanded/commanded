@@ -24,8 +24,8 @@ defmodule Commanded.Application do
         pubsub: :local,
         registry: :local
 
-  Alternatively, you can include the event store, pubsub, and registry config
-  when defining the application:
+  Alternatively, you can include the configuration when defining the
+  application:
 
       defmodule MyApp.Application do
         use Commanded.Application,
@@ -39,6 +39,50 @@ defmodule Commanded.Application do
 
         router(MyApp.Router)
       end
+
+  A Commanded application must be started before it can be used:
+
+      {:ok, _pid} = MyApp.Application.start_link()
+
+  Instead of starting the application manually, you should use a
+  [Supervisor](supervision.html).
+
+  ## Supervision
+
+  Use a supervisor to start your Commanded application:
+
+      Supervisor.start_link([
+        MyApp.Application
+      ], strategy: :one_for_one)
+
+  ## Dynamic named applications
+
+  A application can be provided with a name as an option to `start_link/1`.
+  This can be used to start the same application multiple times, but each using
+  its own separately configured and isolated event store. The application name
+  must be unique.
+
+  Multipe instances of the same event handler or process manager can be
+  started by refering to the application by its name. The event store operations
+  can also refer to an application by its name.
+
+  ### Example
+
+  Start a separate application  process for each tenant, guaranteeing that the
+  data and processing remains isolated between tenants.
+
+      for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _handler} = MyApp.Application.start_link(name: tenant)
+      end
+
+  Typically you would start the applications using a supervisor:
+
+      handlers =
+        for tenant <- [:tenant1, :tenant2, :tenant3] do
+          {MyApp.Application, name: tenant}
+        end
+
+      Supervisor.start_link(handlers, strategy: :one_for_one)
 
   """
 
