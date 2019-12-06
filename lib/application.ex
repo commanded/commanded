@@ -84,6 +84,10 @@ defmodule Commanded.Application do
 
       Supervisor.start_link(handlers, strategy: :one_for_one)
 
+  To dispatch a command you must provide the application name:
+
+      :ok = MyApp.Application.dispatch(command, application: :tenant1)
+
   """
 
   @type t :: module
@@ -97,7 +101,6 @@ defmodule Commanded.Application do
 
       @otp_app otp_app
       @config config
-      @name Keyword.get(opts, :name, __MODULE__)
 
       use Commanded.Commands.CompositeRouter, application: __MODULE__
 
@@ -110,18 +113,36 @@ defmodule Commanded.Application do
 
       def child_spec(opts) do
         %{
-          id: Keyword.get(opts, :name, __MODULE__),
+          id: name(opts),
           start: {__MODULE__, :start_link, [opts]},
           type: :supervisor
         }
       end
 
       def start_link(opts \\ []) do
-        Commanded.Application.Supervisor.start_link(__MODULE__, @otp_app, @config, opts)
+        name = name(opts)
+
+        Commanded.Application.Supervisor.start_link(__MODULE__, @otp_app, @config, name, opts)
       end
 
       def stop(pid, timeout \\ 5000) do
         Supervisor.stop(pid, :normal, timeout)
+      end
+
+      defp name(opts) do
+        case Keyword.get(opts, :name) do
+          nil ->
+            __MODULE__
+
+          name when is_atom(name) ->
+            name
+
+          invalid ->
+            raise ArgumentError,
+              message:
+                "expected :name option to be an atom but got: " <>
+                  inspect(invalid)
+        end
       end
     end
   end

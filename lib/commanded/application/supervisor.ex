@@ -35,17 +35,15 @@ defmodule Commanded.Application.Supervisor do
   @doc """
   Starts the application supervisor.
   """
-  def start_link(application, otp_app, config, opts) do
-    name = Keyword.get(opts, :name, application)
-
+  def start_link(application, otp_app, config, name, opts) do
     Supervisor.start_link(
       __MODULE__,
-      {application, otp_app, config, opts, name},
+      {application, otp_app, config, name, opts},
       name: name
     )
   end
 
-  def init({application, otp_app, config, opts, name}) do
+  def init({application, otp_app, config, name, opts}) do
     case runtime_config(application, otp_app, config, opts) do
       {:ok, config} ->
         {event_store_child_spec, config} = event_store_child_spec(name, config)

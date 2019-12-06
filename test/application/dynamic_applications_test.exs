@@ -15,6 +15,12 @@ defmodule Commanded.DynamicApplicationsTest do
   end
 
   describe "dynamic Commanded applications" do
+    test "should ensure name is an atom" do
+      assert_raise ArgumentError,
+                   "expected :name option to be an atom but got: \"invalid\"",
+                   fn -> ExampleApplication.start_link(name: "invalid") end
+    end
+
     test "should allow name to be provided when starting an application" do
       assert {:ok, pid} = start_supervised({ExampleApplication, name: :example1})
       assert Process.whereis(:example1) == pid
