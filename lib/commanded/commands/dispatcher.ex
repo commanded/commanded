@@ -36,9 +36,14 @@ defmodule Commanded.Commands.Dispatcher do
   @doc """
   Dispatch the given command to the handler module for the aggregate as identified
 
-  Returns `:ok` on success, or `{:error, error}` on failure.
+  Returns `:ok`, `{:ok, aggregate_version}` or 
+  `{:ok, %Commanded.Commands.ExecutionResult{}}` on success, or `{:error, error}`
+  on failure.
   """
-  @spec dispatch(payload :: struct) :: :ok | {:error, error :: term}
+  @spec dispatch(payload :: struct) :: :ok |
+    {:ok, Commanded.Commands.ExecutionResult.t()} |
+    {:ok, aggregate_version :: integer()} |
+    {:error, error :: term}
   def dispatch(%Payload{} = payload) do
     pipeline =
       payload
