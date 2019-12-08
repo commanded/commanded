@@ -5,8 +5,8 @@ defmodule Commanded.EventStore.InMemoryTestCase do
   alias Commanded.Serialization.JsonSerializer
 
   setup do
-    config = [name: InMemory, serializer: JsonSerializer]
-    {:ok, child_spec, event_store_meta} = InMemory.child_spec(InMemory, config)
+    {:ok, child_spec, event_store_meta} =
+      InMemory.child_spec(InMemory, serializer: JsonSerializer)
 
     for child <- child_spec do
       start_supervised!(child)

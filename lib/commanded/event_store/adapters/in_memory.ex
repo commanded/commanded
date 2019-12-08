@@ -43,10 +43,9 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   @impl Commanded.EventStore.Adapter
   def child_spec(application, config) do
-    event_store_name = event_store_name(application)
-    supervisor_name = subscriptions_name(event_store_name)
+    {event_store_name, config} = parse_config(application, config)
 
-    config = Keyword.merge(config, name: event_store_name)
+    supervisor_name = subscriptions_name(event_store_name)
 
     child_spec = [
       {DynamicSupervisor, strategy: :one_for_one, name: supervisor_name},
@@ -141,8 +140,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     GenServer.call(event_store, {:delete_snapshot, source_uuid})
   end
 
-  def reset!(application) do
-    event_store = event_store_name(application)
+  def reset!(application, config \\ []) do
+    {event_store, _config} = parse_config(application, config)
 
     GenServer.call(event_store, :reset!)
   end
@@ -641,11 +640,26 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     }
   end
 
+  defp parse_config(application, config) do
+    case Keyword.get(config, :name) do
+      nil ->
+        name = Module.concat([application, EventStore])
+
+        {name, Keyword.put(config, :name, name)}
+
+      name when is_atom(name) ->
+        {name, config}
+
+      invalid ->
+        raise ArgumentError,
+          message:
+            "expected :name option to be an atom but got: " <>
+              inspect(invalid)
+    end
+  end
+
   defp event_store_name(adapter_meta) when is_map(adapter_meta),
     do: Map.get(adapter_meta, :name)
-
-  defp event_store_name(application) when is_atom(application),
-    do: Module.concat([application, EventStore])
 
   defp subscriptions_name(event_store),
     do: Module.concat([event_store, SubscriptionsSupervisor])
