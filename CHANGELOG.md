@@ -1,5 +1,11 @@
 # Changelog
 
+## Next release
+
+### Bug fixes
+
+- Fixes the typespec for command dispatch ([#325](https://github.com/commanded/commanded/pull/325)).
+
 ## v1.0.0
 
 ### Breaking changes

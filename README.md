@@ -145,6 +145,7 @@ Commanded exists thanks to the following people who have contributed.
 - [JC](https://github.com/jccf091)
 - [Joan Zapata](https://github.com/JoanZapata)
 - [João Thallis](https://github.com/joaothallis)
+- [John Wilger](https://github.com/jwilger)
 - [Kok J Sam](https://github.com/sammkj)
 - [Leif Gensert](https://github.com/leifg)
 - [Luís Ferreira](https://github.com/zamith)
