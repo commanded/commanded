@@ -62,6 +62,10 @@ config :my_app, MyApp.Application,
 
 The PG2 adapter is preferable for cluster deployment since it is provided by Erlang and requires no further dependencies.
 
+### EventStore
+
+If using PostgreSQL-based Elixir EventStore please also refer to its documentation about [running on a clustering of nodes](https://hexdocs.pm/eventstore/cluster.html).
+
 ## Multi node, but not clustered deployment
 
 Running multiple nodes, but choosing not to connect the nodes together to form a cluster, requires that you use the local registry and Phoenix's pub/sub library with its Redis adapter.
