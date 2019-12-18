@@ -84,8 +84,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         :ok
       end)
 
-      assert {:ok, 3, _events} =
-               Aggregate.execute(MockedApp, BankAccount, account_number, context)
+      assert {:ok, 3} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
 
       assert Aggregate.aggregate_version(MockedApp, BankAccount, account_number) == 3
 
@@ -96,10 +95,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
              }
     end
 
-    test "should error after too many attempts", context do
-      %{account_number: account_number} = context
-
-      # fail to append to stream
+    test "should error after too many attempts", %{account_number: account_number} do
+      # Fail to append to stream
       expect(MockEventStore, :append_to_stream, 6, fn _event_store_meta,
                                                       ^account_number,
                                                       1,
@@ -160,7 +157,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         retry_attempts: 1
       }
 
-      {:ok, 1, _events} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
+      {:ok, 1} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
 
       [
         account_number: account_number

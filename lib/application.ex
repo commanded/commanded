@@ -185,8 +185,9 @@ defmodule Commanded.Application do
   """
   @callback dispatch(command :: struct, timeout_or_opts :: integer | :infinity | Keyword.t()) ::
               :ok
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+              | {:ok, aggregate_state :: struct}
               | {:ok, aggregate_version :: non_neg_integer()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}

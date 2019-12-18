@@ -5,7 +5,6 @@ defmodule Commanded.Commands.Dispatcher do
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
-  alias Commanded.Commands.ExecutionResult
   alias Commanded.Middleware.Pipeline
 
   defmodule Payload do
@@ -21,14 +20,13 @@ defmodule Commanded.Commands.Dispatcher do
       :handler_module,
       :handler_function,
       :aggregate_module,
-      :include_aggregate_version,
-      :include_execution_result,
       :identity,
       :identity_prefix,
       :timeout,
       :lifespan,
       :metadata,
       :retry_attempts,
+      :return,
       middleware: []
     ]
   end
@@ -36,14 +34,16 @@ defmodule Commanded.Commands.Dispatcher do
   @doc """
   Dispatch the given command to the handler module for the aggregate as identified
 
-  Returns `:ok`, `{:ok, aggregate_version}` or 
+  Returns `:ok`, `{:ok, aggregate_version}` or
   `{:ok, %Commanded.Commands.ExecutionResult{}}` on success, or `{:error, error}`
   on failure.
   """
-  @spec dispatch(payload :: struct) :: :ok |
-    {:ok, Commanded.Commands.ExecutionResult.t()} |
-    {:ok, aggregate_version :: integer()} |
-    {:error, error :: term}
+  @spec dispatch(payload :: struct) ::
+          :ok
+          | {:ok, aggregate_state :: struct}
+          | {:ok, aggregate_version :: non_neg_integer()}
+          | {:ok, Commanded.Commands.ExecutionResult.t()}
+          | {:error, error :: term}
   def dispatch(%Payload{} = payload) do
     pipeline =
       payload
@@ -100,12 +100,17 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version, events} ->
+      {:ok, aggregate_version} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
-        |> Pipeline.assign(:events, events)
         |> after_dispatch(payload)
-        |> respond_with_success(payload, events)
+        |> Pipeline.respond(:ok)
+
+      {:ok, aggregate_version, return} ->
+        pipeline
+        |> Pipeline.assign(:aggregate_version, aggregate_version)
+        |> after_dispatch(payload)
+        |> Pipeline.respond({:ok, return})
 
       {:exit, {:normal, :aggregate_stopped}} ->
         # Maybe retry command when aggregate process stopped by lifespan timeout
@@ -138,7 +143,8 @@ defmodule Commanded.Commands.Dispatcher do
       handler_module: handler_module,
       handler_function: handler_function,
       lifespan: lifespan,
-      retry_attempts: retry_attempts
+      retry_attempts: retry_attempts,
+      return: return
     } = payload
 
     %ExecutionContext{
@@ -149,32 +155,9 @@ defmodule Commanded.Commands.Dispatcher do
       handler: handler_module,
       function: handler_function,
       lifespan: lifespan,
-      retry_attempts: retry_attempts
+      retry_attempts: retry_attempts,
+      return: return
     }
-  end
-
-  defp respond_with_success(%Pipeline{} = pipeline, payload, events) do
-    response =
-      case payload do
-        %{include_execution_result: true} ->
-          {
-            :ok,
-            %ExecutionResult{
-              aggregate_uuid: pipeline.assigns.aggregate_uuid,
-              aggregate_version: pipeline.assigns.aggregate_version,
-              events: events,
-              metadata: pipeline.metadata
-            }
-          }
-
-        %{include_aggregate_version: true} ->
-          {:ok, pipeline.assigns.aggregate_version}
-
-        _ ->
-          :ok
-      end
-
-    Pipeline.respond(pipeline, response)
   end
 
   defp before_dispatch(%Pipeline{} = pipeline, %Payload{middleware: middleware}) do

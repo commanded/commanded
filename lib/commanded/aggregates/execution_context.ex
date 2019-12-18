@@ -32,8 +32,10 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
   """
 
+  alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.DefaultLifespan
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Commands.ExecutionResult
 
   defstruct [
     :command,
@@ -41,6 +43,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     :correlation_id,
     :function,
     :handler,
+    :return,
     retry_attempts: 0,
     lifespan: DefaultLifespan,
     metadata: %{}
@@ -59,4 +62,37 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
     {:ok, context}
   end
+
+  def reply(%ExecutionContext{} = context, {:ok, events}, %Aggregate{} = aggregate) do
+    %Aggregate{
+      aggregate_uuid: aggregate_uuid,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version
+    } = aggregate
+
+    %ExecutionContext{metadata: metadata, return: return} = context
+
+    case return do
+      :aggregate_state ->
+        {:ok, aggregate_version, aggregate_state}
+
+      :aggregate_version ->
+        {:ok, aggregate_version, aggregate_version}
+
+      :execution_result ->
+        result = %ExecutionResult{
+          aggregate_uuid: aggregate_uuid,
+          aggregate_version: aggregate_version,
+          events: events,
+          metadata: metadata
+        }
+
+        {:ok, aggregate_version, result}
+
+      nil ->
+        {:ok, aggregate_version}
+    end
+  end
+
+  def reply(%ExecutionContext{}, {:error, _error} = reply, %Aggregate{}), do: reply
 end
