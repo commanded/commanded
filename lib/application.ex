@@ -57,19 +57,19 @@ defmodule Commanded.Application do
 
   ## Dynamic named applications
 
-  A application can be provided with a name as an option to `start_link/1`.
-  This can be used to start the same application multiple times, but each using
-  its own separately configured and isolated event store. The application name
-  must be unique.
+  An application can be provided with a name as an option to `start_link/1`.
+  This can be used to start the same application multiple times, each using its
+  own separately configured and isolated event store. Each application must be
+  started with a unique name.
 
   Multipe instances of the same event handler or process manager can be
-  started by refering to the application by its name. The event store operations
-  can also refer to an application by its name.
+  started by refering to a started application by its name. The event store
+  operations can also be scoped to an application by referring to its name.
 
   ### Example
 
-  Start a separate application  process for each tenant, guaranteeing that the
-  data and processing remains isolated between tenants.
+  Start an application process for each tenant in a multi-tenanted app,
+  guaranteeing that the data and processing remains isolated between tenants.
 
       for tenant <- [:tenant1, :tenant2, :tenant3] do
         {:ok, _app} = MyApp.Application.start_link(name: tenant)
@@ -77,12 +77,12 @@ defmodule Commanded.Application do
 
   Typically you would start the applications using a supervisor:
 
-      handlers =
+      children =
         for tenant <- [:tenant1, :tenant2, :tenant3] do
           {MyApp.Application, name: tenant}
         end
 
-      Supervisor.start_link(handlers, strategy: :one_for_one)
+      Supervisor.start_link(children, strategy: :one_for_one)
 
   To dispatch a command you must provide the application name:
 

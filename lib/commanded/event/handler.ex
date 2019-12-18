@@ -201,28 +201,29 @@ defmodule Commanded.Event.Handler do
   ## Dynamic application
 
   An event handler's application can be provided as an option to `start_link/1`.
-  This can be used to start the same handler multiple times, but using a
-  separate Commanded application (and event store).
+  This can be used to start the same handler multiple times, each using a
+  separate Commanded application and event store.
 
   ### Example
 
-  Start a separate event handler process for each tenant, guaranteeing that the
-  data and processing remains isolated between tenants.
+  Start an event handler process for each tenant in a multi-tenanted app,
+  guaranteeing that the data and processing remains isolated between tenants.
 
       for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _app} = MyApp.Application.start_link(name: tenant)
         {:ok, _handler} = ExampleHandler.start_link(application: tenant)
       end
 
   Typically you would start the event handlers using a supervisor:
 
-      handlers =
+      children =
         for tenant <- [:tenant1, :tenant2, :tenant3] do
           {ExampleHandler, application: tenant}
         end
 
-      Supervisor.start_link(handlers, strategy: :one_for_one)
+      Supervisor.start_link(children, strategy: :one_for_one)
 
-  The above examples require three named Commanded applications to have already
+  The above example requires three named Commanded applications to have already
   been started.
   """
 
