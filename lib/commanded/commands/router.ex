@@ -122,7 +122,7 @@ defmodule Commanded.Commands.Router do
   ## Dispatch return
 
   By default a successful command dispatch will return `:ok`. You can change
-  this behaviour by specifying a `return` option.
+  this behaviour by specifying a `returning` option.
 
     - `:aggregate_state` - to return the update aggregate state.
     - `:aggregate_version` - to return only the aggregate version.
@@ -133,9 +133,9 @@ defmodule Commanded.Commands.Router do
   ### Aggregate state
 
   Return the updated aggregate state as part of the dispatch result by setting
-  `return: :aggregate_state`:
+  `returning: :aggregate_state`:
 
-      {:ok, %BankAccount{}} = BankApp.dispatch(command, return: :aggregate_state)
+      {:ok, %BankAccount{}} = BankApp.dispatch(command, returning: :aggregate_state)
 
   This is useful when you want to return immediately fields from the aggregate's
   state without requiring an read model projection and waiting for the event(s)
@@ -149,9 +149,9 @@ defmodule Commanded.Commands.Router do
   ### Aggregate version
 
   You can optionally choose to include the aggregate's version as part of the
-  dispatch result by setting `return: :aggregate_version`:
+  dispatch result by setting `returning: :aggregate_version`:
 
-      {:ok, aggregate_version} = BankApp.dispatch(command, return: :aggregate_version)
+      {:ok, aggregate_version} = BankApp.dispatch(command, returning: :aggregate_version)
 
   This is useful when you need to wait for an event handler, such as a read model
   projection, to be up-to-date before querying its data.
@@ -159,11 +159,11 @@ defmodule Commanded.Commands.Router do
   ### Execution results
 
   You can also choose to include the execution result as part of the dispatch
-  result by setting `return: :execution_result`:
+  result by setting `returning: :execution_result`:
 
       alias Commanded.Commands.ExecutionResult
 
-      {:ok, %ExecutionResult{} = result} = BankApp.dispatch(command, return: :execution_result)
+      {:ok, %ExecutionResult{} = result} = BankApp.dispatch(command, returning: :execution_result)
 
   Or by setting the `default_dispatch_return` in your application config file:
 
@@ -204,7 +204,7 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ConsistencyGuarantee
         ],
         consistency: get_env(:default_consistency, :eventual),
-        return: get_default_return(),
+        returning: get_default_return(),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
@@ -430,14 +430,14 @@ defmodule Commanded.Commands.Router do
         metadata = Keyword.get(opts, :metadata) || @default[:metadata]
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default[:dispatch_timeout]
 
-        return =
+        returning =
           cond do
-            (return = Keyword.get(opts, :return)) in [
+            (returning = Keyword.get(opts, :returning)) in [
               :aggregate_state,
               :aggregate_version,
               :execution_result
             ] ->
-              return
+              returning
 
             Keyword.get(opts, :include_execution_result) == true ->
               :execution_result
@@ -446,7 +446,7 @@ defmodule Commanded.Commands.Router do
               :aggregate_version
 
             true ->
-              @default[:return]
+              @default[:returning]
           end
 
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
@@ -479,7 +479,7 @@ defmodule Commanded.Commands.Router do
           aggregate_module: unquote(aggregate),
           identity: identity,
           identity_prefix: identity_prefix,
-          return: return,
+          returning: returning,
           timeout: timeout,
           lifespan: lifespan,
           metadata: metadata,
@@ -541,7 +541,7 @@ defmodule Commanded.Commands.Router do
             the metadata to be associated with all events created by the
             command.
 
-          - `return` - to choose what response is returned from a successful
+          - `returning` - to choose what response is returned from a successful
               command dispatch. The default is to return an `:ok`.
 
               The available options are:
@@ -559,8 +559,8 @@ defmodule Commanded.Commands.Router do
 
           - `timeout` - as described above.
 
-      Returns `:ok` on success unless the `:return` option is specified where
-      it returns one of `{:ok, aggregate_state}`, `{:ok, aggregate_version}` or
+      Returns `:ok` on success unless the `:returning` option is specified where
+      it returns one of `{:ok, aggregate_state}`, `{:ok, aggregate_version}`, or
       `{:ok, %Commanded.Commands.ExecutionResult{}}`.
 
       Returns `{:error, reason}` on failure.

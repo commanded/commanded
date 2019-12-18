@@ -43,7 +43,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     :correlation_id,
     :function,
     :handler,
-    :return,
+    :returning,
     retry_attempts: 0,
     lifespan: DefaultLifespan,
     metadata: %{}
@@ -63,36 +63,37 @@ defmodule Commanded.Aggregates.ExecutionContext do
     {:ok, context}
   end
 
-  def reply(%ExecutionContext{} = context, {:ok, events}, %Aggregate{} = aggregate) do
+  def format_reply(reply, %ExecutionContext{} = context, %Aggregate{} = aggregate) do
     %Aggregate{
       aggregate_uuid: aggregate_uuid,
       aggregate_state: aggregate_state,
       aggregate_version: aggregate_version
     } = aggregate
 
-    %ExecutionContext{metadata: metadata, return: return} = context
+    %ExecutionContext{metadata: metadata, returning: returning} = context
 
-    case return do
-      :aggregate_state ->
-        {:ok, aggregate_version, aggregate_state}
+    with {:ok, events} <- reply do
+      case returning do
+        :aggregate_state ->
+          {:ok, aggregate_version, events, aggregate_state}
 
-      :aggregate_version ->
-        {:ok, aggregate_version, aggregate_version}
+        :aggregate_version ->
+          {:ok, aggregate_version, events, aggregate_version}
 
-      :execution_result ->
-        result = %ExecutionResult{
-          aggregate_uuid: aggregate_uuid,
-          aggregate_version: aggregate_version,
-          events: events,
-          metadata: metadata
-        }
+        :execution_result ->
+          result = %ExecutionResult{
+            aggregate_uuid: aggregate_uuid,
+            aggregate_state: aggregate_state,
+            aggregate_version: aggregate_version,
+            events: events,
+            metadata: metadata
+          }
 
-        {:ok, aggregate_version, result}
+          {:ok, aggregate_version, events, result}
 
-      nil ->
-        {:ok, aggregate_version}
+        nil ->
+          {:ok, aggregate_version, events}
+      end
     end
   end
-
-  def reply(%ExecutionContext{}, {:error, _error} = reply, %Aggregate{}), do: reply
 end

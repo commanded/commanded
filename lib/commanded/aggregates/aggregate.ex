@@ -47,12 +47,13 @@ defmodule Commanded.Aggregates.Aggregate do
 
   require Logger
 
-  alias Commanded.Aggregates.{Aggregate, ExecutionContext}
-  alias Commanded.Commands.ExecutionResult
+  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Event.Mapper
   alias Commanded.Event.Upcast
   alias Commanded.EventStore
-  alias Commanded.EventStore.{RecordedEvent, SnapshotData}
+  alias Commanded.EventStore.RecordedEvent
+  alias Commanded.EventStore.SnapshotData
   alias Commanded.Registration
   alias Commanded.Snapshotting
 
@@ -238,7 +239,7 @@ defmodule Commanded.Aggregates.Aggregate do
           aggregate_lifespan_timeout(lifespan, :after_error, error)
       end
 
-    reply = ExecutionContext.reply(context, reply, state)
+    reply = ExecutionContext.format_reply(reply, context, state)
 
     state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
@@ -446,7 +447,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   defp execute_command(%ExecutionContext{} = context, %Aggregate{} = state) do
     %ExecutionContext{command: command, handler: handler, function: function} = context
-    %Aggregate{aggregate_version: expected_version, aggregate_state: aggregate_state} = state
+    %Aggregate{aggregate_state: aggregate_state} = state
 
     Logger.debug(fn -> describe(state) <> " executing command: #{inspect(command)}" end)
 

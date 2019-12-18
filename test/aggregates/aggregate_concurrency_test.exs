@@ -84,7 +84,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         :ok
       end)
 
-      assert {:ok, 3} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
+      assert {:ok, 3, _events} =
+               Aggregate.execute(MockedApp, BankAccount, account_number, context)
 
       assert Aggregate.aggregate_version(MockedApp, BankAccount, account_number) == 3
 
@@ -157,7 +158,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
         retry_attempts: 1
       }
 
-      {:ok, 1} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
+      {:ok, 1, _events} = Aggregate.execute(MockedApp, BankAccount, account_number, context)
 
       [
         account_number: account_number

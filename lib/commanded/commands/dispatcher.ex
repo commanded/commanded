@@ -26,22 +26,20 @@ defmodule Commanded.Commands.Dispatcher do
       :lifespan,
       :metadata,
       :retry_attempts,
-      :return,
+      :returning,
       middleware: []
     ]
   end
 
   @doc """
-  Dispatch the given command to the handler module for the aggregate as identified
-
-  Returns `:ok`, `{:ok, aggregate_version}` or
-  `{:ok, %Commanded.Commands.ExecutionResult{}}` on success, or `{:error, error}`
-  on failure.
+  Dispatch the given command to the handler module for the aggregate as
+  identified.
   """
   @spec dispatch(payload :: struct) ::
           :ok
           | {:ok, aggregate_state :: struct}
           | {:ok, aggregate_version :: non_neg_integer()}
+          | {:ok, events :: list(struct)}
           | {:ok, Commanded.Commands.ExecutionResult.t()}
           | {:error, error :: term}
   def dispatch(%Payload{} = payload) do
@@ -100,17 +98,19 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version} ->
+      {:ok, aggregate_version, events} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
+        |> Pipeline.assign(:events, events)
         |> after_dispatch(payload)
         |> Pipeline.respond(:ok)
 
-      {:ok, aggregate_version, return} ->
+      {:ok, aggregate_version, events, reply} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
+        |> Pipeline.assign(:events, events)
         |> after_dispatch(payload)
-        |> Pipeline.respond({:ok, return})
+        |> Pipeline.respond({:ok, reply})
 
       {:exit, {:normal, :aggregate_stopped}} ->
         # Maybe retry command when aggregate process stopped by lifespan timeout
@@ -144,7 +144,7 @@ defmodule Commanded.Commands.Dispatcher do
       handler_function: handler_function,
       lifespan: lifespan,
       retry_attempts: retry_attempts,
-      return: return
+      returning: returning
     } = payload
 
     %ExecutionContext{
@@ -156,7 +156,7 @@ defmodule Commanded.Commands.Dispatcher do
       function: handler_function,
       lifespan: lifespan,
       retry_attempts: retry_attempts,
-      return: return
+      returning: returning
     }
   end
 

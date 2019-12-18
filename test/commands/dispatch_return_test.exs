@@ -20,13 +20,13 @@ defmodule Commanded.Commands.DispatchReturnTest do
       assert {:ok, %BankAccount{account_number: "ACC123", balance: 1_000, state: :active}} ==
                BankApp.dispatch(
                  %OpenAccount{account_number: "ACC123", initial_balance: 1_000},
-                 return: :aggregate_state
+                 returning: :aggregate_state
                )
 
       assert {:ok, %BankAccount{account_number: "ACC123", balance: 1_100, state: :active}} ==
                BankApp.dispatch(
                  %DepositMoney{account_number: "ACC123", amount: 100},
-                 return: :aggregate_state
+                 returning: :aggregate_state
                )
     end
   end
@@ -36,13 +36,13 @@ defmodule Commanded.Commands.DispatchReturnTest do
       assert {:ok, 1} ==
                BankApp.dispatch(
                  %OpenAccount{account_number: "ACC123", initial_balance: 1_000},
-                 return: :aggregate_version
+                 returning: :aggregate_version
                )
 
       assert {:ok, 2} ==
                BankApp.dispatch(
                  %DepositMoney{account_number: "ACC123", amount: 100},
-                 return: :aggregate_version
+                 returning: :aggregate_version
                )
     end
   end
@@ -52,13 +52,18 @@ defmodule Commanded.Commands.DispatchReturnTest do
       metadata = %{"ip_address" => "127.0.0.1"}
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
 
-      assert BankApp.dispatch(command, metadata: metadata, return: :execution_result) ==
+      assert BankApp.dispatch(command, metadata: metadata, returning: :execution_result) ==
                {
                  :ok,
                  %ExecutionResult{
                    aggregate_uuid: "ACC123",
+                   aggregate_state: %BankAccount{
+                     account_number: "ACC123",
+                     balance: 1_000,
+                     state: :active
+                   },
                    aggregate_version: 1,
-                   events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1000}],
+                   events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}],
                    metadata: metadata
                  }
                }
@@ -94,8 +99,13 @@ defmodule Commanded.Commands.DispatchReturnTest do
                  :ok,
                  %ExecutionResult{
                    aggregate_uuid: "ACC123",
+                   aggregate_state: %BankAccount{
+                     account_number: "ACC123",
+                     balance: 1_000,
+                     state: :active
+                   },
                    aggregate_version: 1,
-                   events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1000}],
+                   events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}],
                    metadata: metadata
                  }
                }
