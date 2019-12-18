@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Enhancements
+
+- Dynamic Commanded applications ([#324](https://github.com/commanded/commanded/pull/324)).
+
 ### Bug fixes
 
 - Fixes the typespec for command dispatch ([#325](https://github.com/commanded/commanded/pull/325)).

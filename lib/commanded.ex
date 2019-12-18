@@ -4,6 +4,7 @@ defmodule Commanded do
 
   Provides support for:
 
+  - [Defining applications](application.html).
   - [Command registration and dispatch](commands.html).
   - [Hosting and delegation to aggregates](aggregates.html).
   - [Event handling](events.html).
@@ -11,14 +12,15 @@ defmodule Commanded do
 
   Use Commanded with one of the following event stores for persistence:
 
-  - [EventStore](https://hex.pm/packages/eventstore) Elixir library, using PostgreSQL for persistence
-  - Greg Young's [Event Store](https://eventstore.org/).
+  - Elixir [EventStore](https://hex.pm/packages/eventstore) using PostgreSQL for persistence
+  - [EventStore.org](https://eventstore.org/)
 
   Please check the [Getting Started](getting-started.html) and [Usage](usage.html) guides to learn more.
   """
 
   use Application
 
+  @doc false
   def start(_type, _args) do
     children = [
       Commanded.Application.Config

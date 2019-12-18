@@ -16,12 +16,12 @@ defmodule Bank.Supervisor do
       # Application
       BankApp,
 
+      # Event handler
+      AccountBalanceHandler
+
       # Process manager
       TransferMoneyProcessManager,
 
-      # Event handler
-      AccountBalanceHandler
-      
       # Optionally, provide runtime configuration
       {WelcomeEmailHandler, start_from: :current},
     ]

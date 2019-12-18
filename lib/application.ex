@@ -24,8 +24,8 @@ defmodule Commanded.Application do
         pubsub: :local,
         registry: :local
 
-  Alternatively, you can include the event store, pubsub, and registry config
-  when defining the application:
+  Alternatively, you can include the configuration when defining the
+  application:
 
       defmodule MyApp.Application do
         use Commanded.Application,
@@ -40,6 +40,54 @@ defmodule Commanded.Application do
         router(MyApp.Router)
       end
 
+  A Commanded application must be started before it can be used:
+
+      {:ok, _pid} = MyApp.Application.start_link()
+
+  Instead of starting the application manually, you should use a
+  [Supervisor](supervision.html).
+
+  ## Supervision
+
+  Use a supervisor to start your Commanded application:
+
+      Supervisor.start_link([
+        MyApp.Application
+      ], strategy: :one_for_one)
+
+  ## Dynamic named applications
+
+  An application can be provided with a name as an option to `start_link/1`.
+  This can be used to start the same application multiple times, each using its
+  own separately configured and isolated event store. Each application must be
+  started with a unique name.
+
+  Multipe instances of the same event handler or process manager can be
+  started by refering to a started application by its name. The event store
+  operations can also be scoped to an application by referring to its name.
+
+  ### Example
+
+  Start an application process for each tenant in a multi-tenanted app,
+  guaranteeing that the data and processing remains isolated between tenants.
+
+      for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _app} = MyApp.Application.start_link(name: tenant)
+      end
+
+  Typically you would start the applications using a supervisor:
+
+      children =
+        for tenant <- [:tenant1, :tenant2, :tenant3] do
+          {MyApp.Application, name: tenant}
+        end
+
+      Supervisor.start_link(children, strategy: :one_for_one)
+
+  To dispatch a command you must provide the application name:
+
+      :ok = MyApp.Application.dispatch(command, application: :tenant1)
+
   """
 
   @type t :: module
@@ -53,7 +101,6 @@ defmodule Commanded.Application do
 
       @otp_app otp_app
       @config config
-      @name Keyword.get(opts, :name, __MODULE__)
 
       use Commanded.Commands.CompositeRouter, application: __MODULE__
 
@@ -66,18 +113,36 @@ defmodule Commanded.Application do
 
       def child_spec(opts) do
         %{
-          id: __MODULE__,
+          id: name(opts),
           start: {__MODULE__, :start_link, [opts]},
           type: :supervisor
         }
       end
 
       def start_link(opts \\ []) do
-        Commanded.Application.Supervisor.start_link(__MODULE__, @otp_app, @config, opts)
+        name = name(opts)
+
+        Commanded.Application.Supervisor.start_link(__MODULE__, @otp_app, @config, name, opts)
       end
 
       def stop(pid, timeout \\ 5000) do
         Supervisor.stop(pid, :normal, timeout)
+      end
+
+      defp name(opts) do
+        case Keyword.get(opts, :name) do
+          nil ->
+            __MODULE__
+
+          name when is_atom(name) ->
+            name
+
+          invalid ->
+            raise ArgumentError,
+              message:
+                "expected :name option to be an atom but got: " <>
+                  inspect(invalid)
+        end
       end
     end
   end
@@ -127,6 +192,24 @@ defmodule Commanded.Application do
               | {:error, reason :: term}
 
   alias Commanded.Application.Config
+
+  @doc false
+  def dispatch(application, command, opts \\ [])
+
+  def dispatch(application, command, timeout) when is_integer(timeout),
+    do: dispatch(application, command, timeout: timeout)
+
+  def dispatch(application, command, :infinity),
+    do: dispatch(application, command, timeout: :infinity)
+
+  def dispatch(application, command, opts) do
+    opts = Keyword.put(opts, :application, application)
+
+    application_module(application).dispatch(command, opts)
+  end
+
+  @doc false
+  def application_module(application), do: Config.get(application, :application)
 
   @doc false
   @spec event_store_adapter(Commanded.Application.t()) :: {module, map}

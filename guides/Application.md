@@ -58,7 +58,7 @@ end
 
 ## Routing commands
 
-A Commanded application is also a composite router. This provides the `router` macro allowing you to define one or more router modules for command dispatch.
+A Commanded application is also a composite router. This provides the `router` macro allowing you to include one or more router modules for command dispatch.
 
 ```elixir
 defmodule MyApp.Application do

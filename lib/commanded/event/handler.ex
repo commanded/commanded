@@ -52,6 +52,12 @@ defmodule Commanded.Event.Handler do
   to send transactional emails to an already deployed system containing many
   historical events.
 
+  The `start_from` option only applies when the subscription is initially
+  created, the first time the handler starts. Whenever the handler restarts the
+  subscription will resume from the next event after the last successfully
+  processed event. Restarting an event handler does not restart its
+  subscription.
+
   ### Example
 
   Set the `start_from` option (`:origin`, `:current`, or an explicit event
@@ -68,7 +74,6 @@ defmodule Commanded.Event.Handler do
   starting your handler:
 
       {:ok, _handler} = ExampleHandler.start_link(start_from: :current)
-
 
   ### Subscribing to an individual stream
 
@@ -184,6 +189,8 @@ defmodule Commanded.Event.Handler do
 
   ### Example
 
+  Define an event handler with `:strong` consistency:
+
       defmodule ExampleHandler do
         use Commanded.Event.Handler,
           application: ExampleApp,
@@ -191,6 +198,33 @@ defmodule Commanded.Event.Handler do
           consistency: :strong
       end
 
+  ## Dynamic application
+
+  An event handler's application can be provided as an option to `start_link/1`.
+  This can be used to start the same handler multiple times, each using a
+  separate Commanded application and event store.
+
+  ### Example
+
+  Start an event handler process for each tenant in a multi-tenanted app,
+  guaranteeing that the data and processing remains isolated between tenants.
+
+      for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _app} = MyApp.Application.start_link(name: tenant)
+        {:ok, _handler} = ExampleHandler.start_link(application: tenant)
+      end
+
+  Typically you would start the event handlers using a supervisor:
+
+      children =
+        for tenant <- [:tenant1, :tenant2, :tenant3] do
+          {ExampleHandler, application: tenant}
+        end
+
+      Supervisor.start_link(children, strategy: :one_for_one)
+
+  The above example requires three named Commanded applications to have already
+  been started.
   """
 
   use GenServer
@@ -282,10 +316,11 @@ defmodule Commanded.Event.Handler do
 
       @doc false
       def start_link(opts \\ []) do
+        application = Keyword.get(opts, :application, @application)
         module_opts = Keyword.drop(@opts, [:application, :name])
         opts = Handler.start_opts(__MODULE__, module_opts, opts)
 
-        Handler.start_link(@application, @name, __MODULE__, opts)
+        Handler.start_link(application, @name, __MODULE__, opts)
       end
 
       @doc """
@@ -300,8 +335,10 @@ defmodule Commanded.Event.Handler do
 
       """
       def child_spec(opts) do
+        application = Keyword.get(opts, :application, @application)
+
         default = %{
-          id: {__MODULE__, @name},
+          id: {__MODULE__, application, @name},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker
@@ -349,7 +386,9 @@ defmodule Commanded.Event.Handler do
     {valid, invalid} =
       module_opts
       |> Keyword.merge(local_opts)
-      |> Keyword.split([:consistency, :start_from, :subscribe_to] ++ additional_allowed_opts)
+      |> Keyword.split(
+        [:application, :consistency, :start_from, :subscribe_to] ++ additional_allowed_opts
+      )
 
     if Enum.any?(invalid) do
       raise ArgumentError,

@@ -6,6 +6,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   It handles events and dispatches commands in response. Process managers have
   state that can be used to track which aggregates are being orchestrated.
 
+  Process managers can be used to implement long-running transactions by
+  following the saga pattern. This is a sequence of commands and their
+  compensating commands which can be used to rollback on failure.
+
   Use the `Commanded.ProcessManagers.ProcessManager` macro in your process
   manager module and implement the callback functions defined in the behaviour:
 
@@ -13,6 +17,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:handle/2`
   - `c:apply/2`
   - `c:error/3`
+
+  Please read the [Process managers](process-managers.html) guide for more
+  detail.
 
   ### Example
 
@@ -146,6 +153,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   ### Example
 
+  Define a process manager with `:strong` consistency:
+
       defmodule ExampleProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
           application: ExampleApp,
@@ -153,8 +162,33 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           consistency: :strong
       end
 
-  Please read the [Process managers](process-managers.html) guide for more
-  detail.
+  ## Dynamic application
+
+  A process manager's application can be provided as an option to `start_link/1`.
+  This can be used to start the same process manager multiple times, each using a
+  separate Commanded application and event store.
+
+  ### Example
+
+  Start an process manager for each tenant in a multi-tenanted app, guaranteeing
+  that the data and processing remains isolated between tenants.
+
+      for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _app} = MyApp.Application.start_link(name: tenant)
+        {:ok, _handler} = ExampleProcessManager.start_link(application: tenant)
+      end
+
+  Typically you would start the event handlers using a supervisor:
+
+      children =
+        for tenant <- [:tenant1, :tenant2, :tenant3] do
+          {ExampleProcessManager, application: tenant}
+        end
+
+      Supervisor.start_link(children, strategy: :one_for_one)
+
+  The above example requires three named Commanded applications to have already
+  been started.
   """
 
   alias Commanded.ProcessManagers.FailureContext
@@ -301,10 +335,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @name name
 
       def start_link(opts \\ []) do
+        application = Keyword.get(opts, :application, @application)
         module_opts = Keyword.drop(@opts, [:application, :name])
         opts = Handler.start_opts(__MODULE__, module_opts, opts, [:event_timeout, :idle_timeout])
 
-        ProcessRouter.start_link(@application, @name, __MODULE__, opts)
+        ProcessRouter.start_link(application, @name, __MODULE__, opts)
       end
 
       @doc """
@@ -319,8 +354,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       """
       def child_spec(opts) do
+        application = Keyword.get(opts, :application, @application)
+
         default = %{
-          id: {__MODULE__, @name},
+          id: {__MODULE__, application, @name},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker
