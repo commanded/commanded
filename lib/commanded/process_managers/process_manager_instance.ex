@@ -5,6 +5,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   require Logger
 
+  alias Commanded.Application
   alias Commanded.ProcessManagers.{ProcessRouter, FailureContext}
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
@@ -162,11 +163,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     {:noreply, state, idle_timeout}
   end
 
-  defp process_unseen_event(event, %State{} = state, context \\ %{}) do
+  defp process_unseen_event(%RecordedEvent{} = event, %State{} = state, context \\ %{}) do
     %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
       event
 
-    %State{application: application, idle_timeout: idle_timeout} = state
+    %State{idle_timeout: idle_timeout} = state
 
     case handle_event(event, state) do
       {:error, error} ->
@@ -182,7 +183,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
       commands ->
         # Copy event id, as causation id, and correlation id from handled event.
-        opts = [application: application, causation_id: event_id, correlation_id: correlation_id]
+        opts = [causation_id: event_id, correlation_id: correlation_id]
 
         with :ok <- commands |> List.wrap() |> dispatch_commands(opts, state, event) do
           process_state = mutate_state(event, state)
@@ -221,13 +222,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
-  defp handle_event_error(error, failed_event, state, context) do
+  defp handle_event_error(error, %RecordedEvent{} = failed_event, %State{} = state, context) do
     %RecordedEvent{data: data} = failed_event
-
-    %State{
-      idle_timeout: idle_timeout,
-      process_manager_module: process_manager_module
-    } = state
+    %State{idle_timeout: idle_timeout, process_manager_module: process_manager_module} = state
 
     failure_context = %FailureContext{
       pending_commands: [],
@@ -299,12 +296,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       describe(state) <> " attempting to dispatch command: #{inspect(command)}"
     end)
 
-    case application.dispatch(command, opts) do
+    case Application.dispatch(application, command, opts) do
       :ok ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
-      # when include_execution_result is set to true, the dispatcher returns an :ok tuple
-      {:ok, _} ->
+      # When `include_execution_result` is set to true (globally), the dispatcher returns an :ok tuple
+      {:ok, _result} ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
       error ->

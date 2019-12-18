@@ -25,6 +25,7 @@ defmodule Commanded.Application.Supervisor do
       config
       |> Keyword.merge(opts)
       |> Keyword.put(:otp_app, otp_app)
+      |> Keyword.put(:application, application)
 
     case application_init(application, config) do
       {:ok, config} -> {:ok, config}

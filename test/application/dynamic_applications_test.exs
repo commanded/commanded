@@ -3,11 +3,8 @@ defmodule Commanded.DynamicApplicationsTest do
 
   alias Commanded.ExampleApplication
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleProcessManager
   alias Commanded.Helpers.CommandAuditMiddleware
-  alias Commanded.Helpers.Wait
   alias Commanded.ReplyHandler
-  alias Commanded.ProcessManagers.ProcessRouter
 
   setup_all do
     start_supervised!(CommandAuditMiddleware)
@@ -95,40 +92,6 @@ defmodule Commanded.DynamicApplicationsTest do
     end
   end
 
-  describe "dynamic application process manager" do
-    setup do
-      start_reply_to_agent!()
-      start_supervised!({ExampleApplication, name: :example1})
-      start_supervised!({ExampleApplication, name: :example2})
-      :ok
-    end
-
-    test "should only receive events from named application" do
-      pid1 = start_supervised!({ExampleProcessManager, application: :example1})
-      pid2 = start_supervised!({ExampleProcessManager, application: :example2})
-
-      {:ok, account_number} = open_account(:example1)
-
-      instance1 = wait_for_process_instance(pid1, account_number)
-
-      assert is_pid(instance1)
-      assert_receive {:event, ^instance1, _event}
-
-      assert ProcessRouter.process_instance(pid2, account_number) ==
-               {:error, :process_manager_not_found}
-
-      refute_receive {:event, _pid, _event}
-
-      {:ok, account_number} = open_account(:example2)
-
-      instance2 = wait_for_process_instance(pid2, account_number)
-
-      assert is_pid(instance2)
-      assert_receive {:event, ^instance2, _event}
-      refute_receive {:event, ^instance1, _event}
-    end
-  end
-
   defp start_reply_to_agent! do
     reply_to = self()
 
@@ -144,15 +107,5 @@ defmodule Commanded.DynamicApplicationsTest do
     :ok = ExampleApplication.dispatch(command, application: application)
 
     {:ok, account_number}
-  end
-
-  defp wait_for_process_instance(process_router, aggregate_uuid) do
-    Wait.until(fn ->
-      process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
-
-      assert is_pid(process_instance)
-
-      process_instance
-    end)
   end
 end

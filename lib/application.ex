@@ -72,7 +72,7 @@ defmodule Commanded.Application do
   data and processing remains isolated between tenants.
 
       for tenant <- [:tenant1, :tenant2, :tenant3] do
-        {:ok, _handler} = MyApp.Application.start_link(name: tenant)
+        {:ok, _app} = MyApp.Application.start_link(name: tenant)
       end
 
   Typically you would start the applications using a supervisor:
@@ -192,6 +192,24 @@ defmodule Commanded.Application do
               | {:error, reason :: term}
 
   alias Commanded.Application.Config
+
+  @doc false
+  def dispatch(application, command, opts \\ [])
+
+  def dispatch(application, command, timeout) when is_integer(timeout),
+    do: dispatch(application, command, timeout: timeout)
+
+  def dispatch(application, command, :infinity),
+    do: dispatch(application, command, timeout: :infinity)
+
+  def dispatch(application, command, opts) do
+    opts = Keyword.put(opts, :application, application)
+
+    application_module(application).dispatch(command, opts)
+  end
+
+  @doc false
+  def application_module(application), do: Config.get(application, :application)
 
   @doc false
   @spec event_store_adapter(Commanded.Application.t()) :: {module, map}

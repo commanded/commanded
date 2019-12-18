@@ -174,6 +174,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   data and processing remains isolated between tenants.
 
       for tenant <- [:tenant1, :tenant2, :tenant3] do
+        {:ok, _app} = MyApp.Application.start_link(name: tenant)
         {:ok, _handler} = ExampleProcessManager.start_link(application: tenant)
       end
 
