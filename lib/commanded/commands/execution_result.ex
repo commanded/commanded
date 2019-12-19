@@ -13,10 +13,10 @@ defmodule Commanded.Commands.ExecutionResult do
     - `aggregate_version` - resultant version of the aggregate after executing
       the command.
 
-    - `events` - a list of the created events, may be an empty list.
+    - `events` - a list of the created events, it may be an empty list.
 
-    - `metadata` - an optional map containing the metadata associated with the
-      command dispatch.
+    - `metadata` - an map containing the metadata associated with the command
+      dispatch.
 
   """
 

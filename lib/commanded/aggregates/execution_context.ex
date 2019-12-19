@@ -43,8 +43,8 @@ defmodule Commanded.Aggregates.ExecutionContext do
     :correlation_id,
     :function,
     :handler,
-    :returning,
     retry_attempts: 0,
+    returning: false,
     lifespan: DefaultLifespan,
     metadata: %{}
   ]
@@ -91,7 +91,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
           {:ok, aggregate_version, events, result}
 
-        nil ->
+        false ->
           {:ok, aggregate_version, events}
       end
     end

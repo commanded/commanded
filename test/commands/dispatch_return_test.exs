@@ -15,6 +15,14 @@ defmodule Commanded.Commands.DispatchReturnTest do
     :ok
   end
 
+  describe "dispatch return nothing" do
+    test "should return aggregate's updated state" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      assert :ok == BankApp.dispatch(command, returning: false)
+    end
+  end
+
   describe "dispatch return aggregate state" do
     test "should return aggregate's updated state" do
       assert {:ok, %BankAccount{account_number: "ACC123", balance: 1_000, state: :active}} ==
@@ -109,6 +117,43 @@ defmodule Commanded.Commands.DispatchReturnTest do
                    metadata: metadata
                  }
                }
+    end
+  end
+
+  describe "application dispatch return aggregate state" do
+    alias Commanded.Commands.DefaultDispatchReturnApp
+
+    setup do
+      start_supervised!(DefaultDispatchReturnApp)
+      :ok
+    end
+
+    test "should return aggregate's updated version" do
+      assert {:ok, 1} ==
+               DefaultDispatchReturnApp.dispatch(%OpenAccount{
+                 account_number: "ACC123",
+                 initial_balance: 1_000
+               })
+
+      assert {:ok, 2} ==
+               DefaultDispatchReturnApp.dispatch(%DepositMoney{
+                 account_number: "ACC123",
+                 amount: 100
+               })
+    end
+
+    test "should allow default to be overridden during dispatch" do
+      assert {:ok, 1} ==
+               DefaultDispatchReturnApp.dispatch(%OpenAccount{
+                 account_number: "ACC123",
+                 initial_balance: 1_000
+               })
+
+      assert {:ok, 2} ==
+               DefaultDispatchReturnApp.dispatch(%DepositMoney{
+                 account_number: "ACC123",
+                 amount: 100
+               })
     end
   end
 end

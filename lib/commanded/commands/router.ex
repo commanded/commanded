@@ -124,20 +124,25 @@ defmodule Commanded.Commands.Router do
   By default a successful command dispatch will return `:ok`. You can change
   this behaviour by specifying a `returning` option.
 
+  The supported options are:
+
     - `:aggregate_state` - to return the update aggregate state.
+
     - `:aggregate_version` - to return only the aggregate version.
+
     - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
-      struct containing the aggregate's identity, version, and any events
+      struct containing the aggregate's identity, state, version, and any events
       produced from the command along with their associated metadata.
+
+    - `false` - don't return anything except an `:ok`.
 
   ### Aggregate state
 
-  Return the updated aggregate state as part of the dispatch result by setting
-  `returning: :aggregate_state`:
+  Return the updated aggregate state as part of the dispatch result:
 
       {:ok, %BankAccount{}} = BankApp.dispatch(command, returning: :aggregate_state)
 
-  This is useful when you want to return immediately fields from the aggregate's
+  This is useful when you want to immediately return fields from the aggregate's
   state without requiring an read model projection and waiting for the event(s)
   to be projected. It may also be appropriate to use this feature for unit
   tests.
@@ -148,8 +153,8 @@ defmodule Commanded.Commands.Router do
 
   ### Aggregate version
 
-  You can optionally choose to include the aggregate's version as part of the
-  dispatch result by setting `returning: :aggregate_version`:
+  You can optionally choose to return the aggregate's version as part of the
+  dispatch result:
 
       {:ok, aggregate_version} = BankApp.dispatch(command, returning: :aggregate_version)
 
@@ -158,8 +163,8 @@ defmodule Commanded.Commands.Router do
 
   ### Execution results
 
-  You can also choose to include the execution result as part of the dispatch
-  result by setting `returning: :execution_result`:
+  You can also choose to return the execution result as part of the dispatch
+  result:
 
       alias Commanded.Commands.ExecutionResult
 
@@ -203,8 +208,8 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ExtractAggregateIdentity,
           Commanded.Middleware.ConsistencyGuarantee
         ],
-        consistency: get_env(:default_consistency, :eventual),
-        returning: get_default_return(),
+        consistency: get_opt(unquote(opts), :default_consistency, :eventual),
+        returning: get_default_dispatch_return(unquote(opts)),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
@@ -223,15 +228,16 @@ defmodule Commanded.Commands.Router do
 
   ## Example
 
-      defmodule BankingRouter do
+      defmodule BankRouter do
         use Commanded.Commands.Router
 
         middleware CommandLogger
         middleware MyCommandValidator
         middleware AuthorizeCommand
 
-        dispatch [OpenAccount,DepositMoney] to: BankAccount, identity: :account_number
+        dispatch [OpenAccount, DepositMoney], to: BankAccount, identity: :account_number
       end
+
   """
   defmacro middleware(middleware_module) do
     quote do
@@ -311,6 +317,15 @@ defmodule Commanded.Commands.Router do
   @doc """
   Configure the command, or list of commands, to be dispatched to the
   corresponding handler for a given aggregate.
+
+  ## Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        dispatch [OpenAccount, DepositMoney], to: BankAccount, identity: :account_number
+      end
+
   """
   defmacro dispatch(command_module_or_modules, opts) do
     opts = parse_opts(opts, [])
@@ -435,7 +450,8 @@ defmodule Commanded.Commands.Router do
             (returning = Keyword.get(opts, :returning)) in [
               :aggregate_state,
               :aggregate_version,
-              :execution_result
+              :execution_result,
+              false
             ] ->
               returning
 
@@ -557,6 +573,8 @@ defmodule Commanded.Commands.Router do
                 events produced from the command along with their associated
                 metadata.
 
+              - `false` - don't return anything except an `:ok`.
+
           - `timeout` - as described above.
 
       Returns `:ok` on success unless the `:returning` option is specified where
@@ -594,26 +612,29 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc false
-  def get_env(name, default \\ nil), do: Application.get_env(:commanded, name, default)
+  def get_opt(opts, name, default \\ nil) do
+    Keyword.get(opts, name) || Application.get_env(:commanded, name) || default
+  end
 
   @doc false
-  def get_default_return do
+  def get_default_dispatch_return(opts) do
     cond do
-      (default_dispatch_return = get_env(:default_dispatch_return)) in [
+      (default_dispatch_return = get_opt(opts, :default_dispatch_return)) in [
         :aggregate_state,
         :aggregate_version,
-        :execution_result
+        :execution_result,
+        false
       ] ->
         default_dispatch_return
 
-      get_env(:include_execution_result) == true ->
+      get_opt(opts, :include_execution_result) == true ->
         :execution_result
 
-      get_env(:include_aggregate_version) == true ->
+      get_opt(opts, :include_aggregate_version) == true ->
         :aggregate_version
 
       true ->
-        nil
+        false
     end
   end
 

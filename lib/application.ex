@@ -55,6 +55,23 @@ defmodule Commanded.Application do
         MyApp.Application
       ], strategy: :one_for_one)
 
+  ## Command routing
+
+  Commanded applications are also composite routers allowing you to include
+  one or more routers within an application.
+
+  ### Example
+
+      defmodule MyApp.Application do
+        use Commanded.Application, otp_app: :my_app
+
+        router(MyApp.Accounts.Router)
+        router(MyApp.Billing.Router)
+        router(MyApp.Notifications.Router)
+      end
+
+  See `Commanded.Commands.CompositeRouter` for details.
+
   ## Dynamic named applications
 
   An application can be provided with a name as an option to `start_link/1`.
@@ -88,6 +105,24 @@ defmodule Commanded.Application do
 
       :ok = MyApp.Application.dispatch(command, application: :tenant1)
 
+
+  ## Default dispatch options
+
+  An application can be configured with default command dispatch options such as
+  `:consistency`, `:timeout`, and `:returning`. Any defaults will be used
+  unless overridden by options provided to the dispatch function.
+
+      defmodule MyApp.Application do
+        use Commanded.Application,
+          otp_app: :my_app,
+          default_dispatch_opts: [
+            consistency: :eventual,
+            returning: :aggregate_version
+          ]
+      end
+
+  See the `Commanded.Commands.Router` module for more details about the
+  supported options.
   """
 
   @type t :: module
@@ -102,7 +137,9 @@ defmodule Commanded.Application do
       @otp_app otp_app
       @config config
 
-      use Commanded.Commands.CompositeRouter, application: __MODULE__
+      use Commanded.Commands.CompositeRouter,
+        application: __MODULE__,
+        default_dispatch_opts: Keyword.get(opts, :default_dispatch_opts, [])
 
       def config do
         {:ok, config} =
