@@ -37,9 +37,15 @@ defmodule Commanded.Commands.CompositeRouter do
 
       import unquote(__MODULE__)
 
+      application = Keyword.get(unquote(opts), :application)
+
+      default_dispatch_opts =
+        unquote(opts)
+        |> Keyword.get(:default_dispatch_opts, [])
+        |> Keyword.put(:application, application)
+
+      @default_dispatch_opts default_dispatch_opts
       @registered_commands %{}
-      @application Keyword.get(unquote(opts), :application)
-      @default_dispatch_opts Keyword.get(unquote(opts), :default_dispatch_opts, [])
 
       @before_compile unquote(__MODULE__)
     end
@@ -68,7 +74,7 @@ defmodule Commanded.Commands.CompositeRouter do
         Enum.map(@registered_commands, fn {command, _router} -> command end)
       end
 
-      def __include_default_dispatch_opts__(opts) do
+      def __dispatch_opts__(opts) do
         Keyword.merge(@default_dispatch_opts, opts)
       end
 
@@ -81,11 +87,7 @@ defmodule Commanded.Commands.CompositeRouter do
           quote do
             @doc false
             def dispatch(%unquote(command_module){} = command, :infinity) do
-              opts =
-                __include_default_dispatch_opts__(
-                  application: @application,
-                  timeout: :infinity
-                )
+              opts = __dispatch_opts__(timeout: :infinity)
 
               unquote(router).dispatch(command, opts)
             end
@@ -93,21 +95,14 @@ defmodule Commanded.Commands.CompositeRouter do
             @doc false
             def dispatch(%unquote(command_module){} = command, timeout)
                 when is_integer(timeout) do
-              opts =
-                __include_default_dispatch_opts__(
-                  application: @application,
-                  timeout: timeout
-                )
+              opts = __dispatch_opts__(timeout: timeout)
 
               unquote(router).dispatch(command, opts)
             end
 
             @doc false
             def dispatch(%unquote(command_module){} = command, opts) do
-              opts =
-                opts
-                |> __include_default_dispatch_opts__()
-                |> Keyword.put_new(:application, @application)
+              opts = __dispatch_opts__(opts)
 
               unquote(router).dispatch(command, opts)
             end
