@@ -15,11 +15,18 @@ defmodule Commanded.Commands.DispatchReturnTest do
     :ok
   end
 
-  describe "dispatch return nothing" do
-    test "should return aggregate's updated state" do
+  describe "dispatch return disabled" do
+    test "should return `:ok`" do
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
 
       assert :ok == BankApp.dispatch(command, returning: false)
+    end
+
+    test "should return an error on failure" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: -1}
+
+      assert {:error, :invalid_initial_balance} ==
+               BankApp.dispatch(command, returning: false)
     end
   end
 
@@ -37,6 +44,13 @@ defmodule Commanded.Commands.DispatchReturnTest do
                  returning: :aggregate_state
                )
     end
+
+    test "should return an error on failure" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: -1}
+
+      assert {:error, :invalid_initial_balance} ==
+               BankApp.dispatch(command, returning: :aggregate_state)
+    end
   end
 
   describe "dispatch return aggregate version" do
@@ -52,6 +66,13 @@ defmodule Commanded.Commands.DispatchReturnTest do
                  %DepositMoney{account_number: "ACC123", amount: 100},
                  returning: :aggregate_version
                )
+    end
+
+    test "should return an error on failure" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: -1}
+
+      assert {:error, :invalid_initial_balance} ==
+               BankApp.dispatch(command, returning: :aggregate_version)
     end
   end
 
@@ -75,6 +96,13 @@ defmodule Commanded.Commands.DispatchReturnTest do
                    metadata: metadata
                  }
                }
+    end
+
+    test "should return an error on failure" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: -1}
+
+      assert {:error, :invalid_initial_balance} ==
+               BankApp.dispatch(command, returning: :execution_result)
     end
   end
 
