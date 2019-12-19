@@ -5,6 +5,7 @@
 ### Enhancements
 
 - Dynamic Commanded applications ([#324](https://github.com/commanded/commanded/pull/324)).
+- Command dispatch return ([#331](https://github.com/commanded/commanded/pull/331)).
 
 ### Bug fixes
 

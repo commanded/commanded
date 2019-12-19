@@ -2,19 +2,16 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   use Commanded.StorageCase
 
   alias Commanded.DefaultApp
-  alias Commanded.Commands.{ExecutionResult, UnregisteredCommand}
+  alias Commanded.Commands.UnregisteredCommand
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.{OpenAccountHandler, DepositMoneyHandler, WithdrawMoneyHandler}
-
-  alias Commanded.ExampleDomain.BankAccount.Commands.{
-    OpenAccount,
-    CloseAccount,
-    DepositMoney,
-    WithdrawMoney
-  }
-
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.ExampleDomain.OpenAccountHandler
+  alias Commanded.ExampleDomain.DepositMoneyHandler
+  alias Commanded.ExampleDomain.WithdrawMoneyHandler
+  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.BankAccount.Commands.CloseAccount
+  alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
+  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
 
   @dispatch_opts [application: DefaultApp]
 
@@ -368,24 +365,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
              )
   end
 
-  describe "include aggregate version" do
-    test "should return aggregate's updated stream version" do
-      assert {:ok, 1} ==
-               MultiCommandHandlerRouter.dispatch(
-                 %OpenAccount{account_number: "ACC123", initial_balance: 1_000},
-                 application: DefaultApp,
-                 include_aggregate_version: true
-               )
-
-      assert {:ok, 2} ==
-               MultiCommandHandlerRouter.dispatch(
-                 %DepositMoney{account_number: "ACC123", amount: 100},
-                 application: DefaultApp,
-                 include_aggregate_version: true
-               )
-    end
-  end
-
   test "should allow setting metadata" do
     metadata = %{"ip_address" => "127.0.0.1"}
 
@@ -409,27 +388,5 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     Enum.each(events, fn event ->
       assert event.metadata == metadata
     end)
-  end
-
-  describe "include execution result" do
-    test "should return created events" do
-      metadata = %{"ip_address" => "127.0.0.1"}
-      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
-
-      assert MultiCommandHandlerRouter.dispatch(command,
-               application: DefaultApp,
-               metadata: metadata,
-               include_execution_result: true
-             ) ==
-               {
-                 :ok,
-                 %ExecutionResult{
-                   aggregate_uuid: "ACC123",
-                   aggregate_version: 1,
-                   events: [%BankAccountOpened{account_number: "ACC123", initial_balance: 1000}],
-                   metadata: metadata
-                 }
-               }
-    end
   end
 end

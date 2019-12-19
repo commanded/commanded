@@ -23,7 +23,6 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   setup do
     start_supervised!(DefaultApp)
     start_supervised!(ConsistencyApp)
-
     :ok
   end
 

@@ -1,20 +1,34 @@
 defmodule Commanded.Commands.CompositeRouter do
   @moduledoc """
   Composite router allows you to combine multiple router modules into a single
-  router able to dispatch any registered command using its corresponding router.
+  router able to dispatch any registered command from an included child router.
 
-  ## Example
+  One example usage is to define a router per context and then combine each
+  context's router into a single top-level composite app router used for all
+  command dispatching.
 
-      defmodule ExampleCompositeRouter do
+  ### Example
+
+  Define a composite router module which imports the commands from each included
+  router:
+
+      defmodule Bank.AppRouter do
         use Commanded.Commands.CompositeRouter
 
-        router BankAccountRouter
-        router MoneyTransferRouter
+        router(Bank.Accounts.Router)
+        router(Bank.MoneyTransfer.Router)
       end
+
+  You can dispatch a command via the composite router which will be routed to
+  the associated router:
+
+      alias Bank.AppRouter
 
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
 
-      :ok = ExampleCompositeRouter.dispatch(command)
+      :ok = AppRouter.dispatch(command)
+
+  A composite router can include composite routers.
   """
 
   defmacro __using__(opts) do
@@ -23,8 +37,15 @@ defmodule Commanded.Commands.CompositeRouter do
 
       import unquote(__MODULE__)
 
+      application = Keyword.get(unquote(opts), :application)
+
+      default_dispatch_opts =
+        unquote(opts)
+        |> Keyword.get(:default_dispatch_opts, [])
+        |> Keyword.put(:application, application)
+
+      @default_dispatch_opts default_dispatch_opts
       @registered_commands %{}
-      @application Keyword.get(unquote(opts), :application)
 
       @before_compile unquote(__MODULE__)
     end
@@ -53,6 +74,10 @@ defmodule Commanded.Commands.CompositeRouter do
         Enum.map(@registered_commands, fn {command, _router} -> command end)
       end
 
+      def __dispatch_opts__(opts) do
+        Keyword.merge(@default_dispatch_opts, opts)
+      end
+
       @doc false
       def dispatch(command, opts \\ [])
 
@@ -62,18 +87,24 @@ defmodule Commanded.Commands.CompositeRouter do
           quote do
             @doc false
             def dispatch(%unquote(command_module){} = command, :infinity) do
-              unquote(router).dispatch(command, application: @application, timeout: :infinity)
+              opts = __dispatch_opts__(timeout: :infinity)
+
+              unquote(router).dispatch(command, opts)
             end
 
             @doc false
             def dispatch(%unquote(command_module){} = command, timeout)
                 when is_integer(timeout) do
-              unquote(router).dispatch(command, application: @application, timeout: timeout)
+              opts = __dispatch_opts__(timeout: timeout)
+
+              unquote(router).dispatch(command, opts)
             end
 
             @doc false
             def dispatch(%unquote(command_module){} = command, opts) do
-              unquote(router).dispatch(command, Keyword.put_new(opts, :application, @application))
+              opts = __dispatch_opts__(opts)
+
+              unquote(router).dispatch(command, opts)
             end
           end
         )

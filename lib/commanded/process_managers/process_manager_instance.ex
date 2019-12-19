@@ -183,7 +183,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
       commands ->
         # Copy event id, as causation id, and correlation id from handled event.
-        opts = [causation_id: event_id, correlation_id: correlation_id]
+        opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
 
         with :ok <- commands |> List.wrap() |> dispatch_commands(opts, state, event) do
           process_state = mutate_state(event, state)
@@ -298,10 +298,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
     case Application.dispatch(application, command, opts) do
       :ok ->
-        dispatch_commands(pending_commands, opts, state, last_event)
-
-      # When `include_execution_result` is set to true (globally), the dispatcher returns an :ok tuple
-      {:ok, _result} ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
       error ->
