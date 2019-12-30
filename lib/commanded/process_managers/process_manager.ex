@@ -237,10 +237,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Called when a command dispatch or event handling returns an error.
 
-  The `c:error/3` function allows you to control how command dispatch and event
-  handling failures are handled. The function is passed the error (e.g.
-  `{:error, :failure}`), the failed command (during failed dispatch) or failed
-  event (during failed event handling), and a failure context struct (see
+  The `c:error/3` function allows you to control how event  handling and command
+  dispatch and failures are handled. The function is passed the error (e.g.
+  `{:error, :failure}`), the failed event (during failed event handling) or
+  failed command (during failed dispatch), and a failure context struct (see
   `Commanded.ProcessManagers.FailureContext` for details).
 
   The failure context contains a context map you can use to pass transient state
@@ -257,6 +257,16 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     the requested delay (in milliseconds). Context is a map as described in
     `{:retry, context}` above.
 
+  - `{:stop, reason}` - stop the process manager with the given reason.
+
+  For event handling failures, when failure source is an event, you can also
+  return:
+
+  - `:skip` - to skip the problematic event. No commands will be dispatched.
+
+  For command dispatch failures, when failure source is a command, you can also
+  return:
+
   - `{:skip, :discard_pending}` - discard the failed command and any pending
     commands.
 
@@ -264,11 +274,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     dispatching any pending commands.
 
   - `{:continue, commands, context}` - continue dispatching the given commands.
-    This allows you to retry the failed command, modify it and retry, drop it,
+    This allows you to retry the failed command, modify it and retry, drop it
     or drop all pending commands by passing an empty list `[]`. Context is a map
     as described in `{:retry, context}` above.
-
-  - `{:stop, reason}` - stop the process manager with the given reason.
 
   """
   @callback error(
@@ -276,11 +284,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               failure_source :: command | domain_event,
               failure_context :: FailureContext.t()
             ) ::
-              {:retry, context :: map()}
+              {:continue, commands :: list(command), context :: map()}
+              | {:retry, context :: map()}
               | {:retry, delay :: non_neg_integer(), context :: map()}
+              | :skip
               | {:skip, :discard_pending}
               | {:skip, :continue_pending}
-              | {:continue, commands :: list(command), context :: map()}
               | {:stop, reason :: term()}
 
   alias Commanded.Event.Handler

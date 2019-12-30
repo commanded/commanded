@@ -58,13 +58,19 @@ The `error/3` callback function must return one of the following responses depen
 
 - `{:retry, delay, context}` - retry the failed command, after sleeping for the requested delay (in milliseconds). Context is a map as described in `{:retry, context}` above.
 
-- `{:skip, :discard_pending}` - discard the failed command and any pending commands.
+- `{:stop, reason}` - stop the process manager with the given reason.
 
-- `{:skip, :continue_pending}` - skip the failed command, but continue dispatching any pending commands.
+For event handling failures, when failure source is an event, you can also return:
+
+- `:skip` - to skip the problematic event. No commands will be dispatched.
+
+For command dispatch failures, when failure source is a command, you can also return:
 
 - `{:continue, commands, context}` - continue dispatching the given commands. This allows you to retry the failed command, modify it and retry, drop it, or drop all pending commands by passing an empty list `[]`.
 
-- `{:stop, reason}` - stop the process manager with the given reason.
+- `{:skip, :discard_pending}` - discard the failed command and any pending commands.
+
+- `{:skip, :continue_pending}` - skip the failed command, but continue dispatching any pending commands.
 
 ## Supervision
 
