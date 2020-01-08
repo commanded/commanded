@@ -144,6 +144,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     {:stop, :normal, state}
   end
 
+  @doc false
+  @impl GenServer
+  def handle_info(message, state) do
+    Logger.error(fn -> describe(state) <> " received unexpected message: " <> inspect(message) end)
+
+    {:noreply, state}
+  end
+
   defp event_already_seen?(%RecordedEvent{}, %State{last_seen_event: nil}),
     do: false
 
