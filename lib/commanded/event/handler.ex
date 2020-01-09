@@ -548,6 +548,14 @@ defmodule Commanded.Event.Handler do
     {:stop, reason, state}
   end
 
+  @doc false
+  @impl GenServer
+  def handle_info(message, state) do
+    Logger.error(fn -> describe(state) <> " received unexpected message: " <> inspect(message) end)
+
+    {:noreply, state}
+  end
+
   # Register this event handler as a subscription with the given consistency.
   defp register_subscription(%Handler{} = state) do
     %Handler{application: application, consistency: consistency, handler_name: name} = state

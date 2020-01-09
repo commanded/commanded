@@ -3,7 +3,7 @@ use Mix.Config
 alias Commanded.EventStore.Adapters.InMemory
 alias Commanded.Serialization.JsonSerializer
 
-config :logger, :console, level: :warn, format: "[$level] $message\n"
+config :logger, :console, level: :debug, format: "[$level] $message\n"
 
 config :ex_unit,
   capture_log: true,
