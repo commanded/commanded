@@ -62,6 +62,21 @@ defmodule Commanded.Event.HandleEventTest do
         assert AccountBalanceHandler.current_balance() == 1_050
       end)
     end
+
+    test "should ignore unexpected messages", %{handler: handler} do
+      import ExUnit.CaptureLog
+
+      ref = Process.monitor(handler)
+
+      send_unexpected_mesage = fn ->
+        send(handler, :unexpected_message)
+
+        refute_receive {:DOWN, ^ref, :process, ^handler, _}
+      end
+
+      assert capture_log(send_unexpected_mesage) =~
+               "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler received unexpected message: :unexpected_message"
+    end
   end
 
   describe "reset event handler" do

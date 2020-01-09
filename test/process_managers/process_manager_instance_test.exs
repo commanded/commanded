@@ -82,6 +82,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
     end
 
     test "ignore unexpected messages" do
+      import ExUnit.CaptureLog
+
       transfer_uuid = UUID.uuid4()
 
       expect(MockEventStore, :read_snapshot, fn _adapter_meta, _source_uuid ->
@@ -92,9 +94,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
       ref = Process.monitor(instance)
 
-      send(instance, :unexpected_message)
+      send_unexpected_mesage = fn ->
+        send(instance, :unexpected_message)
 
-      refute_receive {:DOWN, ^ref, :process, ^instance, _}
+        refute_receive {:DOWN, ^ref, :process, ^instance, _}
+      end
+
+      assert capture_log(send_unexpected_mesage) =~
+               "Commanded.ExampleDomain.TransferMoneyProcessManager received unexpected message: :unexpected_message"
     end
 
     test "should provide `__name__/0` function" do
