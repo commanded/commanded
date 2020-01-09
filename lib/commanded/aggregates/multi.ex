@@ -118,6 +118,14 @@ defmodule Commanded.Aggregate.Multi do
           %Multi{} = multi ->
             Multi.run(multi)
 
+          none when none in [:ok, nil, []] ->
+            {aggregate, events}
+
+          {:ok, pending_events} ->
+            pending_events = List.wrap(pending_events)
+
+            {apply_events(aggregate, pending_events), events ++ pending_events}
+
           pending_events ->
             pending_events = List.wrap(pending_events)
 

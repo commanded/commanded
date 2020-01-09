@@ -7,6 +7,8 @@
 - Dynamic Commanded applications ([#324](https://github.com/commanded/commanded/pull/324)).
 - Command dispatch return ([#331](https://github.com/commanded/commanded/pull/331)).
 - Log and ignore unexpected messages received by event handlers and process manager instances ([#333](https://github.com/commanded/commanded/pull/333))
+- Extend `Commanded.AggregateCase` ExUnit case template to support `Commanded.Aggregate.Multi`.
+- Allow `Commanded.Aggregate.Multi` to return events as `:ok` tagged tuples.
 
 ### Bug fixes
 

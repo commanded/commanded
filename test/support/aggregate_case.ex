@@ -5,9 +5,11 @@ defmodule Commanded.AggregateCase do
 
   use ExUnit.CaseTemplate
 
-  using aggregate: aggregate do
-    quote bind_quoted: [aggregate: aggregate] do
-      @aggregate_module aggregate
+  alias Commanded.Aggregate.Multi
+
+  using opts do
+    quote do
+      @aggregate Keyword.fetch!(unquote(opts), :aggregate)
 
       # Assert that the expected events are returned when the given commands have been executed
       defp assert_events(commands, expected_events) do
@@ -15,11 +17,11 @@ defmodule Commanded.AggregateCase do
       end
 
       defp assert_events(initial_events, commands, expected_events) do
-        {_aggregate, events, error} = aggregate_run(initial_events, commands)
+        assert {:ok, _state, events} = aggregate_run(initial_events, commands)
 
         actual_events = List.wrap(events)
+        expected_events = List.wrap(expected_events)
 
-        assert is_nil(error)
         assert actual_events == expected_events
       end
 
@@ -29,9 +31,8 @@ defmodule Commanded.AggregateCase do
       end
 
       defp assert_state(initial_events, commands, expected_state) do
-        {aggregate, events, error} = aggregate_run(initial_events, commands)
-        assert is_nil(error)
-        assert aggregate == expected_state
+        assert {:ok, state, events} = aggregate_run(initial_events, commands)
+        assert state == expected_state
       end
 
       defp assert_error(commands, expected_error) do
@@ -39,38 +40,64 @@ defmodule Commanded.AggregateCase do
       end
 
       defp assert_error(initial_events, commands, expected_error) do
-        {_aggregate, _events, error} = aggregate_run(initial_events, commands)
-        assert error == expected_error
+        assert ^expected_error = aggregate_run(initial_events, commands)
       end
 
       # Apply the given commands to the aggregate hydrated with the given initial_events
       defp aggregate_run(initial_events, commands) do
-        %@aggregate_module{}
+        %@aggregate{}
         |> evolve(initial_events)
         |> execute(commands)
       end
 
-      # Execute one or more commands against an aggregate
-      defp execute(aggregate, commands) do
-        commands
-        |> List.wrap()
-        |> Enum.reduce({aggregate, [], nil}, fn
-          command, {aggregate, _events, nil} ->
-            case @aggregate_module.execute(aggregate, command) do
-              {:error, reason} = error -> {aggregate, nil, error}
-              events -> {evolve(aggregate, events), events, nil}
-            end
+      # Execute one or more commands against an aggregate.
+      defp execute(state, commands) do
+        try do
+          {state, events} =
+            commands
+            |> List.wrap()
+            |> Enum.reduce({state, []}, fn command, {state, events} ->
+              case @aggregate.execute(state, command) do
+                {:error, _error} = error ->
+                  throw(error)
 
-          _command, {aggregate, _events, _error} = reply ->
-            reply
-        end)
+                %Multi{} = multi ->
+                  case Multi.run(multi) do
+                    {:error, _reason} = error ->
+                      throw(error)
+
+                    {state, new_events} ->
+                      {state, events ++ new_events}
+                  end
+
+                none when none in [:ok, nil, []] ->
+                  {state, events}
+
+                {:ok, new_events} ->
+                  {evolve(state, new_events), events ++ List.wrap(new_events)}
+
+                new_events when is_list(new_events) ->
+                  {evolve(state, new_events), events ++ new_events}
+
+                new_event when is_map(new_event) ->
+                  {evolve(state, new_event), events ++ [new_event]}
+
+                invalid ->
+                  flunk("unexpected: " <> inspect(invalid))
+              end
+            end)
+
+          {:ok, state, events}
+        catch
+          {:error, _error} = reply -> reply
+        end
       end
 
       # Apply the given events to the aggregate state
-      defp evolve(aggregate, events) do
+      defp evolve(state, events) do
         events
         |> List.wrap()
-        |> Enum.reduce(aggregate, &@aggregate_module.apply(&2, &1))
+        |> Enum.reduce(state, &@aggregate.apply(&2, &1))
       end
     end
   end
