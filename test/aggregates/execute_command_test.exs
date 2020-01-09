@@ -125,7 +125,7 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
       assert_event_result(fn %Command{id: id} -> {:ok, %Event{id: id}} end)
     end
 
-    test "should allow `{:ok, event}` return value" do
+    test "should allow `{:ok, [event]}` tagged tuple return value" do
       assert_event_result(fn %Command{id: id} -> {:ok, [%Event{id: id}]} end)
     end
   end

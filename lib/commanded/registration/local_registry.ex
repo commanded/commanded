@@ -4,6 +4,8 @@ defmodule Commanded.Registration.LocalRegistry do
   `Registry` module.
   """
 
+  require Logger
+
   @behaviour Commanded.Registration.Adapter
 
   @doc """
@@ -108,7 +110,9 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc false
-  def handle_info(_msg, state) do
+  def handle_info(message, state) do
+    Logger.debug(fn -> "received unexpected message in handle_info/2: " <> inspect(message) end)
+
     {:noreply, state}
   end
 
