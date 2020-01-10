@@ -89,12 +89,10 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @impl GenServer
   def handle_call({:process_instance, process_uuid}, _from, %State{} = state) do
-    %State{process_managers: process_managers} = state
-
     reply =
-      case Map.get(process_managers, process_uuid) do
+      case get_process_manager(state, process_uuid) do
+        process_manager when is_pid(process_manager) -> process_manager
         nil -> {:error, :process_manager_not_found}
-        process_manager -> process_manager
       end
 
     {:reply, reply, state}
@@ -428,9 +426,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   end
 
   defp start_or_continue_process_manager(process_uuid, %State{} = state) do
-    %State{process_managers: process_managers} = state
-
-    case Map.get(process_managers, process_uuid) do
+    case get_process_manager(state, process_uuid) do
       process_manager when is_pid(process_manager) ->
         {process_manager, state}
 
@@ -473,14 +469,14 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp stop_process_manager(process_uuid, %State{} = state) do
     %State{process_managers: process_managers} = state
 
-    case Map.get(process_managers, process_uuid) do
-      nil ->
-        state
-
-      process_manager ->
+    case get_process_manager(state, process_uuid) do
+      process_manager when is_pid(process_manager) ->
         :ok = ProcessManagerInstance.stop(process_manager)
 
         %State{state | process_managers: Map.delete(process_managers, process_uuid)}
+
+      nil ->
+        state
     end
   end
 
@@ -492,6 +488,12 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       _, acc ->
         acc
     end)
+  end
+
+  defp get_process_manager(%State{} = state, process_uuid) do
+    %State{process_managers: process_managers} = state
+
+    Map.get(process_managers, process_uuid)
   end
 
   defp do_ack_event(event, %State{} = state) do
