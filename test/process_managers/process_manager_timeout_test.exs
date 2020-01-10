@@ -55,11 +55,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
 
   defp wait_for_process_instance(process_router, aggregate_uuid) do
     Wait.until(fn ->
-      process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
+      assert {:ok, instance} = ProcessRouter.process_instance(process_router, aggregate_uuid)
 
-      assert is_pid(process_instance)
-
-      process_instance
+      instance
     end)
   end
 end

@@ -67,9 +67,8 @@ defmodule Commanded.ProcessManager.DynamicProcessManagerApplicationTest do
 
   defp wait_for_process_instance(process_router, aggregate_uuid) do
     Wait.until(fn ->
-      process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
-
-      assert is_pid(process_instance)
+      assert {:ok, process_instance} =
+               ProcessRouter.process_instance(process_router, aggregate_uuid)
 
       process_instance
     end)

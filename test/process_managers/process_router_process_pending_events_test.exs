@@ -180,10 +180,11 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
     wait_for_event(ExampleApp, Interested, fn event -> event.index == 6 end)
 
     Wait.until(fn ->
-      process_instance = ProcessRouter.process_instance(process_router, aggregate_uuid)
-      refute process_instance == {:error, :process_manager_not_found}
+      assert {:ok, process_instance} =
+               ProcessRouter.process_instance(process_router, aggregate_uuid)
 
       %{items: items} = ProcessManagerInstance.process_state(process_instance)
+
       assert items == [1, 2, 3, 4, 5, 6]
     end)
   end

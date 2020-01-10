@@ -44,15 +44,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc """
   Checks whether or not the process manager has already processed events
   """
-  def new?(process_manager) do
-    GenServer.call(process_manager, :new?)
+  def new?(instance) do
+    GenServer.call(instance, :new?)
   end
 
   @doc """
   Handle the given event by delegating to the process manager module
   """
-  def process_event(process_manager, %RecordedEvent{} = event) do
-    GenServer.cast(process_manager, {:process_event, event})
+  def process_event(instance, %RecordedEvent{} = event) do
+    GenServer.cast(instance, {:process_event, event})
   end
 
   @doc """
@@ -60,15 +60,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
   Typically called when it has reached its final state.
   """
-  def stop(process_manager) do
-    GenServer.call(process_manager, :stop)
+  def stop(instance) do
+    GenServer.call(instance, :stop)
   end
 
   @doc """
   Fetch the process state of this instance
   """
-  def process_state(process_manager) do
-    GenServer.call(process_manager, :process_state)
+  def process_state(instance) do
+    GenServer.call(instance, :process_state)
   end
 
   @doc false
