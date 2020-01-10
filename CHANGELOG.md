@@ -223,6 +223,7 @@ Commanded scheduler:
 - Handle custom type serialization in snapshot source type ([#165](https://github.com/commanded/commanded/pull/165)).
 - Fix compiler warnings in generated code (routers, event handlers, and process managers).
 - Add `InMemory.reset!/0` for testing purposes ([#175](https://github.com/commanded/commanded/pull/175)).
+- Process manager `indentity/0` function ([#334](https://github.com/commanded/commanded/pull/334)).
 
 ### Bug fixes
 

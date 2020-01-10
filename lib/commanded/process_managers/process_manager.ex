@@ -398,6 +398,33 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     end
   end
 
+  @doc """
+  Get the identity of the current process instance.
+
+  This must only be called within a process manager's `handle/2` or `apply/2`
+  callback function.
+
+  ## Example
+
+      defmodule ExampleProcessManager do
+        use Commanded.ProcessManagers.ProcessManager,
+          application: MyApp.Application,
+          name: __MODULE__
+
+        def interested?(%ProcessStarted{uuids: uuids}), do: {:start, uuids}
+
+        def handle(%IdentityProcessManager{}, %ProcessStarted{} = event) do
+          # Identify which uuid is associated with the current instance from the
+          # list of uuids in the event.
+          uuid = Commanded.ProcessManagers.ProcessManager.identity()
+
+          # ...
+        end
+      end
+
+  """
+  defdelegate identity, to: Commanded.ProcessManagers.ProcessManagerInstance
+
   def compile_config(module, opts) do
     application = Keyword.get(opts, :application)
 

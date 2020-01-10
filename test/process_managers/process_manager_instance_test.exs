@@ -9,9 +9,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.EventStore.Adapters.Mock, as: MockEventStore
-  alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.SnapshotData
   alias Commanded.ProcessManagers.ProcessManagerInstance
+  alias Commanded.ProcessManagers.ProcessRouter
 
   setup :set_mox_global
   setup :verify_on_exit!
@@ -63,22 +63,50 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
       {:ok, instance} = start_process_manager_instance(transfer_uuid)
 
-      event = %RecordedEvent{
-        event_number: 1,
-        stream_id: "stream-id",
-        stream_version: 1,
-        data: %MoneyTransferRequested{
+      event =
+        to_recorded_event(%MoneyTransferRequested{
           transfer_uuid: transfer_uuid,
           debit_account: debit_account,
           credit_account: credit_account,
           amount: 100
-        }
-      }
+        })
 
       :ok = ProcessManagerInstance.process_event(instance, event)
 
       # Should send ack to process router after processing event
       assert_receive({:"$gen_cast", {:ack_event, ^event, _instance}}, 1_000)
+    end
+
+    test "get current process identity" do
+      alias Commanded.ProcessManagers.IdentityProcessManager
+      alias Commanded.ProcessManagers.IdentityProcessManager.AnEvent
+      alias Commanded.DefaultApp
+      alias Commanded.Helpers.Wait
+
+      start_supervised!(DefaultApp)
+
+      {:ok, process_router} = start_supervised(IdentityProcessManager)
+
+      process_uuids = Enum.sort([UUID.uuid4(), UUID.uuid4(), UUID.uuid4()])
+
+      event = to_recorded_event(%AnEvent{uuids: process_uuids, reply_to: self()})
+
+      send(process_router, {:events, [event]})
+
+      process_instances =
+        Wait.until(fn ->
+          process_instances = ProcessRouter.process_instances(process_router)
+
+          assert process_instances
+                 |> Enum.map(fn {process_uuid, _pid} -> process_uuid end)
+                 |> Enum.sort() == process_uuids
+
+          process_instances
+        end)
+
+      for {process_uuid, pid} <- process_instances do
+        assert_receive {:identity, ^process_uuid, ^pid}
+      end
     end
 
     test "ignore unexpected messages" do
@@ -150,5 +178,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
        process_router: self(),
        process_uuid: transfer_uuid}
     )
+  end
+
+  defp to_recorded_event(event) do
+    alias Commanded.EventStore.RecordedEvent
+
+    %RecordedEvent{event_number: 1, stream_id: "stream-id", stream_version: 1, data: event}
   end
 end
