@@ -11,22 +11,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   alias Commanded.ProcessManagers.RoutingProcessManager.Stopped
 
   setup do
-    expect(MockEventStore, :subscribe_to, fn
-      _event_store, :all, name, pid, :origin ->
-        assert is_binary(name)
-        assert is_pid(pid)
-
-        send(pid, {:subscribed, self()})
-
-        {:ok, self()}
-    end)
-
-    stub(MockEventStore, :read_snapshot, fn _event_store, _snapshot_uuid ->
-      {:error, :snapshot_not_found}
-    end)
-
-    stub(MockEventStore, :record_snapshot, fn _event_store, _snapshot -> :ok end)
-    stub(MockEventStore, :ack_event, fn _event_store, _pid, _event -> :ok end)
+    mock_event_store()
 
     {:ok, pid} = RoutingProcessManager.start_link()
 
@@ -87,6 +72,21 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
 
       assert_receive {:started, ^instance}
       assert_receive {:DOWN, ^ref, :process, ^instance, :normal}
+    end
+
+    test "should ignore an empty list returned on `:start`", %{
+      pid: pid,
+      process_uuid: process_uuid
+    } do
+      send_events(pid, [
+        %Started{process_uuid: [], reply_to: self()},
+        %Started{process_uuid: process_uuid, reply_to: self()}
+      ])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      assert_receive {:started, ^instance}
+      refute_receive {:started, _instance}
     end
   end
 
@@ -177,6 +177,25 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
       assert_receive {:continued, ^instance}
       refute_receive {:DOWN, ^ref, :process, ^pid, _}
     end
+  end
+
+  defp mock_event_store do
+    expect(MockEventStore, :subscribe_to, fn
+      _event_store, :all, name, pid, :origin ->
+        assert is_binary(name)
+        assert is_pid(pid)
+
+        send(pid, {:subscribed, self()})
+
+        {:ok, self()}
+    end)
+
+    stub(MockEventStore, :read_snapshot, fn _event_store, _snapshot_uuid ->
+      {:error, :snapshot_not_found}
+    end)
+
+    stub(MockEventStore, :record_snapshot, fn _event_store, _snapshot -> :ok end)
+    stub(MockEventStore, :ack_event, fn _event_store, _pid, _event -> :ok end)
   end
 
   defp send_events(pid, events, initial_event_number \\ 1) do
