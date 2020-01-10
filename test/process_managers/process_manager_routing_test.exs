@@ -206,9 +206,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
 
   defp wait_for_instance(pid, process_uuid) do
     Wait.until(fn ->
-      instance = ProcessRouter.process_instance(pid, process_uuid)
-
-      assert is_pid(instance)
+      assert {:ok, instance} = ProcessRouter.process_instance(pid, process_uuid)
 
       instance
     end)

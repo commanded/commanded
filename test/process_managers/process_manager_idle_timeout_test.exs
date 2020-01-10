@@ -79,13 +79,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
 
   defp wait_for_process_instance(pm, process_uuid) do
     Wait.until(fn ->
-      with instance <- ProcessRouter.process_instance(pm, process_uuid) do
-        assert is_pid(instance)
+      assert {:ok, instance} = ProcessRouter.process_instance(pm, process_uuid)
 
-        ref = Process.monitor(instance)
+      ref = Process.monitor(instance)
 
-        {instance, ref}
-      end
+      {instance, ref}
     end)
   end
 end
