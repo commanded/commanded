@@ -13,6 +13,7 @@
 ### Bug fixes
 
 - Fixes the typespec for command dispatch ([#325](https://github.com/commanded/commanded/pull/325)).
+- Process manager stops if `interested?/1` returns an empty list ([#335](https://github.com/commanded/commanded/pull/335)).
 
 ## v1.0.0
 
