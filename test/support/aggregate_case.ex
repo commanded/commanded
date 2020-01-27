@@ -45,7 +45,8 @@ defmodule Commanded.AggregateCase do
 
       # Apply the given commands to the aggregate hydrated with the given initial_events
       defp aggregate_run(initial_events, commands) do
-        %@aggregate{}
+        @aggregate
+        |> struct()
         |> evolve(initial_events)
         |> execute(commands)
       end
