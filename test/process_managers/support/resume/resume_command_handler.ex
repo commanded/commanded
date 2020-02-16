@@ -3,7 +3,7 @@ defmodule Commanded.ProcessManagers.ResumeCommandHandler do
   @behaviour Commanded.Commands.Handler
 
   alias Commanded.ProcessManagers.ResumeAggregate
-  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess,ResumeProcess}
+  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess, ResumeProcess}
 
   def handle(%ResumeAggregate{} = aggregate, %StartProcess{} = start_process) do
     aggregate

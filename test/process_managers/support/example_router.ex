@@ -1,6 +1,6 @@
 defmodule Commanded.ProcessManagers.ExampleRouter do
   @moduledoc false
-  
+
   use Commanded.Commands.Router
 
   alias Commanded.ProcessManagers.{ExampleAggregate, ExampleCommandHandler}

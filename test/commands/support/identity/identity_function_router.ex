@@ -2,7 +2,7 @@ defmodule Commanded.Commands.IdentityFunctionRouter do
   @moduledoc false
   use Commanded.Commands.Router
 
-  alias Commanded.Commands.{IdentityFunctionAggregate,IdentityFunctionRouter}
+  alias Commanded.Commands.{IdentityFunctionAggregate, IdentityFunctionRouter}
   alias Commanded.Commands.IdentityFunctionAggregate.IdentityFunctionCommand
 
   identify IdentityFunctionAggregate,
