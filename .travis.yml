@@ -13,4 +13,5 @@ otp_release:
 
 script:
   - mix test
+  - mix format --check-formatted
   - travis_wait 30 mix dialyzer --halt-exit-status
