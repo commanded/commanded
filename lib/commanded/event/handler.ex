@@ -626,6 +626,15 @@ defmodule Commanded.Event.Handler do
         end)
 
         handle_event_error(error, event, state, context)
+
+      {:error, reason, stacktrace} ->
+        Logger.error(fn ->
+          describe(state) <>
+            " failed to handle event #{inspect(event)} due to: #{inspect(reason)}"
+        end)
+        Logger.error(Exception.format(:error, reason, stacktrace))
+
+        handle_event_error({:error, reason}, event, state, context)
     end
   end
 
@@ -638,7 +647,7 @@ defmodule Commanded.Event.Handler do
     try do
       handler_module.handle(data, metadata)
     rescue
-      e -> {:error, e}
+      e -> {:error, e, __STACKTRACE__}
     end
   end
 

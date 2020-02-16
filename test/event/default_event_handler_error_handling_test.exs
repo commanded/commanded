@@ -29,4 +29,5 @@ defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
     assert_receive {:DOWN, ^ref, _, _, _}
     refute Process.alive?(handler)
   end
+
 end
