@@ -49,6 +49,11 @@ defmodule Commanded.ExampleDomain.BankAccount do
       @derive Jason.Encoder
       defstruct [:account_number]
     end
+
+    defmodule BankAccountClosed do
+      @derive Jason.Encoder
+      defstruct [:account_number]
+    end
   end
 
   alias Commands.OpenAccount

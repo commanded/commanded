@@ -551,7 +551,9 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def handle_info(message, state) do
-    Logger.error(fn -> describe(state) <> " received unexpected message: " <> inspect(message) end)
+    Logger.error(fn ->
+      describe(state) <> " received unexpected message: " <> inspect(message, pretty: true)
+    end)
 
     {:noreply, state}
   end
@@ -622,10 +624,24 @@ defmodule Commanded.Event.Handler do
       {:error, reason} = error ->
         Logger.error(fn ->
           describe(state) <>
-            " failed to handle event #{inspect(event)} due to: #{inspect(reason)}"
+            " failed to handle event #{inspect(event, pretty: true)} due to: #{
+              inspect(reason, pretty: true)
+            }"
         end)
 
         handle_event_error(error, event, state, context)
+
+      {:error, reason, stacktrace} ->
+        Logger.error(fn ->
+          describe(state) <>
+            " failed to handle event #{inspect(event, pretty: true)} due to: #{
+              inspect(reason, pretty: true)
+            }"
+        end)
+
+        Logger.error(fn -> Exception.format(:error, reason, stacktrace) end)
+
+        handle_event_error({:error, reason}, event, state, context)
     end
   end
 
@@ -638,7 +654,7 @@ defmodule Commanded.Event.Handler do
     try do
       handler_module.handle(data, metadata)
     rescue
-      e -> {:error, e}
+      e -> {:error, e, __STACKTRACE__}
     end
   end
 
