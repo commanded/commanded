@@ -632,7 +632,7 @@ defmodule Commanded.Event.Handler do
           describe(state) <>
             " failed to handle event #{inspect(event)} due to: #{inspect(reason)}"
         end)
-        Logger.error(Exception.format(:error, reason, stacktrace))
+        Logger.error(fn ->  Exception.format(:error, reason, stacktrace) end)
 
         handle_event_error({:error, reason}, event, state, context)
     end
