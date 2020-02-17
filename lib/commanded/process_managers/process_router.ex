@@ -39,24 +39,28 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   def start_link(application, process_name, process_module, opts \\ []) do
     name = {application, ProcessRouter, process_name}
+    consistency = Keyword.get(opts, :consistency, :eventual)
 
     state = %State{
       application: application,
       process_manager_name: process_name,
       process_manager_module: process_module,
-      consistency: Keyword.get(opts, :consistency, :eventual),
+      consistency: consistency,
       subscribe_from: Keyword.get(opts, :start_from, :origin),
       event_timeout: Keyword.get(opts, :event_timeout),
       idle_timeout: Keyword.get(opts, :idle_timeout, :infinity)
     }
 
-    Registration.start_link(application, name, __MODULE__, state)
+    with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, state) do
+      # Register the process manager as a subscription with the given consistency.
+      :ok = Subscriptions.register(application, process_name, pid, consistency)
+
+      {:ok, pid}
+    end
   end
 
   @impl GenServer
   def init(%State{} = state) do
-    :ok = register_subscription(state)
-
     {:ok, state, {:continue, :subscribe_to_events}}
   end
 
@@ -254,13 +258,6 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     Logger.warn(fn -> describe(state) <> " is stopping due to: #{inspect(reason)}" end)
 
     {:stop, reason, state}
-  end
-
-  # Register this process manager as a subscription with the given consistency.
-  defp register_subscription(%State{} = state) do
-    %State{application: application, consistency: consistency, process_manager_name: name} = state
-
-    Subscriptions.register(application, name, consistency)
   end
 
   defp subscribe_to_events(%State{} = state) do

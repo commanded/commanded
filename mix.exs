@@ -44,6 +44,7 @@ defmodule Commanded.Mixfile do
       "test/process_managers/support",
       "test/pubsub/support",
       "test/registration/support",
+      "test/subscriptions/support",
       "test/support"
     ]
 
@@ -61,6 +62,7 @@ defmodule Commanded.Mixfile do
       {:benchfella, "~> 0.3", only: :bench},
       {:dialyxir, "~> 1.0.0-rc.7", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev},
+      {:local_cluster, "~> 1.1", only: [:test]},
       {:mix_test_watch, "~> 1.0", only: :dev},
       {:mox, "~> 0.5", only: [:bench, :test]}
     ]

@@ -16,13 +16,16 @@ defmodule Commanded.Subscriptions.Registry do
   @doc """
   Register an event store subscription with the given consistency guarantee.
   """
-  def register(application, name, consistency)
-  def register(_application, _name, :eventual), do: :ok
+  def register(application, name, pid, consistency)
 
-  def register(application, name, :strong) do
+  # Ignore subscriptions with `:eventual` consistency
+  def register(_application, _name, _pid, :eventual), do: :ok
+
+  # Register subscriptions with `:strong` consistency
+  def register(application, name, pid, :strong) do
     table_name = table_name(application)
 
-    true = :ets.insert(table_name, {name, self()})
+    true = :ets.insert(table_name, {name, pid})
 
     :ok
   end

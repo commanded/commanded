@@ -388,17 +388,23 @@ defmodule Commanded.Event.Handler do
   @doc false
   def start_link(application, handler_name, handler_module, opts \\ []) do
     name = name(application, handler_name)
+    consistency = consistency(opts)
 
     handler = %Handler{
       application: application,
       handler_name: handler_name,
       handler_module: handler_module,
-      consistency: consistency(opts),
+      consistency: consistency,
       subscribe_from: start_from(opts),
       subscribe_to: subscribe_to(opts)
     }
 
-    Registration.start_link(application, name, __MODULE__, handler)
+    with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, handler) do
+      # Register the started event handler as a subscription with the given consistency
+      :ok = Subscriptions.register(application, handler_name, pid, consistency)
+
+      {:ok, pid}
+    end
   end
 
   def name(application, handler_name), do: {application, __MODULE__, handler_name}
@@ -406,8 +412,6 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def init(%Handler{} = state) do
-    :ok = register_subscription(state)
-
     {:ok, state, {:continue, :subscribe_to_events}}
   end
 
@@ -507,13 +511,6 @@ defmodule Commanded.Event.Handler do
 
     # Stop event handler when event store subscription process terminates.
     {:stop, reason, state}
-  end
-
-  # Register this event handler as a subscription with the given consistency.
-  defp register_subscription(%Handler{} = state) do
-    %Handler{application: application, consistency: consistency, handler_name: name} = state
-
-    Subscriptions.register(application, name, consistency)
   end
 
   defp reset_subscription(%Handler{} = state) do
