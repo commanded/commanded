@@ -11,6 +11,7 @@
 - Extend `Commanded.AggregateCase` ExUnit case template to support `Commanded.Aggregate.Multi`.
 - Allow `Commanded.Aggregate.Multi` to return events as `:ok` tagged tuples.
 - Run the formatter in CI ([#341](https://github.com/commanded/commanded/pull/341)).
+- Add stacktraces to EventHandler error logging ([#340](https://github.com/commanded/commanded/pull/340))
 
 ### Bug fixes
 
