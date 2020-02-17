@@ -9,6 +9,7 @@
 - Log and ignore unexpected messages received by event handlers and process manager instances ([#333](https://github.com/commanded/commanded/pull/333))
 - Extend `Commanded.AggregateCase` ExUnit case template to support `Commanded.Aggregate.Multi`.
 - Allow `Commanded.Aggregate.Multi` to return events as `:ok` tagged tuples.
+- Run the formatter in CI ([#341](https://github.com/commanded/commanded/pull/341)).
 
 ### Bug fixes
 
