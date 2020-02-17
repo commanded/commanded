@@ -1,5 +1,5 @@
 defmodule Commanded.Commands.CorrelationCasuationTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Assertions.EventAssertions
 

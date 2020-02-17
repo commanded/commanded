@@ -66,10 +66,10 @@ defmodule Commanded.Event.ErrorEventHandler do
     :invalid
   end
 
-  def error({:error, error}, %ExceptionEvent{strategy: "default"} = event, _failure_context) do
+  def error({:error, error}, %ExceptionEvent{} = event, failure_context) do
     %ExceptionEvent{reply_to: reply_to} = event
 
-    send_reply(reply_to, {:exception, :stopping})
+    send_reply(reply_to, {:exception, :stopping, error, failure_context})
 
     {:stop, error}
   end

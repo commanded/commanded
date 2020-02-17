@@ -1,5 +1,5 @@
 defmodule Commanded.Aggregate.MultiTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Enumerable
 

@@ -4,7 +4,7 @@ defmodule Commanded.Aggregates.DefaultLifespan do
   behaviour.
 
   It will ensure that an aggregate instance process runs indefinitely once
-  started.
+  started, unless an exception is encountered.
   """
 
   @behaviour Commanded.Aggregates.AggregateLifespan
@@ -20,7 +20,14 @@ defmodule Commanded.Aggregates.DefaultLifespan do
   def after_command(_command), do: :infinity
 
   @doc """
-  Aggregate will run indefinitely once started.
+  Aggregate is stopped on exception, but will run indefinitely for any non-
+  exception error.
   """
-  def after_error(_error), do: :infinity
+  def after_error(error) do
+    if Exception.exception?(error) do
+      {:stop, error}
+    else
+      :infinity
+    end
+  end
 end

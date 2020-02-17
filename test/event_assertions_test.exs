@@ -1,5 +1,5 @@
 defmodule Commanded.EventAssertionsTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Assertions.EventAssertions
 

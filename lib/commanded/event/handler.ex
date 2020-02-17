@@ -634,27 +634,15 @@ defmodule Commanded.Event.Handler do
       {:error, :already_seen_event} ->
         confirm_receipt(event, state)
 
-      {:error, reason} = error ->
-        Logger.error(fn ->
-          describe(state) <>
-            " failed to handle event #{inspect(event, pretty: true)} due to: #{
-              inspect(reason, pretty: true)
-            }"
-        end)
+      {:error, _reason} = error ->
+        failure_context = build_failure_context(event, context)
 
-        handle_event_error(error, event, state, context)
+        handle_event_error(error, event, failure_context, state)
 
       {:error, reason, stacktrace} ->
-        Logger.error(fn ->
-          describe(state) <>
-            " failed to handle event #{inspect(event, pretty: true)} due to: #{
-              inspect(reason, pretty: true)
-            }"
-        end)
+        failure_context = build_failure_context(event, context, stacktrace)
 
-        Logger.error(fn -> Exception.format(:error, reason, stacktrace) end)
-
-        handle_event_error({:error, reason}, event, state, context)
+        handle_event_error({:error, reason}, event, failure_context, state)
     end
   end
 
@@ -667,18 +655,38 @@ defmodule Commanded.Event.Handler do
     try do
       handler_module.handle(data, metadata)
     rescue
-      e -> {:error, e, __STACKTRACE__}
+      error ->
+        stacktrace = __STACKTRACE__
+        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+
+        {:error, error, stacktrace}
     end
   end
 
-  defp handle_event_error(error, %RecordedEvent{} = failed_event, %Handler{} = state, context) do
+  defp build_failure_context(%RecordedEvent{} = failed_event, context, stacktrace \\ nil) do
+    %FailureContext{
+      context: context,
+      stacktrace: stacktrace,
+      metadata: enrich_metadata(failed_event)
+    }
+  end
+
+  defp handle_event_error(
+         {:error, reason} = error,
+         %RecordedEvent{} = failed_event,
+         %FailureContext{} = failure_context,
+         %Handler{} = state
+       ) do
     %RecordedEvent{data: data} = failed_event
     %Handler{handler_module: handler_module} = state
 
-    failure_context = %FailureContext{
-      context: context,
-      metadata: enrich_metadata(failed_event)
-    }
+    Logger.error(fn ->
+      describe(state) <>
+        " failed to handle event " <>
+        inspect(failed_event, pretty: true) <>
+        " due to: " <>
+        inspect(reason, pretty: true)
+    end)
 
     case handler_module.error(error, data, failure_context) do
       {:retry, context} when is_map(context) ->

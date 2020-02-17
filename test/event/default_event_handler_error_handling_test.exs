@@ -1,5 +1,5 @@
 defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
   alias Commanded.Event.DefaultErrorEventHandler

@@ -1,5 +1,5 @@
 defmodule Event.UpcasterTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.DefaultApp

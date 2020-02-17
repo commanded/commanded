@@ -411,7 +411,7 @@ end
 
 The inactivity timeout is specified in milliseconds, after which time the aggregate process will be stopped if no other messages are received.
 
-Return `:stop` to immediately shutdown the aggregate process. Return `:infinity` to prevent the aggregate instance from shutting down.
+Return `:stop` or `{:stop, reason}` to immediately shutdown the aggregate process. Return `:infinity` to prevent the aggregate instance from shutting down.
 
 You can also return `:hibernate` and the process is hibernated, it will continue its loop once a message is in its message queue. Hibernating an aggregate causes garbage collection and minimises the memory used by the process. Hibernating should not be used aggressively as too much time could be spent garbage collecting.
 

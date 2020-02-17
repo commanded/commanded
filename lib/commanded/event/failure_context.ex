@@ -1,23 +1,26 @@
 defmodule Commanded.Event.FailureContext do
   @moduledoc """
-  Contains the data related to an event handling failure.
+  Data related to an event handling failure.
 
   The available fields are:
 
-  - `context` - a map that is passed between each failure. Use it to store any
-    transient state between failures. As an example it could be used to count
-    error failures and stop or skip the problematic event after too many.
-  - `metadata` - the metadata associated with the failed event.
+    - `context` - a map that is passed between each failure. Use it to store any
+      transient state between failures. As an example it could be used to count
+      error failures and stop or skip the problematic event after too many.
+    - `metadata` - the metadata associated with the failed event.
+    - `stacktrace` - the stacktrace if the error was an unhandled exception.
 
   """
 
   @type t :: %__MODULE__{
           context: map(),
-          metadata: map()
+          metadata: map(),
+          stacktrace: Exception.stacktrace() | nil
         }
 
   defstruct [
     :context,
-    :metadata
+    :metadata,
+    :stacktrace
   ]
 end

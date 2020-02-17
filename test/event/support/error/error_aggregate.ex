@@ -4,19 +4,24 @@ defmodule Commanded.Event.ErrorAggregate do
   defstruct [:uuid]
 
   defmodule Commands do
-    defmodule(RaiseError, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
-    defmodule(RaiseException, do: defstruct([:uuid, :strategy, :delay, :reply_to]))
+    defmodule RaiseError do
+      defstruct [:uuid, :strategy, :delay, :reply_to]
+    end
+
+    defmodule RaiseException do
+      defstruct [:uuid, :strategy, :delay, :reply_to]
+    end
   end
 
   defmodule Events do
     defmodule ErrorEvent do
       @derive Jason.Encoder
-      defstruct([:uuid, :strategy, :delay, :reply_to])
+      defstruct [:uuid, :strategy, :delay, :reply_to]
     end
 
     defmodule ExceptionEvent do
       @derive Jason.Encoder
-      defstruct([:uuid, :strategy, :delay, :reply_to])
+      defstruct [:uuid, :strategy, :delay, :reply_to]
     end
   end
 

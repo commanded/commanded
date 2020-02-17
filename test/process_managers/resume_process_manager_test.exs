@@ -1,5 +1,5 @@
 defmodule Commanded.ProcessManagers.ResumeProcessManagerTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Assertions.EventAssertions
 

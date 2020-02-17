@@ -1,5 +1,5 @@
 defmodule Commanded.Commands.DispatchReturnTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Commands.ExecutionResult
   alias Commanded.ExampleDomain.BankApp

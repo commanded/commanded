@@ -6,49 +6,54 @@ defmodule Commanded.ProcessManagers.ErrorAggregate do
   defmodule Commands do
     defmodule StartProcess do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :strategy, :delay, :reply_to])
+      defstruct [:process_uuid, :strategy, :delay, :reply_to]
     end
 
     defmodule RaiseError do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :message, :reply_to])
+      defstruct [:process_uuid, :message, :reply_to]
     end
 
     defmodule RaiseException do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :message, :reply_to])
+      defstruct [:process_uuid, :message, :reply_to]
     end
 
     defmodule AttemptProcess do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :strategy, :delay, :reply_to])
+      defstruct [:process_uuid, :strategy, :delay, :reply_to]
     end
 
     defmodule ContinueProcess do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :reply_to])
+      defstruct [:process_uuid, :reply_to]
     end
   end
 
   defmodule Events do
     defmodule ProcessStarted do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :strategy, :delay, :reply_to])
+      defstruct [:process_uuid, :strategy, :delay, :reply_to]
     end
 
     defmodule ProcessContinued do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :reply_to])
+      defstruct [:process_uuid, :reply_to]
     end
 
     defmodule ProcessError do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :message, :reply_to])
+      defstruct [:process_uuid, :message, :reply_to]
     end
 
     defmodule ProcessException do
       @derive Jason.Encoder
-      defstruct([:process_uuid, :message, :reply_to])
+      defstruct [:process_uuid, :message, :reply_to]
+    end
+
+    defmodule ProcessDispatchException do
+      @derive Jason.Encoder
+      defstruct [:process_uuid, :message, :reply_to]
     end
   end
 
@@ -73,15 +78,15 @@ defmodule Commanded.ProcessManagers.ErrorAggregate do
   end
 
   def execute(%ErrorAggregate{}, %RaiseError{} = command) do
-    %RaiseError{process_uuid: process_uuid, message: message, reply_to: reply_to} = command
+    %RaiseError{message: message} = command
 
-    %ProcessError{process_uuid: process_uuid, message: message, reply_to: reply_to}
+    {:error, message}
   end
 
   def execute(%ErrorAggregate{}, %RaiseException{} = command) do
-    %RaiseException{process_uuid: process_uuid, message: message, reply_to: reply_to} = command
+    %RaiseException{message: message} = command
 
-    %ProcessException{process_uuid: process_uuid, message: message, reply_to: reply_to}
+    raise message
   end
 
   def execute(%ErrorAggregate{}, %AttemptProcess{}),

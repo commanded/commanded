@@ -212,8 +212,8 @@ defmodule Commanded.Aggregates.Aggregate do
       end
 
     case lifespan_timeout do
-      :stop ->
-        {:stop, :normal, state}
+      {:stop, reason} ->
+        {:stop, reason, state}
 
       lifespan_timeout ->
         {:noreply, state, lifespan_timeout}
@@ -251,7 +251,7 @@ defmodule Commanded.Aggregates.Aggregate do
       {:reply, reply, state}
     else
       case lifespan_timeout do
-        :stop -> {:stop, :normal, reply, state}
+        {:stop, reason} -> {:stop, reason, reply, state}
         lifespan_timeout -> {:reply, reply, state, lifespan_timeout}
       end
     end
@@ -391,42 +391,33 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  # Rebuild aggregate state from a `Stream` of its events
+  # Rebuild aggregate state from a `Stream` of its events.
   defp rebuild_from_event_stream(event_stream, %Aggregate{} = state) do
-    %Aggregate{aggregate_module: aggregate_module} = state
+    Enum.reduce(event_stream, state, fn event, state ->
+      %RecordedEvent{data: data, stream_version: stream_version} = event
+      %Aggregate{aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state
 
-    event_stream
-    |> Stream.map(fn event ->
-      {event.data, event.stream_version}
+      %Aggregate{
+        state
+        | aggregate_version: stream_version,
+          aggregate_state: aggregate_module.apply(aggregate_state, data)
+      }
     end)
-    |> Enum.reduce_while(state, fn {event, stream_version}, state ->
-      case event do
-        nil ->
-          {:halt, state}
-
-        event ->
-          state = %Aggregate{
-            state
-            | aggregate_version: stream_version,
-              aggregate_state: aggregate_module.apply(state.aggregate_state, event)
-          }
-
-          {:cont, state}
-      end
-    end)
-    |> case do
-      nil -> state
-      state -> state
-    end
   end
 
-  defp aggregate_lifespan_timeout(lifespan, timeout_function_name, args) do
-    # Take the last event or the command/error
+  defp aggregate_lifespan_timeout(lifespan, function_name, args) do
+    # Take the last event or the command or error
     args = args |> List.wrap() |> Enum.take(-1)
 
-    case apply(lifespan, timeout_function_name, args) do
-      timeout when timeout in [:infinity, :hibernate, :stop] ->
+    case apply(lifespan, function_name, args) do
+      timeout when timeout in [:infinity, :hibernate] ->
         timeout
+
+      :stop ->
+        {:stop, :normal}
+
+      {:stop, _reason} = reply ->
+        reply
 
       timeout when is_integer(timeout) and timeout >= 0 ->
         timeout
@@ -435,7 +426,7 @@ defmodule Commanded.Aggregates.Aggregate do
         Logger.warn(fn ->
           "Invalid timeout for aggregate lifespan " <>
             inspect(lifespan) <>
-            ", expected a non-negative integer, `:infinity`, `:hibernate`, or `:stop` but got: " <>
+            ", expected a non-negative integer, `:infinity`, `:hibernate`, `:stop`, or `{:stop, reason}` but got: " <>
             inspect(invalid)
         end)
 
@@ -447,7 +438,7 @@ defmodule Commanded.Aggregates.Aggregate do
     %ExecutionContext{command: command, handler: handler, function: function} = context
     %Aggregate{aggregate_state: aggregate_state} = state
 
-    Logger.debug(fn -> describe(state) <> " executing command: #{inspect(command)}" end)
+    Logger.debug(fn -> describe(state) <> " executing command: " <> inspect(command) end)
 
     case Kernel.apply(handler, function, [aggregate_state, command]) do
       {:error, _error} = reply ->
@@ -471,6 +462,11 @@ defmodule Commanded.Aggregates.Aggregate do
       pending_events ->
         apply_and_persist_events(pending_events, context, state)
     end
+  rescue
+    error ->
+      Logger.error(fn -> Exception.format(:error, error, __STACKTRACE__) end)
+
+      {{:error, error}, state}
   end
 
   defp apply_and_persist_events(pending_events, context, %Aggregate{} = state) do

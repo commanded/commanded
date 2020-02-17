@@ -26,7 +26,10 @@ defmodule Commanded.Aggregates.AggregateLifespan do
     - Non-negative integer - specify an inactivity timeout, in millisconds.
     - `:infinity` - prevent the aggregate instance from shutting down.
     - `:hibernate` - send the process into hibernation.
-    - `:stop` - immediately shutdown the aggregate process.
+    - `:stop` - immediately shutdown the aggregate process with a `:normal` exit
+      reason.
+    - `{:stop, reason}` - immediately shutdown the aggregate process with the
+      given reason.
 
   ### Hibernation
 
@@ -68,7 +71,7 @@ defmodule Commanded.Aggregates.AggregateLifespan do
 
   """
 
-  @type lifespan :: timeout | :hibernate | :stop
+  @type lifespan :: timeout | :hibernate | :stop | {:stop, reason :: term()}
 
   @doc """
   Aggregate process will be stopped after specified inactivity timeout unless

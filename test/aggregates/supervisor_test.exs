@@ -1,5 +1,5 @@
 defmodule Commanded.Aggregates.SupervisorTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
   alias Commanded.ExampleDomain.BankAccount

@@ -12,13 +12,9 @@ defmodule Commanded.Aggregate.Multi do
   updated balance is used to check whether the account is overdrawn.
 
       defmodule BankAccount do
-        defstruct [
-          account_number: nil,
-          balance: 0,
-          state: nil,
-        ]
-
         alias Commanded.Aggregate.Multi
+
+        defstruct [:account_number, :state, balance: 0]
 
         def withdraw(
           %BankAccount{state: :active} = account,

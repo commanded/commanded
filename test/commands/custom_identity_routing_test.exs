@@ -1,5 +1,5 @@
 defmodule Commanded.Commands.CustomIdentityRoutingTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
   alias Commanded.EventStore

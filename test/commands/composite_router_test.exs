@@ -1,5 +1,5 @@
 defmodule Commanded.Commands.CompositeRouterTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Commands.Composite.CompositeCompositeRouter
   alias Commanded.Commands.Composite.ExampleCompositeRouter

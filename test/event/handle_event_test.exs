@@ -1,5 +1,5 @@
 defmodule Commanded.Event.HandleEventTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Enumerable, only: [pluck: 2]
   import Commanded.Assertions.EventAssertions
@@ -10,7 +10,6 @@ defmodule Commanded.Event.HandleEventTest do
   alias Commanded.Event.UninterestingEvent
   alias Commanded.Helpers.EventFactory
   alias Commanded.Helpers.Wait
-  alias Commanded.Event.ErrorEvent
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
   alias Commanded.ExampleDomain.BankAccount.BankAccountHandler
@@ -77,29 +76,6 @@ defmodule Commanded.Event.HandleEventTest do
 
       assert capture_log(send_unexpected_mesage) =~
                "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler received unexpected message: :unexpected_message"
-    end
-
-    test "should print the stack trace on errors", %{handler: handler} do
-      import ExUnit.CaptureLog
-
-      events = [
-        %ErrorEvent{}
-      ]
-
-      ref = Process.monitor(handler)
-
-      recorded_events = EventFactory.map_to_recorded_events(events)
-
-      send_error_message = fn ->
-        send(handler, {:events, recorded_events})
-        assert_receive {:DOWN, ^ref, :process, ^handler, _}
-      end
-
-      captured = capture_log(send_error_message)
-
-      assert captured =~ "(RuntimeError) ErrorEvent occurred"
-      assert captured =~ "test/example_domain/bank_account/account_balance_handler.ex"
-      assert captured =~ "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler.handle/2"
     end
   end
 
