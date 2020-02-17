@@ -27,7 +27,7 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
 
       shutdown_subscription(subscription)
 
-      assert_receive {:DOWN, ^ref, :process, ^handler, :normal}
+      assert_receive {:DOWN, ^ref, :process, ^handler, _reason}
     end
   end
 

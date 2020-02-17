@@ -19,7 +19,7 @@ defmodule Commanded.Aggregates.Supervisor do
 
   @doc """
   Open an aggregate instance process for the given aggregate module and unique
-  indentity.
+  identity.
 
   Returns `{:ok, aggregate_uuid}` when a process is sucessfully started, or is
   already running.

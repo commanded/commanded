@@ -163,7 +163,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
              }
   end
 
-  test "should prefix stream UUID with aggregate indentity prefix" do
+  test "should prefix stream UUID with aggregate identity prefix" do
     aggregate_uuid = UUID.uuid4()
     prefix = "example-prefix-"
     prefixed_aggregate_uuid = prefix <> aggregate_uuid

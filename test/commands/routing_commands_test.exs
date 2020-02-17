@@ -253,7 +253,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent registrations for a invalid command module" do
-    assert_raise RuntimeError,
+    assert_raise ArgumentError,
                  "module `UnknownCommand` does not exist, perhaps you forgot to `alias` the namespace",
                  fn ->
                    Code.eval_string("""
@@ -270,7 +270,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent registrations for an invalid command handler module" do
-    assert_raise RuntimeError,
+    assert_raise ArgumentError,
                  "module `UnknownHandler` does not exist, perhaps you forgot to `alias` the namespace",
                  fn ->
                    Code.eval_string("""
@@ -287,7 +287,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   test "should prevent registrations for an invalid aggregate module" do
-    assert_raise RuntimeError,
+    assert_raise ArgumentError,
                  "module `UnknownAggregate` does not exist, perhaps you forgot to `alias` the namespace",
                  fn ->
                    Code.eval_string("""

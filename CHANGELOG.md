@@ -7,6 +7,7 @@
 - Dynamic Commanded applications ([#324](https://github.com/commanded/commanded/pull/324)).
 - Command dispatch return ([#331](https://github.com/commanded/commanded/pull/331)).
 - Log and ignore unexpected messages received by event handlers and process manager instances ([#333](https://github.com/commanded/commanded/pull/333))
+- Process manager `identity/0` function ([#334](https://github.com/commanded/commanded/pull/334)).
 - Extend `Commanded.AggregateCase` ExUnit case template to support `Commanded.Aggregate.Multi`.
 - Allow `Commanded.Aggregate.Multi` to return events as `:ok` tagged tuples.
 - Run the formatter in CI ([#341](https://github.com/commanded/commanded/pull/341)).
@@ -224,7 +225,6 @@ Commanded scheduler:
 - Handle custom type serialization in snapshot source type ([#165](https://github.com/commanded/commanded/pull/165)).
 - Fix compiler warnings in generated code (routers, event handlers, and process managers).
 - Add `InMemory.reset!/0` for testing purposes ([#175](https://github.com/commanded/commanded/pull/175)).
-- Process manager `indentity/0` function ([#334](https://github.com/commanded/commanded/pull/334)).
 
 ### Bug fixes
 
