@@ -79,9 +79,9 @@ defmodule Commanded.Event.HandleEventTest do
                "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler received unexpected message: :unexpected_message"
     end
 
-
     test "should print the stack trace on errors", %{handler: handler} do
       import ExUnit.CaptureLog
+
       events = [
         %ErrorEvent{}
       ]
