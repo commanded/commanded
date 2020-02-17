@@ -4,7 +4,7 @@ defmodule Commanded.EventStore.TypeProvider do
   """
 
   @type t :: module
-  @type type :: String.t
+  @type type :: String.t()
 
   @doc """
   Type of the given Elixir struct as a string
@@ -29,6 +29,10 @@ defmodule Commanded.EventStore.TypeProvider do
   """
   @spec type_provider() :: module()
   def type_provider do
-    Application.get_env(:commanded, :type_provider, Commanded.Serialization.ModuleNameTypeProvider)
+    Application.get_env(
+      :commanded,
+      :type_provider,
+      Commanded.Serialization.ModuleNameTypeProvider
+    )
   end
 end
