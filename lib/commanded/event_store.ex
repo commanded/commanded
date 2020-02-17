@@ -181,7 +181,7 @@ defmodule Commanded.EventStore do
   def adapter(application, config) do
     {adapter, config} = Keyword.pop(config, :adapter)
 
-    unless Code.ensure_compiled?(adapter) do
+    unless Code.ensure_loaded?(adapter) do
       raise ArgumentError,
             "event store adapter " <>
               inspect(adapter) <>

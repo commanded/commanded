@@ -70,7 +70,7 @@ defmodule Commanded.Assertions.EventAssertions do
 
   """
   def assert_receive_event(application, event_type, predicate_fn, assertion_fn) do
-    unless Code.ensure_compiled?(event_type) do
+    unless Code.ensure_loaded?(event_type) do
       raise ExUnit.AssertionError, "Event #{inspect(event_type)} not found"
     end
 

@@ -606,7 +606,7 @@ defmodule Commanded.Commands.Router do
 
   @doc false
   def ensure_module_exists(module) do
-    unless Code.ensure_compiled?(module) do
+    unless Code.ensure_loaded?(module) do
       raise "module `#{inspect(module)}` does not exist, perhaps you forgot to `alias` the namespace"
     end
   end
