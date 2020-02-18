@@ -1,8 +1,6 @@
 defmodule Commanded.Commands.StronglyConsistentProcessManager do
-  alias Commanded.Commands.{ConsistencyApp, StronglyConsistentProcessManager}
-
   use Commanded.ProcessManagers.ProcessManager,
-    application: ConsistencyApp,
+    application: Commanded.Commands.ConsistencyApp,
     name: __MODULE__,
     consistency: :strong
 
@@ -17,6 +15,8 @@ defmodule Commanded.Commands.StronglyConsistentProcessManager do
     DispatchRequestedEvent,
     NoOpCommand
   }
+
+  alias Commanded.Commands.StronglyConsistentProcessManager
 
   def interested?(%DispatchRequestedEvent{uuid: uuid}), do: {:start, uuid}
   def interested?(%ConsistencyEvent{uuid: uuid}), do: {:continue, uuid}

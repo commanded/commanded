@@ -32,7 +32,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
 
       shutdown_subscription(subscription)
 
-      assert_receive {:DOWN, ^ref, :process, ^pm, :normal}
+      assert_receive {:DOWN, ^ref, :process, ^pm, _reason}
     end
   end
 

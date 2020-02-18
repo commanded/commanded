@@ -22,7 +22,7 @@ defmodule Commanded.Subscriptions do
     GenServer.start_link(__MODULE__, subscriptions_opts, start_opts)
   end
 
-  defdelegate register(application, name, consistency), to: Subscriptions.Registry
+  defdelegate register(application, name, pid \\ self(), consistency), to: Subscriptions.Registry
   defdelegate all(application), to: Subscriptions.Registry
 
   @doc """

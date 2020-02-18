@@ -6,6 +6,10 @@
 
 - Global registry using Erlang's `:global` module ([#344](https://github.com/commanded/commanded/pull/344)).
 
+### Bug fixes
+
+- Fix distributed subscription registration bug ([#345](https://github.com/commanded/commanded/pull/345)).
+
 ## v1.0.0
 
 ### Breaking changes

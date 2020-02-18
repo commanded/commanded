@@ -10,7 +10,7 @@ defmodule Commanded.SubscriptionsTest do
     :ok
   end
 
-  describe "register event handler" do
+  describe "register subscription" do
     test "should be registered" do
       :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
       :ok = Subscriptions.register(DefaultApp, "handler2", :eventual)
