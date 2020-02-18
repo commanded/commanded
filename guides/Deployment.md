@@ -6,9 +6,37 @@ Commanded supports running on a single node, or multiple nodes run as either a [
 
 Running your app using Commanded on a single node requires no configuration as local is the default setting.
 
-## Multi node cluster deployment
+## Multi node distributed Erlang deployment
 
-To support deployment to a cluster of nodes you must use the [Commanded Swarm registry](https://github.com/commanded/commanded-swarm-registry) library and [Phoenix's distributed pub/sub and presence platform](https://hex.pm/packages/phoenix_pubsub) to allow process distribution and communication amongst all nodes in the cluster.
+To support deployment to a cluster of nodes and distributed Erlang you must configure:
+
+1. A registry which supports distributed Erlang. The `:global` registry provided by Commanded or the [Commanded Swarm registry](https://github.com/commanded/commanded-swarm-registry) library.
+2. [Phoenix's distributed pub/sub and presence platform](https://hex.pm/packages/phoenix_pubsub) to allow process distribution and communication amongst all nodes in the cluster.
+
+### `:global` registry
+
+Use Erlang's [`:global`](http://erlang.org/doc/man/global.html) name registration facility with distributed Erlang. The global name server starts automatically when a node is started. The registered names are stored in replica global name tables on every node. Thus, the translation of a name to a pid is fast, as it is always done locally.
+
+Define the `:global` registry for your application:
+
+```elixir
+defmodule MyApp.Application do
+  use Commanded.Application,
+    otp_app: :my_app,
+    event_store: [
+      adapter: Commanded.EventStore.Adapters.EventStore,
+      event_store: MyApp.EventStore
+    ],
+    registry: :global
+end
+```
+
+Or configure your application to use the `:global` registry in config:
+
+```elixir
+# config/config.exs
+config :my_app, MyApp.Application, registry: :global
+```
 
 ### Commanded Swarm registry
 
@@ -16,9 +44,7 @@ Add `commanded_swarm_registry` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [
-    {:commanded_swarm_registry, "~> 0.1"}
-  ]
+  [{:commanded_swarm_registry, "~> 0.1"}]
 end
 ```
 
@@ -43,14 +69,14 @@ First, add it as a dependency to your project's `mix.exs` file:
 
 ```elixir
 defp deps do
-  [{:phoenix_pubsub, "~> 1.0"}]
+  [{:phoenix_pubsub, "~> 1.1"}]
 end
 ```
 
 Fetch mix deps and configure the pubsub settings for your application in the environment config file:
 
 ```elixir
-# `config/config.exs`
+# config/config.exs
 config :my_app, MyApp.Application,
   pubsub: [
     phoenix_pubsub: [
@@ -62,9 +88,9 @@ config :my_app, MyApp.Application,
 
 The PG2 adapter is preferable for cluster deployment since it is provided by Erlang and requires no further dependencies.
 
-## Multi node, but not clustered deployment
+## Multi node, but not distributed Erlang deployment
 
-Running multiple nodes, but choosing not to connect the nodes together to form a cluster, requires that you use the local registry and Phoenix's pub/sub library with its Redis adapter.
+Running multiple nodes, but choosing not to connect the nodes together to form a distributed Erlang cluster, requires that you use the local registry and Phoenix's pub/sub library with its Redis adapter.
 
 You must install and use Phoenix's pub/sub library, [as described above](#phoenix-pub-sub).
 
