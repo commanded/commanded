@@ -44,7 +44,7 @@ Add `commanded_swarm_registry` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:commanded_swarm_registry, "~> 0.1"}]
+  [{:commanded_swarm_registry, "~> 1.0"}]
 end
 ```
 
