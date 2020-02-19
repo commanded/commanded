@@ -64,8 +64,18 @@ defmodule Commanded.Registration.GlobalRegistry do
     via_name = via_tuple(adapter_meta, name)
 
     case GenServer.start_link(module, args, name: via_name) do
-      {:error, {:already_started, pid}} -> {:ok, pid}
-      reply -> reply
+      {:error, {:already_started, pid}} ->
+        true = Process.link(pid)
+
+        {:ok, pid}
+
+      {:error, :killed} ->
+        # Process may be killed due to `:global` name registation when another node connects.
+        # Attempting to start again should link to the other named existing process.
+        start_link(adapter_meta, name, module, args)
+
+      reply ->
+        reply
     end
   end
 
