@@ -52,6 +52,7 @@ defmodule Commanded.Mixfile do
 
   defp deps do
     [
+      {:backoff, "~> 1.1"},
       {:elixir_uuid, "~> 1.2"},
 
       # Optional dependencies
