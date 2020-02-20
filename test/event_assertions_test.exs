@@ -82,24 +82,67 @@ defmodule Commanded.EventAssertionsTest do
 
   describe "refute_receive_event/1" do
     test "should succeed when event not received" do
-      refute_receive_event(DefaultApp, Event) do
+      refute_receive_event(DefaultApp, Event, fn ->
         append_events("stream1", [%AnotherEvent{data: 1}])
-      end
+      end)
     end
 
     test "should succeed when event not received matching predicate" do
-      refute_receive_event(DefaultApp, Event, predicate: fn %Event{data: data} -> data == 3 end) do
-        append_events("stream1", [%Event{data: 1}, %Event{data: 2}])
-      end
+      refute_receive_event(
+        DefaultApp,
+        Event,
+        fn ->
+          append_events("stream1", [%Event{data: 1}, %Event{data: 2}])
+        end,
+        predicate: fn %Event{data: data} -> data == 3 end
+      )
+    end
+
+    test "should ignore events appending to another stream" do
+      append_events("stream1", [%Event{data: 1}])
+
+      refute_receive_event(
+        DefaultApp,
+        Event,
+        fn ->
+          append_events("stream1", [%AnotherEvent{data: 2}])
+          append_events("stream2", [%Event{data: 2}])
+        end,
+        stream: "stream1"
+      )
+    end
+
+    test "should ignore events previously appended to stream" do
+      append_events("stream1", [%Event{data: 1}])
+
+      refute_receive_event(DefaultApp, Event, fn ->
+        append_events("stream1", [%AnotherEvent{data: 2}])
+      end)
     end
 
     test "should fail when event received" do
       assert_raise ExUnit.AssertionError,
                    "\n\nUnexpectedly received event: #{inspect(%Event{data: 1})}\n",
                    fn ->
-                     refute_receive_event(DefaultApp, Event) do
+                     refute_receive_event(DefaultApp, Event, fn ->
                        append_events("stream1", [%Event{data: 1}])
-                     end
+                     end)
+                   end
+    end
+
+    test "should fail when event received on stream" do
+      assert_raise ExUnit.AssertionError,
+                   "\n\nUnexpectedly received event: #{inspect(%Event{data: 1})}\n",
+                   fn ->
+                     refute_receive_event(
+                       DefaultApp,
+                       Event,
+                       fn ->
+                         append_events("stream1", [%AnotherEvent{data: 1}])
+                         append_events("stream2", [%Event{data: 1}])
+                       end,
+                       stream: "stream2"
+                     )
                    end
     end
 
@@ -107,15 +150,18 @@ defmodule Commanded.EventAssertionsTest do
       assert_raise ExUnit.AssertionError,
                    "\n\nUnexpectedly received event: #{inspect(%Event{data: 3})}\n",
                    fn ->
-                     refute_receive_event(DefaultApp, Event,
+                     refute_receive_event(
+                       DefaultApp,
+                       Event,
+                       fn ->
+                         append_events("stream1", [
+                           %Event{data: 1},
+                           %Event{data: 2},
+                           %Event{data: 3}
+                         ])
+                       end,
                        predicate: fn %Event{data: data} -> data == 3 end
-                     ) do
-                       append_events("stream1", [
-                         %Event{data: 1},
-                         %Event{data: 2},
-                         %Event{data: 3}
-                       ])
-                     end
+                     )
                    end
     end
   end

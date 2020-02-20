@@ -52,7 +52,8 @@ defmodule Commanded.Assertions.EventAssertions do
       end)
 
   """
-  def assert_receive_event(application, event_type, assertion_fn) do
+  def assert_receive_event(application, event_type, assertion_fn)
+      when is_function(assertion_fn, 1) or is_function(assertion_fn, 2) do
     assert_receive_event(application, event_type, fn _event -> true end, assertion_fn)
   end
 
@@ -69,7 +70,8 @@ defmodule Commanded.Assertions.EventAssertions do
         end)
 
   """
-  def assert_receive_event(application, event_type, predicate_fn, assertion_fn) do
+  def assert_receive_event(application, event_type, predicate_fn, assertion_fn)
+      when is_function(assertion_fn, 1) or is_function(assertion_fn, 2) do
     unless Code.ensure_loaded?(event_type) do
       raise ExUnit.AssertionError, "Event #{inspect(event_type)} not found"
     end
@@ -87,49 +89,73 @@ defmodule Commanded.Assertions.EventAssertions do
 
   ## Examples
 
-  Refute that `ExampleEvent` is created by `some_func/0` function:
+  Refute that `ExampleEvent` is produced by given anonymous function:
 
-      refute_receive_event(ExampleApp, ExampleEvent) do
-        some_func()
-      end
+    refute_receive_event(ExampleApp, ExampleEvent, fn ->
+      :ok = MyApp.dispatch(command)
+    end)
 
-  Refute that `ExampleEvent` matching given predicate is created by
-  `some_func/0` function:
+  Refute that `ExampleEvent` is produced by `some_func/0` function:
 
-      refute_receive_event(ExampleApp, ExampleEvent,
-        predicate: fn event -> event.foo == :foo end) do
-        some_func()
-      end
+    refute_receive_event(ExampleApp, ExampleEvent, &some_func/0)
+
+  Refute that `ExampleEvent` matching given `event_matches?/1` predicate funtion
+  is produced by `some_func/0` function:
+
+      refute_receive_event(ExampleApp, ExampleEvent, &some_func/0,
+        predicate: &event_matches?/1
+      )
+
+  Refute that `ExampleEvent` matching given anonymous predicate funtion
+  is produced by `some_func/0` function:
+
+      refute_receive_event(ExampleApp, ExampleEvent, &some_func/0,
+        predicate: fn event -> event.value == 1 end
+      )
+
+  Refute that `ExampleEvent` produced by `some_func/0` function is published to
+  a given stream:
+
+      refute_receive_event(ExampleApp, ExampleEvent, &some_func/0,
+        predicate: fn event -> event.value == 1 end,
+        stream: "foo-1234"
+      )
 
   """
-  defmacro refute_receive_event(application, event_type, opts \\ [], do: block) do
-    predicate = Keyword.get(opts, :predicate)
+
+  def refute_receive_event(application, event_type, refute_fn, opts \\ [])
+      when is_function(refute_fn, 0) do
+    predicate_fn = Keyword.get(opts, :predicate) || fn _event -> true end
     timeout = Keyword.get(opts, :timeout, default_refute_receive_timeout())
+    subscription_opts = Keyword.take(opts, [:stream]) |> Keyword.put(:start_from, :current)
+    reply_to = self()
+    ref = make_ref()
 
-    quote do
-      task =
-        Task.async(fn ->
-          with_subscription(unquote(application), fn subscription ->
-            predicate = unquote(predicate) || fn _event -> true end
+    # Start a task to subscribe and verify received events
+    task =
+      Task.async(fn ->
+        with_subscription(
+          application,
+          fn subscription ->
+            send(reply_to, {:subscribed, ref})
 
-            do_refute_receive_event(
-              unquote(application),
-              subscription,
-              unquote(event_type),
-              predicate
-            )
-          end)
-        end)
+            do_refute_receive_event(application, subscription, event_type, predicate_fn)
+          end,
+          subscription_opts
+        )
+      end)
 
-      unquote(block)
+    # Wait until subscription has subscribed before executing refute function,
+    # otherwise we might not receive a matching event.
+    assert_receive {:subscribed, ^ref}, default_receive_timeout()
 
-      case Task.yield(task, unquote(timeout)) || Task.shutdown(task) do
-        {:ok, :ok} -> :ok
-        {:ok, {:error, event}} -> flunk("Unexpectedly received event: " <> inspect(event))
-        {:error, error} -> flunk("Encountered an error: " <> inspect(error))
-        {:exit, error} -> flunk("Encountered an error: " <> inspect(error))
-        nil -> :ok
-      end
+    refute_fn.()
+
+    case Task.yield(task, timeout) || Task.shutdown(task) do
+      {:ok, :ok} -> :ok
+      {:ok, {:error, event}} -> flunk("Unexpectedly received event: " <> inspect(event))
+      {:exit, error} -> flunk("Encountered an error: " <> inspect(error))
+      nil -> :ok
     end
   end
 
@@ -163,19 +189,22 @@ defmodule Commanded.Assertions.EventAssertions do
   end
 
   @doc false
-  def with_subscription(application, callback_fun) when is_function(callback_fun, 1) do
+  def with_subscription(application, callback_fn, opts \\ [])
+      when is_function(callback_fn, 1) do
     subscription_name = UUID.uuid4()
+    stream = Keyword.get(opts, :stream, :all)
+    start_from = Keyword.get(opts, :start_from, :origin)
 
     {:ok, subscription} =
-      EventStore.subscribe_to(application, :all, subscription_name, self(), :origin)
+      EventStore.subscribe_to(application, stream, subscription_name, self(), start_from)
 
     assert_receive {:subscribed, ^subscription}, default_receive_timeout()
 
     try do
-      apply(callback_fun, [subscription])
+      callback_fn.(subscription)
     after
       :ok = EventStore.unsubscribe(application, subscription)
-      :ok = EventStore.delete_subscription(application, :all, subscription_name)
+      :ok = EventStore.delete_subscription(application, stream, subscription_name)
     end
   end
 
@@ -184,13 +213,13 @@ defmodule Commanded.Assertions.EventAssertions do
 
     case find_expected_event(received_events, event_type, predicate_fn) do
       %RecordedEvent{data: data} = expected_event ->
-        case assertion_fn do
-          assertion_fn when is_function(assertion_fn, 1) ->
-            apply(assertion_fn, [data])
+        args =
+          cond do
+            is_function(assertion_fn, 1) -> [data]
+            is_function(assertion_fn, 2) -> [data, expected_event]
+          end
 
-          assertion_fn when is_function(assertion_fn, 2) ->
-            apply(assertion_fn, [data, expected_event])
-        end
+        apply(assertion_fn, args)
 
       nil ->
         :ok = ack_events(application, subscription, received_events)
@@ -199,7 +228,7 @@ defmodule Commanded.Assertions.EventAssertions do
     end
   end
 
-  def do_refute_receive_event(application, subscription, event_type, predicate_fn) do
+  defp do_refute_receive_event(application, subscription, event_type, predicate_fn) do
     receive do
       {:events, events} ->
         case find_expected_event(events, event_type, predicate_fn) do
@@ -230,13 +259,14 @@ defmodule Commanded.Assertions.EventAssertions do
 
   defp find_expected_event(received_events, event_type, predicate_fn) do
     Enum.find(received_events, fn
-      %RecordedEvent{data: %{__struct__: ^event_type} = data}
-      when is_function(predicate_fn, 1) ->
-        apply(predicate_fn, [data])
+      %RecordedEvent{data: %{__struct__: ^event_type} = data} = received_event ->
+        args =
+          cond do
+            is_function(predicate_fn, 1) -> [data]
+            is_function(predicate_fn, 2) -> [data, received_event]
+          end
 
-      %RecordedEvent{data: %{__struct__: ^event_type} = data} = received_event
-      when is_function(predicate_fn, 2) ->
-        apply(predicate_fn, [data, received_event])
+        apply(predicate_fn, args)
 
       %RecordedEvent{} ->
         false
