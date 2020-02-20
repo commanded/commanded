@@ -12,6 +12,7 @@
 - Allow `Commanded.Aggregate.Multi` to return events as `:ok` tagged tuples.
 - Run the formatter in CI ([#341](https://github.com/commanded/commanded/pull/341)).
 - Add stacktraces to EventHandler error logging ([#340](https://github.com/commanded/commanded/pull/340))
+- `refute_receive_event/4` only tests newly created events ([#347](https://github.com/commanded/commanded/pull/347)).
 
 ### Bug fixes
 
