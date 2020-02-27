@@ -9,6 +9,7 @@
 ### Bug fixes
 
 - Fix distributed subscription registration bug ([#345](https://github.com/commanded/commanded/pull/345)).
+- Retry event handler and process manager suscriptions on error ([#348](https://github.com/commanded/commanded/pull/348)).
 
 ## v1.0.0
 
