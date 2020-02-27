@@ -32,8 +32,10 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
   """
 
+  alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.DefaultLifespan
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Commands.ExecutionResult
 
   defstruct [
     :command,
@@ -42,6 +44,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     :function,
     :handler,
     retry_attempts: 0,
+    returning: false,
     lifespan: DefaultLifespan,
     metadata: %{}
   ]
@@ -58,5 +61,39 @@ defmodule Commanded.Aggregates.ExecutionContext do
     context = %ExecutionContext{context | retry_attempts: retry_attempts - 1}
 
     {:ok, context}
+  end
+
+  def format_reply(reply, %ExecutionContext{} = context, %Aggregate{} = aggregate) do
+    %Aggregate{
+      aggregate_uuid: aggregate_uuid,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version
+    } = aggregate
+
+    %ExecutionContext{metadata: metadata, returning: returning} = context
+
+    with {:ok, events} <- reply do
+      case returning do
+        :aggregate_state ->
+          {:ok, aggregate_version, events, aggregate_state}
+
+        :aggregate_version ->
+          {:ok, aggregate_version, events, aggregate_version}
+
+        :execution_result ->
+          result = %ExecutionResult{
+            aggregate_uuid: aggregate_uuid,
+            aggregate_state: aggregate_state,
+            aggregate_version: aggregate_version,
+            events: events,
+            metadata: metadata
+          }
+
+          {:ok, aggregate_version, events, result}
+
+        false ->
+          {:ok, aggregate_version, events}
+      end
+    end
   end
 end

@@ -40,6 +40,55 @@ defmodule Commanded.Application do
         router(MyApp.Router)
       end
 
+  A Commanded application must be started before it can be used:
+
+      {:ok, _pid} = MyApp.Application.start_link()
+
+  Instead of starting the application manually, you should use a
+  [Supervisor](supervision.html).
+
+  ## Supervision
+
+  Use a supervisor to start your Commanded application:
+
+      Supervisor.start_link([
+        MyApp.Application
+      ], strategy: :one_for_one)
+
+  ## Command routing
+
+  Commanded applications are also composite routers allowing you to include
+  one or more routers within an application.
+
+  ### Example
+
+      defmodule MyApp.Application do
+        use Commanded.Application, otp_app: :my_app
+
+        router(MyApp.Accounts.Router)
+        router(MyApp.Billing.Router)
+        router(MyApp.Notifications.Router)
+      end
+
+  See `Commanded.Commands.CompositeRouter` for details.
+
+  ## Default dispatch options
+
+  An application can be configured with default command dispatch options such as
+  `:consistency`, `:timeout`, and `:returning`. Any defaults will be used
+  unless overridden by options provided to the dispatch function.
+
+      defmodule MyApp.Application do
+        use Commanded.Application,
+          otp_app: :my_app,
+          default_dispatch_opts: [
+            consistency: :eventual,
+            returning: :aggregate_version
+          ]
+      end
+
+  See the `Commanded.Commands.Router` module for more details about the
+  supported options.
   """
 
   @type t :: module
@@ -55,7 +104,9 @@ defmodule Commanded.Application do
       @config config
       @name Keyword.get(opts, :name, __MODULE__)
 
-      use Commanded.Commands.CompositeRouter, application: __MODULE__
+      use Commanded.Commands.CompositeRouter,
+        application: __MODULE__,
+        default_dispatch_opts: Keyword.get(opts, :default_dispatch_opts, [])
 
       def config do
         {:ok, config} =
@@ -120,8 +171,9 @@ defmodule Commanded.Application do
   """
   @callback dispatch(command :: struct, timeout_or_opts :: integer | :infinity | Keyword.t()) ::
               :ok
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+              | {:ok, aggregate_state :: struct}
               | {:ok, aggregate_version :: non_neg_integer()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}

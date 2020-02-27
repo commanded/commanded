@@ -119,30 +119,64 @@ defmodule Commanded.Commands.Router do
       Note you cannot opt-in to strong consistency for a handler that has been
       configured as eventually consistent.
 
-  ## Aggregate version
+  ## Dispatch return
 
-  You can optionally choose to include the aggregate's version as part of the
-  dispatch result by setting `include_aggregate_version` true.
+  By default a successful command dispatch will return `:ok`. You can change
+  this behaviour by specifying a `returning` option.
 
-      {:ok, aggregate_version} = BankApp.dispatch(command, include_aggregate_version: true)
+  The supported options are:
 
-  This is useful when you need to wait for an event handler (e.g. a read model
-  projection) to be up-to-date before continuing or querying its data.
+    - `:aggregate_state` - to return the update aggregate state.
 
-  ## Execution results
+    - `:aggregate_version` - to return only the aggregate version.
 
-  You can also choose to include the execution result as part of the dispatch result by
-  setting `include_execution_result` true.
+    - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
+      struct containing the aggregate's identity, state, version, and any events
+      produced from the command along with their associated metadata.
 
-      {:ok, execution_result} = BankApp.dispatch(command, include_execution_result: true)
+    - `false` - don't return anything except an `:ok`.
 
-  Or by setting `include_execution_result` in your application config file:
+  ### Aggregate state
+
+  Return the updated aggregate state as part of the dispatch result:
+
+      {:ok, %BankAccount{}} = BankApp.dispatch(command, returning: :aggregate_state)
+
+  This is useful when you want to immediately return fields from the aggregate's
+  state without requiring an read model projection and waiting for the event(s)
+  to be projected. It may also be appropriate to use this feature for unit
+  tests.
+
+  However, be warned that tightly coupling an aggregate's state with read
+  requests may be harmful. It's why CQRS enforces the separation of reads from
+  writes by defining two separate and specialised models.
+
+  ### Aggregate version
+
+  You can optionally choose to return the aggregate's version as part of the
+  dispatch result:
+
+      {:ok, aggregate_version} = BankApp.dispatch(command, returning: :aggregate_version)
+
+  This is useful when you need to wait for an event handler, such as a read model
+  projection, to be up-to-date before querying its data.
+
+  ### Execution results
+
+  You can also choose to return the execution result as part of the dispatch
+  result:
+
+      alias Commanded.Commands.ExecutionResult
+
+      {:ok, %ExecutionResult{} = result} = BankApp.dispatch(command, returning: :execution_result)
+
+  Or by setting the `default_dispatch_return` in your application config file:
 
       # config/config.exs
-      config :commanded, include_execution_result: true
+      config :commanded, default_dispatch_return: :execution_result
 
-  Use this if you need to get information from the events produced by the aggregate
-  but you don't want to wait for the events to be projected.
+  Use the execution result struct to get information from the events produced
+  from the command.
 
   ## Metadata
 
@@ -174,9 +208,8 @@ defmodule Commanded.Commands.Router do
           Commanded.Middleware.ExtractAggregateIdentity,
           Commanded.Middleware.ConsistencyGuarantee
         ],
-        consistency: get_env(:default_consistency, :eventual),
-        include_aggregate_version: get_env(:include_aggregate_version, false),
-        include_execution_result: get_env(:include_execution_result, false),
+        consistency: get_opt(unquote(opts), :default_consistency, :eventual),
+        returning: get_default_dispatch_return(unquote(opts)),
         dispatch_timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
@@ -195,15 +228,16 @@ defmodule Commanded.Commands.Router do
 
   ## Example
 
-      defmodule BankingRouter do
+      defmodule BankRouter do
         use Commanded.Commands.Router
 
         middleware CommandLogger
         middleware MyCommandValidator
         middleware AuthorizeCommand
 
-        dispatch [OpenAccount,DepositMoney] to: BankAccount, identity: :account_number
+        dispatch [OpenAccount, DepositMoney], to: BankAccount, identity: :account_number
       end
+
   """
   defmacro middleware(middleware_module) do
     quote do
@@ -283,6 +317,15 @@ defmodule Commanded.Commands.Router do
   @doc """
   Configure the command, or list of commands, to be dispatched to the
   corresponding handler for a given aggregate.
+
+  ## Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        dispatch [OpenAccount, DepositMoney], to: BankAccount, identity: :account_number
+      end
+
   """
   defmacro dispatch(command_module_or_modules, opts) do
     opts = parse_opts(opts, [])
@@ -402,11 +445,25 @@ defmodule Commanded.Commands.Router do
         metadata = Keyword.get(opts, :metadata) || @default[:metadata]
         timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default[:dispatch_timeout]
 
-        include_aggregate_version =
-          Keyword.get(opts, :include_aggregate_version) || @default[:include_aggregate_version]
+        returning =
+          cond do
+            (returning = Keyword.get(opts, :returning)) in [
+              :aggregate_state,
+              :aggregate_version,
+              :execution_result,
+              false
+            ] ->
+              returning
 
-        include_execution_result =
-          Keyword.get(opts, :include_execution_result) || @default[:include_execution_result]
+            Keyword.get(opts, :include_execution_result) == true ->
+              :execution_result
+
+            Keyword.get(opts, :include_aggregate_version) == true ->
+              :aggregate_version
+
+            true ->
+              @default[:returning]
+          end
 
         lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
         retry_attempts = Keyword.get(opts, :retry_attempts) || @default[:retry_attempts]
@@ -438,8 +495,7 @@ defmodule Commanded.Commands.Router do
           aggregate_module: unquote(aggregate),
           identity: identity,
           identity_prefix: identity_prefix,
-          include_aggregate_version: include_aggregate_version,
-          include_execution_result: include_execution_result,
+          returning: returning,
           timeout: timeout,
           lifespan: lifespan,
           metadata: metadata,
@@ -464,8 +520,9 @@ defmodule Commanded.Commands.Router do
       """
       @spec dispatch(command :: struct) ::
               :ok
+              | {:ok, aggregate_state :: struct}
+              | {:ok, aggregate_version :: non_neg_integer()}
               | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:ok, aggregate_version :: integer}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}
@@ -496,31 +553,41 @@ defmodule Commanded.Commands.Router do
             will block until all strongly consistent event handlers and process
             managers have handled all events created by the command.
 
-          - `timeout` - as described above.
-
-          - `include_aggregate_version` - set to true to include the aggregate
-            stream version in the success response: `{:ok, aggregate_version}`
-            The default is false, to return just `:ok`.
-
-          - `include_execution_result` - set to true to include more
-            information about the dispatch, like the aggregate name, uuid, and
-            the produced events. Overrides `include_aggregate_version`. The
-            default is false to return `:ok`. See
-            `Commanded.Commands.ExecutionResult`.
-
           - `metadata` - an optional map containing key/value pairs comprising
             the metadata to be associated with all events created by the
             command.
 
-      Returns `:ok` on success, unless `:include_aggregate_version` or
-      `:include_execution_result` is enabled, where it respectively returns
-      `{:ok, aggregate_version}` or `{:ok, %ExecutionResult{..}}`. Returns
-      `{:error, reason}` on failure.
+          - `returning` - to choose what response is returned from a successful
+              command dispatch. The default is to return an `:ok`.
+
+              The available options are:
+
+              - `:aggregate_state` - to return the update aggregate state in the
+                successful response: `{:ok, aggregate_state}`.
+
+              - `:aggregate_version` - to include the aggregate stream version
+                in the successful response: `{:ok, aggregate_version}`.
+
+              - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
+                struct containing the aggregate's identity, version, and any
+                events produced from the command along with their associated
+                metadata.
+
+              - `false` - don't return anything except an `:ok`.
+
+          - `timeout` - as described above.
+
+      Returns `:ok` on success unless the `:returning` option is specified where
+      it returns one of `{:ok, aggregate_state}`, `{:ok, aggregate_version}`, or
+      `{:ok, %Commanded.Commands.ExecutionResult{}}`.
+
+      Returns `{:error, reason}` on failure.
       """
       @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) ::
               :ok
+              | {:ok, aggregate_state :: struct}
+              | {:ok, aggregate_version :: non_neg_integer()}
               | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:ok, aggregate_version :: integer}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term}
@@ -545,7 +612,31 @@ defmodule Commanded.Commands.Router do
   end
 
   @doc false
-  def get_env(name, default \\ nil), do: Application.get_env(:commanded, name, default)
+  def get_opt(opts, name, default \\ nil) do
+    Keyword.get(opts, name) || Application.get_env(:commanded, name) || default
+  end
+
+  @doc false
+  def get_default_dispatch_return(opts) do
+    cond do
+      (default_dispatch_return = get_opt(opts, :default_dispatch_return)) in [
+        :aggregate_state,
+        :aggregate_version,
+        :execution_result,
+        false
+      ] ->
+        default_dispatch_return
+
+      get_opt(opts, :include_execution_result) == true ->
+        :execution_result
+
+      get_opt(opts, :include_aggregate_version) == true ->
+        :aggregate_version
+
+      true ->
+        false
+    end
+  end
 
   defp parse_opts([{:to, aggregate_or_handler} | opts], result) do
     case Keyword.pop(opts, :aggregate) do

@@ -5,6 +5,7 @@
 ### Enhancements
 
 - Global registry using Erlang's `:global` module ([#344](https://github.com/commanded/commanded/pull/344)).
+- Command dispatch return ([#331](https://github.com/commanded/commanded/pull/331)).
 
 ### Bug fixes
 
