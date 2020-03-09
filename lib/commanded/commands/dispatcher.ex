@@ -62,14 +62,13 @@ defmodule Commanded.Commands.Dispatcher do
     end
   end
 
-  defp to_pipeline(%Payload{} = payload),
-    do: struct(Pipeline, Map.from_struct(payload))
+  defp to_pipeline(%Payload{} = payload) do
+    struct(Pipeline, Map.from_struct(payload))
+  end
 
   defp execute(%Pipeline{} = pipeline, %Payload{} = payload, %ExecutionContext{} = context) do
-    %Pipeline{assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline
-
-    %Payload{application: application, aggregate_module: aggregate_module, timeout: timeout} =
-      payload
+    %Pipeline{application: application, assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline
+    %Payload{aggregate_module: aggregate_module, timeout: timeout} = payload
 
     {:ok, ^aggregate_uuid} =
       Commanded.Aggregates.Supervisor.open_aggregate(
