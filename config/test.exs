@@ -23,6 +23,7 @@ default_app_config = [
 config :commanded, Commanded.Commands.ConsistencyApp, default_app_config
 config :commanded, Commanded.DefaultApp, default_app_config
 config :commanded, Commanded.Event.Upcast.ProcessManager.Application, default_app_config
+config :commanded, Commanded.Middleware.TenantApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ErrorApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ExampleApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ResumeApp, default_app_config
