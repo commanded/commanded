@@ -6,7 +6,7 @@ cache:
   - deps
 
 elixir:
-  - 1.10.1
+  - 1.10.2
 
 otp_release:
   - 22.0
