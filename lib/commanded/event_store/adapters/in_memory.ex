@@ -361,11 +361,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     } = state
 
     for {_name, %Subscription{subscriber: subscriber}} <- subscriptions, is_pid(subscriber) do
-      case stop_subscription(subscriber, state) do
-        :ok -> :ok
-        {:error, :not_found} -> :ok
-        error -> error
-      end
+      _ = stop_subscription(subscriber, state)
     end
 
     initial_state = %State{name: name, serializer: serializer}
