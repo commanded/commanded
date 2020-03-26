@@ -15,10 +15,15 @@ defmodule Commanded.Event.HandlerConfigTest do
     :ok
   end
 
-  test "should default to `:eventual` consistency and start from `:origin`" do
+  test "should default to `:eventual` consistency, `:persistent` projection, and start from `:origin`" do
     {:ok, handler} = DefaultConfigHandler.start_link()
 
-    assert_config(handler, consistency: :eventual, start_from: :origin, subscribe_to: :all)
+    assert_config(handler,
+      consistency: :eventual,
+      start_from: :origin,
+      subscribe_to: :all,
+      projection: :persistent
+    )
   end
 
   describe "global config change to default consistency" do
@@ -26,7 +31,12 @@ defmodule Commanded.Event.HandlerConfigTest do
       Mix.Config.persist(commanded: [default_consistency: :strong])
       {:ok, handler} = DefaultConfigHandler.start_link()
 
-      assert_config(handler, consistency: :strong, start_from: :origin, subscribe_to: :all)
+      assert_config(handler,
+        consistency: :strong,
+        start_from: :origin,
+        subscribe_to: :all,
+        projection: :persistent
+      )
 
       Mix.Config.persist(commanded: [default_consistency: :eventual])
     end
@@ -38,14 +48,20 @@ defmodule Commanded.Event.HandlerConfigTest do
       name: __MODULE__,
       consistency: :strong,
       start_from: :current,
-      subscribe_to: "stream1"
+      subscribe_to: "stream1",
+      projection: :in_memory
   end
 
   describe "config provided to `start_link/1`" do
     test "should use config defined in handler" do
       {:ok, handler} = ExampleHandler.start_link()
 
-      assert_config(handler, consistency: :strong, start_from: :current, subscribe_to: "stream1")
+      assert_config(handler,
+        consistency: :strong,
+        start_from: :current,
+        subscribe_to: "stream1",
+        projection: :in_memory
+      )
     end
 
     test "should use overriden config when provided" do
@@ -53,16 +69,27 @@ defmodule Commanded.Event.HandlerConfigTest do
         ExampleHandler.start_link(
           consistency: :eventual,
           start_from: :origin,
-          subscribe_to: "stream2"
+          subscribe_to: "stream2",
+          projection: :persistent
         )
 
-      assert_config(handler, consistency: :eventual, start_from: :origin, subscribe_to: "stream2")
+      assert_config(handler,
+        consistency: :eventual,
+        start_from: :origin,
+        subscribe_to: "stream2",
+        projection: :persistent
+      )
     end
 
-    test "should use default config when not provided" do
+    test "should use config defined in handler when not provided" do
       {:ok, handler} = ExampleHandler.start_link(start_from: :origin)
 
-      assert_config(handler, consistency: :strong, start_from: :origin, subscribe_to: "stream1")
+      assert_config(handler,
+        consistency: :strong,
+        start_from: :origin,
+        subscribe_to: "stream1",
+        projection: :in_memory
+      )
     end
   end
 
@@ -78,21 +105,32 @@ defmodule Commanded.Event.HandlerConfigTest do
 
       [{_, handler, _, _}] = Supervisor.which_children(sup)
 
-      assert_config(handler, consistency: :strong, start_from: :current, subscribe_to: "stream1")
+      assert_config(handler,
+        consistency: :strong,
+        start_from: :current,
+        subscribe_to: "stream1",
+        projection: :in_memory
+      )
     end
 
     test "should use overriden config when provided" do
       {:ok, sup} =
         Supervisor.start_link(
           [
-            {ExampleHandler, [consistency: :eventual, start_from: :origin]}
+            {ExampleHandler,
+             [consistency: :eventual, start_from: :origin, projection: :persistent]}
           ],
           strategy: :one_for_one
         )
 
       [{_, handler, _, _}] = Supervisor.which_children(sup)
 
-      assert_config(handler, consistency: :eventual, start_from: :origin, subscribe_to: "stream1")
+      assert_config(handler,
+        consistency: :eventual,
+        start_from: :origin,
+        subscribe_to: "stream1",
+        projection: :persistent
+      )
     end
   end
 

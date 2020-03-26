@@ -243,6 +243,7 @@ defmodule Commanded.Event.Handler do
   @type metadata :: map()
   @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
+  @type projection :: :persistent | :in_memory
 
   @doc """
   Optional initialisation callback function called when the handler starts.
@@ -387,7 +388,8 @@ defmodule Commanded.Event.Handler do
       module_opts
       |> Keyword.merge(local_opts)
       |> Keyword.split(
-        [:application, :consistency, :start_from, :subscribe_to] ++ additional_allowed_opts
+        [:application, :consistency, :start_from, :subscribe_to, :projection] ++
+          additional_allowed_opts
       )
 
     if Enum.any?(invalid) do
@@ -421,11 +423,16 @@ defmodule Commanded.Event.Handler do
     :subscribe_from,
     :subscribe_to,
     :subscription,
-    :subscription_ref
+    :subscription_ref,
+    :projection
   ]
 
   @doc false
   def start_link(application, handler_name, handler_module, opts \\ []) do
+    projection = projection(opts)
+    subscribe_to = subscribe_to(opts)
+
+    handler_name = handler_name(handler_name, subscribe_to, projection)
     name = name(application, handler_name)
 
     handler = %Handler{
@@ -434,13 +441,18 @@ defmodule Commanded.Event.Handler do
       handler_module: handler_module,
       consistency: consistency(opts),
       subscribe_from: start_from(opts),
-      subscribe_to: subscribe_to(opts)
+      subscribe_to: subscribe_to,
+      projection: projection
     }
 
     Registration.start_link(application, name, __MODULE__, handler)
   end
 
   def name(application, handler_name), do: {application, __MODULE__, handler_name}
+
+  def handler_name(handler_name, _subscribe_to, :persistent), do: handler_name
+
+  def handler_name(handler_name, subscribe_to, :in_memory), do: "#{handler_name}::#{subscribe_to}"
 
   @doc false
   @impl GenServer
@@ -467,10 +479,19 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def handle_call(:config, _from, %Handler{} = state) do
-    %Handler{consistency: consistency, subscribe_from: subscribe_from, subscribe_to: subscribe_to} =
-      state
+    %Handler{
+      consistency: consistency,
+      subscribe_from: subscribe_from,
+      subscribe_to: subscribe_to,
+      projection: projection
+    } = state
 
-    config = [consistency: consistency, start_from: subscribe_from, subscribe_to: subscribe_to]
+    config = [
+      consistency: consistency,
+      start_from: subscribe_from,
+      subscribe_to: subscribe_to,
+      projection: projection
+    ]
 
     {:reply, config, state}
   end
@@ -587,8 +608,11 @@ defmodule Commanded.Event.Handler do
       application: application,
       handler_name: handler_name,
       subscribe_from: subscribe_from,
-      subscribe_to: subscribe_to
+      subscribe_to: subscribe_to,
+      projection: projection
     } = state
+
+    delete_transient_subscription(projection, application, subscribe_to, handler_name)
 
     {:ok, subscription} =
       EventStore.subscribe_to(application, subscribe_to, handler_name, self(), subscribe_from)
@@ -597,6 +621,13 @@ defmodule Commanded.Event.Handler do
 
     %Handler{state | subscription: subscription, subscription_ref: subscription_ref}
   end
+
+  defp delete_transient_subscription(:in_memory, application, subscribe_to, handler_name) do
+    EventStore.delete_subscription(application, subscribe_to, handler_name)
+  end
+
+  defp delete_transient_subscription(_persistent, _application, _subscribe_to, _handler_name),
+    do: :ok
 
   defp handle_event(event, handler, context \\ %{})
 
@@ -761,7 +792,7 @@ defmodule Commanded.Event.Handler do
     case opts[:start_from] || :origin do
       start_from when start_from in [:origin, :current] -> start_from
       start_from when is_integer(start_from) -> start_from
-      invalid -> "Invalid `start_from` option: #{inspect(invalid)}"
+      invalid -> raise "Invalid `start_from` option: #{inspect(invalid)}"
     end
   end
 
@@ -769,7 +800,14 @@ defmodule Commanded.Event.Handler do
     case opts[:subscribe_to] || :all do
       :all -> :all
       stream when is_binary(stream) -> stream
-      invalid -> "Invalid `subscribe_to` option: #{inspect(invalid)}"
+      invalid -> raise "Invalid `subscribe_to` option: #{inspect(invalid)}"
+    end
+  end
+
+  defp projection(opts) do
+    case opts[:projection] || :persistent do
+      projection when projection in [:persistent, :in_memory] -> projection
+      invalid -> raise "Invalid `projection` option: #{inspect(invalid)}"
     end
   end
 
