@@ -21,14 +21,14 @@ defmodule Commanded.Commands.Router do
   the aggregate's state and the command to execute. Usually the command handler
   module will forward the command to the aggregate.
 
-  Once configured, you can either dispatch a command using the module by and
-  specify the application:
+  Once configured, you can either dispatch a command by using the module and
+  specifying the application:
 
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
 
       :ok = BankRouter.dispatch(command, application: BankApp)
 
-  Or, more simply you should include the router module in your application:
+  Or, more simply, you should include the router module in your application:
 
       defmodule BankApp do
         use Commanded.Application, otp_app: :my_app
@@ -52,11 +52,26 @@ defmodule Commanded.Commands.Router do
       defmodule BankRouter do
         use Commanded.Commands.Router
 
+        # Will route to `BankAccount.open_account/2`
         dispatch OpenAccount, to: BankAccount, identity: :account_number
       end
 
-  The aggregate must implement an `execute/2` function that receives the
-  aggregate's state and the command being executed.
+  By default, you must define an `execute/2` function on the aggregate module, which will be
+  called with the aggregate's state and the command to execute. Using this approach, you must
+  create an `execute/2` clause that pattern-matches on each command that the aggregate should
+  handle.
+
+  Alternatively, you may specify the name of a function (also receiving both the aggregate state
+  and the command) on your aggregate module to which the command will be dispatched:
+
+  ### Example
+
+      defmodule BankRouter do
+        use Commanded.Commands.Router
+
+        # Will route to `BankAccount.open_account/2`
+        dispatch OpenAccount, to: BankAccount, function: :open_account, identity: :account_number
+      end
 
   ## Define aggregate identity
 
