@@ -21,7 +21,7 @@ Note, due to event serialization you should expect that only: strings, numbers a
 
 Event handlers allow you to execute code that reacts to domain events: to build read model projections; dispatch commands to other aggregates; and to interact with third-party systems such as sending emails.
 
-Commanded guarantees only one instance of an event handler will run, regardless of how many nodes are running (event when not using distributed Erlang). This is enforced by the event store subscription (Postgres advisory locks in Elixir Event Store).
+Commanded guarantees only one instance of an event handler will run, regardless of how many nodes are running (even when not using distributed Erlang). This is enforced by the event store subscription (Postgres advisory locks in Elixir Event Store).
 
 Use the `Commanded.Event.Handler` macro within your event handler module to implement the defined behaviour. This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique event number. It should return `:ok` on success or `{:error, :reason}` on failure. You can return `{:error, :already_seen_event}` to skip events that have already been handled, due to the at-least-once event delivery of the supported event stores.
 
