@@ -87,11 +87,23 @@ It is also possible to route a command directly to an aggregate, without requiri
 defmodule BankRouter do
   use Commanded.Commands.Router
 
+  # will route to `BankAccount.execute/2`
   dispatch OpenAccount, to: BankAccount, identity: :account_number
 end
 ```
 
-The aggregate must implement an `execute/2` function that receives the aggregate's state and the command to execute.
+By default, the aggregate module's `execute/2` function will be called with the aggregate's state and the command to execute. Using this approach, you will create an `execute/2` clause that pattern-matches on each command that the aggregate should handle.
+
+Alternatively, you may specify the name of a function (also receiving both the aggregate state and the command) on your aggregate module to which the command will be dispatched:
+
+```elixir
+defmodule BankRouter do
+  use Commanded.Commands.Router
+
+  # Will route to `BankAccount.open_account/2`
+  dispatch OpenAccount, to: BankAccount, function: :open_account, identity: :account_number
+end
+```
 
 ### Dispatching commands
 

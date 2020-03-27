@@ -66,7 +66,7 @@ defmodule Commanded.Commands.RoutingCommandsTest do
 
   describe "routing to aggregate" do
     alias Commanded.Commands.AggregateRouter
-    alias Commanded.Commands.AggregateRoot.Command
+    alias Commanded.Commands.AggregateRoot.{Command, Command2}
 
     test "should dispatch command to registered handler" do
       assert :ok = AggregateRouter.dispatch(%Command{uuid: UUID.uuid4()}, @dispatch_opts)
@@ -75,6 +75,10 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     test "should fail to dispatch unregistered command" do
       assert {:error, :unregistered_command} =
                AggregateRouter.dispatch(%UnregisteredCommand{}, @dispatch_opts)
+    end
+
+    test "should allow dispatching to a function other than execute/2" do
+      assert :ok = AggregateRouter.dispatch(%Command2{uuid: UUID.uuid4()}, @dispatch_opts)
     end
   end
 
