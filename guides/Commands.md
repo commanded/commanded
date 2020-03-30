@@ -63,7 +63,7 @@ end
 
 A command handler receives the aggregate and the command being executed. It allows you to validate, authorize, and/or enrich the command with additional data before executing the appropriate aggregate module function.
 
-The command handler must implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate state and the command to be handled. It must return the raised domain events from the aggregate. It may return an `{:error, reason}` tuple on failure.
+The command handler must implement the `Commanded.Commands.Handler` behaviour consisting of a single `handle/2` function. It receives the aggregate state and the command to be handled. It must return the raised domain events from the aggregate. It may return an `{:error, reason}` tuple on failure. The `handle/2` function is executed in the same process as the aggregate itself and is therefore within the consistency boundary of the aggregate. In effect, there is no essential difference between using the `handle/2` function in a command handler module vs. the `execute/2` function in the aggregate module aside from organization of your source code.
 
 ```elixir
 defmodule OpenAccountHandler do
