@@ -54,12 +54,12 @@ defmodule Commanded.Mixfile do
       {:elixir_uuid, "~> 1.2"},
 
       # Optional dependencies
-      {:jason, "~> 1.1", optional: true},
+      {:jason, "~> 1.2", optional: true},
       {:phoenix_pubsub, "~> 1.1", optional: true},
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
-      {:dialyxir, "~> 1.0.0-rc.7", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev},
       {:mix_test_watch, "~> 1.0", only: :dev},
       {:mox, "~> 0.5", only: [:bench, :test]}
