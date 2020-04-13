@@ -98,8 +98,7 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       :ok = BankRouter.dispatch(command, application: BankApp, correlation_id: nil)
 
       assert [correlation_id] = CommandAuditMiddleware.dispatched_commands(& &1.correlation_id)
-      refute is_nil(correlation_id)
-      assert correlation_id |> UUID.string_to_binary!() |> is_binary()
+      assert is_nil(correlation_id)
     end
 
     test "should be copied to dispatched command" do

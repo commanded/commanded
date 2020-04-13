@@ -203,33 +203,38 @@ defmodule Commanded.Commands.Router do
 
   """
 
-  @callback dispatch(struct, keyword()) ::
-              :ok | {:ok, non_neg_integer()} | {:ok, struct} | {:error, term}
+  alias Commanded.Commands.Router
 
   defmacro __using__(opts) do
     quote do
       require Logger
 
       import unquote(__MODULE__)
+
       @before_compile unquote(__MODULE__)
+      @behaviour Commanded.Commands.Router
+
+      Module.register_attribute(__MODULE__, :registered_commands, accumulate: true)
+      Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
+      Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
 
       @application Keyword.get(unquote(opts), :application)
-      @registered_commands []
-      @registered_identities %{}
-      @registered_middleware []
 
       @default [
-        middleware: [
-          Commanded.Middleware.ExtractAggregateIdentity,
-          Commanded.Middleware.ConsistencyGuarantee
-        ],
-        consistency: get_opt(unquote(opts), :default_consistency, :eventual),
-        returning: get_default_dispatch_return(unquote(opts)),
-        dispatch_timeout: 5_000,
+        consistency: Router.get_opt(unquote(opts), :default_consistency, :eventual),
+        returning: Router.get_default_dispatch_return(unquote(opts)),
+        timeout: 5_000,
         lifespan: Commanded.Aggregates.DefaultLifespan,
         metadata: %{},
         retry_attempts: 10
       ]
+
+      @default_middleware [
+        Commanded.Middleware.ExtractAggregateIdentity,
+        Commanded.Middleware.ConsistencyGuarantee
+      ]
+
+      @registered_identities %{}
     end
   end
 
@@ -256,7 +261,7 @@ defmodule Commanded.Commands.Router do
   """
   defmacro middleware(middleware_module) do
     quote do
-      @registered_middleware @registered_middleware ++ [unquote(middleware_module)]
+      @registered_middleware unquote(middleware_module)
     end
   end
 
@@ -331,7 +336,7 @@ defmodule Commanded.Commands.Router do
 
   @doc """
   Configure the command, or list of commands, to be dispatched to the
-  corresponding handler for a given aggregate.
+  corresponding handler and aggregate.
 
   ## Example
 
@@ -345,290 +350,237 @@ defmodule Commanded.Commands.Router do
   defmacro dispatch(command_module_or_modules, opts) do
     opts = parse_opts(opts, [])
 
-    command_module_or_modules
-    |> List.wrap()
-    |> Enum.map(fn command_module ->
+    for command_module <- List.wrap(command_module_or_modules) do
       quote do
-        register(unquote(command_module), unquote(opts))
-      end
-    end)
-  end
-
-  @register_params [
-    :to,
-    :function,
-    :aggregate,
-    :identity,
-    :identity_prefix,
-    :timeout,
-    :lifespan,
-    :consistency
-  ]
-
-  @doc false
-  defmacro register(command_module,
-             to: handler,
-             function: function,
-             aggregate: aggregate,
-             identity: identity,
-             identity_prefix: identity_prefix,
-             timeout: timeout,
-             lifespan: lifespan,
-             consistency: consistency
-           ) do
-    quote location: :keep do
-      if Enum.member?(@registered_commands, unquote(command_module)) do
-        raise ArgumentError,
-          message:
-            "Command `#{inspect(unquote(command_module))}` has already been registered in router `#{
-              inspect(__MODULE__)
-            }`"
-      end
-
-      # sanity check the configured modules exist
-      ensure_module_exists(unquote(aggregate))
-      ensure_module_exists(unquote(command_module))
-      ensure_module_exists(unquote(handler))
-
-      case unquote(lifespan) do
-        nil ->
-          :ok
-
-        module when is_atom(module) ->
-          ensure_module_exists(unquote(lifespan))
-
-          unless function_exported?(unquote(lifespan), :after_event, 1) do
-            raise ArgumentError,
-              message:
-                "Aggregate lifespan `#{inspect(unquote(lifespan))}` does not define a callback function: `after_event/1`"
-          end
-
-          unless function_exported?(unquote(lifespan), :after_command, 1) do
-            raise ArgumentError,
-              message:
-                "Aggregate lifespan `#{inspect(unquote(lifespan))}` does not define a callback function: `after_command/1`"
-          end
-
-          unless function_exported?(unquote(lifespan), :after_error, 1) do
-            raise ArgumentError,
-              message:
-                "Aggregate lifespan `#{inspect(unquote(lifespan))}` does not define a callback function: `after_error/1`"
-          end
-
-        invalid ->
+        if Enum.any?(@registered_commands, fn {command_module, _command_opts} ->
+             command_module == unquote(command_module)
+           end) do
           raise ArgumentError,
             message:
-              "Invalid `lifespan` configured for #{inspect(unquote(aggregate))}: " <>
-                inspect(invalid)
-      end
-
-      unless function_exported?(unquote(handler), unquote(function), 2) do
-        raise ArgumentError,
-          message:
-            "Command handler `#{inspect(unquote(handler))}` does not define a `#{
-              unquote(function)
-            }/2` function"
-      end
-
-      @registered_commands [unquote(command_module) | @registered_commands]
-
-      def dispatch(command)
-      def dispatch(%unquote(command_module){} = command), do: do_dispatch(command, [])
-
-      def dispatch(command, timeout_or_opts)
-
-      def dispatch(%unquote(command_module){} = command, :infinity),
-        do: do_dispatch(command, timeout: :infinity)
-
-      def dispatch(%unquote(command_module){} = command, timeout) when is_integer(timeout),
-        do: do_dispatch(command, timeout: timeout)
-
-      def dispatch(%unquote(command_module){} = command, opts),
-        do: do_dispatch(command, opts)
-
-      defp do_dispatch(%unquote(command_module){} = command, opts) do
-        unless application = Keyword.get(opts, :application, @application) do
-          raise ArgumentError, message: "no :application provided"
+              "Command `#{inspect(unquote(command_module))}` has already been registered in router `#{
+                inspect(__MODULE__)
+              }`"
         end
 
-        causation_id = Keyword.get(opts, :causation_id)
-        correlation_id = Keyword.get(opts, :correlation_id) || UUID.uuid4()
-
-        consistency =
-          Keyword.get(opts, :consistency) || unquote(consistency) || @default[:consistency]
-
-        metadata = Keyword.get(opts, :metadata) || @default[:metadata]
-        timeout = Keyword.get(opts, :timeout) || unquote(timeout) || @default[:dispatch_timeout]
-
-        returning =
-          cond do
-            (returning = Keyword.get(opts, :returning)) in [
-              :aggregate_state,
-              :aggregate_version,
-              :execution_result,
-              false
-            ] ->
-              returning
-
-            Keyword.get(opts, :include_execution_result) == true ->
-              :execution_result
-
-            Keyword.get(opts, :include_aggregate_version) == true ->
-              :aggregate_version
-
-            true ->
-              @default[:returning]
-          end
-
-        lifespan = Keyword.get(opts, :lifespan) || unquote(lifespan) || @default[:lifespan]
-        retry_attempts = Keyword.get(opts, :retry_attempts) || @default[:retry_attempts]
-
-        {identity, identity_prefix} =
-          case Map.get(@registered_identities, unquote(aggregate)) do
-            nil ->
-              {unquote(identity), unquote(identity_prefix)}
-
-            config ->
-              identity = Keyword.get(config, :by) || unquote(identity)
-              prefix = Keyword.get(config, :prefix) || unquote(identity_prefix)
-
-              {identity, prefix}
-          end
-
-        alias Commanded.Commands.Dispatcher
-        alias Commanded.Commands.Dispatcher.Payload
-
-        payload = %Payload{
-          application: application,
-          command: command,
-          command_uuid: UUID.uuid4(),
-          causation_id: causation_id,
-          correlation_id: correlation_id,
-          consistency: consistency,
-          handler_module: unquote(handler),
-          handler_function: unquote(function),
-          aggregate_module: unquote(aggregate),
-          identity: identity,
-          identity_prefix: identity_prefix,
-          returning: returning,
-          timeout: timeout,
-          lifespan: lifespan,
-          metadata: metadata,
-          middleware: @registered_middleware ++ @default[:middleware],
-          retry_attempts: retry_attempts
-        }
-
-        Dispatcher.dispatch(payload)
+        @registered_commands {unquote(command_module), Keyword.merge(@default, unquote(opts))}
       end
     end
   end
+
+  @doc """
+  Dispatch the given command to the registered handler.
+
+  Returns `:ok` on success, or `{:error, reason}` on failure.
+
+  ## Example
+
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankRouter.dispatch(command)
+
+  """
+  @callback dispatch(command :: struct()) ::
+              :ok
+              | {:ok, aggregate_state :: struct()}
+              | {:ok, aggregate_version :: non_neg_integer()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+              | {:error, :unregistered_command}
+              | {:error, :consistency_timeout}
+              | {:error, reason :: term()}
+
+  @doc """
+  Dispatch the given command to the registered handler providing a timeout.
+
+    - `command` is a command struct which must be registered with the router.
+
+    - `timeout_or_opts` is either an integer timeout or a keyword list of
+      options. The timeout must be an integer greater than zero which
+      specifies how many milliseconds to allow the command to be handled, or
+      the atom `:infinity` to wait indefinitely. The default timeout value is
+      five seconds.
+
+      Alternatively, an options keyword list can be provided, it supports the
+      following options.
+
+      Options:
+
+        - `causation_id` - an optional UUID used to identify the cause of the
+          command being dispatched.
+
+        - `correlation_id` - an optional UUID used to correlate related
+          commands/events together.
+
+        - `consistency` - one of `:eventual` (default) or `:strong`. By
+          setting the consistency to `:strong` a successful command dispatch
+          will block until all strongly consistent event handlers and process
+          managers have handled all events created by the command.
+
+        - `metadata` - an optional map containing key/value pairs comprising
+          the metadata to be associated with all events created by the
+          command.
+
+        - `returning` - to choose what response is returned from a successful
+            command dispatch. The default is to return an `:ok`.
+
+            The available options are:
+
+            - `:aggregate_state` - to return the update aggregate state in the
+              successful response: `{:ok, aggregate_state}`.
+
+            - `:aggregate_version` - to include the aggregate stream version
+              in the successful response: `{:ok, aggregate_version}`.
+
+            - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
+              struct containing the aggregate's identity, version, and any
+              events produced from the command along with their associated
+              metadata.
+
+            - `false` - don't return anything except an `:ok`.
+
+        - `timeout` - as described above.
+
+  Returns `:ok` on success unless the `:returning` option is specified where
+  it returns one of `{:ok, aggregate_state}`, `{:ok, aggregate_version}`, or
+  `{:ok, %Commanded.Commands.ExecutionResult{}}`.
+
+  Returns `{:error, reason}` on failure.
+
+  ## Example
+
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankRouter.dispatch(command, consistency: :strong, timeout: 30_000)
+
+  """
+  @callback dispatch(
+              command :: struct(),
+              timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
+            ) ::
+              :ok
+              | {:ok, aggregate_state :: struct()}
+              | {:ok, aggregate_version :: non_neg_integer()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+              | {:error, :unregistered_command}
+              | {:error, :consistency_timeout}
+              | {:error, reason :: term()}
 
   defmacro __before_compile__(_env) do
     quote generated: true do
+      @registered_command_modules Enum.map(@registered_commands, fn
+                                    {command_module, _command_opts} -> command_module
+                                  end)
+
+      @middleware Enum.reduce(@registered_middleware, @default_middleware, fn middleware, acc ->
+                    [middleware | acc]
+                  end)
+
       @doc false
-      def __registered_commands__, do: @registered_commands
+      def __registered_commands__, do: @registered_command_modules
 
-      @doc """
-      Dispatch the given command to the registered handler.
+      @doc false
+      def dispatch(command, opts \\ [])
 
-      Returns `:ok` on success, or `{:error, reason}` on failure.
-      """
-      @spec dispatch(command :: struct) ::
-              :ok
-              | {:ok, aggregate_state :: struct}
-              | {:ok, aggregate_version :: non_neg_integer()}
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:error, :unregistered_command}
-              | {:error, :consistency_timeout}
-              | {:error, reason :: term}
-      def dispatch(command), do: unregistered_command(command)
+      @doc false
+      def dispatch(command, :infinity),
+        do: do_dispatch(command, timeout: :infinity)
 
-      @doc """
-      Dispatch the given command to the registered handler providing a timeout.
+      @doc false
+      def dispatch(command, timeout) when is_integer(timeout),
+        do: do_dispatch(command, timeout: timeout)
 
-      - `timeout_or_opts` is either an integer timeout or a keyword list of
-        options. The timeout must be an integer greater than zero which
-        specifies how many milliseconds to allow the command to be handled, or
-        the atom `:infinity` to wait indefinitely. The default timeout value is
-        five seconds.
+      @doc false
+      def dispatch(command, opts),
+        do: do_dispatch(command, opts)
 
-        Alternatively, an options keyword list can be provided, it supports the
-        following options.
+      for {command_module, command_opts} <- @registered_commands do
+        @aggregate Keyword.fetch!(command_opts, :aggregate)
+        @handler Keyword.fetch!(command_opts, :to)
+        @function Keyword.fetch!(command_opts, :function)
+        @lifespan Keyword.get(command_opts, :lifespan)
+        @identity Keyword.get(command_opts, :identity)
+        @identity_prefix Keyword.get(command_opts, :identity_prefix)
 
-        Options:
+        @command_module command_module
+        @command_opts command_opts
 
-          - `causation_id` - an optional UUID used to identify the cause of the
-            command being dispatched.
+        defp do_dispatch(%@command_module{} = command, opts) do
+          alias Commanded.Commands.Dispatcher
+          alias Commanded.Commands.Dispatcher.Payload
 
-          - `correlation_id` - an optional UUID used to correlate related
-            commands/events together.
+          opts = Keyword.merge(@command_opts, opts)
 
-          - `consistency` - one of `:eventual` (default) or `:strong`. By
-            setting the consistency to `:strong` a successful command dispatch
-            will block until all strongly consistent event handlers and process
-            managers have handled all events created by the command.
+          application = Keyword.fetch!(opts, :application)
+          causation_id = Keyword.get(opts, :causation_id)
+          correlation_id = Keyword.get(opts, :correlation_id, UUID.uuid4())
+          consistency = Keyword.fetch!(opts, :consistency)
+          metadata = Keyword.fetch!(opts, :metadata)
+          retry_attempts = Keyword.get(opts, :retry_attempts)
+          timeout = Keyword.fetch!(opts, :timeout)
 
-          - `metadata` - an optional map containing key/value pairs comprising
-            the metadata to be associated with all events created by the
-            command.
+          returning =
+            cond do
+              Keyword.get(opts, :include_execution_result) == true ->
+                :execution_result
 
-          - `returning` - to choose what response is returned from a successful
-              command dispatch. The default is to return an `:ok`.
+              Keyword.get(opts, :include_aggregate_version) == true ->
+                :aggregate_version
 
-              The available options are:
+              (returning = Keyword.get(opts, :returning)) in [
+                :aggregate_state,
+                :aggregate_version,
+                :execution_result,
+                false
+              ] ->
+                returning
 
-              - `:aggregate_state` - to return the update aggregate state in the
-                successful response: `{:ok, aggregate_state}`.
+              true ->
+                false
+            end
 
-              - `:aggregate_version` - to include the aggregate stream version
-                in the successful response: `{:ok, aggregate_version}`.
+          {identity, identity_prefix} =
+            case Map.get(@registered_identities, @aggregate) do
+              nil ->
+                {@identity, @identity_prefix}
 
-              - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
-                struct containing the aggregate's identity, version, and any
-                events produced from the command along with their associated
-                metadata.
+              config ->
+                identity = Keyword.get(config, :by, @identity)
+                prefix = Keyword.get(config, :prefix, @identity_prefix)
 
-              - `false` - don't return anything except an `:ok`.
+                {identity, prefix}
+            end
 
-          - `timeout` - as described above.
+          payload = %Payload{
+            application: application,
+            command: command,
+            command_uuid: UUID.uuid4(),
+            causation_id: causation_id,
+            correlation_id: correlation_id,
+            consistency: consistency,
+            handler_module: @handler,
+            handler_function: @function,
+            aggregate_module: @aggregate,
+            identity: identity,
+            identity_prefix: identity_prefix,
+            returning: returning,
+            timeout: timeout,
+            lifespan: @lifespan,
+            metadata: metadata,
+            middleware: @middleware,
+            retry_attempts: retry_attempts
+          }
 
-      Returns `:ok` on success unless the `:returning` option is specified where
-      it returns one of `{:ok, aggregate_state}`, `{:ok, aggregate_version}`, or
-      `{:ok, %Commanded.Commands.ExecutionResult{}}`.
+          Dispatcher.dispatch(payload)
+        end
+      end
 
-      Returns `{:error, reason}` on failure.
-      """
-      @spec dispatch(command :: struct, timeout_or_opts :: integer | :infinity | keyword()) ::
-              :ok
-              | {:ok, aggregate_state :: struct}
-              | {:ok, aggregate_version :: non_neg_integer()}
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:error, :unregistered_command}
-              | {:error, :consistency_timeout}
-              | {:error, reason :: term}
-      def dispatch(command, _opts), do: unregistered_command(command)
-
-      defp unregistered_command(command) do
-        _ =
-          Logger.error(fn ->
-            "attempted to dispatch an unregistered command: " <> inspect(command)
-          end)
+      # Catch unregistered commands, log and return an error.
+      defp do_dispatch(command, _opts) do
+        Logger.error(fn ->
+          "attempted to dispatch an unregistered command: " <> inspect(command)
+        end)
 
         {:error, :unregistered_command}
       end
-    end
-  end
-
-  @doc false
-  def ensure_module_exists(module) do
-    case Code.ensure_compiled(module) do
-      {:module, ^module} ->
-        :ok
-
-      {:error, _error} ->
-        raise ArgumentError,
-          message:
-            "module `#{inspect(module)}` does not exist, perhaps you forgot to `alias` the namespace"
     end
   end
 
@@ -659,6 +611,17 @@ defmodule Commanded.Commands.Router do
     end
   end
 
+  @register_params [
+    :to,
+    :function,
+    :aggregate,
+    :identity,
+    :identity_prefix,
+    :timeout,
+    :lifespan,
+    :consistency
+  ]
+
   defp parse_opts([{:to, aggregate_or_handler} | opts], result) do
     case Keyword.pop(opts, :aggregate) do
       {nil, opts} ->
@@ -682,7 +645,5 @@ defmodule Commanded.Commands.Router do
     """
   end
 
-  defp parse_opts([], result) do
-    Enum.map(@register_params, fn key -> {key, Keyword.get(result, key)} end)
-  end
+  defp parse_opts([], result), do: result
 end

@@ -51,6 +51,12 @@ defmodule Commanded.Commands.CompositeRouter do
     end
   end
 
+  @doc """
+  Register a `Commanded.Commands.Router` module within this composite router.
+
+  Will allow the composite router to dispatch any commands registered by the
+  included router module. Multiple routers can be registered.
+  """
   defmacro router(router_module) do
     quote location: :keep do
       for command <- unquote(router_module).__registered_commands__() do
