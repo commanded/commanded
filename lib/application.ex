@@ -72,6 +72,15 @@ defmodule Commanded.Application do
 
   See `Commanded.Commands.CompositeRouter` for details.
 
+  ## Command dispatch
+
+  Once a router has been configured you can dispatch a command via the
+  application:
+
+      :ok = MyApp.dispatch(command, opts)
+
+  See `c:dispatch/1` and `c:dispatch/2` for details.
+
   ## Dynamic named applications
 
   An application can be provided with a name as an option to `start_link/1`.
@@ -104,7 +113,6 @@ defmodule Commanded.Application do
   To dispatch a command you must provide the application name:
 
       :ok = MyApp.Application.dispatch(command, application: :tenant1)
-
 
   ## Default dispatch options
 
@@ -223,11 +231,28 @@ defmodule Commanded.Application do
     - `command` is a command struct which must be registered with a
       `Commanded.Commands.Router` and included in the application.
       
+  """
+  @callback dispatch(command :: struct()) ::
+              :ok
+              | {:ok, aggregate_state :: struct()}
+              | {:ok, aggregate_version :: non_neg_integer()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+              | {:error, :unregistered_command}
+              | {:error, :consistency_timeout}
+              | {:error, reason :: term()}
+
+  @doc """
+  Dispatch a registered command.
+
+    - `command` is a command struct which must be registered with a
+      `Commanded.Commands.Router` and included in the application.
+
     - `timeout_or_opts` is either an integer timeout or a keyword list of
-      options. The timeout must be an integer greater than zero which
-      specifies how many milliseconds to allow the command to be handled, or
-      the atom `:infinity` to wait indefinitely. The default timeout value is
-      five seconds.
+      options.
+
+      The timeout must be an integer greater than zero which specifies how many
+      milliseconds to allow the command to be handled, or the atom `:infinity`
+      to wait indefinitely. The default timeout value is five seconds.
 
       Alternatively, an options keyword list can be provided, it supports the
       following options.
@@ -282,14 +307,17 @@ defmodule Commanded.Application do
       :ok = BankApp.dispatch(command, timeout: 30_000)
 
   """
-  @callback dispatch(command :: struct, timeout_or_opts :: integer | :infinity | Keyword.t()) ::
+  @callback dispatch(
+              command :: struct(),
+              timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
+            ) ::
               :ok
-              | {:ok, aggregate_state :: struct}
+              | {:ok, aggregate_state :: struct()}
               | {:ok, aggregate_version :: non_neg_integer()}
               | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
-              | {:error, reason :: term}
+              | {:error, reason :: term()}
 
   alias Commanded.Application.Config
 

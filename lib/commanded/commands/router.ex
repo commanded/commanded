@@ -218,9 +218,8 @@ defmodule Commanded.Commands.Router do
       Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
 
-      @application Keyword.get(unquote(opts), :application)
-
-      @default [
+      @default_dispatch_opts [
+        application: Keyword.get(unquote(opts), :application),
         consistency: Router.get_opt(unquote(opts), :default_consistency, :eventual),
         returning: Router.get_default_dispatch_return(unquote(opts)),
         timeout: 5_000,
@@ -362,7 +361,10 @@ defmodule Commanded.Commands.Router do
               }`"
         end
 
-        @registered_commands {unquote(command_module), Keyword.merge(@default, unquote(opts))}
+        @registered_commands {
+          unquote(command_module),
+          Keyword.merge(@default_dispatch_opts, unquote(opts))
+        }
       end
     end
   end
@@ -393,14 +395,15 @@ defmodule Commanded.Commands.Router do
 
     - `command` is a command struct which must be registered with the router.
 
-    - `timeout_or_opts` is either an integer timeout or a keyword list of
-      options. The timeout must be an integer greater than zero which
-      specifies how many milliseconds to allow the command to be handled, or
-      the atom `:infinity` to wait indefinitely. The default timeout value is
-      five seconds.
+    - `timeout_or_opts` is either an integer timeout, `:infinity`, or a keyword
+      list of options.
 
-      Alternatively, an options keyword list can be provided, it supports the
-      following options.
+      The timeout must be an integer greater than zero which specifies how many
+      milliseconds to allow the command to be handled, or the atom `:infinity`
+      to wait indefinitely. The default timeout value is five seconds.
+
+      Alternatively, an options keyword list can be provided with the following
+      options.
 
       Options:
 
@@ -466,16 +469,10 @@ defmodule Commanded.Commands.Router do
 
   defmacro __before_compile__(_env) do
     quote generated: true do
-      @registered_command_modules Enum.map(@registered_commands, fn
-                                    {command_module, _command_opts} -> command_module
-                                  end)
-
-      @middleware Enum.reduce(@registered_middleware, @default_middleware, fn middleware, acc ->
-                    [middleware | acc]
-                  end)
-
       @doc false
-      def __registered_commands__, do: @registered_command_modules
+      def __registered_commands__ do
+        Enum.map(@registered_commands, fn {command_module, _command_opts} -> command_module end)
+      end
 
       @doc false
       def dispatch(command, opts \\ [])
@@ -491,6 +488,10 @@ defmodule Commanded.Commands.Router do
       @doc false
       def dispatch(command, opts),
         do: do_dispatch(command, opts)
+
+      @middleware Enum.reduce(@registered_middleware, @default_middleware, fn middleware, acc ->
+                    [middleware | acc]
+                  end)
 
       for {command_module, command_opts} <- @registered_commands do
         @aggregate Keyword.fetch!(command_opts, :aggregate)

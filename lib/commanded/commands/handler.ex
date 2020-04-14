@@ -9,7 +9,9 @@ defmodule Commanded.Commands.Handler do
       defmodule OpenAccountHandler do
         @behaviour Commanded.Commands.Handler
 
-        def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
+        def handle(%BankAccount{} = aggregate, %OpenAccount{} = command) do
+          %OpenAccount{account_number: account_number, initial_balance: initial_balance} = command
+
           BankAccount.open_account(aggregate, account_number, initial_balance)
         end
       end
@@ -18,15 +20,22 @@ defmodule Commanded.Commands.Handler do
   @type aggregate :: struct()
   @type command :: struct()
   @type domain_event :: struct
-  @type domain_events :: list(struct())
-  @type reason :: term()
+  @type reason :: any()
 
   @doc """
   Apply the given command to the event sourced aggregate.
 
-  You must return a list containing the pending events, or `nil` / `[]` when no events produced.
+  You must return a single domain event, a list containing the pending events,
+  or `nil`, `[]`, or `:ok` when no events are produced.
 
   You should return `{:error, reason}` on failure.
   """
-  @callback handle(aggregate, command) :: domain_event | domain_events | nil | {:error, reason}
+  @callback handle(aggregate, command) ::
+              domain_event
+              | list(domain_event)
+              | {:ok, domain_event}
+              | {:ok, list(domain_event)}
+              | :ok
+              | nil
+              | {:error, reason}
 end
