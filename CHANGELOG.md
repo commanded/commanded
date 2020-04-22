@@ -14,6 +14,7 @@
 - Add stacktraces to EventHandler error logging ([#340](https://github.com/commanded/commanded/pull/340))
 - `refute_receive_event/4` only tests newly created events ([#347](https://github.com/commanded/commanded/pull/347)).
 - Allow Commanded Application name to be set dynamically in middleware ([#352](https://github.com/commanded/commanded/pull/352)).
+- Remove router module compile-time checking ([#363](https://github.com/commanded/commanded/pull/363)).
 
 ### Bug fixes
 
