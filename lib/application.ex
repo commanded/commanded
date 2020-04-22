@@ -72,6 +72,15 @@ defmodule Commanded.Application do
 
   See `Commanded.Commands.CompositeRouter` for details.
 
+  ## Command dispatch
+
+  Once a router has been configured you can dispatch a command via the
+  application:
+
+      :ok = MyApp.dispatch(command, opts)
+
+  See `c:dispatch/1` and `c:dispatch/2` for details.
+
   ## Dynamic named applications
 
   An application can be provided with a name as an option to `start_link/1`.
@@ -104,7 +113,6 @@ defmodule Commanded.Application do
   To dispatch a command you must provide the application name:
 
       :ok = MyApp.Application.dispatch(command, application: :tenant1)
-
 
   ## Default dispatch options
 
@@ -219,15 +227,97 @@ defmodule Commanded.Application do
 
   @doc """
   Dispatch a registered command.
+
+    - `command` is a command struct which must be registered with a
+      `Commanded.Commands.Router` and included in the application.
+      
   """
-  @callback dispatch(command :: struct, timeout_or_opts :: integer | :infinity | Keyword.t()) ::
+  @callback dispatch(command :: struct()) ::
               :ok
-              | {:ok, aggregate_state :: struct}
+              | {:ok, aggregate_state :: struct()}
               | {:ok, aggregate_version :: non_neg_integer()}
               | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
-              | {:error, reason :: term}
+              | {:error, reason :: term()}
+
+  @doc """
+  Dispatch a registered command.
+
+    - `command` is a command struct which must be registered with a
+      `Commanded.Commands.Router` and included in the application.
+
+    - `timeout_or_opts` is either an integer timeout or a keyword list of
+      options.
+
+      The timeout must be an integer greater than zero which specifies how many
+      milliseconds to allow the command to be handled, or the atom `:infinity`
+      to wait indefinitely. The default timeout value is five seconds.
+
+      Alternatively, an options keyword list can be provided, it supports the
+      following options.
+
+      Options:
+
+        - `causation_id` - an optional UUID used to identify the cause of the
+          command being dispatched.
+
+        - `correlation_id` - an optional UUID used to correlate related
+          commands/events together.
+
+        - `consistency` - one of `:eventual` (default) or `:strong`. By
+          setting the consistency to `:strong` a successful command dispatch
+          will block until all strongly consistent event handlers and process
+          managers have handled all events created by the command.
+
+        - `metadata` - an optional map containing key/value pairs comprising
+          the metadata to be associated with all events created by the
+          command.
+
+        - `returning` - to choose what response is returned from a successful
+            command dispatch. The default is to return an `:ok`.
+
+            The available options are:
+
+            - `:aggregate_state` - to return the update aggregate state in the
+              successful response: `{:ok, aggregate_state}`.
+
+            - `:aggregate_version` - to include the aggregate stream version
+              in the successful response: `{:ok, aggregate_version}`.
+
+            - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
+              struct containing the aggregate's identity, version, and any
+              events produced from the command along with their associated
+              metadata.
+
+            - `false` - don't return anything except an `:ok`.
+
+        - `timeout` - as described above.
+
+  Returns `:ok` on success unless the `:returning` option is specified where
+  it returns one of `{:ok, aggregate_state}`, `{:ok, aggregate_version}`, or
+  `{:ok, %Commanded.Commands.ExecutionResult{}}`.
+
+  Returns `{:error, reason}` on failure.
+
+  ## Example
+
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
+
+      :ok = BankApp.dispatch(command, timeout: 30_000)
+
+  """
+  @callback dispatch(
+              command :: struct(),
+              timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
+            ) ::
+              :ok
+              | {:ok, aggregate_state :: struct()}
+              | {:ok, aggregate_version :: non_neg_integer()}
+              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+              | {:error, :unregistered_command}
+              | {:error, :consistency_timeout}
+              | {:error, reason :: term()}
 
   alias Commanded.Application.Config
 

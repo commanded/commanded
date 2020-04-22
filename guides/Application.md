@@ -1,6 +1,6 @@
 # Application
 
-Commanded allows you to define, supervise, and start your own application module. To use Commanded you must create at least one application module. You can create multiple Commanded applications which will run independently, each using its own separately configured event store.
+Commanded allows you to define, supervise, and start your own application module. To use Commanded you must create at least one application. You can create multiple Commanded applications which will run independently, each using its own separately configured event store.
 
 The application expects at least an `:otp_app` option to be specified. It should point to an OTP application containing the application's configuration.
 
@@ -70,7 +70,7 @@ defmodule MyApp.Application do
 end
 ```
 
-Once you have defined a router, you can dispatch a command using the application module:
+Once you have defined a router you can dispatch a command using the application module:
 
 ```elixir
 :ok = MyApp.Application.dispatch(%RegisterCustomer{id: UUID.uuid4(), name: "Ben"})

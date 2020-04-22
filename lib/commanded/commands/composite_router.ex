@@ -19,14 +19,25 @@ defmodule Commanded.Commands.CompositeRouter do
         router(Bank.MoneyTransfer.Router)
       end
 
-  You can dispatch a command via the composite router which will be routed to
-  the associated router:
+    One or more routers or composite routers can be included in a
+    `Commanded.Application`  since it is also a composite router:
 
-      alias Bank.AppRouter
+      defmodule BankApp do
+        use Commanded.Application
+
+        router(Bank.AppRouter)
+      end
+
+  You can dispatch a command via the application which will then be routed to
+  the associated child router:
 
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
 
-      :ok = AppRouter.dispatch(command)
+      :ok = BankApp.dispatch(command)
+
+  Or via the composite router itself, specifying the application:
+
+      :ok = Bank.AppRouter.dispatch(command, application: BankApp)
 
   A composite router can include composite routers.
   """
@@ -37,6 +48,10 @@ defmodule Commanded.Commands.CompositeRouter do
 
       import unquote(__MODULE__)
 
+      @before_compile unquote(__MODULE__)
+
+      Module.register_attribute(__MODULE__, :registered_commands, accumulate: false)
+
       application = Keyword.get(unquote(opts), :application)
 
       default_dispatch_opts =
@@ -46,11 +61,15 @@ defmodule Commanded.Commands.CompositeRouter do
 
       @default_dispatch_opts default_dispatch_opts
       @registered_commands %{}
-
-      @before_compile unquote(__MODULE__)
     end
   end
 
+  @doc """
+  Register a `Commanded.Commands.Router` module within this composite router.
+
+  Will allow the composite router to dispatch any commands registered by the
+  included router module. Multiple routers can be registered.
+  """
   defmacro router(router_module) do
     quote location: :keep do
       for command <- unquote(router_module).__registered_commands__() do
@@ -71,47 +90,37 @@ defmodule Commanded.Commands.CompositeRouter do
     quote generated: true do
       @doc false
       def __registered_commands__ do
-        Enum.map(@registered_commands, fn {command, _router} -> command end)
-      end
-
-      def __dispatch_opts__(opts) do
-        Keyword.merge(@default_dispatch_opts, opts)
+        Enum.map(@registered_commands, fn {command_module, _router} -> command_module end)
       end
 
       @doc false
       def dispatch(command, opts \\ [])
 
-      Enum.map(@registered_commands, fn {command_module, router} ->
-        Module.eval_quoted(
-          __MODULE__,
-          quote do
-            @doc false
-            def dispatch(%unquote(command_module){} = command, :infinity) do
-              opts = __dispatch_opts__(timeout: :infinity)
-
-              unquote(router).dispatch(command, opts)
-            end
-
-            @doc false
-            def dispatch(%unquote(command_module){} = command, timeout)
-                when is_integer(timeout) do
-              opts = __dispatch_opts__(timeout: timeout)
-
-              unquote(router).dispatch(command, opts)
-            end
-
-            @doc false
-            def dispatch(%unquote(command_module){} = command, opts) do
-              opts = __dispatch_opts__(opts)
-
-              unquote(router).dispatch(command, opts)
-            end
-          end
-        )
-      end)
+      @doc false
+      def dispatch(command, :infinity),
+        do: do_dispatch(command, timeout: :infinity)
 
       @doc false
-      def dispatch(command, _opts) do
+      def dispatch(command, timeout) when is_integer(timeout),
+        do: do_dispatch(command, timeout: timeout)
+
+      @doc false
+      def dispatch(command, opts),
+        do: do_dispatch(command, opts)
+
+      for {command_module, router} <- @registered_commands do
+        @command_module command_module
+        @router router
+
+        defp do_dispatch(%@command_module{} = command, opts) do
+          opts = Keyword.merge(@default_dispatch_opts, opts)
+
+          @router.dispatch(command, opts)
+        end
+      end
+
+      # Catch unregistered commands, log and return an error.
+      defp do_dispatch(command, _opts) do
         Logger.error(fn ->
           "attempted to dispatch an unregistered command: " <> inspect(command)
         end)
