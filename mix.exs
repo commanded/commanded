@@ -55,7 +55,7 @@ defmodule Commanded.Mixfile do
 
       # Optional dependencies
       {:jason, "~> 1.2", optional: true},
-      {:phoenix_pubsub, "~> 1.1", optional: true},
+      {:phoenix_pubsub, "~> 2.0", optional: true},
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},

@@ -64,18 +64,13 @@ if Code.ensure_loaded?(Phoenix.PubSub) do
       pubsub_name = Module.concat([application, PhoenixPubSub])
       tracker_name = Module.concat([application, PhoenixPubSub.Tracker])
 
-      phoenix_pubsub_config = Keyword.put(config, :name, pubsub_name)
-
-      {adapter, phoenix_pubsub_config} = Keyword.pop(phoenix_pubsub_config, :adapter)
-
-      phoenix_pubsub_config = parse_config(phoenix_pubsub_config)
+      phoenix_pubsub_config =
+        config
+        |> Keyword.put(:name, pubsub_name)
+        |> parse_config()
 
       child_spec = [
-        %{
-          id: adapter,
-          start: {adapter, :start_link, [phoenix_pubsub_config]},
-          type: :supervisor
-        },
+        Phoenix.PubSub.child_spec(phoenix_pubsub_config),
         %{
           id: Tracker,
           start: {Tracker, :start_link, [[name: tracker_name, pubsub_server: pubsub_name]]},
