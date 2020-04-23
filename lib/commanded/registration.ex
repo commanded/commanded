@@ -54,6 +54,9 @@ defmodule Commanded.Registration do
       :local ->
         {Commanded.Registration.LocalRegistry, []}
 
+      :global ->
+        {Commanded.Registration.GlobalRegistry, []}
+
       adapter when is_atom(adapter) ->
         {adapter, []}
 

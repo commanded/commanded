@@ -11,7 +11,10 @@ elixir:
 otp_release:
   - 22.0
 
+before_script:
+  - epmd -daemon
+
 script:
-  - mix test
   - mix format --check-formatted
-  - travis_wait 30 mix dialyzer --halt-exit-status
+  - mix test --include distributed
+  - travis_wait 30 mix dialyzer

@@ -3,7 +3,6 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
   alias Commanded.Commands.{
     ConsistencyAggregateRoot,
-    ConsistencyRouter,
     ConsistencyPrefixRouter,
     EventuallyConsistentEventHandler,
     ExecutionResult,
@@ -13,27 +12,23 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   }
 
   alias Commanded.Commands.ConsistencyApp
-  alias Commanded.DefaultApp
   alias Commanded.EventStore
-  alias Commanded.Helpers.ProcessHelper
   alias ConsistencyAggregateRoot.ConsistencyCommand
   alias ConsistencyAggregateRoot.NoOpCommand
   alias ConsistencyAggregateRoot.RequestDispatchCommand
 
   setup do
-    start_supervised!(DefaultApp)
     start_supervised!(ConsistencyApp)
     :ok
   end
 
   describe "event handlers" do
-    setup :start_event_handlers
+    setup [:start_event_handlers]
 
     test "should wait for strongly consistent event handler to handle event" do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 0}
-      opts = [application: DefaultApp, consistency: :strong]
 
-      assert :ok = ConsistencyRouter.dispatch(command, opts)
+      assert :ok = ConsistencyApp.dispatch(command, consistency: :strong)
     end
 
     # default consistency timeout set to 100ms test config
@@ -41,28 +36,26 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}
 
       assert {:error, :consistency_timeout} =
-               ConsistencyRouter.dispatch(command, application: DefaultApp, consistency: :strong)
+               ConsistencyApp.dispatch(command, consistency: :strong)
     end
 
     test "should not wait when command creates no events" do
       command = %NoOpCommand{uuid: UUID.uuid4()}
 
-      assert :ok =
-               ConsistencyRouter.dispatch(command, application: DefaultApp, consistency: :strong)
+      assert :ok = ConsistencyApp.dispatch(command, consistency: :strong)
     end
 
     test "should allow strongly consistent event handler to dispatch a command" do
       command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 0}
 
-      assert :ok =
-               ConsistencyRouter.dispatch(command, application: DefaultApp, consistency: :strong)
+      assert :ok = ConsistencyApp.dispatch(command, consistency: :strong)
     end
 
     test "should timeout waiting for strongly consistent handler dispatching a command" do
       command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 5_000}
 
       assert {:error, :consistency_timeout} =
-               ConsistencyRouter.dispatch(command, application: DefaultApp, consistency: :strong)
+               ConsistencyApp.dispatch(command, consistency: :strong)
     end
   end
 
@@ -71,17 +64,21 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
     test "should only wait for opt-in strongly consistent event handler to handle event" do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 100}
-      opts = [application: DefaultApp, consistency: [OptionalStronglyConsistentEventHandler]]
+      opts = [application: ConsistencyApp, consistency: [OptionalStronglyConsistentEventHandler]]
 
-      assert :ok = ConsistencyRouter.dispatch(command, opts)
+      assert :ok = ConsistencyApp.dispatch(command, opts)
     end
 
     # Default consistency timeout set to 100ms test config
     test "should timeout waiting for strongly consistent event handler to handle event" do
       command = %ConsistencyCommand{uuid: UUID.uuid4(), delay: 5_000}
-      opts = [application: DefaultApp, consistency: ["OptionalStronglyConsistentEventHandler"]]
 
-      assert {:error, :consistency_timeout} = ConsistencyRouter.dispatch(command, opts)
+      opts = [
+        application: ConsistencyApp,
+        consistency: ["OptionalStronglyConsistentEventHandler"]
+      ]
+
+      assert {:error, :consistency_timeout} = ConsistencyApp.dispatch(command, opts)
     end
   end
 
@@ -94,7 +91,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
       assert :ok =
                ConsistencyPrefixRouter.dispatch(command,
-                 application: DefaultApp,
+                 application: ConsistencyApp,
                  consistency: :strong
                )
     end
@@ -105,14 +102,16 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
       assert {:ok, %ExecutionResult{aggregate_uuid: aggregate_uuid}} =
                ConsistencyPrefixRouter.dispatch(command,
-                 application: DefaultApp,
+                 application: ConsistencyApp,
                  consistency: :strong,
                  include_execution_result: true
                )
 
       assert aggregate_uuid == "example-prefix-" <> uuid
 
-      recorded_events = EventStore.stream_forward(DefaultApp, aggregate_uuid) |> Enum.to_list()
+      recorded_events =
+        EventStore.stream_forward(ConsistencyApp, aggregate_uuid) |> Enum.to_list()
+
       assert length(recorded_events) == 1
     end
   end
@@ -123,39 +122,25 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     test "should successfully dispatch command" do
       command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 5_000}
 
-      assert :ok =
-               ConsistencyRouter.dispatch(command, application: DefaultApp, consistency: :strong)
+      assert :ok = ConsistencyApp.dispatch(command, consistency: :strong)
     end
   end
 
   def start_event_handlers(_context) do
-    {:ok, handler1} = StronglyConsistentEventHandler.start_link()
-    {:ok, handler2} = EventuallyConsistentEventHandler.start_link()
-
-    on_exit(fn ->
-      ProcessHelper.shutdown(handler1)
-      ProcessHelper.shutdown(handler2)
-    end)
+    start_supervised!(StronglyConsistentEventHandler)
+    start_supervised!(EventuallyConsistentEventHandler)
 
     :ok
   end
 
   def start_optional_handler(_context) do
-    {:ok, handler3} = OptionalStronglyConsistentEventHandler.start_link()
-
-    on_exit(fn ->
-      ProcessHelper.shutdown(handler3)
-    end)
+    start_supervised!(OptionalStronglyConsistentEventHandler)
 
     :ok
   end
 
   def start_process_manager(_context) do
-    {:ok, pm} = StronglyConsistentProcessManager.start_link()
-
-    on_exit(fn ->
-      ProcessHelper.shutdown(pm)
-    end)
+    start_supervised!(StronglyConsistentProcessManager)
 
     :ok
   end

@@ -1,19 +1,12 @@
 defmodule Commanded.Commands.OptionalStronglyConsistentEventHandler do
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: Commanded.Commands.ConsistencyApp,
     name: "OptionalStronglyConsistentEventHandler",
     consistency: :strong
 
-  alias Commanded.Commands.{
-    ConsistencyAggregateRoot,
-    ConsistencyRouter
-  }
-
-  alias ConsistencyAggregateRoot.{
-    ConsistencyCommand,
-    ConsistencyEvent,
-    DispatchRequestedEvent
-  }
+  alias Commanded.Commands.ConsistencyApp
+  alias Commanded.Commands.ConsistencyAggregateRoot
+  alias ConsistencyAggregateRoot.{ConsistencyCommand, ConsistencyEvent, DispatchRequestedEvent}
 
   def handle(%ConsistencyEvent{delay: delay}, _metadata) do
     :timer.sleep(round(delay / 10))
@@ -26,10 +19,6 @@ defmodule Commanded.Commands.OptionalStronglyConsistentEventHandler do
 
     command = %ConsistencyCommand{uuid: uuid, delay: delay}
 
-    ConsistencyRouter.dispatch(
-      command,
-      application: Commanded.DefaultApp,
-      consistency: :strong
-    )
+    ConsistencyApp.dispatch(command, consistency: :strong)
   end
 end

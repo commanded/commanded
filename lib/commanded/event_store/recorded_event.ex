@@ -21,9 +21,9 @@ defmodule Commanded.EventStore.RecordedEvent do
     - `correlation_id` - an optional UUID identifier used to correlate related
       messages.
 
-    - `data` - the serialized event as binary data.
+    - `data` - the event data deserialized into a struct.
 
-    - `metadata` - the serialized event metadata as binary data.
+    - `metadata` - a string keyed map of metadata associated with the event.
 
     - `created_at` - the datetime, in UTC, indicating when the event was
       created.
@@ -40,8 +40,8 @@ defmodule Commanded.EventStore.RecordedEvent do
           causation_id: uuid() | nil,
           correlation_id: uuid() | nil,
           event_type: String.t(),
-          data: binary(),
-          metadata: binary(),
+          data: struct(),
+          metadata: map(),
           created_at: DateTime.t()
         }
 

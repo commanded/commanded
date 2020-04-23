@@ -235,8 +235,8 @@ defmodule Commanded.Event.Handler do
   alias Commanded.Event.FailureContext
   alias Commanded.Event.Handler
   alias Commanded.Event.Upcast
-  alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
+  alias Commanded.EventStore.Subscription
   alias Commanded.Subscriptions
 
   @type domain_event :: struct()
@@ -418,26 +418,37 @@ defmodule Commanded.Event.Handler do
     :handler_name,
     :handler_module,
     :last_seen_event,
-    :subscribe_from,
-    :subscribe_to,
     :subscription,
-    :subscription_ref
+    :subscribe_timer
   ]
 
   @doc false
   def start_link(application, handler_name, handler_module, opts \\ []) do
     name = name(application, handler_name)
+    consistency = consistency(opts)
+
+    subscription =
+      Subscription.new(
+        application: application,
+        subscription_name: handler_name,
+        subscribe_from: Keyword.get(opts, :start_from, :origin),
+        subscribe_to: Keyword.get(opts, :subscribe_to, :all)
+      )
 
     handler = %Handler{
       application: application,
       handler_name: handler_name,
       handler_module: handler_module,
-      consistency: consistency(opts),
-      subscribe_from: start_from(opts),
-      subscribe_to: subscribe_to(opts)
+      consistency: consistency,
+      subscription: subscription
     }
 
-    Registration.start_link(application, name, __MODULE__, handler)
+    with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, handler) do
+      # Register the started event handler as a subscription with the given consistency
+      :ok = Subscriptions.register(application, handler_name, pid, consistency)
+
+      {:ok, pid}
+    end
   end
 
   def name(application, handler_name), do: {application, __MODULE__, handler_name}
@@ -445,8 +456,6 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def init(%Handler{} = state) do
-    :ok = register_subscription(state)
-
     {:ok, state, {:continue, :subscribe_to_events}}
   end
 
@@ -467,8 +476,10 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def handle_call(:config, _from, %Handler{} = state) do
-    %Handler{consistency: consistency, subscribe_from: subscribe_from, subscribe_to: subscribe_to} =
-      state
+    %Handler{
+      consistency: consistency,
+      subscription: %Subscription{subscribe_from: subscribe_from, subscribe_to: subscribe_to}
+    } = state
 
     config = [consistency: consistency, start_from: subscribe_from, subscribe_to: subscribe_to]
 
@@ -502,9 +513,18 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
+  @impl GenServer
+  def handle_info(:subscribe_to_events, %Handler{} = state) do
+    {:noreply, subscribe_to_events(state)}
+  end
+
+  @doc false
   # Subscription to event store has successfully subscribed, init event handler
   @impl GenServer
-  def handle_info({:subscribed, subscription}, %Handler{subscription: subscription} = state) do
+  def handle_info(
+        {:subscribed, subscription},
+        %Handler{subscription: %Subscription{subscription_pid: subscription}} = state
+      ) do
     Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
 
     %Handler{handler_module: handler_module} = state
@@ -541,7 +561,10 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   @impl GenServer
-  def handle_info({:DOWN, ref, :process, _pid, reason}, %Handler{subscription_ref: ref} = state) do
+  def handle_info(
+        {:DOWN, ref, :process, _pid, reason},
+        %Handler{subscription: %Subscription{subscription_ref: ref}} = state
+      ) do
     Logger.debug(fn -> describe(state) <> " subscription DOWN due to: #{inspect(reason)}" end)
 
     # Stop event handler when event store subscription process terminates.
@@ -558,44 +581,34 @@ defmodule Commanded.Event.Handler do
     {:noreply, state}
   end
 
-  # Register this event handler as a subscription with the given consistency.
-  defp register_subscription(%Handler{} = state) do
-    %Handler{application: application, consistency: consistency, handler_name: name} = state
-
-    Subscriptions.register(application, name, consistency)
-  end
-
   defp reset_subscription(%Handler{} = state) do
-    %Handler{
-      application: application,
-      handler_name: handler_name,
-      subscribe_to: subscribe_to,
-      subscription_ref: subscription_ref,
-      subscription: subscription
-    } = state
+    %Handler{subscription: subscription} = state
 
-    Process.demonitor(subscription_ref)
+    subscription = Subscription.reset(subscription)
 
-    :ok = EventStore.unsubscribe(application, subscription)
-    :ok = EventStore.delete_subscription(application, subscribe_to, handler_name)
-
-    %Handler{state | last_seen_event: nil, subscription: nil, subscription_ref: nil}
+    %Handler{state | last_seen_event: nil, subscription: subscription, subscribe_timer: nil}
   end
 
   defp subscribe_to_events(%Handler{} = state) do
-    %Handler{
-      application: application,
-      handler_name: handler_name,
-      subscribe_from: subscribe_from,
-      subscribe_to: subscribe_to
-    } = state
+    %Handler{subscription: subscription} = state
 
-    {:ok, subscription} =
-      EventStore.subscribe_to(application, subscribe_to, handler_name, self(), subscribe_from)
+    case Subscription.subscribe(subscription, self()) do
+      {:ok, subscription} ->
+        %Handler{state | subscription: subscription, subscribe_timer: nil}
 
-    subscription_ref = Process.monitor(subscription)
+      {:error, error} ->
+        {backoff, subscription} = Subscription.backoff(subscription)
 
-    %Handler{state | subscription: subscription, subscription_ref: subscription_ref}
+        Logger.info(fn ->
+          describe(state) <>
+            " failed to subscribe to event store due to: " <>
+            inspect(error) <> ", retrying in " <> inspect(backoff) <> "ms"
+        end)
+
+        subscribe_timer = Process.send_after(self(), :subscribe_to_events, backoff)
+
+        %Handler{state | subscription: subscription, subscribe_timer: subscribe_timer}
+    end
   end
 
   defp handle_event(event, handler, context \\ %{})
@@ -708,18 +721,6 @@ defmodule Commanded.Event.Handler do
 
   # Confirm receipt of event
   defp confirm_receipt(%RecordedEvent{} = event, %Handler{} = state) do
-    %RecordedEvent{event_number: event_number} = event
-
-    Logger.debug(fn ->
-      describe(state) <> " confirming receipt of event ##{inspect(event_number)}"
-    end)
-
-    ack_event(event, state)
-
-    %Handler{state | last_seen_event: event_number}
-  end
-
-  defp ack_event(event, %Handler{} = state) do
     %Handler{
       application: application,
       consistency: consistency,
@@ -727,8 +728,16 @@ defmodule Commanded.Event.Handler do
       subscription: subscription
     } = state
 
-    :ok = EventStore.ack_event(application, subscription, event)
+    %RecordedEvent{event_number: event_number} = event
+
+    Logger.debug(fn ->
+      describe(state) <> " confirming receipt of event ##{inspect(event_number)}"
+    end)
+
+    :ok = Subscription.ack_event(subscription, event)
     :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
+
+    %Handler{state | last_seen_event: event_number}
   end
 
   @enrich_metadata_fields [
@@ -754,22 +763,6 @@ defmodule Commanded.Event.Handler do
     case opts[:consistency] || Application.get_env(:commanded, :default_consistency, :eventual) do
       consistency when consistency in [:eventual, :strong] -> consistency
       invalid -> raise "Invalid `consistency` option: #{inspect(invalid)}"
-    end
-  end
-
-  defp start_from(opts) do
-    case opts[:start_from] || :origin do
-      start_from when start_from in [:origin, :current] -> start_from
-      start_from when is_integer(start_from) -> start_from
-      invalid -> "Invalid `start_from` option: #{inspect(invalid)}"
-    end
-  end
-
-  defp subscribe_to(opts) do
-    case opts[:subscribe_to] || :all do
-      :all -> :all
-      stream when is_binary(stream) -> stream
-      invalid -> "Invalid `subscribe_to` option: #{inspect(invalid)}"
     end
   end
 

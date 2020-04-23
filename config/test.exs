@@ -6,8 +6,9 @@ alias Commanded.Serialization.JsonSerializer
 config :logger, :console, level: :debug, format: "[$level] $message\n"
 
 config :ex_unit,
+  assert_receive_timeout: 1_000,
   capture_log: true,
-  assert_receive_timeout: 1_000
+  exclude: [:distributed]
 
 config :commanded,
   assert_receive_event_timeout: 100,
@@ -21,7 +22,8 @@ default_app_config = [
 ]
 
 config :commanded, Commanded.Commands.ConsistencyApp, default_app_config
-config :commanded, Commanded.DefaultApp, default_app_config
+config :commanded, Commanded.DefaultApp, []
+config :commanded, Commanded.DistributedApp, []
 config :commanded, Commanded.Event.Upcast.ProcessManager.Application, default_app_config
 config :commanded, Commanded.Middleware.TenantApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ErrorApp, default_app_config
