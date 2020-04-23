@@ -5,7 +5,6 @@
 ### Enhancements
 
 - Dynamic Commanded applications ([#324](https://github.com/commanded/commanded/pull/324)).
-- Command dispatch return ([#331](https://github.com/commanded/commanded/pull/331)).
 - Log and ignore unexpected messages received by event handlers and process manager instances ([#333](https://github.com/commanded/commanded/pull/333))
 - Process manager `identity/0` function ([#334](https://github.com/commanded/commanded/pull/334)).
 - Extend `Commanded.AggregateCase` ExUnit case template to support `Commanded.Aggregate.Multi`.
@@ -31,7 +30,7 @@
 ### Bug fixes
 
 - Fix distributed subscription registration bug ([#345](https://github.com/commanded/commanded/pull/345)).
-- Retry event handler and process manager suscriptions on error ([#348](https://github.com/commanded/commanded/pull/348)).
+- Retry event handler and process manager subscriptions on error ([#348](https://github.com/commanded/commanded/pull/348)).
 
 ## v1.0.0
 
