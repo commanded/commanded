@@ -1,5 +1,5 @@
 defmodule Commanded.Event.HandlerConfigTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
 

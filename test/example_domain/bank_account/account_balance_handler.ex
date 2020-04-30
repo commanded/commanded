@@ -8,7 +8,6 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyWithdrawn
-  alias Commanded.Event.ErrorEvent
 
   def init do
     with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
@@ -26,10 +25,6 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
 
   def handle(%MoneyWithdrawn{balance: balance}, _metadata) do
     Agent.update(__MODULE__, fn _ -> balance end)
-  end
-
-  def handle(%ErrorEvent{}, _metadata) do
-    raise "ErrorEvent occurred"
   end
 
   def subscribed? do

@@ -1,5 +1,5 @@
 defmodule Commanded.DistributedSubscriptionsTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Subscriptions.DistributedSubscribers
 

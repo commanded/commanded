@@ -1,5 +1,5 @@
 defmodule Commanded.Middleware.ApplicationMiddlewareTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Middleware.Tenant.Commands.RegisterTenant
   alias Commanded.Middleware.TenantApp

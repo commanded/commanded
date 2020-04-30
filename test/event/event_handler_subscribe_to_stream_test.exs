@@ -1,5 +1,5 @@
 defmodule Commanded.Event.EventHandlerSubscribeToStreamTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.EventStore
   alias Commanded.DefaultApp

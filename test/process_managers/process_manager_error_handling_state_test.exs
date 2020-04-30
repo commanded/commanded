@@ -1,5 +1,5 @@
 defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess
   alias Commanded.ProcessManagers.ErrorRouter

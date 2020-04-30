@@ -1,5 +1,5 @@
 defmodule Commanded.Aggregates.SnapshottingTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
 

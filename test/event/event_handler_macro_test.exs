@@ -1,5 +1,5 @@
 defmodule Commanded.Event.EventHandlerMacroTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Event.IgnoredEvent
   alias Commanded.ExampleDomain.BankApp

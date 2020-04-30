@@ -1,5 +1,5 @@
 defmodule Commanded.Aggregates.EventPersistenceTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Enumerable, only: [pluck: 2]
 

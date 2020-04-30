@@ -1,5 +1,5 @@
 defmodule Commanded.Middleware.MiddlewareTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Enumerable
 
@@ -118,7 +118,7 @@ defmodule Commanded.Middleware.MiddlewareTest do
     command = %RaiseError{aggregate_uuid: UUID.uuid4()}
 
     # Force command handling to error
-    assert {:error, :aggregate_execution_failed} =
+    assert {:error, %RuntimeError{message: "failed"}} =
              Router.dispatch(command, application: DefaultApp)
 
     {dispatched, succeeded, failed} = CommandAuditMiddleware.count_commands()

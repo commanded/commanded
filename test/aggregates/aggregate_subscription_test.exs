@@ -1,5 +1,5 @@
 defmodule Commanded.Aggregates.AggregateSubscriptionTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.Aggregates.Supervisor, as: AggregateSupervisor

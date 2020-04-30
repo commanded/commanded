@@ -1,9 +1,11 @@
 defmodule Commanded.Event.EventHandlerErrorHandlingTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
-  alias Commanded.Event.{ErrorEventHandler, ErrorRouter}
-  alias Commanded.Event.ErrorAggregate.Commands.{RaiseError, RaiseException}
+  alias Commanded.Event.FailureContext
+  alias Commanded.Event.ErrorAggregate.Events.{ErrorEvent, ExceptionEvent}
+  alias Commanded.Event.ErrorEventHandler
+  alias Commanded.Helpers.EventFactory
 
   setup do
     start_supervised!(DefaultApp)
@@ -14,101 +16,132 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
 
     [
       handler: handler,
-      ref: Process.monitor(handler),
-      uuid: UUID.uuid4()
+      ref: Process.monitor(handler)
     ]
   end
 
-  describe "event handler `error/3` callback function" do
-    test "should call on error", %{ref: ref, uuid: uuid} do
-      command = %RaiseError{uuid: uuid, strategy: "default", reply_to: reply_to()}
+  describe "event handling exception handling" do
+    test "should print the stack trace", %{handler: handler, ref: ref} do
+      import ExUnit.CaptureLog
 
-      :ok = ErrorRouter.dispatch(command, application: DefaultApp)
+      send_error_message = fn ->
+        send_exception_event(handler)
 
-      assert_receive {:error, :stopping}
-      assert_receive {:DOWN, ^ref, _, _, :failed}
+        assert_receive {:DOWN, ^ref, :process, ^handler, %RuntimeError{message: "exception"}}
+      end
+
+      captured = capture_log(send_error_message)
+
+      assert captured =~ "(RuntimeError) exception"
+      assert captured =~ "error_event_handler.ex"
+      assert captured =~ "Commanded.Event.ErrorEventHandler.handle/2"
     end
 
-    test "should call on exception", %{ref: ref, uuid: uuid} do
-      command = %RaiseException{uuid: uuid, strategy: "default", reply_to: reply_to()}
+    test "should include the stack trace in failure context", %{handler: handler, ref: ref} do
+      send_exception_event(handler)
 
-      :ok = ErrorRouter.dispatch(command, application: DefaultApp)
+      assert_receive {:exception, :stopping, error, %FailureContext{stacktrace: stacktrace}}
+      assert_receive {:DOWN, ^ref, :process, ^handler, %RuntimeError{message: "exception"}}
 
-      assert_receive {:exception, :stopping}
-      assert_receive {:DOWN, ^ref, _, _, %RuntimeError{message: "exception"}}
+      assert error == %RuntimeError{message: "exception"}
+      refute is_nil(stacktrace)
     end
   end
 
-  test "should stop event handler on error by default", %{handler: handler, ref: ref, uuid: uuid} do
-    command = %RaiseError{uuid: uuid, strategy: "default", reply_to: reply_to()}
+  describe "event handler `error/3` callback function" do
+    test "should call on error", %{handler: handler, ref: ref} do
+      send_error_event(handler)
 
-    :ok = ErrorRouter.dispatch(command, application: DefaultApp)
+      assert_receive {:error, :stopping}
+      assert_receive {:DOWN, ^ref, :process, ^handler, :failed}
+    end
+
+    test "should call on exception", %{handler: handler, ref: ref} do
+      send_exception_event(handler)
+
+      assert_receive {:exception, :stopping, _error, _failure_context}
+      assert_receive {:DOWN, ^ref, :process, ^handler, %RuntimeError{message: "exception"}}
+    end
+  end
+
+  test "should stop event handler on error by default", %{handler: handler, ref: ref} do
+    send_error_event(handler)
 
     assert_receive {:error, :stopping}
-
-    assert_receive {:DOWN, ^ref, _, _, :failed}
+    assert_receive {:DOWN, ^ref, :process, ^handler, :failed}
     refute Process.alive?(handler)
   end
 
   test "should stop event handler when invalid error response returned", %{
     handler: handler,
-    ref: ref,
-    uuid: uuid
+    ref: ref
   } do
-    command = %RaiseError{uuid: uuid, strategy: "invalid", reply_to: reply_to()}
-
-    :ok = ErrorRouter.dispatch(command, application: DefaultApp)
+    send_error_event(handler, strategy: "invalid")
 
     assert_receive {:error, :invalid}
 
-    assert_receive {:DOWN, ^ref, _, _, :failed}
+    assert_receive {:DOWN, ^ref, :process, ^handler, :failed}
     refute Process.alive?(handler)
   end
 
-  test "should retry event handler on error", %{handler: handler, ref: ref, uuid: uuid} do
-    command = %RaiseError{uuid: uuid, strategy: "retry", reply_to: reply_to()}
-
-    :ok = ErrorRouter.dispatch(command, application: DefaultApp)
+  test "should retry event handler on error", %{handler: handler, ref: ref} do
+    send_error_event(handler, strategy: "retry")
 
     assert_receive {:error, :failed, %{failures: 1}}
     assert_receive {:error, :failed, %{failures: 2}}
     assert_receive {:error, :too_many_failures, %{failures: 3}}
 
-    assert_receive {:DOWN, ^ref, _, _, :too_many_failures}
+    assert_receive {:DOWN, ^ref, :process, ^handler, :too_many_failures}
     refute Process.alive?(handler)
   end
 
   test "should retry event handler after delay on error", %{
     handler: handler,
-    ref: ref,
-    uuid: uuid
+    ref: ref
   } do
-    command = %RaiseError{uuid: uuid, strategy: "retry", delay: 10, reply_to: reply_to()}
-
-    :ok = ErrorRouter.dispatch(command, application: DefaultApp)
+    send_error_event(handler, strategy: "retry", delay: 10)
 
     assert_receive {:error, :failed, %{failures: 1, delay: 10}}
     assert_receive {:error, :failed, %{failures: 2, delay: 10}}
     assert_receive {:error, :too_many_failures, %{failures: 3, delay: 10}}
 
-    assert_receive {:DOWN, ^ref, _, _, :too_many_failures}
+    assert_receive {:DOWN, ^ref, :process, ^handler, :too_many_failures}
     refute Process.alive?(handler)
   end
 
-  test "should skip event on error", %{handler: handler, ref: ref, uuid: uuid} do
-    :ok =
-      ErrorRouter.dispatch(%RaiseError{uuid: uuid, strategy: "skip", reply_to: reply_to()},
-        application: DefaultApp
-      )
+  test "should skip event on error", %{handler: handler, ref: ref} do
+    send_error_event(handler, strategy: "skip")
 
     assert_receive {:error, :skipping}
 
-    # event handler should still be alive
-    refute_receive {:DOWN, ^ref, _, _, :too_many_failures}
+    # Event handler should still be alive
+    refute_receive {:DOWN, ^ref, :process, ^handler, :too_many_failures}
     assert Process.alive?(handler)
 
-    # should ack bad event
+    # Should ack errored event
     assert GenServer.call(handler, :last_seen_event) == 1
+  end
+
+  defp send_error_event(handler, opts \\ []) do
+    send_events_to_handler(handler, [
+      %ErrorEvent{
+        reply_to: reply_to(),
+        strategy: Keyword.get(opts, :strategy, "default"),
+        delay: Keyword.get(opts, :delay)
+      }
+    ])
+  end
+
+  defp send_exception_event(handler) do
+    send_events_to_handler(handler, [
+      %ExceptionEvent{reply_to: reply_to()}
+    ])
+  end
+
+  defp send_events_to_handler(handler, events) do
+    recorded_events = EventFactory.map_to_recorded_events(events)
+
+    send(handler, {:events, recorded_events})
   end
 
   defp reply_to, do: :erlang.pid_to_list(self())

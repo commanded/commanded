@@ -1,5 +1,5 @@
 defmodule Commanded.SubscriptionsTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
   alias Commanded.EventStore.RecordedEvent

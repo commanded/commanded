@@ -1,5 +1,5 @@
 defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   import Commanded.Assertions.EventAssertions
   import Commanded.Enumerable

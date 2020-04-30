@@ -1,5 +1,5 @@
 defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter

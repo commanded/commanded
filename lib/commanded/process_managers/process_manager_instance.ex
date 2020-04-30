@@ -169,7 +169,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     event_number <= last_seen_event
   end
 
-  # Already seen event, so just ack
+  # Already seen event, so just ack.
   defp process_seen_event(%RecordedEvent{} = event, %State{} = state) do
     %State{idle_timeout: idle_timeout} = state
 
@@ -185,13 +185,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %State{idle_timeout: idle_timeout} = state
 
     case handle_event(event, state) do
-      {:error, error} ->
-        Logger.error(fn ->
-          describe(state) <>
-            " failed to handle event #{inspect(event_number)} due to: #{inspect(error)}"
-        end)
+      {:error, _error} = error ->
+        failure_context = build_failure_context(event, context, nil, state)
 
-        handle_event_error({:error, error}, event, state, context)
+        handle_event_error(error, event, failure_context, state)
+
+      {:error, error, stacktrace} ->
+        failure_context = build_failure_context(event, context, stacktrace, state)
+
+        handle_event_error({:error, error}, event, failure_context, state)
 
       {:stop, _error, _state} = reply ->
         reply
@@ -233,20 +235,40 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     try do
       process_manager_module.handle(process_state, data)
     rescue
-      e -> {:error, e}
+      error ->
+        stacktrace = __STACKTRACE__
+        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+
+        {:error, error, stacktrace}
     end
   end
 
-  defp handle_event_error(error, %RecordedEvent{} = failed_event, %State{} = state, context) do
+  defp build_failure_context(failed_event, context, stacktrace, state) do
+    %FailureContext{
+      context: context,
+      last_event: failed_event,
+      pending_commands: [],
+      process_manager_state: state,
+      stacktrace: stacktrace
+    }
+  end
+
+  defp handle_event_error(
+         {:error, reason} = error,
+         %RecordedEvent{} = failed_event,
+         %FailureContext{} = failure_context,
+         %State{} = state
+       ) do
     %RecordedEvent{data: data} = failed_event
     %State{idle_timeout: idle_timeout, process_manager_module: process_manager_module} = state
 
-    failure_context = %FailureContext{
-      pending_commands: [],
-      process_manager_state: state,
-      last_event: failed_event,
-      context: context
-    }
+    Logger.error(fn ->
+      describe(state) <>
+        " failed to handle event " <>
+        inspect(failed_event, pretty: true) <>
+        " due to: " <>
+        inspect(reason, pretty: true)
+    end)
 
     case process_manager_module.error(error, data, failure_context) do
       {:retry, context} when is_map(context) ->
@@ -308,17 +330,17 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %State{application: application} = state
 
     Logger.debug(fn ->
-      describe(state) <> " attempting to dispatch command: #{inspect(command)}"
+      describe(state) <> " attempting to dispatch command: " <> inspect(command)
     end)
 
     case Application.dispatch(application, command, opts) do
       :ok ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
-      error ->
+      {:error, _error} = error ->
         Logger.warn(fn ->
           describe(state) <>
-            " failed to dispatch command #{inspect(command)} due to: #{inspect(error)}"
+            " failed to dispatch command " <> inspect(command) <> " due to: " <> inspect(error)
         end)
 
         failure_context = %FailureContext{
@@ -328,11 +350,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
           context: context
         }
 
-        dispatch_failure(error, command, opts, state, failure_context)
+        dispatch_failure(error, command, opts, failure_context, state)
     end
   end
 
-  defp dispatch_failure(error, failed_command, opts, state, failure_context) do
+  defp dispatch_failure(error, failed_command, opts, failure_context, state) do
     %State{process_manager_module: process_manager_module} = state
     %FailureContext{pending_commands: pending_commands, last_event: last_event} = failure_context
 

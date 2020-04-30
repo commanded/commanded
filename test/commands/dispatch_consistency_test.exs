@@ -1,5 +1,5 @@
 defmodule Commanded.Commands.DispatchConsistencyTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.Commands.{
     ConsistencyAggregateRoot,

@@ -1,5 +1,5 @@
 defmodule Commanded.Middleware.HaltingMiddlewareTest do
-  use Commanded.StorageCase
+  use ExUnit.Case
 
   alias Commanded.DefaultApp
   alias Commanded.Helpers.CommandAuditMiddleware
