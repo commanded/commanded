@@ -3,7 +3,8 @@
 locals_without_parens = [
   dispatch: 2,
   identify: 2,
-  middleware: 1
+  middleware: 1,
+  router: 1
 ]
 
 [
