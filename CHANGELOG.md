@@ -14,6 +14,7 @@
 - `refute_receive_event/4` only tests newly created events ([#347](https://github.com/commanded/commanded/pull/347)).
 - Allow Commanded Application name to be set dynamically in middleware ([#352](https://github.com/commanded/commanded/pull/352)).
 - Remove router module compile-time checking ([#363](https://github.com/commanded/commanded/pull/363)).
+- Reduce memory consumption during aggregate state rebuild ([#368](https://github.com/commanded/commanded/pull/368)).
 
 ### Bug fixes
 

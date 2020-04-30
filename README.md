@@ -158,6 +158,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Patrick Detlefsen](https://github.com/patrickdet)
 - [Phil Chen](https://github.com/fahchen)
 - [Raphaël Lustin](https://github.com/rlustin)
+- [Štefan Ľupták](https://github.com/EskiMag)
 - [Tobiasz Małecki](https://github.com/amatalai)
 
 ## Need help?
