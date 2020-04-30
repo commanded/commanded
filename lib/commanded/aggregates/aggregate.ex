@@ -399,7 +399,7 @@ defmodule Commanded.Aggregates.Aggregate do
     |> Stream.map(fn event ->
       {event.data, event.stream_version}
     end)
-    |> Stream.transform(state, fn {event, stream_version}, state ->
+    |> Enum.reduce_while(state, fn {event, stream_version}, state ->
       case event do
         nil ->
           {:halt, state}
@@ -411,11 +411,9 @@ defmodule Commanded.Aggregates.Aggregate do
               aggregate_state: aggregate_module.apply(state.aggregate_state, event)
           }
 
-          {[state], state}
+          {:cont, state}
       end
     end)
-    |> Stream.take(-1)
-    |> Enum.at(0)
     |> case do
       nil -> state
       state -> state
