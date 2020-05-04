@@ -635,14 +635,37 @@ defmodule Commanded.Event.Handler do
         confirm_receipt(event, state)
 
       {:error, _reason} = error ->
+        log_event_error(error, event, state)
+
         failure_context = build_failure_context(event, context)
 
         handle_event_error(error, event, failure_context, state)
 
       {:error, reason, stacktrace} ->
+        log_event_error({:error, reason}, event, state)
+
         failure_context = build_failure_context(event, context, stacktrace)
 
         handle_event_error({:error, reason}, event, failure_context, state)
+
+      invalid ->
+        Logger.error(fn ->
+          describe(state) <>
+            " failed to handle event " <>
+            inspect(event, pretty: true) <>
+            ", `handle/2` function returned an invalid value: " <>
+            inspect(invalid, pretty: true) <>
+            ", expected `:ok` or `{:error, term}`"
+        end)
+
+        failure_context = build_failure_context(event, context)
+
+        handle_event_error(
+          {:error, :invalid_return_value},
+          event,
+          failure_context,
+          state
+        )
     end
   end
 
@@ -664,29 +687,19 @@ defmodule Commanded.Event.Handler do
   end
 
   defp build_failure_context(%RecordedEvent{} = failed_event, context, stacktrace \\ nil) do
-    %FailureContext{
-      context: context,
-      stacktrace: stacktrace,
-      metadata: enrich_metadata(failed_event)
-    }
+    metadata = enrich_metadata(failed_event)
+
+    %FailureContext{context: context, metadata: metadata, stacktrace: stacktrace}
   end
 
   defp handle_event_error(
-         {:error, reason} = error,
+         error,
          %RecordedEvent{} = failed_event,
          %FailureContext{} = failure_context,
          %Handler{} = state
        ) do
     %RecordedEvent{data: data} = failed_event
     %Handler{handler_module: handler_module} = state
-
-    Logger.error(fn ->
-      describe(state) <>
-        " failed to handle event " <>
-        inspect(failed_event, pretty: true) <>
-        " due to: " <>
-        inspect(reason, pretty: true)
-    end)
 
     case handler_module.error(error, data, failure_context) do
       {:retry, context} when is_map(context) ->
@@ -712,9 +725,9 @@ defmodule Commanded.Event.Handler do
         confirm_receipt(failed_event, state)
 
       {:stop, reason} ->
-        # Stop event handler
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
 
+        # Stop event handler with given reason
         throw({:error, reason})
 
       invalid ->
@@ -725,6 +738,16 @@ defmodule Commanded.Event.Handler do
         # Stop event handler with original error
         throw(error)
     end
+  end
+
+  defp log_event_error({:error, reason}, %RecordedEvent{} = failed_event, %Handler{} = state) do
+    Logger.error(fn ->
+      describe(state) <>
+        " failed to handle event " <>
+        inspect(failed_event, pretty: true) <>
+        " due to: " <>
+        inspect(reason, pretty: true)
+    end)
   end
 
   # Confirm receipt of event

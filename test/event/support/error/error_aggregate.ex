@@ -23,6 +23,11 @@ defmodule Commanded.Event.ErrorAggregate do
       @derive Jason.Encoder
       defstruct [:uuid, :strategy, :delay, :reply_to]
     end
+
+    defmodule InvalidReturnValueEvent do
+      @derive Jason.Encoder
+      defstruct [:uuid, :reply_to]
+    end
   end
 
   alias Commanded.Event.ErrorAggregate
