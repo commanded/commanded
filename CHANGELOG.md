@@ -19,6 +19,7 @@
 - Ignore `:not_found` error when reseting InMemory event store ([#354](https://github.com/commanded/commanded/pull/354)).
 - Add `router/1` to `locals_without_parens` in Mix format config ([#351](https://github.com/commanded/commanded/pull/351)).
 - Include stacktrace in event handler and process manager `error` callback functions ([#342](https://github.com/commanded/commanded/pull/342)).
+- Call event handler's `error/3` callback function when `handle/2` function returns an invalid value ([#372](https://github.com/commanded/commanded/pull/372)).
 
 ### Bug fixes
 
