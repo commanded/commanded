@@ -6,7 +6,12 @@ defmodule Commanded.Event.ErrorEventHandler do
     name: __MODULE__
 
   alias Commanded.Event.FailureContext
-  alias Commanded.Event.ErrorAggregate.Events.{ErrorEvent, ExceptionEvent}
+
+  alias Commanded.Event.ErrorAggregate.Events.{
+    ErrorEvent,
+    ExceptionEvent,
+    InvalidReturnValueEvent
+  }
 
   # Simulate event handling error reply
   def handle(%ErrorEvent{}, _metadata) do
@@ -16,6 +21,11 @@ defmodule Commanded.Event.ErrorEventHandler do
   # Simulate event handling exception
   def handle(%ExceptionEvent{}, _metadata) do
     raise "exception"
+  end
+
+  # Simulate event handling returning an invalid value
+  def handle(%InvalidReturnValueEvent{}, _metadata) do
+    nil
   end
 
   # Default behaviour is to stop the event handler with the given error reason
@@ -70,6 +80,14 @@ defmodule Commanded.Event.ErrorEventHandler do
     %ExceptionEvent{reply_to: reply_to} = event
 
     send_reply(reply_to, {:exception, :stopping, error, failure_context})
+
+    {:stop, error}
+  end
+
+  def error({:error, error}, %InvalidReturnValueEvent{} = event, _failure_context) do
+    %InvalidReturnValueEvent{reply_to: reply_to} = event
+
+    send_reply(reply_to, {:error, error})
 
     {:stop, error}
   end

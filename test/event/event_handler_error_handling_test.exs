@@ -1,9 +1,17 @@
 defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   use ExUnit.Case
 
+  import ExUnit.CaptureLog
+
   alias Commanded.DefaultApp
   alias Commanded.Event.FailureContext
-  alias Commanded.Event.ErrorAggregate.Events.{ErrorEvent, ExceptionEvent}
+
+  alias Commanded.Event.ErrorAggregate.Events.{
+    ErrorEvent,
+    ExceptionEvent,
+    InvalidReturnValueEvent
+  }
+
   alias Commanded.Event.ErrorEventHandler
   alias Commanded.Helpers.EventFactory
 
@@ -12,7 +20,7 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
 
     {:ok, handler} = ErrorEventHandler.start_link()
 
-    Process.unlink(handler)
+    true = Process.unlink(handler)
 
     [
       handler: handler,
@@ -22,8 +30,6 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
 
   describe "event handling exception handling" do
     test "should print the stack trace", %{handler: handler, ref: ref} do
-      import ExUnit.CaptureLog
-
       send_error_message = fn ->
         send_exception_event(handler)
 
@@ -64,6 +70,16 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     end
   end
 
+  test "should call `error/3` callback function on invalid `handle/2` return value",
+       %{handler: handler, ref: ref} do
+    send_events_to_handler(handler, [
+      %InvalidReturnValueEvent{reply_to: reply_to()}
+    ])
+
+    assert_receive {:error, :invalid_return_value}
+    assert_receive {:DOWN, ^ref, :process, ^handler, :invalid_return_value}
+  end
+
   test "should stop event handler on error by default", %{handler: handler, ref: ref} do
     send_error_event(handler)
 
@@ -72,10 +88,8 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     refute Process.alive?(handler)
   end
 
-  test "should stop event handler when invalid error response returned", %{
-    handler: handler,
-    ref: ref
-  } do
+  test "should stop event handler when invalid error response returned",
+       %{handler: handler, ref: ref} do
     send_error_event(handler, strategy: "invalid")
 
     assert_receive {:error, :invalid}
@@ -95,10 +109,8 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     refute Process.alive?(handler)
   end
 
-  test "should retry event handler after delay on error", %{
-    handler: handler,
-    ref: ref
-  } do
+  test "should retry event handler after delay on error",
+       %{handler: handler, ref: ref} do
     send_error_event(handler, strategy: "retry", delay: 10)
 
     assert_receive {:error, :failed, %{failures: 1, delay: 10}}
