@@ -101,7 +101,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
     ```elixir
     defmodule AccountBalanceHandler do
       use Commanded.Event.Handler,
-        application: BankApp
+        application: BankApp,
         name: __MODULE__
 
       def init do
