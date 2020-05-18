@@ -17,7 +17,7 @@ defmodule Bank.Supervisor do
       BankApp,
 
       # Event handler
-      AccountBalanceHandler
+      AccountBalanceHandler,
 
       # Process manager
       TransferMoneyProcessManager,
