@@ -51,6 +51,11 @@ defmodule Commanded.ProcessManagers.ErrorAggregate do
       defstruct [:process_uuid, :message, :reply_to]
     end
 
+    defmodule ProcessApplyException do
+      @derive Jason.Encoder
+      defstruct [:process_uuid, :message, :reply_to]
+    end
+
     defmodule ProcessDispatchException do
       @derive Jason.Encoder
       defstruct [:process_uuid, :message, :reply_to]

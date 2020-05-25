@@ -15,6 +15,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     ProcessContinued,
     ProcessDispatchException,
     ProcessError,
+    ProcessApplyException,
     ProcessException,
     ProcessStarted
   }
@@ -28,6 +29,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
 
   def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}
   def interested?(%ProcessError{process_uuid: process_uuid}), do: {:start, process_uuid}
+  def interested?(%ProcessApplyException{process_uuid: process_uuid}), do: {:start, process_uuid}
   def interested?(%ProcessException{process_uuid: process_uuid}), do: {:start, process_uuid}
   def interested?(%ProcessContinued{process_uuid: process_uuid}), do: {:continue, process_uuid}
 
@@ -79,6 +81,13 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     []
   end
 
+  # Simulate an exception applying an event.
+  def apply(%ErrorHandlingProcessManager{}, %ProcessApplyException{} = event) do
+    %ProcessApplyException{message: message} = event
+
+    raise message
+  end
+
   # Skip events causing errors during event handling
   def error({:error, error}, %ProcessError{} = event, failure_context) do
     %ProcessError{reply_to: reply_to} = event
@@ -91,6 +100,15 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   # Stop on exceptions during event handling
   def error({:error, error}, %ProcessException{} = event, failure_context) do
     %ProcessException{reply_to: reply_to} = event
+
+    reply(reply_to, {:error, error, failure_context})
+
+    {:stop, error}
+  end
+
+  # Stop on exceptions during event applying
+  def error({:error, error}, %ProcessApplyException{} = event, failure_context) do
+    %ProcessApplyException{reply_to: reply_to} = event
 
     reply(reply_to, {:error, error, failure_context})
 

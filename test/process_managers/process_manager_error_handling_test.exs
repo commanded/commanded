@@ -8,6 +8,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
   alias Commanded.ProcessManagers.ErrorAggregate.Events.{
     ProcessError,
     ProcessException,
+    ProcessApplyException,
     ProcessDispatchException
   }
 
@@ -76,6 +77,20 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       ref: ref
     } do
       send_exception_event(process_router)
+
+      expected_runtime_error = %RuntimeError{message: "an exception"}
+
+      assert_receive {:error, ^expected_runtime_error, _failure_context}
+      assert_receive {:DOWN, ^ref, :process, ^process_router, ^expected_runtime_error}
+    end
+  end
+
+  describe "process manager event applying error" do
+    test "should call `error/3` callback on exception", %{
+      process_router: process_router,
+      ref: ref
+    } do
+      send_apply_exception_event(process_router)
 
       expected_runtime_error = %RuntimeError{message: "an exception"}
 
@@ -206,6 +221,18 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
 
     send_events_to_process_router(process_router, [
       %ProcessException{process_uuid: process_uuid, reply_to: reply_to(), message: "an exception"}
+    ])
+  end
+
+  defp send_apply_exception_event(process_router) do
+    process_uuid = UUID.uuid4()
+
+    send_events_to_process_router(process_router, [
+      %ProcessApplyException{
+        process_uuid: process_uuid,
+        reply_to: reply_to(),
+        message: "an exception"
+      }
     ])
   end
 
