@@ -203,18 +203,24 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
 
         with :ok <- commands |> List.wrap() |> dispatch_commands(opts, state, event) do
-          process_state = mutate_state(event, state)
+          case mutate_state(event, state) do
+            {:error, error, stacktrace} ->
+              failure_context = build_failure_context(event, context, stacktrace, state)
 
-          state = %State{
-            state
-            | process_state: process_state,
-              last_seen_event: event_number
-          }
+              handle_event_error({:error, error}, event, failure_context, state)
 
-          :ok = persist_state(event_number, state)
-          :ok = ack_event(event, state)
+            process_state ->
+              state = %State{
+                state
+                | process_state: process_state,
+                  last_seen_event: event_number
+              }
 
-          {:noreply, state, idle_timeout}
+              :ok = persist_state(event_number, state)
+              :ok = ack_event(event, state)
+
+              {:noreply, state, idle_timeout}
+          end
         else
           {:stop, reason} ->
             {:stop, reason, state}
@@ -320,7 +326,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_state: process_state
     } = state
 
-    process_manager_module.apply(process_state, data)
+    try do
+      process_manager_module.apply(process_state, data)
+    rescue
+      error ->
+        stacktrace = __STACKTRACE__
+        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+
+        {:error, error, stacktrace}
+    end
   end
 
   defp dispatch_commands(commands, opts, state, last_event, context \\ %{})
@@ -343,9 +357,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
             " failed to dispatch command " <> inspect(command) <> " due to: " <> inspect(error)
         end)
 
+        process_manager_state =
+          case mutate_state(last_event, state) do
+            {:error, _, _} -> state
+            process_manager_state -> process_manager_state
+          end
+
         failure_context = %FailureContext{
           pending_commands: pending_commands,
-          process_manager_state: mutate_state(last_event, state),
+          process_manager_state: process_manager_state,
           last_event: last_event,
           context: context
         }
