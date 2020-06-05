@@ -113,10 +113,10 @@ defmodule Commanded.Aggregate.Multi do
 
           %Multi{} = multi ->
             case Multi.run(multi) do
-              {evolved_aggregate, pending_events} ->
-                {evolved_aggregate, events ++ pending_events}
               {:error, _reason} = error -> 
                 throw(error)
+              {evolved_aggregate, pending_events} ->
+                {evolved_aggregate, events ++ pending_events}
             end
 
           none when none in [:ok, nil, []] ->
