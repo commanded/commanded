@@ -32,7 +32,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       :process_event_timer,
       process_managers: %{},
       pending_acks: %{},
-      pending_events: []
+      pending_events: [],
+      pending_process_managers: %{},
     ]
   end
 
@@ -107,7 +108,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @impl GenServer
   def handle_cast({:ack_event, event, instance}, %State{} = state) do
-    %State{pending_acks: pending_acks} = state
+    %State{pending_acks: pending_acks, pending_process_managers: ppm} = state
     %RecordedEvent{event_number: event_number} = event
 
     state =
@@ -119,8 +120,21 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
           state = %State{state | pending_acks: Map.delete(pending_acks, event_number)}
 
           # no pending acks so confirm receipt of event
-          confirm_receipt(event, state)
+          state = confirm_receipt(event, state)
 
+          # stop if necessary (cleanup callback provided, so stop happens after event
+          # is processed)
+          case Map.pop(ppm, event_number) do
+            {nil, _} -> 
+              state
+
+            {process_uuid, ppm} ->
+              state = 
+                process_uuid
+                |> List.wrap()
+                |> Enum.reduce(state, &stop_process_manager/2)
+              %State{state | pending_process_managers: ppm}
+          end
         pending ->
           # pending acks, don't ack event but wait for outstanding instances
           %State{state | pending_acks: Map.put(pending_acks, event_number, pending)}
@@ -376,12 +390,31 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
             describe(state) <> " has been stopped by event " <> describe(event)
           end)
 
-          state =
-            process_uuid
-            |> List.wrap()
-            |> Enum.reduce(state, &stop_process_manager/2)
+          case function_exported?(process_manager_module, :cleanup, 1) do
+            # current behaviour of not processing event that generate :stop from interested
+            false ->
+              state =
+                process_uuid
+                |> List.wrap()
+                |> Enum.reduce(state, &stop_process_manager/2)
 
-          ack_and_continue(event, state)
+              ack_and_continue(event, state)
+
+            ## dispatch events for last state update and store them to be stooped once event is acknoledged
+            true ->
+              %State{pending_process_managers: ppm} = state
+              %RecordedEvent{event_number: event_number} = event
+              state = %State{state | 
+                pending_process_managers: Map.put(ppm, event_number, process_uuid)}
+
+              process_uuid
+              |> List.wrap()
+              |> Enum.reduce(state, fn process_uuid, state ->
+                {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+
+                delegate_event(process_instance, event, state)
+              end)
+          end
 
         false ->
           Logger.debug(fn ->
