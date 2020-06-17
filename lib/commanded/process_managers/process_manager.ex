@@ -243,6 +243,15 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | false
 
   @doc """
+  If provided, the event that returns {:stop, process_uuid} from `c:interested/2`
+  will be handled and applied to the PM's state before being stopped.
+  
+  During the stop call, the `c:cleanup/1` function will be called with the final 
+  state of the Process Manager.
+  """
+  @callback cleanup(process_manager) :: :ok
+
+  @doc """
   Process manager instance handles a domain event, returning any commands to
   dispatch.
 
@@ -325,6 +334,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | {:skip, :discard_pending}
               | {:skip, :continue_pending}
               | {:stop, reason :: term()}
+
+  @optional_callbacks cleanup: 1
 
   alias Commanded.Event.Handler
   alias Commanded.ProcessManagers.ProcessManager
