@@ -245,7 +245,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   If provided, the event that returns {:stop, process_uuid} from `c:interested/2`
   will be handled and applied to the PM's state before being stopped.
-  
+
   During the stop call, the `c:cleanup/1` function will be called with the final 
   state of the Process Manager.
   """

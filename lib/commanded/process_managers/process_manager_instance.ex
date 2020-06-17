@@ -118,6 +118,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     if function_exported?(process_manager_module, :cleanup, 1) do
       process_manager_module.cleanup(process_state)
     end
+
     :ok = delete_state(state)
 
     # Stop the process with a normal reason

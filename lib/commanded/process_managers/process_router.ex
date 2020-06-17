@@ -33,7 +33,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
       process_managers: %{},
       pending_acks: %{},
       pending_events: [],
-      pending_process_managers: %{},
+      pending_process_managers: %{}
     ]
   end
 
@@ -125,16 +125,18 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
           # stop if necessary (cleanup callback provided, so stop happens after event
           # is processed)
           case Map.pop(ppm, event_number) do
-            {nil, _} -> 
+            {nil, _} ->
               state
 
             {process_uuid, ppm} ->
-              state = 
+              state =
                 process_uuid
                 |> List.wrap()
                 |> Enum.reduce(state, &stop_process_manager/2)
+
               %State{state | pending_process_managers: ppm}
           end
+
         pending ->
           # pending acks, don't ack event but wait for outstanding instances
           %State{state | pending_acks: Map.put(pending_acks, event_number, pending)}
@@ -404,8 +406,11 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
             true ->
               %State{pending_process_managers: ppm} = state
               %RecordedEvent{event_number: event_number} = event
-              state = %State{state | 
-                pending_process_managers: Map.put(ppm, event_number, process_uuid)}
+
+              state = %State{
+                state
+                | pending_process_managers: Map.put(ppm, event_number, process_uuid)
+              }
 
               process_uuid
               |> List.wrap()
