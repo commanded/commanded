@@ -20,7 +20,7 @@ You can return a list of process identifiers when a single domain event is to be
 
 ### Strict process routing
 
-Using strict routing, with `:start!` or `:continue`, enforces the following validation checks:
+Using strict routing, with `:start!` or `:continue!`, enforces the following validation checks:
 
 - `{:start!, process_uuid}` - validate process does not already exist.
 - `{:continue!, process_uuid}` - validate process already exists.
