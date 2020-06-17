@@ -113,8 +113,9 @@ defmodule Commanded.Aggregate.Multi do
 
           %Multi{} = multi ->
             case Multi.run(multi) do
-              {:error, _reason} = error -> 
+              {:error, _reason} = error ->
                 throw(error)
+
               {evolved_aggregate, pending_events} ->
                 {evolved_aggregate, events ++ pending_events}
             end
