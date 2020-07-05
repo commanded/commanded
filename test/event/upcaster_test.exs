@@ -30,7 +30,7 @@ defmodule Event.UpcasterTest do
       assert version == 2
     end
 
-    test "upcasted event includes event metadata" do
+    test "upcasted event can include event metadata" do
       assert %EventFive{event_metadata: metadata} =
                write_events(DefaultApp, struct(EventFive, version: 1)) |> read_event()
 
