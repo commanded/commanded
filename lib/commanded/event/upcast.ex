@@ -12,9 +12,25 @@ defmodule Commanded.Event.Upcast do
     Enum.map(event_stream, &upcast_event/1)
   end
 
+  @enrich_metadata_fields [
+    :event_id,
+    :event_number,
+    :stream_id,
+    :stream_version,
+    :correlation_id,
+    :causation_id,
+    :created_at
+  ]
+
   defp upcast_event(%RecordedEvent{} = event) do
     %RecordedEvent{data: data, metadata: metadata} = event
 
-    %RecordedEvent{event | data: Upcaster.upcast(data, metadata)}
+    enriched_metadata =
+      event
+      |> Map.from_struct()
+      |> Map.take(@enrich_metadata_fields)
+      |> Map.merge(metadata || %{})
+
+    %RecordedEvent{event | data: Upcaster.upcast(data, enriched_metadata)}
   end
 end

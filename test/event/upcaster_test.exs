@@ -6,7 +6,7 @@ defmodule Event.UpcasterTest do
   alias Commanded.EventStore
   alias Commanded.EventStore.EventData
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
+  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, EventFive, Stop}
   alias Commanded.Event.Upcast.UpcastAggregate
 
   setup do
@@ -28,6 +28,27 @@ defmodule Event.UpcasterTest do
                write_events(DefaultApp, struct(EventTwo, version: 1)) |> read_event()
 
       assert version == 2
+    end
+
+    test "upcasted event includes event metadata" do
+      assert %EventFive{event_metadata: metadata} =
+               write_events(DefaultApp, struct(EventFive, version: 1)) |> read_event()
+
+      metadata_keys_not_included =
+        [
+          :event_id,
+          :event_number,
+          :stream_id,
+          :stream_version,
+          :correlation_id,
+          :causation_id,
+          :created_at
+        ] -- Map.keys(metadata)
+
+      assert metadata_keys_not_included == []
+      assert is_number(metadata.stream_version)
+      assert is_binary(metadata.event_id)
+      assert %DateTime{} = metadata.created_at
     end
 
     test "can adapt new event from old event" do
