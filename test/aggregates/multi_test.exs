@@ -120,28 +120,33 @@ defmodule Commanded.Aggregate.MultiTest do
       {%ExampleAggregate{}, events} =
         %ExampleAggregate{}
         |> Multi.new()
+        |> Multi.execute(fn %ExampleAggregate{events: events} ->
+          assert length(events) == 0
+
+          %Event{data: 1}
+        end)
         |> Multi.execute(fn %ExampleAggregate{} = aggregate ->
           aggregate
           |> Multi.new()
           |> Multi.execute(fn %ExampleAggregate{events: events} ->
-            assert length(events) == 0
+            assert length(events) == 1
 
-            %Event{data: 1}
+            %Event{data: 2}
           end)
         end)
         |> Multi.execute(fn %ExampleAggregate{events: events} ->
-          assert length(events) == 1
+          assert length(events) == 2
 
-          %Event{data: 2}
+          %Event{data: 3}
         end)
         |> Multi.execute(fn %ExampleAggregate{events: events} ->
-          assert length(events) == 2
+          assert length(events) == 3
 
           []
         end)
         |> Multi.run()
 
-      assert events == [%Event{data: 1}, %Event{data: 2}]
+      assert events == [%Event{data: 1}, %Event{data: 2}, %Event{data: 3}]
     end
 
     test "should reduce enum" do
