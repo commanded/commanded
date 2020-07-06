@@ -27,6 +27,17 @@ defmodule Commanded.Event.Upcast.Events do
     defstruct [:version, :name, :reply_to, :process_id]
   end
 
+  defmodule EventFive do
+    @derive Jason.Encoder
+    defstruct [:version, :reply_to, :process_id, :event_metadata]
+
+    defimpl Upcaster do
+      def upcast(%EventFive{} = event, metadata) do
+        %EventFive{event | version: 2, event_metadata: metadata}
+      end
+    end
+  end
+
   defimpl Upcaster, for: EventThree do
     def upcast(%EventThree{} = event, _metadata) do
       data = Map.from_struct(event) |> Map.put(:name, "Chris") |> Map.put(:version, 2)
