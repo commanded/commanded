@@ -5,6 +5,7 @@
 ### Enhancements
 
 - Capture exception on Process Manager `apply/2` and call `error/3` callback functions ([#380](https://github.com/commanded/commanded/pull/380)).
+- Include metadata in upcaster protocol ([#389](https://github.com/commanded/commanded/pull/389)).
 
 ## v1.1.0
 
