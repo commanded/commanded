@@ -162,6 +162,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Raphaël Lustin](https://github.com/rlustin)
 - [Štefan Ľupták](https://github.com/EskiMag)
 - [Tobiasz Małecki](https://github.com/amatalai)
+- [Yuri de Figueiredo](https://github.com/y86)
 
 ## Need help?
 
