@@ -9,7 +9,7 @@
 
 ### Bug fixes
 
-- Fix `Commanded.Aggregate.Multi.execute/2` calls which return ` Multi` struct ((#385)[https://github.com/commanded/commanded/pull/385]).
+- Fix `Commanded.Aggregate.Multi.execute/2` calls which return ` Multi` struct ([#385](https://github.com/commanded/commanded/pull/385])).
 
 ## v1.1.0
 
