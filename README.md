@@ -41,7 +41,7 @@ You can help support Commanded by helping to fund its ongoing development, new f
 
 MIT License
 
-[![Build Status](https://travis-ci.com/commanded/commanded.svg?branch=master)](https://travis-ci.com/commanded/commanded) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://github.com/commanded/commanded/workflows/Test/badge.svg?branch=master)](https://github.com/commanded/commanded/actions) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ---
 
