@@ -673,7 +673,7 @@ defmodule Commanded.Event.Handler do
     %RecordedEvent{data: data} = event
     %Handler{handler_module: handler_module} = state
 
-    metadata = enrich_metadata(event)
+    metadata = RecordedEvent.enrich_metadata(event)
 
     try do
       handler_module.handle(data, metadata)
@@ -687,7 +687,7 @@ defmodule Commanded.Event.Handler do
   end
 
   defp build_failure_context(%RecordedEvent{} = failed_event, context, stacktrace \\ nil) do
-    metadata = enrich_metadata(failed_event)
+    metadata = RecordedEvent.enrich_metadata(failed_event)
 
     %FailureContext{context: context, metadata: metadata, stacktrace: stacktrace}
   end
@@ -769,25 +769,6 @@ defmodule Commanded.Event.Handler do
     :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
 
     %Handler{state | last_seen_event: event_number}
-  end
-
-  @enrich_metadata_fields [
-    :event_id,
-    :event_number,
-    :stream_id,
-    :stream_version,
-    :correlation_id,
-    :causation_id,
-    :created_at
-  ]
-
-  defp enrich_metadata(%RecordedEvent{} = event) do
-    %RecordedEvent{metadata: metadata} = event
-
-    event
-    |> Map.from_struct()
-    |> Map.take(@enrich_metadata_fields)
-    |> Map.merge(metadata || %{})
   end
 
   defp consistency(opts) do

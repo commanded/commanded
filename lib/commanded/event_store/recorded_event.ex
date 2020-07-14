@@ -30,9 +30,11 @@ defmodule Commanded.EventStore.RecordedEvent do
 
   """
 
+  alias Commanded.EventStore.RecordedEvent
+
   @type uuid :: String.t()
 
-  @type t :: %Commanded.EventStore.RecordedEvent{
+  @type t :: %RecordedEvent{
           event_id: uuid(),
           event_number: non_neg_integer(),
           stream_id: String.t(),
@@ -57,4 +59,30 @@ defmodule Commanded.EventStore.RecordedEvent do
     :metadata,
     :created_at
   ]
+
+  def enrich_metadata(%RecordedEvent{} = event) do
+    %RecordedEvent{
+      event_id: event_id,
+      event_number: event_number,
+      stream_id: stream_id,
+      stream_version: stream_version,
+      correlation_id: correlation_id,
+      causation_id: causation_id,
+      created_at: created_at,
+      metadata: metadata
+    } = event
+
+    Map.merge(
+      %{
+        event_id: event_id,
+        event_number: event_number,
+        stream_id: stream_id,
+        stream_version: stream_version,
+        correlation_id: correlation_id,
+        causation_id: causation_id,
+        created_at: created_at
+      },
+      metadata || %{}
+    )
+  end
 end
