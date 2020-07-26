@@ -16,6 +16,7 @@ defmodule Commanded.EventStore.Adapter do
   @type subscriber :: pid
   @type source_uuid :: String.t()
   @type error :: term
+  @type options :: map
 
   @doc """
   Return a child spec defining all processes required by the event store.
@@ -70,6 +71,22 @@ defmodule Commanded.EventStore.Adapter do
               subscription_name,
               subscriber,
               start_from
+            ) ::
+              {:ok, subscription}
+              | {:error, :subscription_already_exists}
+              | {:error, error}
+
+  @doc """
+  Create a persistent subscription to an event stream with custom options
+  """
+  @optional_callbacks subscribe_to: 6
+  @callback subscribe_to(
+              adapter_meta,
+              stream_uuid | :all,
+              subscription_name,
+              subscriber,
+              start_from,
+              options | %{}
             ) ::
               {:ok, subscription}
               | {:error, :subscription_already_exists}
