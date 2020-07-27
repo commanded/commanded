@@ -16,7 +16,7 @@ defmodule Commanded.EventStore.Adapter do
   @type subscriber :: pid
   @type source_uuid :: String.t()
   @type error :: term
-  @type options :: map
+  @type options :: Keyword.t()
 
   @doc """
   Return a child spec defining all processes required by the event store.
@@ -86,7 +86,7 @@ defmodule Commanded.EventStore.Adapter do
               subscription_name,
               subscriber,
               start_from,
-              options | %{}
+              options | []
             ) ::
               {:ok, subscription}
               | {:error, :subscription_already_exists}
