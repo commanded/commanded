@@ -5,12 +5,12 @@ defmodule Commanded.SubscriptionsTest do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.Subscriptions
 
-  setup do
-    start_supervised!(DefaultApp)
-    :ok
-  end
-
   describe "register subscription" do
+    setup do
+      start_supervised!(DefaultApp)
+      :ok
+    end
+
     test "should be registered" do
       :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
       :ok = Subscriptions.register(DefaultApp, "handler2", :eventual)
@@ -108,6 +108,11 @@ defmodule Commanded.SubscriptionsTest do
   end
 
   describe "notify subscribers" do
+    setup do
+      start_supervised!(DefaultApp)
+      :ok
+    end
+
     test "should immediately succeed when no registered handlers" do
       assert :ok == Subscriptions.wait_for(DefaultApp, "stream1", 2)
     end
@@ -280,7 +285,43 @@ defmodule Commanded.SubscriptionsTest do
     end
   end
 
+  describe "dynamic application subscriptions" do
+    setup do
+      start_supervised!({DefaultApp, name: :app1})
+      start_supervised!({DefaultApp, name: :app2})
+      :ok
+    end
+
+    test "should be associated with an application" do
+      :ok = Subscriptions.register(:app1, "handler1", :strong)
+      :ok = Subscriptions.register(:app2, "handler1", :strong)
+
+      :ok =
+        Subscriptions.ack_event(:app1, "handler1", :strong, %RecordedEvent{
+          stream_id: "stream1",
+          stream_version: 1
+        })
+
+      assert Subscriptions.handled?(:app1, "stream1", 1)
+      refute Subscriptions.handled?(:app2, "stream1", 1)
+
+      :ok =
+        Subscriptions.ack_event(:app2, "handler1", :strong, %RecordedEvent{
+          stream_id: "stream1",
+          stream_version: 1
+        })
+
+      assert Subscriptions.handled?(:app1, "stream1", 1)
+      assert Subscriptions.handled?(:app2, "stream1", 1)
+    end
+  end
+
   describe "expire stream acks" do
+    setup do
+      start_supervised!(DefaultApp)
+      :ok
+    end
+
     test "should expire stale acks" do
       :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
 
