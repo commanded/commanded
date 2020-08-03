@@ -18,8 +18,7 @@ defmodule Commanded.DistributedSubscriptionsTest do
       DistributedSubscribers.start_subscribers(nodes)
       DistributedSubscribers.query_subscriptions(nodes)
 
-      expected_subscribers =
-        DistributedSubscribers.all() |> Enum.map(& &1.__name__()) |> Enum.sort()
+      expected_subscribers = DistributedSubscribers.all() |> Enum.map(&inspect/1) |> Enum.sort()
 
       for node <- nodes do
         assert_receive {:subscriptions, ^node, ^expected_subscribers}

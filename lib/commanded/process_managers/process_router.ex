@@ -60,7 +60,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, state) do
       # Register the process manager as a subscription with the given consistency.
-      :ok = Subscriptions.register(application, process_name, pid, consistency)
+      :ok = Subscriptions.register(application, process_name, process_module, pid, consistency)
 
       {:ok, pid}
     end

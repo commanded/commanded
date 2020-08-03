@@ -7,13 +7,6 @@ defmodule Commanded.Event.EventHandlerMacroTest do
   alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
   alias Commanded.Helpers.{EventFactory, Wait}
 
-  describe "event handler macro" do
-    test "should provide `__name__/0` function" do
-      assert AccountBalanceHandler.__name__() ==
-               "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler"
-    end
-  end
-
   describe "event handler" do
     setup do
       start_supervised!(BankApp)

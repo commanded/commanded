@@ -234,47 +234,48 @@ defmodule Commanded.Event.HandleEventTest do
 
   describe "event handler name" do
     test "should parse string" do
-      assert Commanded.Event.Handler.parse_name(__MODULE__, "foo") == "foo"
+      assert Commanded.Event.Handler.parse_name("foo") == "foo"
     end
 
     test "should parse atom to string" do
-      assert Commanded.Event.Handler.parse_name(__MODULE__, :foo) == ":foo"
+      assert Commanded.Event.Handler.parse_name(:foo) == ":foo"
     end
 
     test "should parse tuple to string" do
-      assert Commanded.Event.Handler.parse_name(__MODULE__, {:foo, :bar}) == "{:foo, :bar}"
+      assert Commanded.Event.Handler.parse_name({:foo, :bar}) == "{:foo, :bar}"
     end
 
-    test "should error when parsing empty string" do
-      assert_raise ArgumentError, fn ->
-        Commanded.Event.Handler.parse_name(__MODULE__, "")
-      end
+    test "should parse empty string to `nil`" do
+      assert Commanded.Event.Handler.parse_name("") == nil
     end
 
-    test "should error when parsing `nil`" do
-      assert_raise ArgumentError, fn ->
-        Commanded.Event.Handler.parse_name(__MODULE__, nil)
-      end
+    test "should parse `nil` to `nil`" do
+      assert Commanded.Event.Handler.parse_name(nil) == nil
     end
+  end
+
+  defmodule NoAppEventHandler do
+    use Commanded.Event.Handler, name: __MODULE__
   end
 
   test "should ensure an application is provided" do
-    assert_raise ArgumentError, "NoAppEventHandler expects :application option", fn ->
-      Code.eval_string("""
-        defmodule NoAppEventHandler do
-          use Commanded.Event.Handler, name: __MODULE__
-        end
-      """)
+    expected_error =
+      "Commanded.Event.HandleEventTest.NoAppEventHandler expects :application option"
+
+    assert_raise ArgumentError, expected_error, fn ->
+      NoAppEventHandler.start_link()
     end
   end
 
+  defmodule UnnamedEventHandler do
+    use Commanded.Event.Handler, application: Commanded.DefaultApp
+  end
+
   test "should ensure an event handler name is provided" do
-    assert_raise ArgumentError, "UnnamedEventHandler expects :name option", fn ->
-      Code.eval_string("""
-        defmodule UnnamedEventHandler do
-          use Commanded.Event.Handler, application: Commanded.DefaultApp
-        end
-      """)
+    expected_error = "Commanded.Event.HandleEventTest.UnnamedEventHandler expects :name option"
+
+    assert_raise ArgumentError, expected_error, fn ->
+      UnnamedEventHandler.start_link()
     end
   end
 
@@ -284,48 +285,6 @@ defmodule Commanded.Event.HandleEventTest do
         use Commanded.Event.Handler, application: Commanded.DefaultApp, name: __MODULE__
       end
     """)
-  end
-
-  describe "Mix task must be able to reset" do
-    setup do
-      start_supervised!(BankApp)
-
-      :ok
-    end
-
-    test "Can reset an event handler" do
-      stream_uuid = UUID.uuid4()
-      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
-
-      :ok = EventStore.append_to_stream(BankApp, stream_uuid, 0, to_event_data(initial_events))
-
-      start_supervised!(BankAccountHandler)
-
-      Wait.until(fn ->
-        assert BankAccountHandler.current_accounts() == ["ACC123"]
-      end)
-
-      :ok = BankAccountHandler.change_prefix("PREF_")
-
-      handler_name = BankAccountHandler.__name__()
-      registry_name = Commanded.Event.Handler.name(BankApp, handler_name)
-
-      pid = Commanded.Registration.whereis_name(BankApp, registry_name)
-
-      assert :undefined != pid
-
-      Mix.Tasks.Commanded.Reset.run([
-        "--app",
-        "Commanded.ExampleDomain.BankApp",
-        "--handler",
-        "Commanded.ExampleDomain.BankAccount.BankAccountHandler",
-        "--quiet"
-      ])
-
-      Wait.until(fn ->
-        assert BankAccountHandler.current_accounts() == ["PREF_ACC123"]
-      end)
-    end
   end
 
   defp to_event_data(events) do
