@@ -22,7 +22,9 @@ defmodule Commanded.Subscriptions do
     GenServer.start_link(__MODULE__, subscriptions_opts, start_opts)
   end
 
-  defdelegate register(application, name, pid \\ self(), consistency), to: Subscriptions.Registry
+  defdelegate register(application, name, module, pid \\ self(), consistency),
+    to: Subscriptions.Registry
+
   defdelegate all(application), to: Subscriptions.Registry
 
   @doc """
@@ -205,15 +207,20 @@ defmodule Commanded.Subscriptions do
     %Subscriptions{application: application} = state
 
     Subscriptions.Registry.all(application)
-    |> Enum.reject(fn {_name, pid} -> MapSet.member?(exclude, pid) end)
-    |> Enum.filter(fn {name, _pid} ->
+    |> Enum.reject(fn {_name, _module, pid} -> MapSet.member?(exclude, pid) end)
+    |> Enum.filter(fn {name, module, _pid} ->
       # Optionally filter subscriptions to those provided by the `consistency` option
       case consistency do
-        :strong -> true
-        consistency when is_list(consistency) -> Enum.member?(consistency, name)
+        :strong ->
+          true
+
+        consistency when is_list(consistency) ->
+          Enum.member?(consistency, module) or Enum.member?(consistency, name)
       end
     end)
-    |> Enum.all?(fn {name, _pid} -> handled_by?(name, stream_uuid, stream_version, state) end)
+    |> Enum.all?(fn {name, _module, _pid} ->
+      handled_by?(name, stream_uuid, stream_version, state)
+    end)
   end
 
   # Has the named subscription handled the event for the given stream and version
@@ -287,18 +294,9 @@ defmodule Commanded.Subscriptions do
 
   defp parse_consistency(consistency) when is_list(consistency) do
     Enum.map(consistency, fn
-      name when is_binary(name) ->
-        name
-
-      module when is_atom(module) ->
-        if function_exported?(module, :__name__, 0) do
-          apply(module, :__name__, [])
-        else
-          raise "Expected module #{module} to contain a public `__name__/0` function"
-        end
-
-      invalid ->
-        raise "Invalid consistency: #{inspect(invalid)}"
+      name when is_binary(name) -> name
+      module when is_atom(module) -> module
+      invalid -> raise "Invalid consistency: #{inspect(invalid)}"
     end)
   end
 

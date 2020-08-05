@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Commanded.Reset do
 
   ## Usage
 
-      mix commanded.reset --app <app> --handler <handler>
+      mix commanded.reset --app <app> --handler <handler_name>
 
   ## Examples
 
@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Commanded.Reset do
   ## Command line options
 
     * `-a`, `--app` - the Commanded application
-    * `-h`, `--handler` - the event handler to reset
+    * `-h`, `--handler` - the name of the event handler to reset
     * `-q`, `--quiet` - do not log output
 
   """
@@ -49,12 +49,11 @@ defmodule Mix.Tasks.Commanded.Reset do
     end
 
     app = String.to_atom("Elixir." <> app)
-    handler = String.to_atom("Elixir." <> handler)
 
     reset(app, handler, parsed)
   end
 
-  defp reset(app, handler, opts) do
+  defp reset(app, handler_name, opts) do
     case app.start_link() do
       {:ok, _pid} ->
         :ok
@@ -67,16 +66,14 @@ defmodule Mix.Tasks.Commanded.Reset do
     end
 
     quiet = Keyword.get(opts, :quiet, false)
-
-    handler_name = handler.__name__()
     registry_name = Commanded.Event.Handler.name(app, handler_name)
 
     case Commanded.Registration.whereis_name(app, registry_name) do
       :undefined ->
-        unless quiet, do: Mix.shell().info("No process found for #{inspect(handler)}")
+        unless quiet, do: Mix.shell().info("No process found for #{inspect(handler_name)}")
 
       pid ->
-        unless quiet, do: Mix.shell().info("Resetting #{inspect(handler)}")
+        unless quiet, do: Mix.shell().info("Resetting #{inspect(handler_name)}")
         send(pid, :reset)
     end
   end

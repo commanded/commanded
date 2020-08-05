@@ -28,8 +28,8 @@ defmodule Commanded.Event.Handler do
 
   The name you specify is used when subscribing to the event store. Therefore
   you *should not* change the name once the handler has been deployed. A new
-  subscription will be created when you change the name, and you event handler
-  will receive already handled events.
+  subscription will be created if you change the name and the event handler will
+  receive already handled events.
 
   You can use the module name of your event handler using the `__MODULE__`
   special form:
@@ -89,12 +89,30 @@ defmodule Commanded.Event.Handler do
 
   This will ensure the handler only receives events appended to that stream.
 
+  ## Runtime event handler configuration
+
+  Runtime options can be provided to the event handler's `start_link/1` function
+  or its child spec. The `c:init/1` callback function can also be used to define
+  runtime configuration.
+
+  ### Example
+
+  Provide runtime configuration to `start_link/1`:
+
+      {:ok, _pid} = ExampleHandler.start_link(application: ExampleApp, name: "ExampleHandler")
+
+  Or when supervised:
+
+      Supervisor.start_link([
+        {ExampleHandler, application: ExampleApp, name: "ExampleHandler"}
+      ], strategy: :one_for_one)
+
   ## `c:init/0` callback
 
   You can define an `c:init/0` function in your handler to be called once it has
   started and successfully subscribed to the event store.
 
-  This callback function must return `:ok`, any other return value will
+  This callback function must return `:ok`. Any other return value will
   terminate the event handler with an error.
 
       defmodule ExampleHandler do
@@ -102,8 +120,8 @@ defmodule Commanded.Event.Handler do
           application: ExampleApp,
           name: "ExampleHandler"
 
+        # Optional initialisation
         def init do
-          # optional initialisation
           :ok
         end
 
@@ -112,6 +130,36 @@ defmodule Commanded.Event.Handler do
           :ok
         end
       end
+
+    ## `c:init/1` callback
+
+    An `c:init/1` function can be defined in your handler which is used to
+    provide runtime configuration. This callback function must return
+    `{:ok, config}` with the updated config.
+
+    ### Example
+
+    The `c:init/1` function is used to define the handler's application and name
+    based upon a value provided at runtime:
+
+        defmodule ExampleHandler do
+          use Commanded.Event.Handler
+
+          def init(config) do
+            {tenant, config} = Keyword.pop!(config, :tenant)
+
+            config =
+              config
+              |> Keyword.put(:application, Module.concat([ExampleApp, tenant]))
+              |> Keyword.put(:name, Module.concat([__MODULE__, tenant]))
+
+            {:ok, config}
+          end
+        end
+
+    Usage:
+
+        {:ok, _pid} = ExampleHandler.start_link(tenant: :tenant1)
 
   ## `c:error/3` callback
 
@@ -254,6 +302,14 @@ defmodule Commanded.Event.Handler do
   @callback init() :: :ok | {:stop, reason :: any()}
 
   @doc """
+  Optional callback function called to configure the handler before it starts.
+
+  It is passed the merged compile-time and runtime config, and must return the
+  updated config.
+  """
+  @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
+
+  @doc """
   Event handler behaviour to handle a domain event and its metadata.
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the
@@ -305,22 +361,16 @@ defmodule Commanded.Event.Handler do
   defmacro __using__(opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
-
       @behaviour Handler
-
-      {application, name} = Handler.compile_config(__MODULE__, unquote(opts))
-
       @opts unquote(opts)
-      @application application
-      @name name
 
       @doc false
       def start_link(opts \\ []) do
-        application = Keyword.get(opts, :application, @application)
-        module_opts = Keyword.drop(@opts, [:application, :name])
-        opts = Handler.start_opts(__MODULE__, module_opts, opts)
+        opts = Keyword.merge(@opts, opts)
 
-        Handler.start_link(application, @name, __MODULE__, opts)
+        {application, name, config} = Handler.parse_config!(__MODULE__, opts)
+
+        Handler.start_link(application, name, __MODULE__, config)
       end
 
       @doc """
@@ -335,11 +385,13 @@ defmodule Commanded.Event.Handler do
 
       """
       def child_spec(opts) do
-        application = Keyword.get(opts, :application, @application)
+        opts = Keyword.merge(@opts, opts)
+
+        {application, name, config} = Handler.parse_config!(__MODULE__, opts)
 
         default = %{
-          id: {__MODULE__, application, @name},
-          start: {__MODULE__, :start_link, [opts]},
+          id: {__MODULE__, application, name},
+          start: {Handler, :start_link, [application, name, __MODULE__, config]},
           restart: :permanent,
           type: :worker
         }
@@ -348,60 +400,53 @@ defmodule Commanded.Event.Handler do
       end
 
       @doc false
-      def __name__, do: @name
+      def init, do: :ok
 
       @doc false
-      def init, do: :ok
+      def init(config), do: {:ok, config}
 
       @doc false
       def before_reset, do: :ok
 
-      defoverridable init: 0, before_reset: 0
+      defoverridable init: 0, init: 1, before_reset: 0
     end
   end
 
   @doc false
-  def compile_config(module, opts) do
-    application = Keyword.get(opts, :application)
+  def parse_config!(module, config) do
+    {:ok, config} = module.init(config)
 
-    unless application do
-      raise ArgumentError, inspect(module) <> " expects :application option"
-    end
-
-    name = parse_name(module, Keyword.get(opts, :name))
-
-    {application, name}
-  end
-
-  @doc false
-  def parse_name(module, name) when name in [nil, ""] do
-    raise ArgumentError, inspect(module) <> " expects :name option"
-  end
-
-  def parse_name(_module, name) when is_binary(name), do: name
-  def parse_name(_module, name), do: inspect(name)
-
-  @doc false
-  def start_opts(module, module_opts, local_opts, additional_allowed_opts \\ []) do
-    {valid, invalid} =
-      module_opts
-      |> Keyword.merge(local_opts)
-      |> Keyword.split(
-        [:application, :consistency, :start_from, :subscribe_to] ++ additional_allowed_opts
-      )
+    {_valid, invalid} =
+      Keyword.split(config, [:application, :consistency, :name, :start_from, :subscribe_to])
 
     if Enum.any?(invalid) do
       raise ArgumentError,
             inspect(module) <> " specifies invalid options: " <> inspect(Keyword.keys(invalid))
     end
 
-    valid
+    application = Keyword.get(config, :application)
+
+    unless application do
+      raise ArgumentError, inspect(module) <> " expects :application option"
+    end
+
+    name = parse_name(Keyword.get(config, :name))
+
+    unless name do
+      raise ArgumentError, inspect(module) <> " expects :name option"
+    end
+
+    {application, name, config}
   end
 
-  # Include default `handle/2` and `error/3` callback functions in module
+  @doc false
+  def parse_name(name) when name in [nil, ""], do: nil
+  def parse_name(name) when is_binary(name), do: name
+  def parse_name(name), do: inspect(name)
 
   @doc false
   defmacro __before_compile__(_env) do
+    # Include default `handle/2` and `error/3` callback functions in module
     quote generated: true do
       @doc false
       def handle(_event, _metadata), do: :ok
@@ -445,7 +490,7 @@ defmodule Commanded.Event.Handler do
 
     with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, handler) do
       # Register the started event handler as a subscription with the given consistency
-      :ok = Subscriptions.register(application, handler_name, pid, consistency)
+      :ok = Subscriptions.register(application, handler_name, handler_module, pid, consistency)
 
       {:ok, pid}
     end
@@ -471,19 +516,6 @@ defmodule Commanded.Event.Handler do
     %Handler{last_seen_event: last_seen_event} = state
 
     {:reply, last_seen_event, state}
-  end
-
-  @doc false
-  @impl GenServer
-  def handle_call(:config, _from, %Handler{} = state) do
-    %Handler{
-      consistency: consistency,
-      subscription: %Subscription{subscribe_from: subscribe_from, subscribe_to: subscribe_to}
-    } = state
-
-    config = [consistency: consistency, start_from: subscribe_from, subscribe_to: subscribe_to]
-
-    {:reply, config, state}
   end
 
   @doc false

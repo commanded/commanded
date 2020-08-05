@@ -61,7 +61,7 @@ defmodule Commanded.Subscriptions.DistributedSubscribers do
       Node.spawn_link(node, fn ->
         subscriptions =
           Subscriptions.all(DistributedApp)
-          |> Enum.map(fn {name, _pid} -> name end)
+          |> Enum.map(fn {name, _module, _pid} -> name end)
           |> Enum.sort()
 
         send(reply_to, {:subscriptions, node, subscriptions})

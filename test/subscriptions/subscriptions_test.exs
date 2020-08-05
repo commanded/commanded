@@ -12,23 +12,26 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should be registered" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler2", :eventual)
-      :ok = Subscriptions.register(DefaultApp, "handler3", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :eventual)
+      :ok = Subscriptions.register(DefaultApp, "handler3", Handler3, :strong)
 
-      assert Subscriptions.all(DefaultApp) == [{"handler3", self()}, {"handler1", self()}]
+      assert Subscriptions.all(DefaultApp) == [
+               {"handler3", Handler3, self()},
+               {"handler1", Handler1, self()}
+             ]
     end
 
     test "should not remove PID when process terminates" do
       pid =
         spawn_link(fn ->
-          :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+          :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
         end)
 
       ref = Process.monitor(pid)
       assert_receive {:DOWN, ^ref, :process, _, :normal}
 
-      assert Subscriptions.all(DefaultApp) == [{"handler1", pid}]
+      assert Subscriptions.all(DefaultApp) == [{"handler1", Handler1, pid}]
     end
 
     test "should replace registered subscription PID" do
@@ -36,27 +39,27 @@ defmodule Commanded.SubscriptionsTest do
 
       pid1 =
         spawn_link(fn ->
-          :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+          :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
 
           send(reply_to, {:handler, self()})
         end)
 
       assert_receive {:handler, ^pid1}
-      assert Subscriptions.all(DefaultApp) == [{"handler1", pid1}]
+      assert Subscriptions.all(DefaultApp) == [{"handler1", Handler1, pid1}]
 
       pid2 =
         spawn_link(fn ->
-          :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+          :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
 
           send(reply_to, {:handler, self()})
         end)
 
       assert_receive {:handler, ^pid2}
-      assert Subscriptions.all(DefaultApp) == [{"handler1", pid2}]
+      assert Subscriptions.all(DefaultApp) == [{"handler1", Handler1, pid2}]
     end
 
     test "should ack event" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{
@@ -69,8 +72,8 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should require all subscriptions to ack event" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler2", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{
@@ -100,7 +103,7 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should ignore current process as handler" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
 
       # current process should not block handler
       assert Subscriptions.handled?(DefaultApp, "stream1", 1, exclude: [self()])
@@ -118,7 +121,7 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should immediately succeed when waited event has already been ack'd" do
-      :ok = Subscriptions.register(DefaultApp, "handler", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler", Handler, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler", :strong, %RecordedEvent{
@@ -136,13 +139,13 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should immediately succeed when excluding handler process" do
-      :ok = Subscriptions.register(DefaultApp, "handler", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler", Handler, :strong)
 
       assert :ok == Subscriptions.wait_for(DefaultApp, "stream1", 2, exclude: [self()])
     end
 
     test "should succeed when waited event is ack'd" do
-      :ok = Subscriptions.register(DefaultApp, "handler", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler", Handler, :strong)
 
       wait_task =
         Task.async(fn ->
@@ -165,7 +168,7 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should ignore events before requested" do
-      :ok = Subscriptions.register(DefaultApp, "handler", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler", Handler, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler", :strong, %RecordedEvent{event_number: 1})
@@ -174,9 +177,9 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should wait for all subscriptions to ack event" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler2", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler3", :eventual)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler3", Handler3, :eventual)
 
       refute Subscriptions.handled?(DefaultApp, "stream1", 2)
 
@@ -210,7 +213,7 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should allow subscriptions to skip events when ack" do
-      :ok = Subscriptions.register(DefaultApp, "handler", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler", Handler, :strong)
 
       refute Subscriptions.handled?(DefaultApp, "stream1", 2)
 
@@ -223,9 +226,9 @@ defmodule Commanded.SubscriptionsTest do
       assert Subscriptions.handled?(DefaultApp, "stream1", 2)
     end
 
-    test "should allow per-handler consistency" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler2", :strong)
+    test "should allow per-handler consistency by name" do
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{
@@ -237,11 +240,29 @@ defmodule Commanded.SubscriptionsTest do
       assert :ok == Subscriptions.wait_for(DefaultApp, "stream1", 2, consistency: ["handler1"])
     end
 
+    test "should allow per-handler consistency by module" do
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :strong)
+
+      :ok =
+        Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{
+          stream_id: "stream1",
+          stream_version: 2
+        })
+
+      refute Subscriptions.handled?(DefaultApp, "stream1", 2)
+      refute Subscriptions.handled?(DefaultApp, "stream1", 2, consistency: ["handler2"])
+      refute Subscriptions.handled?(DefaultApp, "stream1", 2, consistency: [Handler2])
+      assert :ok == Subscriptions.wait_for(DefaultApp, "stream1", 2, consistency: [Handler1])
+      assert Subscriptions.handled?(DefaultApp, "stream1", 2, consistency: ["handler1"])
+      assert Subscriptions.handled?(DefaultApp, "stream1", 2, consistency: [Handler1])
+    end
+
     test "should wait for each configured handler consistency" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler2", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler3", :strong)
-      :ok = Subscriptions.register(DefaultApp, "handler3", :eventual)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler3", Handler3, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler3", Handler4, :eventual)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{
@@ -293,8 +314,8 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should be associated with an application" do
-      :ok = Subscriptions.register(:app1, "handler1", :strong)
-      :ok = Subscriptions.register(:app2, "handler1", :strong)
+      :ok = Subscriptions.register(:app1, "handler1", Handler1, :strong)
+      :ok = Subscriptions.register(:app2, "handler1", Handler1, :strong)
 
       :ok =
         Subscriptions.ack_event(:app1, "handler1", :strong, %RecordedEvent{
@@ -323,7 +344,7 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should expire stale acks" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{
@@ -340,7 +361,7 @@ defmodule Commanded.SubscriptionsTest do
     end
 
     test "should not expire fresh acks" do
-      :ok = Subscriptions.register(DefaultApp, "handler1", :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, :strong)
 
       :ok =
         Subscriptions.ack_event(DefaultApp, "handler1", :strong, %RecordedEvent{

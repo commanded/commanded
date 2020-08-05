@@ -132,39 +132,42 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
                "Commanded.ExampleDomain.TransferMoneyProcessManager received unexpected message: :unexpected_message"
     end
 
-    test "should provide `__name__/0` function" do
-      assert TransferMoneyProcessManager.__name__() ==
-               "Commanded.ExampleDomain.TransferMoneyProcessManager"
+    defmodule NoAppProcessManager do
+      use Commanded.ProcessManagers.ProcessManager, name: __MODULE__
     end
 
     test "should ensure a process manager application is provided" do
-      assert_raise ArgumentError, "NoAppProcessManager expects :application option", fn ->
-        Code.eval_string("""
-          defmodule NoAppProcessManager do
-            use Commanded.ProcessManagers.ProcessManager, name: __MODULE__
-          end
-        """)
+      expected_error =
+        "Commanded.ProcessManagers.ProcessManagerInstanceTest.NoAppProcessManager expects :application option"
+
+      assert_raise ArgumentError, expected_error, fn ->
+        NoAppProcessManager.start_link()
       end
+    end
+
+    defmodule UnnamedProcessManager do
+      use Commanded.ProcessManagers.ProcessManager, application: Commanded.DefaultApp
     end
 
     test "should ensure a process manager name is provided" do
-      assert_raise ArgumentError, "UnnamedProcessManager expects :name option", fn ->
-        Code.eval_string("""
-          defmodule UnnamedProcessManager do
-            use Commanded.ProcessManagers.ProcessManager, application: Commanded.DefaultApp
-          end
-        """)
+      expected_error =
+        "Commanded.ProcessManagers.ProcessManagerInstanceTest.UnnamedProcessManager expects :name option"
+
+      assert_raise ArgumentError, expected_error, fn ->
+        UnnamedProcessManager.start_link()
       end
     end
 
+    defmodule MyProcessManager do
+      use Commanded.ProcessManagers.ProcessManager,
+        application: Commanded.DefaultApp,
+        name: __MODULE__
+    end
+
     test "should allow using process manager module as name" do
-      Code.eval_string("""
-        defmodule MyProcessManager do
-          use Commanded.ProcessManagers.ProcessManager,
-            application: Commanded.DefaultApp,
-            name: __MODULE__
-        end
-      """)
+      start_supervised!(Commanded.DefaultApp)
+
+      assert {:ok, _pid} = MyProcessManager.start_link()
     end
   end
 
