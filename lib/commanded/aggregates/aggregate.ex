@@ -276,14 +276,14 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   @impl GenServer
   def handle_info({:events, events}, %Aggregate{} = state) do
-    %Aggregate{lifespan_timeout: lifespan_timeout} = state
+    %Aggregate{application: application, lifespan_timeout: lifespan_timeout} = state
 
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
       state =
         events
-        |> Upcast.upcast_event_stream()
+        |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
         |> Enum.reduce(state, &handle_event/2)
 
       state = Enum.reduce(events, state, &handle_event/2)

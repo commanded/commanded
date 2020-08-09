@@ -26,8 +26,9 @@ defprotocol Commanded.Event.Upcaster do
   associated with that event. The metadata is provided during command dispatch.
 
   In addition to the metadata key/values you provide, the following system
-  values will be included in the metadata passed to an event handler:
+  values will be included in the metadata:
 
+    - `application` - the `Commanded.Application` used to read the event.
     - `event_id` - a globally unique UUID to identify the event.
     - `event_number` - a globally unique, monotonically incrementing integer
       used to order the event amongst all events.

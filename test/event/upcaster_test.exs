@@ -34,21 +34,7 @@ defmodule Event.UpcasterTest do
       assert %EventFive{event_metadata: metadata} =
                write_events(DefaultApp, struct(EventFive, version: 1)) |> read_event()
 
-      metadata_keys_not_included =
-        [
-          :event_id,
-          :event_number,
-          :stream_id,
-          :stream_version,
-          :correlation_id,
-          :causation_id,
-          :created_at
-        ] -- Map.keys(metadata)
-
-      assert metadata_keys_not_included == []
-      assert is_number(metadata.stream_version)
-      assert is_binary(metadata.event_id)
-      assert %DateTime{} = metadata.created_at
+      assert_metadata(metadata)
     end
 
     test "can adapt new event from old event" do
@@ -102,14 +88,18 @@ defmodule Event.UpcasterTest do
         [
           struct(EventOne, version: 1, reply_to: reply_to),
           struct(EventTwo, version: 1, reply_to: reply_to),
-          struct(EventThree, version: 1, reply_to: reply_to)
+          struct(EventThree, version: 1, reply_to: reply_to),
+          struct(EventFive, version: 1, reply_to: reply_to)
         ]
       )
 
       assert_receive %EventOne{version: 1}
       assert_receive %EventTwo{version: 2}
       assert_receive %EventFour{version: 2, name: "Chris"}
+      assert_receive %EventFive{version: 2, event_metadata: metadata}
       refute_receive %EventThree{}
+
+      assert_metadata(metadata)
     end
   end
 
@@ -141,6 +131,24 @@ defmodule Event.UpcasterTest do
       assert_receive %EventTwo{version: 2}
       assert_receive %EventFour{version: 2, name: "Chris"}
     end
+  end
+
+  defp assert_metadata(metadata) do
+    assert %{
+             application: Commanded.DefaultApp,
+             causation_id: nil,
+             correlation_id: nil,
+             created_at: %DateTime{},
+             event_id: event_id,
+             event_number: event_number,
+             stream_id: stream_id,
+             stream_version: stream_version
+           } = metadata
+
+    assert is_binary(event_id)
+    assert is_number(event_number)
+    assert is_binary(stream_id)
+    assert is_number(stream_version)
   end
 
   defp write_events(application, events) do

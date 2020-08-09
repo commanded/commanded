@@ -33,14 +33,11 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
       reply_to = self()
 
       # First and second subscription attempts fail
-      expect(MockEventStore, :subscribe_to, 2, fn _event_store_meta,
-                                                  :all,
-                                                  "ExampleHandler",
-                                                  handler,
-                                                  :origin ->
-        send(reply_to, {:subscribe_to, handler})
+      expect(MockEventStore, :subscribe_to, 2, fn
+        _event_store_meta, :all, "ExampleHandler", handler, :origin ->
+          send(reply_to, {:subscribe_to, handler})
 
-        {:error, :subscription_already_exists}
+          {:error, :subscription_already_exists}
       end)
 
       # Third subscription attempt succeeds
@@ -89,15 +86,12 @@ defmodule Commanded.Event.EventHandlerSubscriptionTest do
   defp expect_subscribe_to(subscription) do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn _event_store_meta,
-                                             :all,
-                                             "ExampleHandler",
-                                             handler,
-                                             :origin ->
-      send(handler, {:subscribed, subscription})
-      send(reply_to, {:subscribed, subscription})
+    expect(MockEventStore, :subscribe_to, fn
+      _event_store_meta, :all, "ExampleHandler", handler, :origin ->
+        send(handler, {:subscribed, subscription})
+        send(reply_to, {:subscribed, subscription})
 
-      {:ok, subscription}
+        {:ok, subscription}
     end)
   end
 

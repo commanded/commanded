@@ -60,7 +60,12 @@ defmodule Commanded.EventStore.RecordedEvent do
     :created_at
   ]
 
-  def enrich_metadata(%RecordedEvent{} = event) do
+  @doc """
+  Enrich the event's metadata with fields from the `RecordedEvent` struct and
+  any additional metadata passed as an option.
+  """
+  @spec enrich_metadata(t(), [{:additional_metadata, map()}]) :: map()
+  def enrich_metadata(%RecordedEvent{} = event, opts) do
     %RecordedEvent{
       event_id: event_id,
       event_number: event_number,
@@ -72,17 +77,16 @@ defmodule Commanded.EventStore.RecordedEvent do
       metadata: metadata
     } = event
 
-    Map.merge(
-      %{
-        event_id: event_id,
-        event_number: event_number,
-        stream_id: stream_id,
-        stream_version: stream_version,
-        correlation_id: correlation_id,
-        causation_id: causation_id,
-        created_at: created_at
-      },
-      metadata || %{}
-    )
+    %{
+      event_id: event_id,
+      event_number: event_number,
+      stream_id: stream_id,
+      stream_version: stream_version,
+      correlation_id: correlation_id,
+      causation_id: causation_id,
+      created_at: created_at
+    }
+    |> Map.merge(Keyword.get(opts, :additional_metadata, %{}))
+    |> Map.merge(metadata || %{})
   end
 end

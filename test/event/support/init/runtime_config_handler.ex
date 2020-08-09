@@ -10,7 +10,7 @@ defmodule Commanded.Event.RuntimeConfigHandler do
     config =
       config
       |> Keyword.put(:application, Module.concat([DefaultApp, tenant]))
-      |> Keyword.put(:name, Module.concat([__MODULE__, tenant]))
+      |> Keyword.put(:name, inspect(__MODULE__) <> ".#{tenant}")
 
     send(reply_to, {:init, tenant})
 
