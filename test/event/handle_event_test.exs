@@ -5,52 +5,68 @@ defmodule Commanded.Event.HandleEventTest do
   import Commanded.Assertions.EventAssertions
 
   alias Commanded.DefaultApp
-  alias Commanded.EventStore
   alias Commanded.Event.AppendingEventHandler
+  alias Commanded.Event.EchoHandler
+  alias Commanded.Event.Handler
+  alias Commanded.Event.ReplyEvent
   alias Commanded.Event.UninterestingEvent
-  alias Commanded.Helpers.EventFactory
-  alias Commanded.Helpers.Wait
-  alias Commanded.ExampleDomain.BankApp
-  alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
-  alias Commanded.ExampleDomain.BankAccount.BankAccountHandler
+  alias Commanded.EventStore
+  alias Commanded.EventStore.RecordedEvent
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Commanded.Helpers.EventFactory
+  alias Commanded.Helpers.Wait
 
   describe "event handling" do
     setup do
-      start_supervised!(BankApp)
-
-      handler = start_supervised!(AccountBalanceHandler)
-
-      Wait.until(fn ->
-        assert AccountBalanceHandler.subscribed?()
-      end)
+      start_supervised!(DefaultApp)
+      handler = start_supervised!(EchoHandler)
 
       [handler: handler]
     end
 
     test "should handle received events", %{handler: handler} do
-      events = [
-        %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},
-        %MoneyDeposited{amount: 50, balance: 1_050}
-      ]
+      event1 = %ReplyEvent{reply_to: self(), value: 1}
+      event2 = %ReplyEvent{reply_to: self(), value: 2}
+      events = [event1, event2]
 
-      recorded_events = EventFactory.map_to_recorded_events(events)
+      metadata = %{"key" => "value"}
+
+      recorded_events = EventFactory.map_to_recorded_events(events, 1, metadata: metadata)
 
       send(handler, {:events, recorded_events})
 
-      Wait.until(fn ->
-        assert AccountBalanceHandler.current_balance() == 1_050
-      end)
+      assert_receive {:event, ^handler, ^event1, metadata1}
+
+      assert_enriched_metadata(metadata1, Enum.at(recorded_events, 0),
+        additional_metadata: %{
+          application: DefaultApp,
+          handler_name: "Commanded.Event.EchoHandler"
+        }
+      )
+
+      assert_receive {:event, ^handler, ^event2, metadata2}
+
+      assert_enriched_metadata(metadata2, Enum.at(recorded_events, 1),
+        additional_metadata: %{
+          application: DefaultApp,
+          handler_name: "Commanded.Event.EchoHandler"
+        }
+      )
+
+      refute_receive {:event, _handler, _event, _metadata}
     end
 
     test "should ignore uninterested events", %{handler: handler} do
+      interested_event1 = %ReplyEvent{reply_to: self(), value: 1}
+      interested_event2 = %ReplyEvent{reply_to: self(), value: 2}
+
       # Include uninterested events within those the handler is interested in
       events = [
         %UninterestingEvent{},
-        %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000},
+        interested_event1,
         %UninterestingEvent{},
-        %MoneyDeposited{amount: 50, balance: 1_050},
+        interested_event2,
         %UninterestingEvent{}
       ]
 
@@ -58,9 +74,11 @@ defmodule Commanded.Event.HandleEventTest do
 
       send(handler, {:events, recorded_events})
 
-      Wait.until(fn ->
-        assert AccountBalanceHandler.current_balance() == 1_050
-      end)
+      # Receive only interested events
+      assert_receive {:event, ^handler, ^interested_event1, metadata1}
+      assert_receive {:event, ^handler, ^interested_event2, metadata2}
+
+      refute_receive {:event, _handler, _event, _metadata}
     end
 
     test "should ignore unexpected messages", %{handler: handler} do
@@ -75,65 +93,55 @@ defmodule Commanded.Event.HandleEventTest do
       end
 
       assert capture_log(send_unexpected_mesage) =~
-               "Commanded.ExampleDomain.BankAccount.AccountBalanceHandler received unexpected message: :unexpected_message"
+               "Commanded.Event.EchoHandler received unexpected message: :unexpected_message"
     end
   end
 
-  describe "reset event handler" do
+  describe "dynamic event handler" do
     setup do
-      start_supervised!(BankApp)
+      start_supervised!({DefaultApp, name: :app1})
+      start_supervised!({DefaultApp, name: :app2})
 
-      :ok
+      handler1 = start_supervised!({EchoHandler, application: :app1, name: "handler1"})
+      handler2 = start_supervised!({EchoHandler, application: :app2, name: "handler2"})
+
+      [handler1: handler1, handler2: handler2]
     end
 
-    test "should be reset when starting from `:origin`" do
-      stream_uuid = UUID.uuid4()
-      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+    test "should handle received events", %{handler1: handler1, handler2: handler2} do
+      event1 = %ReplyEvent{reply_to: self(), value: 1}
+      event2 = %ReplyEvent{reply_to: self(), value: 2}
 
-      :ok = EventStore.append_to_stream(BankApp, stream_uuid, 0, to_event_data(initial_events))
+      metadata = %{"key" => "value"}
 
-      handler = start_supervised!(BankAccountHandler)
+      recorded_events1 = EventFactory.map_to_recorded_events([event1], 1, metadata: metadata)
+      recorded_events2 = EventFactory.map_to_recorded_events([event2], 1, metadata: metadata)
 
-      Wait.until(fn ->
-        assert BankAccountHandler.current_accounts() == ["ACC123"]
-      end)
+      send(handler1, {:events, recorded_events1})
 
-      :ok = BankAccountHandler.change_prefix("PREF_")
+      assert_receive {:event, ^handler1, ^event1, metadata1}
+      refute_receive {:event, ^handler2, _event, _metadata}
 
-      send(handler, :reset)
+      assert_enriched_metadata(metadata1, Enum.at(recorded_events1, 0),
+        additional_metadata: %{
+          application: :app1,
+          handler_name: "handler1"
+        }
+      )
 
-      Wait.until(fn ->
-        assert BankAccountHandler.current_accounts() == ["PREF_ACC123"]
-      end)
-    end
+      send(handler2, {:events, recorded_events2})
 
-    test "should be reset when starting from `:current`" do
-      stream_uuid = UUID.uuid4()
+      assert_receive {:event, ^handler2, ^event2, metadata2}
+      refute_receive {:event, ^handler1, _event, _metadata}
 
-      # Ignored initial events
-      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
-      :ok = EventStore.append_to_stream(BankApp, stream_uuid, 0, to_event_data(initial_events))
+      assert_enriched_metadata(metadata2, Enum.at(recorded_events2, 0),
+        additional_metadata: %{
+          application: :app2,
+          handler_name: "handler2"
+        }
+      )
 
-      handler = start_supervised!({BankAccountHandler, start_from: :current})
-
-      Wait.until(fn ->
-        assert BankAccountHandler.current_accounts() == []
-      end)
-
-      :ok = BankAccountHandler.change_prefix("PREF_")
-
-      send(handler, :reset)
-
-      new_event = [%BankAccountOpened{account_number: "ACC1234", initial_balance: 1_000}]
-      :ok = EventStore.append_to_stream(BankApp, stream_uuid, 1, to_event_data(new_event))
-
-      wait_for_event(BankApp, BankAccountOpened, fn event, recorded_event ->
-        event.account_number == "ACC1234" and recorded_event.event_number == 2
-      end)
-
-      Wait.until(fn ->
-        assert BankAccountHandler.current_accounts() == ["PREF_ACC1234"]
-      end)
+      refute_receive {:event, _handler, _event, _metadata}
     end
   end
 
@@ -155,7 +163,8 @@ defmodule Commanded.Event.HandleEventTest do
 
       handler = start_supervised!({AppendingEventHandler, start_from: :current})
 
-      assert GenServer.call(handler, :last_seen_event) == nil
+      %Handler{last_seen_event: last_seen_event} = :sys.get_state(handler)
+      assert is_nil(last_seen_event)
 
       :ok = EventStore.append_to_stream(DefaultApp, stream_uuid, 1, to_event_data(new_events))
 
@@ -173,7 +182,8 @@ defmodule Commanded.Event.HandleEventTest do
         assert Map.get(metadata, :stream_version) == 2
         assert %DateTime{} = Map.get(metadata, :created_at)
 
-        assert GenServer.call(handler, :last_seen_event) == 2
+        %Handler{last_seen_event: last_seen_event} = :sys.get_state(handler)
+        assert last_seen_event == 2
       end)
     end
 
@@ -230,6 +240,12 @@ defmodule Commanded.Event.HandleEventTest do
         assert pluck(AppendingEventHandler.received_metadata(), :stream_version) == [1, 2]
       end)
     end
+  end
+
+  defp assert_enriched_metadata(metadata, %RecordedEvent{} = event, opts) do
+    enriched_metadata = RecordedEvent.enrich_metadata(event, opts)
+
+    assert metadata == enriched_metadata
   end
 
   defp to_event_data(events) do

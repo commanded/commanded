@@ -4,6 +4,8 @@ defmodule Commanded.Event.FailureContext do
 
   The available fields are:
 
+    - `application` - the associated `Commanded.Application`.
+    - `handler_name` - the name of the event handler.
     - `context` - a map that is passed between each failure. Use it to store any
       transient state between failures. As an example it could be used to count
       error failures and stop or skip the problematic event after too many.
@@ -13,12 +15,16 @@ defmodule Commanded.Event.FailureContext do
   """
 
   @type t :: %__MODULE__{
+          application: Commanded.Application.t(),
+          handler_name: String.t(),
           context: map(),
           metadata: map(),
           stacktrace: Exception.stacktrace() | nil
         }
 
   defstruct [
+    :application,
+    :handler_name,
     :context,
     :metadata,
     :stacktrace

@@ -49,11 +49,13 @@ defmodule Commanded.Event.EventHandlerNameTest do
     end
   end
 
+  defmodule ModuleNamedEventHandler do
+    use Commanded.Event.Handler, application: Commanded.DefaultApp, name: __MODULE__
+  end
+
   test "should allow using event handler module as name" do
-    Code.eval_string("""
-      defmodule EventHandler do
-        use Commanded.Event.Handler, application: Commanded.DefaultApp, name: __MODULE__
-      end
-    """)
+    start_supervised!(Commanded.DefaultApp)
+
+    assert {:ok, _pid} = ModuleNamedEventHandler.start_link()
   end
 end

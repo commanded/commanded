@@ -176,7 +176,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   @impl GenServer
   def handle_info({:events, events}, %State{} = state) do
-    %State{pending_events: pending_events} = state
+    %State{application: application, pending_events: pending_events} = state
 
     Logger.debug(fn -> describe(state) <> " received #{length(events)} event(s)" end)
 
@@ -184,7 +184,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     unseen_events =
       events
       |> Enum.reject(&event_already_seen?(&1, state))
-      |> Upcast.upcast_event_stream()
+      |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
 
     state =
       case {pending_events, unseen_events} do

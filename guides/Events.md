@@ -85,76 +85,11 @@ end
 
 This will ensure the handler only receives events appended to that stream.
 
-### `init/0` callback
+### Event handler callbacks
 
-You can define an `init/0` function in your handler to be called once it has started and successfully subscribed to the event store.
-
-This callback function must return `:ok`, any other return value will terminate the event handler with an error.
-
-```elixir
-defmodule ExampleHandler do
-  use Commanded.Event.Handler,
-    application: ExampleApp,
-    name: "ExampleHandler"
-
-  def init do
-    # optional initialisation
-    :ok
-  end
-
-  def handle(%AnEvent{..}, _metadata) do
-    # ... process the event
-    :ok
-  end
-end
-```
-
-### `error/3` callback
-
-You can define an `error/3` callback function to handle any exceptions or errors returned from your event handler's `handle/2` functions. The `error/3` function is passed the actual error (e.g. `{:error, :failure}`), the failed event, and a failure context.
-
-Use pattern matching on the error and/or failed event to explicitly handle certain errors or events. You can choose to retry, skip, or stop the event handler after an error.
-
-The default behaviour if you don't provide an `error/3` callback is to stop the event handler using the exact error reason returned from the `handle/2` function. You should supervise event handlers to ensure they are correctly restarted on error.
-
-#### Example error handling
-
-```elixir
-defmodule ExampleHandler do
-  use Commanded.Event.Handler,
-    application: ExampleApp,
-    name: __MODULE__
-
-  require Logger
-
-  alias Commanded.Event.FailureContext
-
-  def handle(%AnEvent{}, _metadata) do
-    # Simulate event handling failure
-    {:error, :failed}
-  end
-
-  def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
-    context = record_failure(context)
-
-    case Map.get(context, :failures) do
-      too_many when too_many >= 3 ->
-        # Skip bad event after third failure
-        Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
-
-        :skip
-
-      _ ->
-        # Retry event, failure count is included in context map
-        {:retry, context}
-    end
-  end
-
-  defp record_failure(context) do
-    Map.update(context, :failures, 1, fn failures -> failures + 1 end)
-  end
-end
-```
+- `c:Commanded.Event.Handler.init/0` - (optional) initialisation callback function called when the handler starts.
+- `c:Commanded.Event.Handler.init/1` - (optional) used to configure the handler before it starts.
+- `c:Commanded.Event.Handler.error/3` - (optional) called when an event handle/2 callback returns an error.
 
 ### Metadata
 
@@ -166,6 +101,8 @@ The `handle/2` function in your handler receives the domain event and a map of m
 
 In addition to the metadata key/values you provide, the following system values will be included in the metadata passed to an event handler:
 
+- `application` - the `Commanded.Application` associated with the event handler.
+- `handler_name` - the name of the event handler.
 - `event_id` - a globally unique UUID to identify the event.
 - `event_number` - a globally unique, monotonically incrementing and gapless integer used to order the event amongst all events.
 - `stream_id` - the stream identity for the event.

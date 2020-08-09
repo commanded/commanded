@@ -4,7 +4,6 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   import ExUnit.CaptureLog
 
   alias Commanded.DefaultApp
-  alias Commanded.Event.FailureContext
 
   alias Commanded.Event.ErrorAggregate.Events.{
     ErrorEvent,
@@ -13,6 +12,8 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   }
 
   alias Commanded.Event.ErrorEventHandler
+  alias Commanded.Event.FailureContext
+  alias Commanded.Event.Handler
   alias Commanded.Helpers.EventFactory
 
   setup do
@@ -131,7 +132,8 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
     assert Process.alive?(handler)
 
     # Should ack errored event
-    assert GenServer.call(handler, :last_seen_event) == 1
+    %Handler{last_seen_event: last_seen_event} = :sys.get_state(handler)
+    assert last_seen_event == 1
   end
 
   defp send_error_event(handler, opts \\ []) do

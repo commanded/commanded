@@ -7,7 +7,7 @@ defmodule Commanded.Event.Handler do
   You should start your event handlers using a [Supervisor](supervision.html) to
   ensure they are restarted on error.
 
-  ## Example
+  ### Example
 
       defmodule ExampleHandler do
         use Commanded.Event.Handler,
@@ -26,8 +26,9 @@ defmodule Commanded.Event.Handler do
 
   ## Event handler name
 
-  The name you specify is used when subscribing to the event store. Therefore
-  you *should not* change the name once the handler has been deployed. A new
+  The name you specify is used when subscribing to the event store. You must use
+  a unique name for each event handler and process manager you start. Also, you
+  *should not* change the name once the handler has been deployed. A new
   subscription will be created if you change the name and the event handler will
   receive already handled events.
 
@@ -52,7 +53,7 @@ defmodule Commanded.Event.Handler do
   to send transactional emails to an already deployed system containing many
   historical events.
 
-  The `start_from` option only applies when the subscription is initially
+  The `start_from` option *only applies* when the subscription is initially
   created, the first time the handler starts. Whenever the handler restarts the
   subscription will resume from the next event after the last successfully
   processed event. Restarting an event handler does not restart its
@@ -107,113 +108,6 @@ defmodule Commanded.Event.Handler do
         {ExampleHandler, application: ExampleApp, name: "ExampleHandler"}
       ], strategy: :one_for_one)
 
-  ## `c:init/0` callback
-
-  You can define an `c:init/0` function in your handler to be called once it has
-  started and successfully subscribed to the event store.
-
-  This callback function must return `:ok`. Any other return value will
-  terminate the event handler with an error.
-
-      defmodule ExampleHandler do
-        use Commanded.Event.Handler,
-          application: ExampleApp,
-          name: "ExampleHandler"
-
-        # Optional initialisation
-        def init do
-          :ok
-        end
-
-        def handle(%AnEvent{..}, _metadata) do
-          # ... process the event
-          :ok
-        end
-      end
-
-    ## `c:init/1` callback
-
-    An `c:init/1` function can be defined in your handler which is used to
-    provide runtime configuration. This callback function must return
-    `{:ok, config}` with the updated config.
-
-    ### Example
-
-    The `c:init/1` function is used to define the handler's application and name
-    based upon a value provided at runtime:
-
-        defmodule ExampleHandler do
-          use Commanded.Event.Handler
-
-          def init(config) do
-            {tenant, config} = Keyword.pop!(config, :tenant)
-
-            config =
-              config
-              |> Keyword.put(:application, Module.concat([ExampleApp, tenant]))
-              |> Keyword.put(:name, Module.concat([__MODULE__, tenant]))
-
-            {:ok, config}
-          end
-        end
-
-    Usage:
-
-        {:ok, _pid} = ExampleHandler.start_link(tenant: :tenant1)
-
-  ## `c:error/3` callback
-
-  You can define an `c:error/3` callback function to handle any errors returned
-  from your event handler's `handle/2` functions. The `c:error/3` function is
-  passed the actual error (e.g. `{:error, :failure}`), the failed event, and a
-  failure context.
-
-  Use pattern matching on the error and/or failed event to explicitly handle
-  certain errors or events. You can choose to retry, skip, or stop the event
-  handler after an error.
-
-  The default behaviour if you don't provide an `c:error/3` callback is to stop
-  the event handler using the exact error reason returned from the `handle/2`
-  function. You should supervise event handlers to ensure they are correctly
-  restarted on error.
-
-  ### Example error handling
-
-      defmodule ExampleHandler do
-        use Commanded.Event.Handler,
-          application: ExampleApp,
-          name: __MODULE__
-
-        require Logger
-
-        alias Commanded.Event.FailureContext
-
-        def handle(%AnEvent{}, _metadata) do
-          # simulate event handling failure
-          {:error, :failed}
-        end
-
-        def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
-          context = record_failure(context)
-
-          case Map.get(context, :failures) do
-            too_many when too_many >= 3 ->
-              # skip bad event after third failure
-              Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
-
-              :skip
-
-            _ ->
-              # retry event, failure count is included in context map
-              {:retry, context}
-          end
-        end
-
-        defp record_failure(context) do
-          Map.update(context, :failures, 1, fn failures -> failures + 1 end)
-        end
-      end
-
   ## Consistency
 
   For each event handler you can define its consistency, as one of either
@@ -234,6 +128,11 @@ defmodule Commanded.Event.Handler do
   The default setting is `:eventual` consistency. Command dispatch will return
   immediately upon confirmation of event persistence, not waiting for any event
   handlers.
+
+  Note strong consistency does not imply a transaction covers the command
+  dispatch and event handling. It only guarantees that the event handler will
+  have processed all events produced by the command: if event handling fails
+  the events will have still been persisted.
 
   ### Example
 
@@ -297,7 +196,28 @@ defmodule Commanded.Event.Handler do
 
   Can be used to start any related processes when the event handler is started.
 
-  Return `:ok` on success, or `{:stop, reason}` to stop the handler process.
+  This callback function must return `:ok`, or `{:stop, reason}` to stop the
+  handler process. Any other return value will terminate the event handler with
+  an error.
+
+  ### Example
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler,
+          application: ExampleApp,
+          name: "ExampleHandler"
+
+        # Optional initialisation
+        def init do
+          :ok
+        end
+
+        def handle(%AnEvent{..}, _metadata) do
+          # ... process the event
+          :ok
+        end
+      end
+
   """
   @callback init() :: :ok | {:stop, reason :: any()}
 
@@ -305,7 +225,36 @@ defmodule Commanded.Event.Handler do
   Optional callback function called to configure the handler before it starts.
 
   It is passed the merged compile-time and runtime config, and must return the
-  updated config.
+  updated config as `{:ok, config}`.
+
+  Note this function is called before the event handler process is started and
+  *is not* run from the handler's process. You cannot use `self()` to access the
+  handler's PID.
+
+  ### Example
+
+  The `c:init/1` function is used to define the handler's application and name
+  based upon a value provided at runtime:
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler
+
+        def init(config) do
+          {tenant, config} = Keyword.pop!(config, :tenant)
+
+          config =
+            config
+            |> Keyword.put(:application, Module.concat([ExampleApp, tenant]))
+            |> Keyword.put(:name, Module.concat([__MODULE__, tenant]))
+
+          {:ok, config}
+        end
+      end
+
+  Usage:
+
+      {:ok, _pid} = ExampleHandler.start_link(tenant: :tenant1)
+
   """
   @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
 
@@ -326,8 +275,11 @@ defmodule Commanded.Event.Handler do
   The `c:error/3` function allows you to control how event handling failures
   are handled. The function is passed the error returned by the event handler
   (e.g. `{:error, :failure}`), the event causing the error, and a context map
-  containing state passed between retries. Use the context map to track any
-  transient state you need to access between retried failures.
+  containing state passed between retries.
+
+  Use pattern matching on the error and/or failed event to explicitly handle
+  certain errors or events. Use the context map to track any transient state you
+  need to access between retried failures.
 
   You can return one of the following responses depending upon the
   error severity:
@@ -343,6 +295,51 @@ defmodule Commanded.Event.Handler do
   - `:skip` - skip the failed event by acknowledging receipt.
 
   - `{:stop, reason}` - stop the event handler with the given reason.
+
+  The default behaviour if you don't provide an `c:error/3` callback is to stop
+  the event handler using the exact error reason returned from the `handle/2`
+  function. If the event handler is supervised using restart `permanent` or
+  `transient` stopping on error will cause the handler to be restarted. It will
+  likely crash again as it will reprocesse the problematic event. This can lead
+  to cascading failures going up the supervision tree.
+
+  ### Example error handling
+
+      defmodule ExampleHandler do
+        use Commanded.Event.Handler,
+          application: ExampleApp,
+          name: __MODULE__
+
+        require Logger
+
+        alias Commanded.Event.FailureContext
+
+        def handle(%AnEvent{}, _metadata) do
+          # simulate event handling failure
+          {:error, :failed}
+        end
+
+        def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
+          context = record_failure(context)
+
+          case Map.get(context, :failures) do
+            too_many when too_many >= 3 ->
+              # skip bad event after third failure
+              Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
+
+              :skip
+
+            _ ->
+              # retry event, failure count is included in context map
+              {:retry, context}
+          end
+        end
+
+        defp record_failure(context) do
+          Map.update(context, :failures, 1, fn failures -> failures + 1 end)
+        end
+      end
+
 
   """
   @callback error(
@@ -377,7 +374,7 @@ defmodule Commanded.Event.Handler do
       Provides a child specification to allow the event handler to be easily
       supervised.
 
-      ## Example
+      ### Example
 
           Supervisor.start_link([
             {ExampleHandler, []}
@@ -496,6 +493,7 @@ defmodule Commanded.Event.Handler do
     end
   end
 
+  @doc false
   def name(application, handler_name), do: {application, __MODULE__, handler_name}
 
   @doc false
@@ -508,14 +506,6 @@ defmodule Commanded.Event.Handler do
   @impl GenServer
   def handle_continue(:subscribe_to_events, %Handler{} = state) do
     {:noreply, subscribe_to_events(state)}
-  end
-
-  @doc false
-  @impl GenServer
-  def handle_call(:last_seen_event, _from, %Handler{} = state) do
-    %Handler{last_seen_event: last_seen_event} = state
-
-    {:reply, last_seen_event, state}
   end
 
   @doc false
@@ -575,12 +565,14 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def handle_info({:events, events}, %Handler{} = state) do
+    %Handler{application: application} = state
+
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
     try do
       state =
         events
-        |> Upcast.upcast_event_stream()
+        |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
         |> Enum.reduce(state, &handle_event/2)
 
       {:noreply, state}
@@ -669,14 +661,14 @@ defmodule Commanded.Event.Handler do
       {:error, _reason} = error ->
         log_event_error(error, event, state)
 
-        failure_context = build_failure_context(event, context)
+        failure_context = build_failure_context(event, context, state)
 
         handle_event_error(error, event, failure_context, state)
 
       {:error, reason, stacktrace} ->
         log_event_error({:error, reason}, event, state)
 
-        failure_context = build_failure_context(event, context, stacktrace)
+        failure_context = build_failure_context(event, context, stacktrace, state)
 
         handle_event_error({:error, reason}, event, failure_context, state)
 
@@ -690,7 +682,7 @@ defmodule Commanded.Event.Handler do
             ", expected `:ok` or `{:error, term}`"
         end)
 
-        failure_context = build_failure_context(event, context)
+        failure_context = build_failure_context(event, context, state)
 
         handle_event_error(
           {:error, :invalid_return_value},
@@ -705,7 +697,7 @@ defmodule Commanded.Event.Handler do
     %RecordedEvent{data: data} = event
     %Handler{handler_module: handler_module} = state
 
-    metadata = RecordedEvent.enrich_metadata(event)
+    metadata = enrich_metadata(event, state)
 
     try do
       handler_module.handle(data, metadata)
@@ -718,10 +710,36 @@ defmodule Commanded.Event.Handler do
     end
   end
 
-  defp build_failure_context(%RecordedEvent{} = failed_event, context, stacktrace \\ nil) do
-    metadata = RecordedEvent.enrich_metadata(failed_event)
+  defp build_failure_context(
+         %RecordedEvent{} = failed_event,
+         context,
+         stacktrace \\ nil,
+         %Handler{} = state
+       ) do
+    %Handler{application: application, handler_name: handler_name} = state
 
-    %FailureContext{context: context, metadata: metadata, stacktrace: stacktrace}
+    metadata = enrich_metadata(failed_event, state)
+
+    %FailureContext{
+      application: application,
+      handler_name: handler_name,
+      context: context,
+      metadata: metadata,
+      stacktrace: stacktrace
+    }
+  end
+
+  # Enrich the metadata with additional fields from the recorded event, plus the
+  # associated Commanded application and the event handler's name.
+  defp enrich_metadata(%RecordedEvent{} = event, %Handler{} = state) do
+    %Handler{application: application, handler_name: handler_name} = state
+
+    RecordedEvent.enrich_metadata(event,
+      additional_metadata: %{
+        application: application,
+        handler_name: handler_name
+      }
+    )
   end
 
   defp handle_event_error(

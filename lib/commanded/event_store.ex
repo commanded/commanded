@@ -36,8 +36,11 @@ defmodule Commanded.EventStore do
            start_version,
            read_batch_size
          ) do
-      {:error, _error} = error -> error
-      stream -> Upcast.upcast_event_stream(stream)
+      {:error, _error} = error ->
+        error
+
+      stream ->
+        Upcast.upcast_event_stream(stream, additional_metadata: %{application: application})
     end
   end
 
