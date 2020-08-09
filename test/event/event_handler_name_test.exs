@@ -1,0 +1,59 @@
+defmodule Commanded.Event.EventHandlerNameTest do
+  use ExUnit.Case
+
+  describe "event handler name" do
+    test "should parse string" do
+      assert Commanded.Event.Handler.parse_name("foo") == "foo"
+    end
+
+    test "should parse atom to string" do
+      assert Commanded.Event.Handler.parse_name(:foo) == ":foo"
+    end
+
+    test "should parse tuple to string" do
+      assert Commanded.Event.Handler.parse_name({:foo, :bar}) == "{:foo, :bar}"
+    end
+
+    test "should parse empty string to `nil`" do
+      assert Commanded.Event.Handler.parse_name("") == nil
+    end
+
+    test "should parse `nil` to `nil`" do
+      assert Commanded.Event.Handler.parse_name(nil) == nil
+    end
+  end
+
+  defmodule NoAppEventHandler do
+    use Commanded.Event.Handler, name: __MODULE__
+  end
+
+  test "should ensure an application is provided" do
+    expected_error =
+      "Commanded.Event.EventHandlerNameTest.NoAppEventHandler expects :application option"
+
+    assert_raise ArgumentError, expected_error, fn ->
+      NoAppEventHandler.start_link()
+    end
+  end
+
+  defmodule UnnamedEventHandler do
+    use Commanded.Event.Handler, application: Commanded.DefaultApp
+  end
+
+  test "should ensure an event handler name is provided" do
+    expected_error =
+      "Commanded.Event.EventHandlerNameTest.UnnamedEventHandler expects :name option"
+
+    assert_raise ArgumentError, expected_error, fn ->
+      UnnamedEventHandler.start_link()
+    end
+  end
+
+  test "should allow using event handler module as name" do
+    Code.eval_string("""
+      defmodule EventHandler do
+        use Commanded.Event.Handler, application: Commanded.DefaultApp, name: __MODULE__
+      end
+    """)
+  end
+end
