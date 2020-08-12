@@ -100,7 +100,11 @@ defmodule Commanded.Event.Handler do
 
   Provide runtime configuration to `start_link/1`:
 
-      {:ok, _pid} = ExampleHandler.start_link(application: ExampleApp, name: "ExampleHandler")
+      {:ok, _pid} =
+        ExampleHandler.start_link(
+          application: ExampleApp,
+          name: "ExampleHandler"
+        )
 
   Or when supervised:
 
@@ -213,7 +217,7 @@ defmodule Commanded.Event.Handler do
         end
 
         def handle(%AnEvent{..}, _metadata) do
-          # ... process the event
+          # Process the event ...
           :ok
         end
       end
@@ -340,7 +344,6 @@ defmodule Commanded.Event.Handler do
         end
       end
 
-
   """
   @callback error(
               error :: term(),
@@ -352,16 +355,34 @@ defmodule Commanded.Event.Handler do
               | :skip
               | {:stop, reason :: term()}
 
-  @doc """
-  Macro as a convenience for defining an event handler.
-  """
   defmacro __using__(opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
       @behaviour Handler
       @opts unquote(opts)
 
-      @doc false
+      @doc """
+      Start an event handler `GenServer` process linked to the current process.
+
+      ## Options
+
+        - `:application` - the Commanded application.
+
+        - `:name` - name of the event handler used to determine its unique event
+          store subscription.
+
+        - `:consistency` - one of either `:eventual` (default) or `:strong`.
+
+        - `:start_from` - where to start the event store subscription from when
+          first created (default: `:origin`).
+
+        - :subscribe_to - which stream to subscribe to can be either `:all` to
+          subscribe to all events or a named stream (default: `:all`).
+
+      The default options supported by `GenServer.start_link/3` are supported,
+      including the `:hibernate_after` option which allows the process to go
+      into hibernation after a period of inactivity.
+      """
       def start_link(opts \\ []) do
         opts = Keyword.merge(@opts, opts)
 
@@ -373,6 +394,12 @@ defmodule Commanded.Event.Handler do
       @doc """
       Provides a child specification to allow the event handler to be easily
       supervised.
+
+      Supports the same options as `start_link/3`.
+
+      The default options supported by `GenServer.start_link/3` are also
+      supported, including the `:hibernate_after` option which allows the
+      process to go into hibernation after a period of inactivity.
 
       ### Example
 
@@ -409,25 +436,31 @@ defmodule Commanded.Event.Handler do
     end
   end
 
+  # GenServer start options
+  @start_opts [:name, :timeout, :debug, :spawn_opt, :hibernate_after]
+
+  # Event handler configuration options
+  @handler_opts [:application, :name, :consistency, :start_from, :subscribe_to]
+
   @doc false
   def parse_config!(module, config) do
     {:ok, config} = module.init(config)
 
-    {_valid, invalid} =
-      Keyword.split(config, [:application, :consistency, :name, :start_from, :subscribe_to])
+    {_valid, invalid} = Keyword.split(config, @start_opts ++ @handler_opts)
 
     if Enum.any?(invalid) do
       raise ArgumentError,
             inspect(module) <> " specifies invalid options: " <> inspect(Keyword.keys(invalid))
     end
 
-    application = Keyword.get(config, :application)
+    {application, config} = Keyword.pop(config, :application)
 
     unless application do
       raise ArgumentError, inspect(module) <> " expects :application option"
     end
 
-    name = parse_name(Keyword.get(config, :name))
+    {name, config} = Keyword.pop(config, :name)
+    name = parse_name(name)
 
     unless name do
       raise ArgumentError, inspect(module) <> " expects :name option"
@@ -466,15 +499,17 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   def start_link(application, handler_name, handler_module, opts \\ []) do
+    {start_opts, handler_opts} = Keyword.split(opts, @start_opts)
+
     name = name(application, handler_name)
-    consistency = consistency(opts)
+    consistency = consistency(handler_opts)
 
     subscription =
       Subscription.new(
         application: application,
         subscription_name: handler_name,
-        subscribe_from: Keyword.get(opts, :start_from, :origin),
-        subscribe_to: Keyword.get(opts, :subscribe_to, :all)
+        subscribe_from: Keyword.get(handler_opts, :start_from, :origin),
+        subscribe_to: Keyword.get(handler_opts, :subscribe_to, :all)
       )
 
     handler = %Handler{
@@ -485,7 +520,7 @@ defmodule Commanded.Event.Handler do
       subscription: subscription
     }
 
-    with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, handler) do
+    with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, handler, start_opts) do
       # Register the started event handler as a subscription with the given consistency
       :ok = Subscriptions.register(application, handler_name, handler_module, pid, consistency)
 

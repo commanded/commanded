@@ -10,10 +10,10 @@ defmodule Commanded.Registration.Adapter do
   cluster of nodes.
   """
 
-  @type adapter_meta :: map
+  @type adapter_meta :: map()
   @type application :: Commanded.Application.t()
   @type config :: Keyword.t()
-  @type start_child_arg :: {module(), keyword} | module()
+  @type start_child_arg :: {module(), Keyword.t()} | module()
 
   @doc """
   Return an optional supervisor spec for the registry
@@ -46,8 +46,13 @@ defmodule Commanded.Registration.Adapter do
 
   Registers the pid with the given name.
   """
-  @callback start_link(adapter_meta, name :: term(), module :: module(), args :: any()) ::
-              {:ok, pid} | {:error, term}
+  @callback start_link(
+              adapter_meta,
+              name :: term(),
+              module :: module(),
+              args :: any(),
+              start_options :: GenServer.options()
+            ) :: {:ok, pid} | {:error, term}
 
   @doc """
   Get the pid of a registered name.

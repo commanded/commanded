@@ -68,10 +68,11 @@ defmodule Commanded.Registration.LocalRegistry do
   Registers the pid with the given name.
   """
   @impl Commanded.Registration.Adapter
-  def start_link(adapter_meta, name, module, args) do
+  def start_link(adapter_meta, name, module, args, start_opts) do
     via_name = via_tuple(adapter_meta, name)
+    start_opts = Keyword.put(start_opts, :name, via_name)
 
-    case GenServer.start_link(module, args, name: via_name) do
+    case GenServer.start_link(module, args, start_opts) do
       {:error, {:already_started, pid}} -> {:ok, pid}
       reply -> reply
     end

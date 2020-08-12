@@ -69,28 +69,31 @@ defmodule Commanded.Aggregates.Aggregate do
     lifespan_timeout: :infinity
   ]
 
-  def start_link(config, args) do
-    aggregate_module = Keyword.fetch!(args, :aggregate_module)
-    aggregate_uuid = Keyword.fetch!(args, :aggregate_uuid)
+  def start_link(config, opts) do
+    {start_opts, aggregate_opts} =
+      Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt, :hibernate_after])
 
-    unless is_atom(aggregate_module) and is_binary(aggregate_uuid) do
-      raise "aggregate_module must be an atom and aggregate_uuid must be a string"
-    end
+    aggregate_module = Keyword.fetch!(aggregate_opts, :aggregate_module)
+    aggregate_uuid = Keyword.fetch!(aggregate_opts, :aggregate_uuid)
+
+    unless is_atom(aggregate_module),
+      do: raise(ArgumentError, message: "aggregate module must be an atom")
+
+    unless is_binary(aggregate_uuid),
+      do: raise(ArgumentError, message: "aggregate identity must be a string")
 
     application = Keyword.fetch!(config, :application)
     snapshotting = Keyword.get(config, :snapshotting, %{})
     snapshot_options = Map.get(snapshotting, aggregate_module, [])
 
-    aggregate = %Aggregate{
+    state = %Aggregate{
       application: application,
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
       snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
     }
 
-    opts = [name: args[:name]]
-
-    GenServer.start_link(__MODULE__, aggregate, opts)
+    GenServer.start_link(__MODULE__, state, start_opts)
   end
 
   @doc false

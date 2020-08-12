@@ -459,34 +459,40 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       end
 
   """
-  defdelegate identity, to: Commanded.ProcessManagers.ProcessManagerInstance
+  defdelegate identity(), to: Commanded.ProcessManagers.ProcessManagerInstance
+
+  # GenServer start options
+  @start_opts [:name, :timeout, :debug, :spawn_opt, :hibernate_after]
+
+  # Process manager configuration options
+  @handler_opts [
+    :application,
+    :name,
+    :consistency,
+    :start_from,
+    :subscribe_to,
+    :event_timeout,
+    :idle_timeout
+  ]
 
   def parse_config!(module, config) do
     {:ok, config} = module.init(config)
 
-    {_valid, invalid} =
-      Keyword.split(config, [
-        :application,
-        :consistency,
-        :name,
-        :start_from,
-        :subscribe_to,
-        :event_timeout,
-        :idle_timeout
-      ])
+    {_valid, invalid} = Keyword.split(config, @start_opts ++ @handler_opts)
 
     if Enum.any?(invalid) do
       raise ArgumentError,
             inspect(module) <> " specifies invalid options: " <> inspect(Keyword.keys(invalid))
     end
 
-    application = Keyword.get(config, :application)
+    {application, config} = Keyword.pop(config, :application)
 
     unless application do
       raise ArgumentError, inspect(module) <> " expects :application option"
     end
 
-    name = parse_name(Keyword.get(config, :name))
+    {name, config} = Keyword.pop(config, :name)
+    name = parse_name(name)
 
     unless name do
       raise ArgumentError, inspect(module) <> " expects :name option"

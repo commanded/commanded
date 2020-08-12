@@ -60,10 +60,11 @@ defmodule Commanded.Registration.GlobalRegistry do
   Registers the pid with the given name.
   """
   @impl Commanded.Registration.Adapter
-  def start_link(adapter_meta, name, module, args) do
+  def start_link(adapter_meta, name, module, args, start_opts) do
     via_name = via_tuple(adapter_meta, name)
+    start_opts = Keyword.put(start_opts, :name, via_name)
 
-    case GenServer.start_link(module, args, name: via_name) do
+    case GenServer.start_link(module, args, start_opts) do
       {:error, {:already_started, pid}} ->
         true = Process.link(pid)
 
@@ -72,7 +73,7 @@ defmodule Commanded.Registration.GlobalRegistry do
       {:error, :killed} ->
         # Process may be killed due to `:global` name registation when another node connects.
         # Attempting to start again should link to the other named existing process.
-        start_link(adapter_meta, name, module, args)
+        start_link(adapter_meta, name, module, args, start_opts)
 
       reply ->
         reply

@@ -16,10 +16,10 @@ defmodule Commanded.Registration do
   end
 
   @doc false
-  def start_link(application, name, module, args) do
+  def start_link(application, name, module, args, start_opts) do
     {adapter, adapter_meta} = Application.registry_adapter(application)
 
-    adapter.start_link(adapter_meta, name, module, args)
+    adapter.start_link(adapter_meta, name, module, args, start_opts)
   end
 
   @doc false

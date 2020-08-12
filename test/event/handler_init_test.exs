@@ -4,8 +4,9 @@ defmodule Commanded.Event.HandlerInitTest do
   import Mox
 
   alias Commanded.DefaultApp
-  alias Commanded.Event.{Handler, InitHandler, RuntimeConfigHandler}
+  alias Commanded.Event.{EchoHandler, Handler, InitHandler, RuntimeConfigHandler}
   alias Commanded.EventStore.Adapters.Mock, as: MockEventStore
+  alias Commanded.Helpers.{EventFactory, Wait}
 
   describe "event handler `init/1` callback" do
     setup do
@@ -63,6 +64,44 @@ defmodule Commanded.Event.HandlerInitTest do
     end
   end
 
+  describe "event handler start options" do
+    setup do
+      start_supervised!(DefaultApp)
+      :ok
+    end
+
+    test "should be passed when starting handler via `start_link/1`" do
+      {:ok, handler} = EchoHandler.start_link(hibernate_after: 1)
+
+      Wait.until(fn -> assert_hibernated(handler) end)
+    end
+
+    test "should be passed when starting handler via child spec" do
+      handler = start_supervised!({EchoHandler, hibernate_after: 1})
+
+      Wait.until(fn -> assert_hibernated(handler) end)
+    end
+
+    test "hibernated handler should resume after receiving event message" do
+      alias Commanded.Event.ReplyEvent
+
+      handler = start_supervised!({EchoHandler, hibernate_after: 1})
+
+      # Handler should hibernate
+      Wait.until(fn -> assert_hibernated(handler) end)
+
+      event = %ReplyEvent{reply_to: self(), value: 1}
+
+      # Sending a message should wake the handler
+      send_events(handler, [event])
+
+      assert_receive {:event, ^handler, ^event, _metadata}
+
+      # Handler should hibernate again
+      Wait.until(fn -> assert_hibernated(handler) end)
+    end
+  end
+
   defp assert_handler_application(handler, expected_application) do
     %Handler{application: application} = :sys.get_state(handler)
 
@@ -75,7 +114,17 @@ defmodule Commanded.Event.HandlerInitTest do
     assert handler_name == expected_handler_name
   end
 
+  defp assert_hibernated(pid) do
+    assert Process.info(pid, :current_function) == {:current_function, {:erlang, :hibernate, 3}}
+  end
+
   defp send_subscribed(handler) do
     send(handler, {:subscribed, handler})
+  end
+
+  defp send_events(handler, events) do
+    recorded_events = EventFactory.map_to_recorded_events(events)
+
+    send(handler, {:events, recorded_events})
   end
 end

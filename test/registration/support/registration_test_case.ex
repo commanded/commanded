@@ -83,7 +83,7 @@ defmodule Commanded.RegistrationTestCase do
     end
 
     defp start_link(registry, registry_meta, name) do
-      registry.start_link(registry_meta, name, RegisteredServer, [])
+      registry.start_link(registry_meta, name, RegisteredServer, [], [])
     end
   end
 end
