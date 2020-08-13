@@ -462,7 +462,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   defdelegate identity(), to: Commanded.ProcessManagers.ProcessManagerInstance
 
   # GenServer start options
-  @start_opts [:name, :timeout, :debug, :spawn_opt, :hibernate_after]
+  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after]
 
   # Process manager configuration options
   @handler_opts [

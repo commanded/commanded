@@ -37,7 +37,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
   def start_link(application, process_name, process_module, opts \\ []) do
     {start_opts, router_opts} =
-      Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt, :hibernate_after])
+      Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     name = name(application, process_name)
     consistency = Keyword.get(router_opts, :consistency, :eventual)

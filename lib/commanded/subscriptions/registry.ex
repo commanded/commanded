@@ -8,7 +8,8 @@ defmodule Commanded.Subscriptions.Registry do
   use GenServer
 
   def start_link(opts) do
-    {start_opts, registry_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
+    {start_opts, registry_opts} =
+      Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     GenServer.start_link(__MODULE__, registry_opts, start_opts)
   end

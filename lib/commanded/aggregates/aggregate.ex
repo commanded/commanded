@@ -71,7 +71,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   def start_link(config, opts) do
     {start_opts, aggregate_opts} =
-      Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt, :hibernate_after])
+      Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     aggregate_module = Keyword.fetch!(aggregate_opts, :aggregate_module)
     aggregate_uuid = Keyword.fetch!(aggregate_opts, :aggregate_uuid)

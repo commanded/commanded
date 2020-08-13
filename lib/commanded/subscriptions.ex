@@ -17,7 +17,8 @@ defmodule Commanded.Subscriptions do
   ]
 
   def start_link(opts) do
-    {start_opts, subscriptions_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
+    {start_opts, subscriptions_opts} =
+      Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     GenServer.start_link(__MODULE__, subscriptions_opts, start_opts)
   end

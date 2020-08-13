@@ -10,11 +10,11 @@ defmodule Commanded.Aggregates.Supervisor do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Registration
 
-  def start_link(args) do
-    application = Keyword.fetch!(args, :application)
-    name = Module.concat([application, __MODULE__])
+  def start_link(opts) do
+    {start_opts, supervisor_opts} =
+      Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
-    DynamicSupervisor.start_link(__MODULE__, args, name: name)
+    DynamicSupervisor.start_link(__MODULE__, supervisor_opts, start_opts)
   end
 
   @doc """
