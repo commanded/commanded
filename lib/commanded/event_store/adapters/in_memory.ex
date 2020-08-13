@@ -26,7 +26,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 
   def start_link(opts \\ []) do
-    {start_opts, in_memory_opts} = Keyword.split(opts, [:name, :timeout, :debug, :spawn_opt])
+    {start_opts, in_memory_opts} =
+      Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
 
     state = %State{
       name: Keyword.fetch!(opts, :name),

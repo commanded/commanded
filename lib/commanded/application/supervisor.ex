@@ -68,15 +68,23 @@ defmodule Commanded.Application.Supervisor do
 
   defp app_child_spec(name, config) do
     task_dispatcher_name = Module.concat([name, Commanded.Commands.TaskDispatcher])
+    aggregates_supervisor_name = Module.concat([name, Commanded.Aggregates.Supervisor])
     subscriptions_name = Module.concat([name, Commanded.Subscriptions])
     registry_name = Module.concat([name, Commanded.Subscriptions.Registry])
     snapshotting = Keyword.get(config, :snapshotting, %{})
+    hibernate_after = Keyword.get(config, :hibernate_after, :infinity)
 
     [
-      {Task.Supervisor, name: task_dispatcher_name},
-      {Commanded.Aggregates.Supervisor, application: name, snapshotting: snapshotting},
-      {Commanded.Subscriptions.Registry, application: name, name: registry_name},
-      {Commanded.Subscriptions, application: name, name: subscriptions_name}
+      {Task.Supervisor, name: task_dispatcher_name, hibernate_after: hibernate_after},
+      {Commanded.Aggregates.Supervisor,
+       name: aggregates_supervisor_name,
+       application: name,
+       snapshotting: snapshotting,
+       hibernate_after: hibernate_after},
+      {Commanded.Subscriptions.Registry,
+       application: name, name: registry_name, hibernate_after: hibernate_after},
+      {Commanded.Subscriptions,
+       application: name, name: subscriptions_name, hibernate_after: hibernate_after}
     ]
   end
 
