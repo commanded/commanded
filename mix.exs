@@ -25,10 +25,13 @@ defmodule Commanded.Mixfile do
 
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: extra_applications(Mix.env()),
       mod: {Commanded, []}
     ]
   end
+
+  defp extra_applications(:test), do: [:logger, :phoenix_pubsub]
+  defp extra_applications(_env), do: [:logger]
 
   defp elixirc_paths(env) when env in [:bench, :test],
     do: [
