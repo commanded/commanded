@@ -41,6 +41,7 @@ defmodule Commanded.Event.HandleEventTest do
       assert_enriched_metadata(metadata1, Enum.at(recorded_events, 0),
         additional_metadata: %{
           application: DefaultApp,
+          state: nil,
           handler_name: "Commanded.Event.EchoHandler"
         }
       )
@@ -50,6 +51,7 @@ defmodule Commanded.Event.HandleEventTest do
       assert_enriched_metadata(metadata2, Enum.at(recorded_events, 1),
         additional_metadata: %{
           application: DefaultApp,
+          state: nil,
           handler_name: "Commanded.Event.EchoHandler"
         }
       )
@@ -125,6 +127,7 @@ defmodule Commanded.Event.HandleEventTest do
       assert_enriched_metadata(metadata1, Enum.at(recorded_events1, 0),
         additional_metadata: %{
           application: :app1,
+          state: nil,
           handler_name: "handler1"
         }
       )
@@ -137,6 +140,7 @@ defmodule Commanded.Event.HandleEventTest do
       assert_enriched_metadata(metadata2, Enum.at(recorded_events2, 0),
         additional_metadata: %{
           application: :app2,
+          state: nil,
           handler_name: "handler2"
         }
       )

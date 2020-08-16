@@ -112,6 +112,54 @@ defmodule Commanded.Event.Handler do
         {ExampleHandler, application: ExampleApp, name: "ExampleHandler"}
       ], strategy: :one_for_one)
 
+
+  ## Event handler state
+
+  An event handler can define and update state which is held in the `GenServer`
+  process memory. It is passed to the `handle/2` function as part of the
+  metadata using the `:state` key. The state is transient and will be lost
+  whenever the process restarts.
+
+  Initial state can be set in the `init/1` callback function by adding a
+  `:state` key to the config. It can also be provided when starting the handler
+  process:
+
+      ExampleHandler.start_link(state: initial_state)
+
+  Or when supervised:
+
+      Supervisor.start_link([
+        {ExampleHandler, state: initial_state}
+      ], strategy: :one_for_one)
+
+  State can be updated by returning `{:ok, new_state}` from any `handle/2`
+  function. Returning an `:ok` reply will keep the state unchanged.
+
+  Handler state is also included in the `Commanded.Event.FailureContext` struct
+  passed to the `error/3` callback function.
+
+  ### Example
+
+      defmodule StatefulEventHandler do
+        use Commanded.Event.Handler,
+          application: ExampleApp,
+          name: __MODULE__
+
+        def init(config) do
+          config = Keyword.put_new(config, :state, %{})
+
+          {:ok, config}
+        end
+
+        def handle(event, metadata) do
+          %{state: state} = metadata
+
+          new_state = mutate_state(state)
+
+          {:ok, new_state}
+        end
+      end
+
   ## Consistency
 
   For each event handler you can define its consistency, as one of either
@@ -263,13 +311,14 @@ defmodule Commanded.Event.Handler do
   @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
 
   @doc """
-  Event handler behaviour to handle a domain event and its metadata.
+  Handle a domain event and its metadata.
 
   Return `:ok` on success, `{:error, :already_seen_event}` to ack and skip the
   event, or `{:error, reason}` on failure.
   """
   @callback handle(domain_event, metadata) ::
               :ok
+              | {:ok, new_state :: any()}
               | {:error, :already_seen_event}
               | {:error, reason :: any()}
 
@@ -446,7 +495,8 @@ defmodule Commanded.Event.Handler do
     :consistency,
     :start_from,
     :subscribe_to,
-    :subscription_opts
+    :subscription_opts,
+    :state
   ]
 
   @doc false
@@ -499,6 +549,7 @@ defmodule Commanded.Event.Handler do
     :consistency,
     :handler_name,
     :handler_module,
+    :handler_state,
     :last_seen_event,
     :subscription,
     :subscribe_timer
@@ -524,6 +575,7 @@ defmodule Commanded.Event.Handler do
       application: application,
       handler_name: handler_name,
       handler_module: handler_module,
+      handler_state: Keyword.get(handler_opts, :state),
       consistency: consistency,
       subscription: subscription
     }
@@ -698,6 +750,9 @@ defmodule Commanded.Event.Handler do
       :ok ->
         confirm_receipt(event, state)
 
+      {:ok, handler_state} ->
+        confirm_receipt(event, %Handler{state | handler_state: handler_state})
+
       {:error, :already_seen_event} ->
         confirm_receipt(event, state)
 
@@ -759,13 +814,15 @@ defmodule Commanded.Event.Handler do
          stacktrace \\ nil,
          %Handler{} = state
        ) do
-    %Handler{application: application, handler_name: handler_name} = state
+    %Handler{application: application, handler_name: handler_name, handler_state: handler_state} =
+      state
 
     metadata = enrich_metadata(failed_event, state)
 
     %FailureContext{
       application: application,
       handler_name: handler_name,
+      handler_state: handler_state,
       context: context,
       metadata: metadata,
       stacktrace: stacktrace
@@ -775,12 +832,14 @@ defmodule Commanded.Event.Handler do
   # Enrich the metadata with additional fields from the recorded event, plus the
   # associated Commanded application and the event handler's name.
   defp enrich_metadata(%RecordedEvent{} = event, %Handler{} = state) do
-    %Handler{application: application, handler_name: handler_name} = state
+    %Handler{application: application, handler_name: handler_name, handler_state: handler_state} =
+      state
 
     RecordedEvent.enrich_metadata(event,
       additional_metadata: %{
         application: application,
-        handler_name: handler_name
+        handler_name: handler_name,
+        state: handler_state
       }
     )
   end
