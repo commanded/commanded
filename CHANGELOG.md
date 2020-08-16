@@ -10,6 +10,7 @@
 - Add `hibernate_after` option to application config ([#399](https://github.com/commanded/commanded/pull/399)).
 - Add support for providing adapter-specific event store subscription options ([#391](https://github.com/commanded/commanded/pull/391)).
 - Support custom state for event handlers ([#400](https://github.com/commanded/commanded/pull/400)).
+- Allow event handlers and process manager `error` callback to return failure context struct ([#397](https://github.com/commanded/commanded/issues/397)).
 
 ## v1.1.1
 
