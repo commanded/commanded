@@ -6,10 +6,14 @@ defmodule Commanded.ProcessManagers.FailureContext do
 
     - `context` - the context map passed between each failure and may be used
       to track state between retries, such as to count failures.
-    - `last_event` - the last event the process manager received
-    - `pending_commands` - the pending commands that were not executed yet
+
+    - `last_event` - the last event the process manager received.
+
+    - `pending_commands` - the pending commands that were not executed yet.
+
     - `process_manager_state` - the state the process manager would be in
       if the command would not fail.
+
     - `stacktrace` - the stacktrace if the error was an unhandled exception.
 
   """
