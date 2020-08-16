@@ -12,6 +12,10 @@
 - Support custom state for event handlers ([#400](https://github.com/commanded/commanded/pull/400)).
 - Allow event handlers and process manager `error` callback to return failure context struct ([#397](https://github.com/commanded/commanded/issues/397)).
 
+### Bug fixes
+
+- Allow process manager `error/3` callback to return `:skip` for failed commands, not just failed events ([#362](https://github.com/commanded/commanded/issues/362)).
+
 ## v1.1.1
 
 ### Enhancements

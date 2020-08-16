@@ -396,7 +396,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %FailureContext{pending_commands: pending_commands, last_event: last_event} = failure_context
 
     case process_manager_module.error(error, failed_command, failure_context) do
-      {:continue, commands, context} when is_list(commands) ->
+      {:continue, commands, %FailureContext{context: context}}
+      when is_list(commands) and is_map(context) ->
+        # Continue dispatching the given commands
+        Logger.info(fn -> describe(state) <> " is continuing with modified command(s)" end)
+
+        dispatch_commands(commands, opts, state, last_event, context)
+
+      {:continue, commands, context} when is_list(commands) and is_map(context) ->
         # Continue dispatching the given commands
         Logger.info(fn -> describe(state) <> " is continuing with modified command(s)" end)
 
@@ -435,6 +442,18 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
         dispatch_commands([failed_command | pending_commands], opts, state, last_event, context)
 
+      :skip ->
+        # Skip the failed command, but continue dispatching any pending commands
+        Logger.info(fn -> describe(state) <> " is ignoring error dispatching command" end)
+
+        dispatch_commands(pending_commands, opts, state, last_event)
+
+      {:skip, :continue_pending} ->
+        # Skip the failed command, but continue dispatching any pending commands
+        Logger.info(fn -> describe(state) <> " is ignoring error dispatching command" end)
+
+        dispatch_commands(pending_commands, opts, state, last_event)
+
       {:skip, :discard_pending} ->
         # Skip the failed command and discard any pending commands
         Logger.info(fn ->
@@ -443,12 +462,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         end)
 
         :ok
-
-      {:skip, :continue_pending} ->
-        # Skip the failed command, but continue dispatching any pending commands
-        Logger.info(fn -> describe(state) <> " is ignoring error dispatching command" end)
-
-        dispatch_commands(pending_commands, opts, state, last_event)
 
       {:stop, reason} = reply ->
         # Stop process manager

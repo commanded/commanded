@@ -184,8 +184,22 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     end
   end
 
-  # Skip failed command, continue pending
+  # Skip failed command
   def error({:error, :failed}, %AttemptProcess{strategy: "skip"} = command, failure_context) do
+    %AttemptProcess{reply_to: reply_to} = command
+
+    context = record_attempt(failure_context)
+    reply(reply_to, {:error, :failed, context, failure_context})
+
+    :skip
+  end
+
+  # Skip failed command, continue pending
+  def error(
+        {:error, :failed},
+        %AttemptProcess{strategy: "skip_continue_pending"} = command,
+        failure_context
+      ) do
     %AttemptProcess{reply_to: reply_to} = command
 
     context = record_attempt(failure_context)

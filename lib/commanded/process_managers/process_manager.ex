@@ -342,11 +342,14 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   For command dispatch failures, when failure source is a command, you can also
   return:
 
-  - `{:skip, :discard_pending}` - discard the failed command and any pending
+  - `:skip` - skip the failed command and continue dispatching any pending
     commands.
 
   - `{:skip, :continue_pending}` - skip the failed command, but continue
     dispatching any pending commands.
+
+  - `{:skip, :discard_pending}` - discard the failed command and any pending
+    commands.
 
   - `{:continue, commands, context}` - continue dispatching the given commands.
     This allows you to retry the failed command, modify it and retry, drop it

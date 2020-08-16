@@ -190,10 +190,28 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}
     end
 
-    test "should skip the event when error reply is `{:skip, :continue_pending}`" do
+    test "should skip the command when error reply is `:skip`" do
       command = %StartProcess{
         process_uuid: UUID.uuid4(),
         strategy: "skip",
+        reply_to: reply_to()
+      }
+
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+
+      assert :ok = ErrorRouter.dispatch(command, application: ErrorApp)
+
+      assert_receive {:error, :failed, %{attempts: 1}, _failure_context}
+      refute_receive {:error, :failed, %{attempts: 2}, _failure_context}
+
+      # Should not shutdown process router
+      assert Process.alive?(process_router)
+    end
+
+    test "should skip the command when error reply is `{:skip, :continue_pending}`" do
+      command = %StartProcess{
+        process_uuid: UUID.uuid4(),
+        strategy: "skip_continue_pending",
         reply_to: reply_to()
       }
 
