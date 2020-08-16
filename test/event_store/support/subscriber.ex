@@ -26,7 +26,7 @@ defmodule Commanded.EventStore.Subscriber do
     %State{event_store: event_store, event_store_meta: event_store_meta} = state
 
     {:ok, subscription} =
-      event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+      event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
     {:ok, %State{state | subscription: subscription}}
   end

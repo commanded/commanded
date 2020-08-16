@@ -8,6 +8,7 @@
 - Include `application` and `handler_name` as additional event handler metadata ([#396](https://github.com/commanded/commanded/pull/396)).
 - Allow `GenServer` start options to be provided when starting event handlers and process managers ([#398](https://github.com/commanded/commanded/pull/398)).
 - Add `hibernate_after` option to application config ([#399](https://github.com/commanded/commanded/pull/399)).
+- Add support for providing adapter-specific event store subscription options ([#391](https://github.com/commanded/commanded/pull/391)).
 
 ## v1.1.1
 

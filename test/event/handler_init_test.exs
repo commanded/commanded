@@ -40,13 +40,12 @@ defmodule Commanded.Event.HandlerInitTest do
     setup do
       reply_to = self()
 
-      subscribe_to = fn _event_store, :all, handler_name, handler, _subscribe_from ->
-        assert is_binary(handler_name)
+      expect(MockEventStore, :subscribe_to, fn
+        _event_store, :all, handler_name, handler, _subscribe_from, [] ->
+          assert is_binary(handler_name)
 
-        {:ok, handler}
-      end
-
-      expect(MockEventStore, :subscribe_to, subscribe_to)
+          {:ok, handler}
+      end)
 
       {:ok, _agent} = Agent.start_link(fn -> reply_to end, name: InitHandler)
 

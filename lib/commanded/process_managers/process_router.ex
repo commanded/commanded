@@ -47,7 +47,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
         application: application,
         subscription_name: process_name,
         subscribe_from: Keyword.get(router_opts, :start_from, :origin),
-        subscribe_to: Keyword.get(router_opts, :subscribe_to, :all)
+        subscribe_to: Keyword.get(router_opts, :subscribe_to, :all),
+        subscription_opts: Keyword.get(router_opts, :subscription_opts, [])
       )
 
     state = %State{

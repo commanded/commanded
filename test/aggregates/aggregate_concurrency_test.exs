@@ -10,7 +10,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
 
   setup do
     expect(MockEventStore, :subscribe_to, fn
-      _event_store_meta, stream_uuid, handler_name, handler, _subscribe_from ->
+      _event_store_meta, stream_uuid, handler_name, handler, _subscribe_from, [] ->
         assert is_binary(stream_uuid)
         assert is_binary(handler_name)
 

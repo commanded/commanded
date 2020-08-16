@@ -471,6 +471,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     :consistency,
     :start_from,
     :subscribe_to,
+    :subscription_opts,
     :event_timeout,
     :idle_timeout
   ]

@@ -117,7 +117,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
       end
@@ -127,7 +127,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
 
@@ -147,7 +147,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin, [])
 
         :ok = event_store.append_to_stream(event_store_meta, "stream1", 0, build_events(1))
         :ok = event_store.append_to_stream(event_store_meta, "stream2", 0, build_events(2))
@@ -167,7 +167,14 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         wait_for_event_store()
 
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :current)
+          event_store.subscribe_to(
+            event_store_meta,
+            "stream1",
+            "subscriber",
+            self(),
+            :current,
+            []
+          )
 
         assert_receive {:subscribed, ^subscription}
         refute_receive {:events, _events}
@@ -189,7 +196,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         :ok = event_store.append_to_stream(event_store_meta, "stream3", 0, build_events(3))
 
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, "stream3", "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, "stream3", "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
 
@@ -207,7 +214,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, _subscription} =
-          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, "stream1", "subscriber", self(), :origin, [])
 
         assert {:error, :subscription_already_exists} ==
                  event_store.subscribe_to(
@@ -215,7 +222,8 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
                    "stream1",
                    "subscriber",
                    self(),
-                   :origin
+                   :origin,
+                   []
                  )
       end
     end
@@ -226,7 +234,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
       end
@@ -236,7 +244,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
 
@@ -261,7 +269,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         wait_for_event_store()
 
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
 
@@ -284,7 +292,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         wait_for_event_store()
 
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :current)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :current, [])
 
         assert_receive {:subscribed, ^subscription}
         refute_receive {:events, _received_events}
@@ -301,10 +309,17 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, _subscription} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert {:error, :subscription_already_exists} ==
-                 event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+                 event_store.subscribe_to(
+                   event_store_meta,
+                   :all,
+                   "subscriber",
+                   self(),
+                   :origin,
+                   []
+                 )
       end
     end
 
@@ -314,7 +329,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription}
 
@@ -335,7 +350,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription1} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription1}
 
@@ -346,7 +361,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         :ok = unsubscribe(event_store, event_store_meta, subscription1)
 
         {:ok, subscription2} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         :ok = event_store.append_to_stream(event_store_meta, "stream2", 0, build_events(2))
 
@@ -358,7 +373,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
     describe "delete subscription" do
       test "should be deleted", %{event_store: event_store, event_store_meta: event_store_meta} do
         {:ok, subscription1} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription1}
 
@@ -376,7 +391,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store_meta: event_store_meta
       } do
         {:ok, subscription1} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         assert_receive {:subscribed, ^subscription1}
 
@@ -393,7 +408,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         refute_receive {:events, _received_events}
 
         {:ok, subscription2} =
-          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin)
+          event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
 
         # Should receive all events as subscription has been recreated from `:origin`
         assert_receive {:subscribed, ^subscription2}

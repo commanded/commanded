@@ -181,7 +181,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
 
   defp mock_event_store do
     expect(MockEventStore, :subscribe_to, fn
-      _event_store, :all, name, pid, :origin ->
+      _event_store, :all, name, pid, :origin, [] ->
         assert is_binary(name)
         assert is_pid(pid)
 

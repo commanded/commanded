@@ -70,23 +70,8 @@ defmodule Commanded.EventStore.Adapter do
               stream_uuid | :all,
               subscription_name,
               subscriber,
-              start_from
-            ) ::
-              {:ok, subscription}
-              | {:error, :subscription_already_exists}
-              | {:error, error}
-
-  @doc """
-  Create a persistent subscription to an event stream with custom options
-  """
-  @optional_callbacks subscribe_to: 6
-  @callback subscribe_to(
-              adapter_meta,
-              stream_uuid | :all,
-              subscription_name,
-              subscriber,
               start_from,
-              options | []
+              options
             ) ::
               {:ok, subscription}
               | {:error, :subscription_already_exists}

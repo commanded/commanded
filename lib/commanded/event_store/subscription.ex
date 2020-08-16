@@ -6,7 +6,13 @@ defmodule Commanded.EventStore.Subscription do
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.Subscription
 
-  @enforce_keys [:application, :subscribe_to, :subscribe_from, :subscription_name]
+  @enforce_keys [
+    :application,
+    :subscribe_to,
+    :subscribe_from,
+    :subscription_name,
+    :subscription_opts
+  ]
 
   @type t :: %Subscription{
           application: Commanded.Application.t(),
@@ -14,6 +20,7 @@ defmodule Commanded.EventStore.Subscription do
           subscribe_to: EventStore.Adapter.stream_uuid() | :all,
           subscribe_from: EventStore.Adapter.start_from(),
           subscription_name: EventStore.Adapter.subscription_name(),
+          subscription_opts: Keyword.t(),
           subscription_pid: nil | pid(),
           subscription_ref: nil | reference()
         }
@@ -24,6 +31,7 @@ defmodule Commanded.EventStore.Subscription do
     :subscribe_to,
     :subscribe_from,
     :subscription_name,
+    :subscription_opts,
     :subscription_pid,
     :subscription_ref
   ]
@@ -33,6 +41,7 @@ defmodule Commanded.EventStore.Subscription do
       application: Keyword.fetch!(opts, :application),
       backoff: init_backoff(),
       subscription_name: Keyword.fetch!(opts, :subscription_name),
+      subscription_opts: Keyword.fetch!(opts, :subscription_opts),
       subscribe_to: parse_subscribe_to(opts),
       subscribe_from: parse_subscribe_from(opts)
     }
@@ -99,10 +108,18 @@ defmodule Commanded.EventStore.Subscription do
       application: application,
       subscribe_to: subscribe_to,
       subscription_name: subscription_name,
+      subscription_opts: subscription_opts,
       subscribe_from: subscribe_from
     } = subscription
 
-    EventStore.subscribe_to(application, subscribe_to, subscription_name, pid, subscribe_from)
+    EventStore.subscribe_to(
+      application,
+      subscribe_to,
+      subscription_name,
+      pid,
+      subscribe_from,
+      subscription_opts
+    )
   end
 
   defp parse_subscribe_to(opts) do

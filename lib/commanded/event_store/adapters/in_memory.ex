@@ -86,7 +86,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore.Adapter
-  def subscribe_to(adapter_meta, stream_uuid, subscription_name, subscriber, start_from) do
+  def subscribe_to(adapter_meta, stream_uuid, subscription_name, subscriber, start_from, _options) do
     event_store = event_store_name(adapter_meta)
 
     subscription = %Subscription{

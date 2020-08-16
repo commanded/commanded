@@ -92,16 +92,34 @@ defmodule Commanded.EventStore do
         Commanded.EventStore.subscribe_to(MyApp, "stream1", "Example", self(), :origin)
 
   """
-  def subscribe_to(application, stream_uuid, subscription_name, subscriber, start_from) do
+  def subscribe_to(
+        application,
+        stream_uuid,
+        subscription_name,
+        subscriber,
+        start_from,
+        options \\ []
+      ) do
     {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.subscribe_to(
-      adapter_meta,
-      stream_uuid,
-      subscription_name,
-      subscriber,
-      start_from
-    )
+    if function_exported?(adapter, :subscribe_to, 6) do
+      adapter.subscribe_to(
+        adapter_meta,
+        stream_uuid,
+        subscription_name,
+        subscriber,
+        start_from,
+        options
+      )
+    else
+      adapter.subscribe_to(
+        adapter_meta,
+        stream_uuid,
+        subscription_name,
+        subscriber,
+        start_from
+      )
+    end
   end
 
   @doc """

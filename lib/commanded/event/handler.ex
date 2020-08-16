@@ -440,7 +440,14 @@ defmodule Commanded.Event.Handler do
   @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after]
 
   # Event handler configuration options
-  @handler_opts [:application, :name, :consistency, :start_from, :subscribe_to]
+  @handler_opts [
+    :application,
+    :name,
+    :consistency,
+    :start_from,
+    :subscribe_to,
+    :subscription_opts
+  ]
 
   @doc false
   def parse_config!(module, config) do
@@ -509,7 +516,8 @@ defmodule Commanded.Event.Handler do
         application: application,
         subscription_name: handler_name,
         subscribe_from: Keyword.get(handler_opts, :start_from, :origin),
-        subscribe_to: Keyword.get(handler_opts, :subscribe_to, :all)
+        subscribe_to: Keyword.get(handler_opts, :subscribe_to, :all),
+        subscription_opts: Keyword.get(handler_opts, :subscription_opts, [])
       )
 
     handler = %Handler{

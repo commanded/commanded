@@ -36,14 +36,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
     reply_to = self()
 
     # First and second subscription attempts fail
-    expect(MockEventStore, :subscribe_to, 2, fn _event_store_meta,
-                                                :all,
-                                                "ExampleProcessManager",
-                                                pm,
-                                                :origin ->
-      send(reply_to, {:subscribe_to, pm})
+    expect(MockEventStore, :subscribe_to, 2, fn
+      _event_store_meta, :all, "ExampleProcessManager", pm, :origin, [] ->
+        send(reply_to, {:subscribe_to, pm})
 
-      {:error, :subscription_already_exists}
+        {:error, :subscription_already_exists}
     end)
 
     # Third subscription attempt succeeds
@@ -91,15 +88,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerSubscriptionTest do
   defp expect_subscribe_to(subscription) do
     reply_to = self()
 
-    expect(MockEventStore, :subscribe_to, fn _event_store_meta,
-                                             :all,
-                                             "ExampleProcessManager",
-                                             pm,
-                                             :origin ->
-      send(pm, {:subscribed, subscription})
-      send(reply_to, {:subscribed, subscription})
+    expect(MockEventStore, :subscribe_to, fn
+      _event_store_meta, :all, "ExampleProcessManager", pm, :origin, [] ->
+        send(pm, {:subscribed, subscription})
+        send(reply_to, {:subscribed, subscription})
 
-      {:ok, subscription}
+        {:ok, subscription}
     end)
   end
 
