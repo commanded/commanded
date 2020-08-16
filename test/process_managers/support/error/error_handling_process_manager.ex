@@ -89,7 +89,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   end
 
   # Skip events causing errors during event handling
-  def error({:error, error}, %ProcessError{} = event, failure_context) do
+  def error({:error, error}, %ProcessError{} = event, %FailureContext{} = failure_context) do
     %ProcessError{reply_to: reply_to} = event
 
     reply(reply_to, {:error, error, failure_context})
@@ -98,7 +98,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   end
 
   # Stop on exceptions during event handling
-  def error({:error, error}, %ProcessException{} = event, failure_context) do
+  def error({:error, error}, %ProcessException{} = event, %FailureContext{} = failure_context) do
     %ProcessException{reply_to: reply_to} = event
 
     reply(reply_to, {:error, error, failure_context})
@@ -107,7 +107,11 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   end
 
   # Stop on exceptions during event applying
-  def error({:error, error}, %ProcessApplyException{} = event, failure_context) do
+  def error(
+        {:error, error},
+        %ProcessApplyException{} = event,
+        %FailureContext{} = failure_context
+      ) do
     %ProcessApplyException{reply_to: reply_to} = event
 
     reply(reply_to, {:error, error, failure_context})
@@ -116,7 +120,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   end
 
   # Stop on exceptions during command dispatch.
-  def error({:error, error}, %RaiseException{} = command, failure_context) do
+  def error({:error, error}, %RaiseException{} = command, %FailureContext{} = failure_context) do
     %RaiseException{reply_to: reply_to} = command
 
     reply(reply_to, {:error, error, failure_context})
@@ -127,7 +131,7 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
   # Stop after three attempts.
   def error(
         {:error, :failed},
-        %AttemptProcess{strategy: "retry"} = command,
+        %AttemptProcess{} = command,
         %FailureContext{context: %{attempts: attempts}} = failure_context
       )
       when attempts >= 2 do
@@ -139,29 +143,45 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     {:stop, :too_many_attempts}
   end
 
-  # Retry command with delay
   def error(
         {:error, :failed},
-        %AttemptProcess{strategy: "retry", delay: delay} = command,
-        failure_context
-      )
-      when is_integer(delay) do
-    %AttemptProcess{reply_to: reply_to} = command
+        %AttemptProcess{strategy: "retry"} = command,
+        %FailureContext{} = failure_context
+      ) do
+    %AttemptProcess{delay: delay, reply_to: reply_to} = command
 
     context = failure_context |> record_attempt() |> Map.put(:delay, delay)
+
     reply(reply_to, {:error, :failed, context, failure_context})
 
-    {:retry, delay, context}
+    if is_number(delay) and delay > 0 do
+      # Retry command with delay
+      {:retry, delay, context}
+    else
+      # Retry command
+      {:retry, context}
+    end
   end
 
-  # Retry command
-  def error({:error, :failed}, %AttemptProcess{strategy: "retry"} = command, failure_context) do
-    %AttemptProcess{reply_to: reply_to} = command
+  def error(
+        {:error, :failed},
+        %AttemptProcess{strategy: "retry_failure_context"} = command,
+        %FailureContext{} = failure_context
+      ) do
+    %AttemptProcess{delay: delay, reply_to: reply_to} = command
 
-    context = record_attempt(failure_context)
-    reply(reply_to, {:error, :failed, context, failure_context})
+    context = failure_context |> record_attempt() |> Map.put(:delay, delay)
+    failure_context = %FailureContext{failure_context | context: context}
 
-    {:retry, context}
+    reply(reply_to, {:error, :failed, failure_context})
+
+    if is_number(delay) and delay > 0 do
+      # Retry command with delay
+      {:retry, delay, failure_context}
+    else
+      # Retry command
+      {:retry, failure_context}
+    end
   end
 
   # Skip failed command, continue pending

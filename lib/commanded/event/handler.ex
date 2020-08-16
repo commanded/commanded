@@ -854,9 +854,26 @@ defmodule Commanded.Event.Handler do
     %Handler{handler_module: handler_module} = state
 
     case handler_module.error(error, data, failure_context) do
+      {:retry, %FailureContext{context: context}} when is_map(context) ->
+        # Retry the failed event
+        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+
+        handle_event(failed_event, state, context)
+
       {:retry, context} when is_map(context) ->
         # Retry the failed event
         Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+
+        handle_event(failed_event, state, context)
+
+      {:retry, delay, %FailureContext{context: context}}
+      when is_map(context) and is_integer(delay) and delay >= 0 ->
+        # Retry the failed event after waiting for the given delay, in milliseconds
+        Logger.info(fn ->
+          describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
+        end)
+
+        :timer.sleep(delay)
 
         handle_event(failed_event, state, context)
 

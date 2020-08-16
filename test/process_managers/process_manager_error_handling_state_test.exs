@@ -13,7 +13,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
     :ok
   end
 
-  test "should receive the aggregate state in the context" do
+  test "should receive the process instance state in the context" do
     command = %StartProcess{
       process_uuid: UUID.uuid4(),
       reply_to: reply_to()

@@ -114,9 +114,31 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
 
       assert :ok = ErrorRouter.dispatch(command, application: ErrorApp)
 
-      assert_receive {:error, :failed, %{attempts: 1}, _failure_context}
-      assert_receive {:error, :failed, %{attempts: 2}, _failure_context}
-      assert_receive {:error, :too_many_attempts, %{attempts: 3}, _failure_context}
+      assert_receive {:error, :failed, %{attempts: 1}, %FailureContext{}}
+      assert_receive {:error, :failed, %{attempts: 2}, %FailureContext{}}
+      assert_receive {:error, :too_many_attempts, %{attempts: 3}, %FailureContext{}}
+
+      # Should shutdown process router
+      assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}
+    end
+
+    test "should retry with failure context until process manager requests stop" do
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+
+      command = %StartProcess{
+        process_uuid: UUID.uuid4(),
+        strategy: "retry_failure_context",
+        reply_to: reply_to()
+      }
+
+      Process.unlink(process_router)
+      ref = Process.monitor(process_router)
+
+      assert :ok = ErrorRouter.dispatch(command, application: ErrorApp)
+
+      assert_receive {:error, :failed, %FailureContext{context: %{attempts: 1}}}
+      assert_receive {:error, :failed, %FailureContext{context: %{attempts: 2}}}
+      assert_receive {:error, :too_many_attempts, %{attempts: 3}, %FailureContext{}}
 
       # Should shutdown process router
       assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}
@@ -126,7 +148,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
       command = %StartProcess{
         process_uuid: UUID.uuid4(),
         strategy: "retry",
-        delay: 10,
+        delay: 1,
         reply_to: reply_to()
       }
 
@@ -137,9 +159,32 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
 
       assert :ok = ErrorRouter.dispatch(command, application: ErrorApp)
 
-      assert_receive {:error, :failed, %{attempts: 1, delay: 10}, _failure_context}
-      assert_receive {:error, :failed, %{attempts: 2, delay: 10}, _failure_context}
+      assert_receive {:error, :failed, %{attempts: 1, delay: 1}, _failure_context}
+      assert_receive {:error, :failed, %{attempts: 2, delay: 1}, _failure_context}
       assert_receive {:error, :too_many_attempts, %{attempts: 3}, _failure_context}
+
+      # Should shutdown process router
+      assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}
+    end
+
+    test "should retry command with failure context and specified delay between attempts" do
+      command = %StartProcess{
+        process_uuid: UUID.uuid4(),
+        strategy: "retry_failure_context",
+        delay: 1,
+        reply_to: reply_to()
+      }
+
+      {:ok, process_router} = ErrorHandlingProcessManager.start_link()
+
+      Process.unlink(process_router)
+      ref = Process.monitor(process_router)
+
+      assert :ok = ErrorRouter.dispatch(command, application: ErrorApp)
+
+      assert_receive {:error, :failed, %FailureContext{context: %{attempts: 1, delay: 1}}}
+      assert_receive {:error, :failed, %FailureContext{context: %{attempts: 2, delay: 1}}}
+      assert_receive {:error, :too_many_attempts, %{attempts: 3}, %FailureContext{}}
 
       # Should shutdown process router
       assert_receive {:DOWN, ^ref, :process, ^process_router, :too_many_attempts}

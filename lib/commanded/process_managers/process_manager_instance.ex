@@ -277,14 +277,31 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end)
 
     case process_manager_module.error(error, data, failure_context) do
+      {:retry, %FailureContext{context: context}} when is_map(context) ->
+        # Retry the failed event
+        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+
+        process_unseen_event(failed_event, state, context)
+
       {:retry, context} when is_map(context) ->
         # Retry the failed event
         Logger.info(fn -> describe(state) <> " is retrying failed event" end)
 
         process_unseen_event(failed_event, state, context)
 
+      {:retry, delay, %FailureContext{context: context}}
+      when is_map(context) and is_integer(delay) and delay >= 0 ->
+        # Retry the failed event after waiting for the given delay (milliseconds)
+        Logger.info(fn ->
+          describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
+        end)
+
+        :timer.sleep(delay)
+
+        process_unseen_event(failed_event, state, context)
+
       {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
-        # Retry the failed event after waiting for the given delay, in milliseconds
+        # Retry the failed event after waiting for the given delay (milliseconds)
         Logger.info(fn ->
           describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
         end)
@@ -374,24 +391,41 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
-  defp dispatch_failure(error, failed_command, opts, failure_context, state) do
+  defp dispatch_failure({:error, reason} = error, failed_command, opts, failure_context, state) do
     %State{process_manager_module: process_manager_module} = state
     %FailureContext{pending_commands: pending_commands, last_event: last_event} = failure_context
 
     case process_manager_module.error(error, failed_command, failure_context) do
       {:continue, commands, context} when is_list(commands) ->
-        # continue dispatching the given commands
+        # Continue dispatching the given commands
         Logger.info(fn -> describe(state) <> " is continuing with modified command(s)" end)
 
         dispatch_commands(commands, opts, state, last_event, context)
 
-      {:retry, context} ->
-        # retry the failed command immediately
+      {:retry, %FailureContext{context: context}} when is_map(context) ->
+        # Retry the failed command immediately
         Logger.info(fn -> describe(state) <> " is retrying failed command" end)
 
         dispatch_commands([failed_command | pending_commands], opts, state, last_event, context)
 
-      {:retry, delay, context} when is_integer(delay) ->
+      {:retry, context} when is_map(context) ->
+        # Retry the failed command immediately
+        Logger.info(fn -> describe(state) <> " is retrying failed command" end)
+
+        dispatch_commands([failed_command | pending_commands], opts, state, last_event, context)
+
+      {:retry, delay, %FailureContext{context: context}}
+      when is_map(context) and is_integer(delay) and delay >= 0 ->
+        # retry the failed command after waiting for the given delay, in milliseconds
+        Logger.info(fn ->
+          describe(state) <> " is retrying failed command after #{inspect(delay)}ms"
+        end)
+
+        :timer.sleep(delay)
+
+        dispatch_commands([failed_command | pending_commands], opts, state, last_event, context)
+
+      {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
         # retry the failed command after waiting for the given delay, in milliseconds
         Logger.info(fn ->
           describe(state) <> " is retrying failed command after #{inspect(delay)}ms"
@@ -402,7 +436,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         dispatch_commands([failed_command | pending_commands], opts, state, last_event, context)
 
       {:skip, :discard_pending} ->
-        # skip the failed command and discard any pending commands
+        # Skip the failed command and discard any pending commands
         Logger.info(fn ->
           describe(state) <>
             " is skipping event and #{length(pending_commands)} pending command(s)"
@@ -411,16 +445,24 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         :ok
 
       {:skip, :continue_pending} ->
-        # skip the failed command, but continue dispatching any pending commands
+        # Skip the failed command, but continue dispatching any pending commands
         Logger.info(fn -> describe(state) <> " is ignoring error dispatching command" end)
 
         dispatch_commands(pending_commands, opts, state, last_event)
 
       {:stop, reason} = reply ->
-        # stop process manager
+        # Stop process manager
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
 
         reply
+
+      invalid ->
+        Logger.warn(fn ->
+          describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
+        end)
+
+        # Stop process manager with original error reason
+        {:stop, reason}
     end
   end
 

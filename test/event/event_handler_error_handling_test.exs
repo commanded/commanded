@@ -19,7 +19,7 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   setup do
     start_supervised!(DefaultApp)
 
-    {:ok, handler} = ErrorEventHandler.start_link()
+    handler = start_supervised!(ErrorEventHandler)
 
     true = Process.unlink(handler)
 
@@ -112,11 +112,36 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
 
   test "should retry event handler after delay on error",
        %{handler: handler, ref: ref} do
-    send_error_event(handler, strategy: "retry", delay: 10)
+    send_error_event(handler, strategy: "retry", delay: 1)
 
-    assert_receive {:error, :failed, %{failures: 1, delay: 10}}
-    assert_receive {:error, :failed, %{failures: 2, delay: 10}}
-    assert_receive {:error, :too_many_failures, %{failures: 3, delay: 10}}
+    assert_receive {:error, :failed, %{failures: 1, delay: 1}}
+    assert_receive {:error, :failed, %{failures: 2, delay: 1}}
+    assert_receive {:error, :too_many_failures, %{failures: 3, delay: 1}}
+
+    assert_receive {:DOWN, ^ref, :process, ^handler, :too_many_failures}
+    refute Process.alive?(handler)
+  end
+
+  test "should retry event handler with `FailureContext` on error", %{handler: handler, ref: ref} do
+    send_error_event(handler, strategy: "retry_failure_context")
+
+    assert_receive {:error, :failed, %FailureContext{context: %{failures: 1}}}
+    assert_receive {:error, :failed, %FailureContext{context: %{failures: 2}}}
+    assert_receive {:error, :too_many_failures, %FailureContext{context: %{failures: 3}}}
+
+    assert_receive {:DOWN, ^ref, :process, ^handler, :too_many_failures}
+    refute Process.alive?(handler)
+  end
+
+  test "should retry event handler with `FailureContext` after delay on error",
+       %{handler: handler, ref: ref} do
+    send_error_event(handler, strategy: "retry_failure_context", delay: 1)
+
+    assert_receive {:error, :failed, %FailureContext{context: %{failures: 1, delay: 1}}}
+    assert_receive {:error, :failed, %FailureContext{context: %{failures: 2, delay: 1}}}
+
+    assert_receive {:error, :too_many_failures,
+                    %FailureContext{context: %{failures: 3, delay: 1}}}
 
     assert_receive {:DOWN, ^ref, :process, ^handler, :too_many_failures}
     refute Process.alive?(handler)

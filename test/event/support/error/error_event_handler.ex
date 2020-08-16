@@ -41,20 +41,59 @@ defmodule Commanded.Event.ErrorEventHandler do
     %ErrorEvent{delay: delay, reply_to: reply_to} = event
     %FailureContext{context: context} = failure_context
 
-    context = context |> record_failure() |> Map.put(:delay, delay)
+    # Record failure count in context map
+    context =
+      context
+      |> record_failure()
+      |> Map.put(:delay, delay)
 
-    case Map.get(context, :failures) do
-      too_many when too_many >= 3 ->
-        # stop error handler after third failure
-        send_reply(reply_to, {:error, :too_many_failures, context})
+    if Map.get(context, :failures) >= 3 do
+      # Stop error handler after third failure
+      send_reply(reply_to, {:error, :too_many_failures, context})
 
-        {:stop, :too_many_failures}
+      {:stop, :too_many_failures}
+    else
+      # Retry event
+      send_reply(reply_to, {:error, :failed, context})
 
-      _ ->
-        # retry event, record failure count in context map
-        send_reply(reply_to, {:error, :failed, context})
-
+      if is_number(delay) and delay > 0 do
+        {:retry, delay, context}
+      else
         {:retry, context}
+      end
+    end
+  end
+
+  def error(
+        {:error, :failed},
+        %ErrorEvent{strategy: "retry_failure_context"} = event,
+        failure_context
+      ) do
+    %ErrorEvent{delay: delay, reply_to: reply_to} = event
+    %FailureContext{context: context} = failure_context
+
+    context =
+      context
+      |> record_failure()
+      |> Map.put(:delay, delay)
+
+    # Record failure count in context map
+    failure_context = %FailureContext{failure_context | context: context}
+
+    if Map.get(context, :failures) >= 3 do
+      # Stop error handler after third failure
+      send_reply(reply_to, {:error, :too_many_failures, failure_context})
+
+      {:stop, :too_many_failures}
+    else
+      # Retry event
+      send_reply(reply_to, {:error, :failed, failure_context})
+
+      if is_number(delay) and delay > 0 do
+        {:retry, delay, failure_context}
+      else
+        {:retry, failure_context}
+      end
     end
   end
 
