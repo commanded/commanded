@@ -323,11 +323,13 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   error severity:
 
   - `{:retry, context}` - retry the failed command, provide a context
-    map containing any state passed to subsequent failures. This could be used
-    to count the number of retries, failing after too many attempts.
+    map or `Commanded.ProcessManagers.FailureContext` struct, containing any
+    state passed to subsequent failures. This could be used to count the number
+    of retries, failing after too many attempts.
 
   - `{:retry, delay, context}` - retry the failed command, after sleeping for
-    the requested delay (in milliseconds). Context is a map as described in
+    the requested delay (in milliseconds). Context is a map or
+    `Commanded.ProcessManagers.FailureContext` as described in
     `{:retry, context}` above.
 
   - `{:stop, reason}` - stop the process manager with the given reason.
@@ -358,8 +360,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               failure_context :: FailureContext.t()
             ) ::
               {:continue, commands :: list(command), context :: map()}
-              | {:retry, context :: map()}
-              | {:retry, delay :: non_neg_integer(), context :: map()}
+              | {:retry, context :: map() | FailureContext.t()}
+              | {:retry, delay :: non_neg_integer(), context :: map() | FailureContext.t()}
               | :skip
               | {:skip, :discard_pending}
               | {:skip, :continue_pending}

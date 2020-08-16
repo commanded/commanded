@@ -338,12 +338,14 @@ defmodule Commanded.Event.Handler do
   error severity:
 
   - `{:retry, context}` - retry the failed event, provide a context
-    map containing any state passed to subsequent failures. This could be used
-    to count the number of failures, stopping after too many.
+    map, or updated `Commanded.Event.FailureContext` struct, containing any
+    state to be passed to subsequent failures. This could be used to count the
+    number of failures, stopping after too many.
 
   - `{:retry, delay, context}` - retry the failed event, after sleeping for
-    the requested delay (in milliseconds). Context is a map as described in
-    `{:retry, context}` above.
+    the requested delay (in milliseconds). Context is a map or
+    `Commanded.Event.FailureContext` struct as described in `{:retry, context}`
+    above.
 
   - `:skip` - skip the failed event by acknowledging receipt.
 
@@ -399,8 +401,8 @@ defmodule Commanded.Event.Handler do
               failed_event :: domain_event,
               failure_context :: FailureContext.t()
             ) ::
-              {:retry, context :: map()}
-              | {:retry, delay :: non_neg_integer(), context :: map()}
+              {:retry, context :: map() | FailureContext.t()}
+              | {:retry, delay :: non_neg_integer(), context :: map() | FailureContext.t()}
               | :skip
               | {:stop, reason :: term()}
 
