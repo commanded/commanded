@@ -1,6 +1,7 @@
 defmodule Commanded.EventStore.RecordedEvent do
   @moduledoc """
-  Contains the persisted stream identity, type, data, and metadata for a single event.
+  Contains the persisted stream identity, type, data, and metadata for a single
+  event.
 
   Events are immutable once recorded.
 
@@ -8,8 +9,8 @@ defmodule Commanded.EventStore.RecordedEvent do
 
     - `event_id` - a globally unique UUID to identify the event.
 
-    - `event_number` - a globally unique, monotonically incrementing and gapless
-      integer used to order the event amongst all events.
+    - `event_number` - a globally unique, monotonically incrementing integer
+      used to order the event amongst all events.
 
     - `stream_id` - the stream identity for the event.
 

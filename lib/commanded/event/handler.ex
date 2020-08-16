@@ -353,10 +353,20 @@ defmodule Commanded.Event.Handler do
 
   The default behaviour if you don't provide an `c:error/3` callback is to stop
   the event handler using the exact error reason returned from the `handle/2`
-  function. If the event handler is supervised using restart `permanent` or
-  `transient` stopping on error will cause the handler to be restarted. It will
-  likely crash again as it will reprocesse the problematic event. This can lead
-  to cascading failures going up the supervision tree.
+  function.
+
+  If the event handler is supervised using restart `:permanent` or `:transient`
+  stopping on error will cause the handler to be restarted. Doing so will likely
+  result in another crash as it will reprocesse the problematic event. This can
+  lead to cascading failures going up the supervision tree, eventually
+  terminating the application.
+
+  To prevent this undersirable scenario you can either supervise the process
+  with `restart: :temporary` or return `:pause` to pause event handling. Both
+  approaches will require you to manually intervene to resolve the issue.
+  Alternatively you can log & `:skip` the problematic event to allow event
+  handling to continue, but may require you to manually resolve any issues
+  caused by a failure to handle the problematic event.
 
   ### Example error handling
 
@@ -404,6 +414,7 @@ defmodule Commanded.Event.Handler do
               {:retry, context :: map() | FailureContext.t()}
               | {:retry, delay :: non_neg_integer(), context :: map() | FailureContext.t()}
               | :skip
+              | :pause
               | {:stop, reason :: term()}
 
   defmacro __using__(opts) do
@@ -674,6 +685,9 @@ defmodule Commanded.Event.Handler do
 
       {:noreply, state}
     catch
+      {:pause, state} ->
+        {:noreply, state}
+
       {:error, reason} ->
         # Stop after event handling returned an error
         {:stop, reason, state}
@@ -732,7 +746,7 @@ defmodule Commanded.Event.Handler do
     end
   end
 
-  defp handle_event(event, handler, context \\ %{})
+  defp handle_event(event, context \\ %{}, handler)
 
   # Ignore already seen event.
   defp handle_event(
@@ -747,7 +761,7 @@ defmodule Commanded.Event.Handler do
   end
 
   # Delegate event to handler module.
-  defp handle_event(%RecordedEvent{} = event, %Handler{} = state, context) do
+  defp handle_event(%RecordedEvent{} = event, context, %Handler{} = state) do
     case delegate_event_to_handler(event, state) do
       :ok ->
         confirm_receipt(event, state)
@@ -860,13 +874,13 @@ defmodule Commanded.Event.Handler do
         # Retry the failed event
         Logger.info(fn -> describe(state) <> " is retrying failed event" end)
 
-        handle_event(failed_event, state, context)
+        handle_event(failed_event, context, state)
 
       {:retry, context} when is_map(context) ->
         # Retry the failed event
         Logger.info(fn -> describe(state) <> " is retrying failed event" end)
 
-        handle_event(failed_event, state, context)
+        handle_event(failed_event, context, state)
 
       {:retry, delay, %FailureContext{context: context}}
       when is_map(context) and is_integer(delay) and delay >= 0 ->
@@ -877,7 +891,7 @@ defmodule Commanded.Event.Handler do
 
         :timer.sleep(delay)
 
-        handle_event(failed_event, state, context)
+        handle_event(failed_event, context, state)
 
       {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
         # Retry the failed event after waiting for the given delay, in milliseconds
@@ -887,7 +901,17 @@ defmodule Commanded.Event.Handler do
 
         :timer.sleep(delay)
 
-        handle_event(failed_event, state, context)
+        handle_event(failed_event, context, state)
+
+      :pause ->
+        # Pause event processing - do not acknowledge the event - allowing a
+        # manual user intervention.
+        Logger.warn(
+          describe(state) <> " is pausing event handling for event:" <> inspect(failed_event),
+          event: failed_event
+        )
+
+        throw({:pause, state})
 
       :skip ->
         # Skip the failed event by confirming receipt
