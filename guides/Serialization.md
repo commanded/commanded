@@ -8,7 +8,7 @@ To enable JSON serialization with the included `Commanded.Serialization.JsonSeri
 
 ```elixir
 def deps do
-  [{:jason, "~> 1.1"}]
+  [{:jason, "~> 1.2"}]
 end
 ```
 

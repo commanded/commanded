@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "1.1.0"
+  @version "1.2.0"
 
   def project do
     [
@@ -65,7 +65,7 @@ defmodule Commanded.Mixfile do
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
       {:dialyxir, "~> 1.0", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.21", only: :dev},
+      {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.1", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.0", only: :dev},
       {:mox, "~> 0.5", only: [:bench, :test]}

@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v1.2.0
 
 ### Enhancements
 
@@ -15,6 +15,8 @@
 ### Bug fixes
 
 - Allow process manager `error/3` callback to return `:skip` for failed commands, not just failed events ([#362](https://github.com/commanded/commanded/issues/362)).
+
+---
 
 ## v1.1.1
 
@@ -52,6 +54,8 @@
 
 - Fixes the typespec for command dispatch ([#325](https://github.com/commanded/commanded/pull/325)).
 - Process manager stops if `interested?/1` returns an empty list ([#335](https://github.com/commanded/commanded/pull/335)).
+
+---
 
 ## v1.0.1
 
@@ -164,7 +168,7 @@
 
   ```elixir
   defp deps do
-    [{:jason, "~> 1.1"}]
+    [{:jason, "~> 1.2"}]
   end
   ```
 

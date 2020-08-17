@@ -69,7 +69,7 @@ First, add it as a dependency to your project's `mix.exs` file:
 
 ```elixir
 defp deps do
-  [{:phoenix_pubsub, "~> 1.1"}]
+  [{:phoenix_pubsub, "~> 2.0"}]
 end
 ```
 

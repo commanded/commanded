@@ -6,7 +6,7 @@ Commanded can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 1.1"}]
+      [{:commanded, "~> 1.2"}]
     end
     ```
 
@@ -14,7 +14,7 @@ Commanded can be installed from hex as follows.
 
     ```elixir
     def deps do
-      [{:jason, "~> 1.1"}]
+      [{:jason, "~> 1.2"}]
     end
     ```
 

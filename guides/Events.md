@@ -103,6 +103,7 @@ In addition to the metadata key/values you provide, the following system values 
 
 - `application` - the `Commanded.Application` associated with the event handler.
 - `handler_name` - the name of the event handler.
+- `state` - optional event handler state.
 - `event_id` - a globally unique UUID to identify the event.
 - `event_number` - a globally unique, monotonically incrementing and gapless integer used to order the event amongst all events.
 - `stream_id` - the stream identity for the event.
