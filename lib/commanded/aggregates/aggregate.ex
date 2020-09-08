@@ -437,33 +437,45 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
+  defp before_execute_command(_aggregate_state, %ExecutionContext{before_execute: nil}), do: :ok
+
+  defp before_execute_command(aggregate_state, %ExecutionContext{} = context) do
+    %ExecutionContext{handler: handler, before_execute: before_execute} = context
+    Kernel.apply(handler, before_execute, [aggregate_state, context])
+  end
+
   defp execute_command(%ExecutionContext{} = context, %Aggregate{} = state) do
     %ExecutionContext{command: command, handler: handler, function: function} = context
     %Aggregate{aggregate_state: aggregate_state} = state
 
     Logger.debug(fn -> describe(state) <> " executing command: " <> inspect(command) end)
 
-    case Kernel.apply(handler, function, [aggregate_state, command]) do
+    with :ok <- before_execute_command(aggregate_state, context) do
+      case Kernel.apply(handler, function, [aggregate_state, command]) do
+        {:error, _error} = reply ->
+          {reply, state}
+
+        none when none in [:ok, nil, []] ->
+          {{:ok, []}, state}
+
+        %Commanded.Aggregate.Multi{} = multi ->
+          case Commanded.Aggregate.Multi.run(multi) do
+            {:error, _error} = reply ->
+              {reply, state}
+
+            {aggregate_state, pending_events} ->
+              persist_events(pending_events, aggregate_state, context, state)
+          end
+
+        {:ok, pending_events} ->
+          apply_and_persist_events(pending_events, context, state)
+
+        pending_events ->
+          apply_and_persist_events(pending_events, context, state)
+      end
+    else
       {:error, _error} = reply ->
         {reply, state}
-
-      none when none in [:ok, nil, []] ->
-        {{:ok, []}, state}
-
-      %Commanded.Aggregate.Multi{} = multi ->
-        case Commanded.Aggregate.Multi.run(multi) do
-          {:error, _error} = reply ->
-            {reply, state}
-
-          {aggregate_state, pending_events} ->
-            persist_events(pending_events, aggregate_state, context, state)
-        end
-
-      {:ok, pending_events} ->
-        apply_and_persist_events(pending_events, context, state)
-
-      pending_events ->
-        apply_and_persist_events(pending_events, context, state)
     end
   rescue
     error ->
