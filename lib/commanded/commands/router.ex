@@ -497,6 +497,7 @@ defmodule Commanded.Commands.Router do
         @aggregate Keyword.fetch!(command_opts, :aggregate)
         @handler Keyword.fetch!(command_opts, :to)
         @function Keyword.fetch!(command_opts, :function)
+        @before_execute Keyword.get(command_opts, :before_execute)
         @lifespan Keyword.get(command_opts, :lifespan)
         @identity Keyword.get(command_opts, :identity)
         @identity_prefix Keyword.get(command_opts, :identity_prefix)
@@ -559,6 +560,7 @@ defmodule Commanded.Commands.Router do
             consistency: consistency,
             handler_module: @handler,
             handler_function: @function,
+            handler_before_execute: @before_execute,
             aggregate_module: @aggregate,
             identity: identity,
             identity_prefix: identity_prefix,
@@ -615,6 +617,7 @@ defmodule Commanded.Commands.Router do
   @register_params [
     :to,
     :function,
+    :before_execute,
     :aggregate,
     :identity,
     :identity_prefix,

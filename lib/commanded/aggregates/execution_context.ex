@@ -20,10 +20,15 @@ defmodule Commanded.Aggregates.ExecutionContext do
     - `handler` - the module that handles the command. It may be either the
       aggregate module itself or a separate command handler module.
 
-    - `function` - the name of function, as an atom, that handles the command.
+    - `function` - the name of the function, as an atom, that handles the command.
       The default value is `:execute`, used to support command dispatch directly
       to the aggregate module. For command handlers the `:handle` function is
       used.
+
+    - `before_execute` - the name of the function, as an atom, that prepares the
+      command before execution, called just before `function`. The default value
+      is `nil`, disabling it. It should return `:ok` on success or `{:error, any()}`
+      to cancel the dispatch.
 
     - `lifespan` - a module implementing the `Commanded.Aggregates.AggregateLifespan`
       behaviour to control the aggregate instance process lifespan. The default
@@ -41,8 +46,9 @@ defmodule Commanded.Aggregates.ExecutionContext do
     :command,
     :causation_id,
     :correlation_id,
-    :function,
     :handler,
+    :function,
+    before_execute: nil,
     retry_attempts: 0,
     returning: false,
     lifespan: DefaultLifespan,

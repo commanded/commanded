@@ -19,6 +19,7 @@ defmodule Commanded.Commands.Dispatcher do
       :consistency,
       :handler_module,
       :handler_function,
+      :handler_before_execute,
       :aggregate_module,
       :identity,
       :identity_prefix,
@@ -141,6 +142,7 @@ defmodule Commanded.Commands.Dispatcher do
       correlation_id: correlation_id,
       handler_module: handler_module,
       handler_function: handler_function,
+      handler_before_execute: handler_before_execute,
       lifespan: lifespan,
       retry_attempts: retry_attempts,
       returning: returning
@@ -153,6 +155,7 @@ defmodule Commanded.Commands.Dispatcher do
       metadata: metadata,
       handler: handler_module,
       function: handler_function,
+      before_execute: handler_before_execute,
       lifespan: lifespan,
       retry_attempts: retry_attempts,
       returning: returning
