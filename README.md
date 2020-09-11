@@ -137,6 +137,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Brenton Annan](https://github.com/brentonannan)
 - [Chris Brodt](https://github.com/uberbrodt)
 - [Chris Martin](https://github.com/trbngr)
+- [Christophe Juniet](https://github.com/cjuniet)
 - [Dave Lucia](https://github.com/davydog187)
 - [David Carlin](https://github.com/davich)
 - [Danni Friedland](https://github.com/BlueHotDog)

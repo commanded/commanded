@@ -11,6 +11,7 @@
 - Add support for providing adapter-specific event store subscription options ([#391](https://github.com/commanded/commanded/pull/391)).
 - Support custom state for event handlers ([#400](https://github.com/commanded/commanded/pull/400)).
 - Allow event handlers and process manager `error` callback to return failure context struct ([#397](https://github.com/commanded/commanded/issues/397)).
+- Allow a before execute function to be defined which is called with the command dispatch execution context and aggregate state before ([#402](https://github.com/commanded/commanded/pull/402)).
 
 ### Bug fixes
 
