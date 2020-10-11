@@ -184,46 +184,48 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
     %State{idle_timeout: idle_timeout} = state
 
-    case handle_event(event, state) do
-      {:error, _error} = error ->
-        failure_context = build_failure_context(event, context, nil, state)
-
-        handle_event_error(error, event, failure_context, state)
-
+    case mutate_state(event, state) do
       {:error, error, stacktrace} ->
         failure_context = build_failure_context(event, context, stacktrace, state)
 
         handle_event_error({:error, error}, event, failure_context, state)
 
-      {:stop, _error, _state} = reply ->
-        reply
+      process_state ->
+        state = %State{
+          state
+          | process_state: process_state,
+            last_seen_event: event_number
+        }
 
-      commands ->
-        # Copy event id, as causation id, and correlation id from handled event.
-        opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
+        case handle_event(event, state) do
+          {:error, _error} = error ->
+            failure_context = build_failure_context(event, context, nil, state)
 
-        with :ok <- commands |> List.wrap() |> dispatch_commands(opts, state, event) do
-          case mutate_state(event, state) do
-            {:error, error, stacktrace} ->
-              failure_context = build_failure_context(event, context, stacktrace, state)
+            handle_event_error(error, event, failure_context, state)
 
-              handle_event_error({:error, error}, event, failure_context, state)
+          {:error, error, stacktrace} ->
+            failure_context = build_failure_context(event, context, stacktrace, state)
 
-            process_state ->
-              state = %State{
-                state
-                | process_state: process_state,
-                  last_seen_event: event_number
-              }
+            handle_event_error({:error, error}, event, failure_context, state)
 
-              :ok = persist_state(event_number, state)
-              :ok = ack_event(event, state)
+          {:stop, _error, _state} = reply ->
+            reply
 
-              {:noreply, state, idle_timeout}
-          end
-        else
-          {:stop, reason} ->
-            {:stop, reason, state}
+          commands ->
+            # Copy event id, as causation id, and correlation id from handled event.
+            opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
+
+            commands
+            |> List.wrap()
+            |> dispatch_commands(opts, state, event)
+            |> case do
+              :ok ->
+                :ok = persist_state(event_number, state)
+                :ok = ack_event(event, state)
+                {:noreply, state, idle_timeout}
+              {:stop, reason} ->
+                {:stop, reason, state}
+            end
         end
     end
   end
