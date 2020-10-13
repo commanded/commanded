@@ -223,6 +223,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
                 :ok = persist_state(event_number, state)
                 :ok = ack_event(event, state)
                 {:noreply, state, idle_timeout}
+
               {:stop, reason} ->
                 {:stop, reason, state}
             end
