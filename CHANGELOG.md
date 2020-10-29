@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+- Allow command identity to be provided during dispatch ([#406](https://github.com/commanded/commanded/pull/406)).
+
 ## v1.2.0
 
 ### Enhancements

@@ -141,6 +141,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Dave Lucia](https://github.com/davydog187)
 - [David Carlin](https://github.com/davich)
 - [Danni Friedland](https://github.com/BlueHotDog)
+- [Ernesto](https://github.com/lex-mala)
 - [Fernando Mendes](https://github.com/justmendes)
 - [Florian Ebeling](https://github.com/febeling)
 - [Henry Hazan](https://github.com/henry-hz)
