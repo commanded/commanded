@@ -410,6 +410,9 @@ defmodule Commanded.Commands.Router do
         - `causation_id` - an optional UUID used to identify the cause of the
           command being dispatched.
 
+        - `command_uuid` - an optional UUID used to identify the command being
+          dispatched.
+
         - `correlation_id` - an optional UUID used to correlate related
           commands/events together.
 
@@ -513,8 +516,9 @@ defmodule Commanded.Commands.Router do
 
           application = Keyword.fetch!(opts, :application)
           causation_id = Keyword.get(opts, :causation_id)
-          correlation_id = Keyword.get(opts, :correlation_id, UUID.uuid4())
+          command_uuid = Keyword.get(opts, :command_uuid, UUID.uuid4())
           consistency = Keyword.fetch!(opts, :consistency)
+          correlation_id = Keyword.get(opts, :correlation_id, UUID.uuid4())
           metadata = Keyword.fetch!(opts, :metadata)
           retry_attempts = Keyword.get(opts, :retry_attempts)
           timeout = Keyword.fetch!(opts, :timeout)
@@ -554,7 +558,7 @@ defmodule Commanded.Commands.Router do
           payload = %Payload{
             application: application,
             command: command,
-            command_uuid: UUID.uuid4(),
+            command_uuid: command_uuid,
             causation_id: causation_id,
             correlation_id: correlation_id,
             consistency: consistency,
