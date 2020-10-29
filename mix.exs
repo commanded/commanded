@@ -58,6 +58,10 @@ defmodule Commanded.Mixfile do
       {:backoff, "~> 1.1"},
       {:elixir_uuid, "~> 1.2"},
 
+      # Telemetry
+      {:telemetry, "~> 0.4.2"},
+      {:telemetry_registry, "~> 0.2.0"},
+
       # Optional dependencies
       {:jason, "~> 1.2", optional: true},
       {:phoenix_pubsub, "~> 2.0", optional: true},
