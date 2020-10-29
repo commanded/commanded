@@ -3,6 +3,45 @@ defmodule Commanded.Event.Handler do
   use Commanded.Registration
   use TelemetryRegistry
 
+  telemetry_event(%{
+    event: [:commanded, :event, :handle, :start],
+    description: "Emitted when an Event.Handler.handle/2 callback is started",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{
+      recorded_event: RecordedEvent.t(),
+      handler_state: %__MODULE__{},
+      context: map() | FailureContext.t()
+    }
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :event, :handle, :stop],
+    description: "Emitted when an Event.Handler.handle/2 callback returns",
+    measurements: "%{duration: non_neg_integer()}",
+    metadata: """
+    %{
+      recorded_event: RecordedEvent.t(),
+      handler_state: %__MODULE__{},
+      context: map() | FailureContext.t()
+    }
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :execute, :error],
+    description: "Emitted when an Event.Handler.handle/2 returns an error",
+    measurements: "%{duration: non_neg_integer()}",
+    metadata: """
+    %{
+      recorded_event: RecordedEvent.t(),
+      handler_state: %__MODULE__{},
+      context: map() | FailureContext.t()
+    }
+    """
+  })
+
   @moduledoc """
   Defines the behaviour an event handler must implement and
   provides a convenience macro that implements the behaviour, allowing you to
@@ -758,12 +797,12 @@ defmodule Commanded.Event.Handler do
     :telemetry.execute(
       [:commanded, :event, :handle],
       %{system_time: System.system_time()},
-      %{event: event, state: state, context: context}
+      %{recorded_event: event, handler_state: state, context: context}
     )
 
     handled_event = delegate_event_to_handler(event, state)
     measurements = %{duration: System.monotonic_time() - start}
-    metadata = %{recorded_event: event, handler_state: state}
+    metadata = %{recorded_event: event, handler_state: state, context: context}
 
     :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
 
@@ -780,7 +819,7 @@ defmodule Commanded.Event.Handler do
         :telemetry.execute(
           [:commanded, :event, :handle, :error],
           measurements,
-          %{kind: :error, reason: :already_seen_event}
+          Map.merge(metadata, %{kind: :error, reason: :already_seen_event})
         )
 
         confirm_receipt(event, state)
@@ -789,7 +828,7 @@ defmodule Commanded.Event.Handler do
         :telemetry.execute(
           [:commanded, :event, :handle, :error],
           measurements,
-          %{kind: :error, reason: reason}
+          Map.merge(metadata, %{kind: :error, reason: reason})
         )
 
         log_event_error(error, event, state)
@@ -802,7 +841,7 @@ defmodule Commanded.Event.Handler do
         :telemetry.execute(
           [:commanded, :event, :handle, :error],
           measurements,
-          %{kind: :error, reason: reason, stacktrace: stacktrace}
+          Map.merge(metadata, %{kind: :error, reason: reason, stacktrace: stacktrace})
         )
 
         log_event_error({:error, reason}, event, state)
@@ -815,7 +854,7 @@ defmodule Commanded.Event.Handler do
         :telemetry.execute(
           [:commanded, :event, :handle, :error],
           measurements,
-          %{kind: :error, reason: invalid}
+          Map.merge(metadata, %{kind: :error, reason: invalid})
         )
 
         Logger.error(fn ->
