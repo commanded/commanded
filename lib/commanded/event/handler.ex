@@ -812,6 +812,7 @@ defmodule Commanded.Event.Handler do
         confirm_receipt(event, state)
 
       {:ok, handler_state} ->
+        metadata = %{metadata | handler_state: handler_state}
         :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
         confirm_receipt(event, %Handler{state | handler_state: handler_state})
 
