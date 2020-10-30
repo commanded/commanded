@@ -1,4 +1,22 @@
 defmodule Commanded.Aggregates.Aggregate do
+  use TelemetryRegistry
+  use GenServer, restart: :temporary
+  use Commanded.Registration
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :execute, :start],
+    description: "Emitted when an aggregate starts executing a command",
+    measurements: "%{system_time: integer()}",
+    metadata: "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}}"
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :execute, :stop],
+    description: "Emitted when an aggregate stops executing a command",
+    measurements: "%{duration: non_neg_integer(), num_events: non_neg_integer()}",
+    metadata: "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}}"
+  })
+
   @moduledoc """
   Aggregate is a `GenServer` process used to provide access to an
   instance of an event sourced aggregate.
@@ -40,10 +58,10 @@ defmodule Commanded.Aggregates.Aggregate do
           ]
         }
 
-  """
+  ## Telemetry
 
-  use GenServer, restart: :temporary
-  use Commanded.Registration
+  #{telemetry_docs()}
+  """
 
   require Logger
 
@@ -228,6 +246,13 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
     %ExecutionContext{lifespan: lifespan, command: command} = context
 
+    start = System.monotonic_time()
+
+    :telemetry.execute([:commanded, :execute, :start], %{system_time: System.system_time()}, %{
+      execution_context: context,
+      aggregate: state
+    })
+
     {reply, state} = execute_command(context, state)
 
     lifespan_timeout =
@@ -242,22 +267,39 @@ defmodule Commanded.Aggregates.Aggregate do
           aggregate_lifespan_timeout(lifespan, :after_error, error)
       end
 
+    num_events =
+      case reply do
+        {:ok, events} -> Enum.count(events)
+        _ -> 0
+      end
+
     reply = ExecutionContext.format_reply(reply, context, state)
 
     state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
     %Aggregate{aggregate_version: aggregate_version, snapshotting: snapshotting} = state
 
-    if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
-      :ok = GenServer.cast(self(), :take_snapshot)
+    response =
+      if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
+        :ok = GenServer.cast(self(), :take_snapshot)
 
-      {:reply, reply, state}
-    else
-      case lifespan_timeout do
-        {:stop, reason} -> {:stop, reason, reply, state}
-        lifespan_timeout -> {:reply, reply, state, lifespan_timeout}
+        {:reply, reply, state}
+      else
+        case lifespan_timeout do
+          {:stop, reason} -> {:stop, reason, reply, state}
+          lifespan_timeout -> {:reply, reply, state, lifespan_timeout}
+        end
       end
-    end
+
+    duration = System.monotonic_time() - start
+
+    :telemetry.execute(
+      [:commanded, :aggregate, :execute, :stop],
+      %{duration: duration, num_events: num_events},
+      %{execution_context: context, aggregate: state}
+    )
+
+    response
   end
 
   @doc false
