@@ -1,4 +1,47 @@
 defmodule Commanded.Event.Handler do
+  use GenServer
+  use Commanded.Registration
+  use TelemetryRegistry
+
+  telemetry_event(%{
+    event: [:commanded, :event, :handle, :start],
+    description: "Emitted when an Event.Handler.handle/2 callback is started",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{
+      recorded_event: RecordedEvent.t(),
+      handler_state: %__MODULE__{},
+      context: map() | FailureContext.t()
+    }
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :event, :handle, :stop],
+    description: "Emitted when an Event.Handler.handle/2 callback returns",
+    measurements: "%{duration: non_neg_integer()}",
+    metadata: """
+    %{
+      recorded_event: RecordedEvent.t(),
+      handler_state: %__MODULE__{},
+      context: map() | FailureContext.t()
+    }
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :execute, :error],
+    description: "Emitted when an Event.Handler.handle/2 returns an error",
+    measurements: "%{duration: non_neg_integer()}",
+    metadata: """
+    %{
+      recorded_event: RecordedEvent.t(),
+      handler_state: %__MODULE__{},
+      context: map() | FailureContext.t()
+    }
+    """
+  })
+
   @moduledoc """
   Defines the behaviour an event handler must implement and
   provides a convenience macro that implements the behaviour, allowing you to
@@ -224,10 +267,11 @@ defmodule Commanded.Event.Handler do
 
   The above example requires three named Commanded applications to have already
   been started.
-  """
 
-  use GenServer
-  use Commanded.Registration
+  ## Telemetry
+
+  #{telemetry_docs()}
+  """
 
   require Logger
 
@@ -748,17 +792,46 @@ defmodule Commanded.Event.Handler do
 
   # Delegate event to handler module.
   defp handle_event(%RecordedEvent{} = event, %Handler{} = state, context) do
-    case delegate_event_to_handler(event, state) do
+    start = System.monotonic_time()
+
+    :telemetry.execute(
+      [:commanded, :event, :handle],
+      %{system_time: System.system_time()},
+      %{recorded_event: event, handler_state: state, context: context}
+    )
+
+    handled_event = delegate_event_to_handler(event, state)
+    measurements = %{duration: System.monotonic_time() - start}
+    metadata = %{recorded_event: event, handler_state: state, context: context}
+
+    :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
+
+    case handled_event do
       :ok ->
+        :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
         confirm_receipt(event, state)
 
       {:ok, handler_state} ->
+        metadata = %{metadata | handler_state: handler_state}
+        :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
         confirm_receipt(event, %Handler{state | handler_state: handler_state})
 
       {:error, :already_seen_event} ->
+        :telemetry.execute(
+          [:commanded, :event, :handle, :error],
+          measurements,
+          Map.merge(metadata, %{kind: :error, reason: :already_seen_event})
+        )
+
         confirm_receipt(event, state)
 
-      {:error, _reason} = error ->
+      {:error, reason} = error ->
+        :telemetry.execute(
+          [:commanded, :event, :handle, :error],
+          measurements,
+          Map.merge(metadata, %{kind: :error, reason: reason})
+        )
+
         log_event_error(error, event, state)
 
         failure_context = build_failure_context(event, context, state)
@@ -766,6 +839,12 @@ defmodule Commanded.Event.Handler do
         handle_event_error(error, event, failure_context, state)
 
       {:error, reason, stacktrace} ->
+        :telemetry.execute(
+          [:commanded, :event, :handle, :error],
+          measurements,
+          Map.merge(metadata, %{kind: :error, reason: reason, stacktrace: stacktrace})
+        )
+
         log_event_error({:error, reason}, event, state)
 
         failure_context = build_failure_context(event, context, stacktrace, state)
@@ -773,6 +852,12 @@ defmodule Commanded.Event.Handler do
         handle_event_error({:error, reason}, event, failure_context, state)
 
       invalid ->
+        :telemetry.execute(
+          [:commanded, :event, :handle, :error],
+          measurements,
+          Map.merge(metadata, %{kind: :error, reason: invalid})
+        )
+
         Logger.error(fn ->
           describe(state) <>
             " failed to handle event " <>
