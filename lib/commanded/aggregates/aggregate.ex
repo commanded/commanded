@@ -258,11 +258,15 @@ defmodule Commanded.Aggregates.Aggregate do
 
     start = System.monotonic_time()
 
-    :telemetry.execute([:commanded, :execute, :start], %{system_time: System.system_time()}, %{
-      execution_context: context,
-      aggregate: state,
-      caller: from
-    })
+    :telemetry.execute(
+      [:commanded, :aggregate, :execute, :start],
+      %{system_time: System.system_time()},
+      %{
+        execution_context: context,
+        aggregate: state,
+        caller: from
+      }
+    )
 
     {reply, state} = execute_command(context, state)
 
