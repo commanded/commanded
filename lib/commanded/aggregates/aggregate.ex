@@ -7,14 +7,24 @@ defmodule Commanded.Aggregates.Aggregate do
     event: [:commanded, :aggregate, :execute, :start],
     description: "Emitted when an aggregate starts executing a command",
     measurements: "%{system_time: integer()}",
-    metadata: "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}}"
+    metadata:
+      "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, caller: pid()}"
   })
 
   telemetry_event(%{
     event: [:commanded, :aggregate, :execute, :stop],
     description: "Emitted when an aggregate stops executing a command",
     measurements: "%{duration: non_neg_integer(), num_events: non_neg_integer()}",
-    metadata: "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}}"
+    metadata:
+      "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, events: [map()], caller: pid()}"
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :execute, :exception],
+    description: "Emitted when an aggregate returns an error",
+    measurements: "%{duration: non_neg_integer()}",
+    metadata:
+      "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, error: any(), caller: pid()}"
   })
 
   @moduledoc """
@@ -243,15 +253,20 @@ defmodule Commanded.Aggregates.Aggregate do
 
   @doc false
   @impl GenServer
-  def handle_call({:execute_command, %ExecutionContext{} = context}, _from, %Aggregate{} = state) do
+  def handle_call({:execute_command, %ExecutionContext{} = context}, from, %Aggregate{} = state) do
     %ExecutionContext{lifespan: lifespan, command: command} = context
 
     start = System.monotonic_time()
 
-    :telemetry.execute([:commanded, :execute, :start], %{system_time: System.system_time()}, %{
-      execution_context: context,
-      aggregate: state
-    })
+    :telemetry.execute(
+      [:commanded, :aggregate, :execute, :start],
+      %{system_time: System.system_time()},
+      %{
+        execution_context: context,
+        aggregate: state,
+        caller: from
+      }
+    )
 
     {reply, state} = execute_command(context, state)
 
@@ -267,13 +282,7 @@ defmodule Commanded.Aggregates.Aggregate do
           aggregate_lifespan_timeout(lifespan, :after_error, error)
       end
 
-    num_events =
-      case reply do
-        {:ok, events} -> Enum.count(events)
-        _ -> 0
-      end
-
-    reply = ExecutionContext.format_reply(reply, context, state)
+    formatted_reply = ExecutionContext.format_reply(reply, context, state)
 
     state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
@@ -283,21 +292,31 @@ defmodule Commanded.Aggregates.Aggregate do
       if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
         :ok = GenServer.cast(self(), :take_snapshot)
 
-        {:reply, reply, state}
+        {:reply, formatted_reply, state}
       else
         case lifespan_timeout do
-          {:stop, reason} -> {:stop, reason, reply, state}
-          lifespan_timeout -> {:reply, reply, state, lifespan_timeout}
+          {:stop, reason} -> {:stop, reason, formatted_reply, state}
+          lifespan_timeout -> {:reply, formatted_reply, state, lifespan_timeout}
         end
       end
 
     duration = System.monotonic_time() - start
 
-    :telemetry.execute(
-      [:commanded, :aggregate, :execute, :stop],
-      %{duration: duration, num_events: num_events},
-      %{execution_context: context, aggregate: state}
-    )
+    case reply do
+      {:ok, events} ->
+        :telemetry.execute(
+          [:commanded, :aggregate, :execute, :stop],
+          %{duration: duration, num_events: Enum.count(events)},
+          %{execution_context: context, aggregate: state, events: events, caller: from}
+        )
+
+      {:error, error} ->
+        :telemetry.execute(
+          [:commanded, :aggregate, :execute, :exception],
+          %{duration: duration},
+          %{execution_context: context, aggregate: state, error: error, caller: from}
+        )
+    end
 
     response
   end
