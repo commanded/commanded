@@ -69,7 +69,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     {:ok, context}
   end
 
-  def format_reply(reply, %ExecutionContext{} = context, %Aggregate{} = aggregate) do
+  def format_reply(result, %ExecutionContext{} = context, %Aggregate{} = aggregate) do
     %Aggregate{
       aggregate_uuid: aggregate_uuid,
       aggregate_state: aggregate_state,
@@ -78,7 +78,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
     %ExecutionContext{metadata: metadata, returning: returning} = context
 
-    with {:ok, events} <- reply do
+    with {:ok, events} <- result do
       case returning do
         :aggregate_state ->
           {:ok, aggregate_version, events, aggregate_state}
@@ -100,6 +100,9 @@ defmodule Commanded.Aggregates.ExecutionContext do
         false ->
           {:ok, aggregate_version, events}
       end
+    else
+      {:error, _error} = reply -> reply
+      {:error, error, _stacktrace} -> {:error, error}
     end
   end
 end

@@ -7,24 +7,47 @@ defmodule Commanded.Aggregates.Aggregate do
     event: [:commanded, :aggregate, :execute, :start],
     description: "Emitted when an aggregate starts executing a command",
     measurements: "%{system_time: integer()}",
-    metadata:
-      "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, caller: pid()}"
+    metadata: """
+    %{application: Commanded.Application.t(),
+      aggregate_uuid: String.t(),
+      aggregate_state: struct(),
+      aggregate_version: non_neg_integer(),
+      caller: pid(),
+      execution_context: Commanded.Aggregates.ExecutionContext.t()}
+    """
   })
 
   telemetry_event(%{
     event: [:commanded, :aggregate, :execute, :stop],
     description: "Emitted when an aggregate stops executing a command",
-    measurements: "%{duration: non_neg_integer(), num_events: non_neg_integer()}",
-    metadata:
-      "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, events: [map()], caller: pid()}"
+    measurements: "%{duration: non_neg_integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      aggregate_uuid: String.t(),
+      aggregate_state: struct(),
+      aggregate_version: non_neg_integer(),
+      caller: pid(),
+      execution_context: Commanded.Aggregates.ExecutionContext.t(),
+      events: [map()],
+      error: nil | any()}
+    """
   })
 
   telemetry_event(%{
     event: [:commanded, :aggregate, :execute, :exception],
     description: "Emitted when an aggregate raises an exception",
     measurements: "%{duration: non_neg_integer()}",
-    metadata:
-      "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, error: any(), caller: pid()}"
+    metadata: """
+    %{application: Commanded.Application.t(),
+      aggregate_uuid: String.t(),
+      aggregate_state: struct(),
+      aggregate_version: non_neg_integer(),
+      caller: pid(),
+      execution_context: Commanded.Aggregates.ExecutionContext.t(),
+      kind: :throw | :error | :exit,
+      reason: any(),
+      stacktrace: list()}
+    """
   })
 
   @moduledoc """
@@ -71,6 +94,7 @@ defmodule Commanded.Aggregates.Aggregate do
   ## Telemetry
 
   #{telemetry_docs()}
+
   """
 
   require Logger
@@ -84,6 +108,7 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.EventStore.SnapshotData
   alias Commanded.Registration
   alias Commanded.Snapshotting
+  alias Commanded.Telemetry
 
   @read_event_batch_size 100
 
@@ -256,22 +281,13 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call({:execute_command, %ExecutionContext{} = context}, from, %Aggregate{} = state) do
     %ExecutionContext{lifespan: lifespan, command: command} = context
 
-    start = System.monotonic_time()
+    telemetry_metadata = telemetry_metadata(context, from, state)
+    start_time = telemetry_start(telemetry_metadata)
 
-    :telemetry.execute(
-      [:commanded, :aggregate, :execute, :start],
-      %{system_time: System.system_time()},
-      %{
-        execution_context: context,
-        aggregate: state,
-        caller: from
-      }
-    )
-
-    {reply, state} = execute_command(context, state)
+    {result, state} = execute_command(context, state)
 
     lifespan_timeout =
-      case reply do
+      case result do
         {:ok, []} ->
           aggregate_lifespan_timeout(lifespan, :after_command, command)
 
@@ -280,9 +296,12 @@ defmodule Commanded.Aggregates.Aggregate do
 
         {:error, error} ->
           aggregate_lifespan_timeout(lifespan, :after_error, error)
+
+        {:error, error, _stacktrace} ->
+          aggregate_lifespan_timeout(lifespan, :after_error, error)
       end
 
-    formatted_reply = ExecutionContext.format_reply(reply, context, state)
+    formatted_reply = ExecutionContext.format_reply(result, context, state)
 
     state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
@@ -300,23 +319,8 @@ defmodule Commanded.Aggregates.Aggregate do
         end
       end
 
-    duration = System.monotonic_time() - start
-
-    case reply do
-      {:ok, events} ->
-        :telemetry.execute(
-          [:commanded, :aggregate, :execute, :stop],
-          %{duration: duration, num_events: Enum.count(events)},
-          %{execution_context: context, aggregate: state, events: events, caller: from}
-        )
-
-      {:error, error} ->
-        :telemetry.execute(
-          [:commanded, :aggregate, :execute, :exception],
-          %{duration: duration},
-          %{execution_context: context, aggregate: state, error: error, caller: from}
-        )
-    end
+    telemetry_metadata = telemetry_metadata(context, from, state)
+    telemetry_stop(start_time, telemetry_metadata, result)
 
     response
   end
@@ -502,6 +506,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   defp before_execute_command(aggregate_state, %ExecutionContext{} = context) do
     %ExecutionContext{handler: handler, before_execute: before_execute} = context
+
     Kernel.apply(handler, before_execute, [aggregate_state, context])
   end
 
@@ -542,7 +547,7 @@ defmodule Commanded.Aggregates.Aggregate do
     error ->
       Logger.error(fn -> Exception.format(:error, error, __STACKTRACE__) end)
 
-      {{:error, error}, state}
+      {{:error, error, __STACKTRACE__}, state}
   end
 
   defp apply_and_persist_events(pending_events, context, %Aggregate{} = state) do
@@ -619,6 +624,52 @@ defmodule Commanded.Aggregates.Aggregate do
       )
 
     EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
+  end
+
+  defp telemetry_start(telemetry_metadata) do
+    Telemetry.start([:commanded, :aggregate, :execute], telemetry_metadata)
+  end
+
+  defp telemetry_stop(start_time, telemetry_metadata, result) do
+    event_prefix = [:commanded, :aggregate, :execute]
+
+    case result do
+      {:ok, events} ->
+        Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :events, events))
+
+      {:error, error} ->
+        Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :error, error))
+
+      {:error, error, stacktrace} ->
+        Telemetry.exception(
+          event_prefix,
+          start_time,
+          :error,
+          error,
+          stacktrace,
+          telemetry_metadata
+        )
+    end
+  end
+
+  defp telemetry_metadata(%ExecutionContext{} = context, from, %Aggregate{} = state) do
+    %Aggregate{
+      application: application,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version
+    } = state
+
+    {pid, _ref} = from
+
+    %{
+      application: application,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version,
+      caller: pid,
+      execution_context: context
+    }
   end
 
   defp via_name(application, aggregate_module, aggregate_uuid) do
