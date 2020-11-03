@@ -22,22 +22,26 @@ defmodule Commanded.Event.Handler do
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{
-      recorded_event: RecordedEvent.t(),
-      handler_state: %__MODULE__{},
-      context: map() | FailureContext.t()
+      :recorded_event => RecordedEvent.t(),
+      :handler_state => %__MODULE__{},
+      :context => map() | FailureContext.t(),
+      optional(:error) => term()
     }
     """
   })
 
   telemetry_event(%{
     event: [:commanded, :event, :handle, :exception],
-    description: "Emitted when an Event.Handler.handle/2 returns an error",
+    description: "Emitted when an Event.Handler.handle/2 raises an exception",
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{
       recorded_event: RecordedEvent.t(),
       handler_state: %__MODULE__{},
-      context: map() | FailureContext.t()
+      context: map() | FailureContext.t(),
+      kind: :error,
+      stacktrace: list(),
+      reason: term()
     }
     """
   })
@@ -816,18 +820,18 @@ defmodule Commanded.Event.Handler do
 
       {:error, :already_seen_event} ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :exception],
+          [:commanded, :event, :handle, :stop],
           measurements,
-          Map.merge(metadata, %{kind: :error, reason: :already_seen_event})
+          Map.put(metadata, :error, :already_seen_event)
         )
 
         confirm_receipt(event, state)
 
       {:error, reason} = error ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :exception],
+          [:commanded, :event, :handle, :stop],
           measurements,
-          Map.merge(metadata, %{kind: :error, reason: reason})
+          Map.put(metadata, :error, reason)
         )
 
         log_event_error(error, event, state)
@@ -851,9 +855,9 @@ defmodule Commanded.Event.Handler do
 
       invalid ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :exception],
+          [:commanded, :event, :handle, :stop],
           measurements,
-          Map.merge(metadata, %{kind: :error, reason: invalid})
+          Map.put(metadata, :error, invalid)
         )
 
         Logger.error(fn ->
