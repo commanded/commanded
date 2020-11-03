@@ -30,7 +30,7 @@ defmodule Commanded.Event.Handler do
   })
 
   telemetry_event(%{
-    event: [:commanded, :aggregate, :execute, :error],
+    event: [:commanded, :aggregate, :execute, :exception],
     description: "Emitted when an Event.Handler.handle/2 returns an error",
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
@@ -818,7 +818,7 @@ defmodule Commanded.Event.Handler do
 
       {:error, :already_seen_event} ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :error],
+          [:commanded, :event, :handle, :exception],
           measurements,
           Map.merge(metadata, %{kind: :error, reason: :already_seen_event})
         )
@@ -827,7 +827,7 @@ defmodule Commanded.Event.Handler do
 
       {:error, reason} = error ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :error],
+          [:commanded, :event, :handle, :exception],
           measurements,
           Map.merge(metadata, %{kind: :error, reason: reason})
         )
@@ -840,7 +840,7 @@ defmodule Commanded.Event.Handler do
 
       {:error, reason, stacktrace} ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :error],
+          [:commanded, :event, :handle, :exception],
           measurements,
           Map.merge(metadata, %{kind: :error, reason: reason, stacktrace: stacktrace})
         )
@@ -853,7 +853,7 @@ defmodule Commanded.Event.Handler do
 
       invalid ->
         :telemetry.execute(
-          [:commanded, :event, :handle, :error],
+          [:commanded, :event, :handle, :exception],
           measurements,
           Map.merge(metadata, %{kind: :error, reason: invalid})
         )
