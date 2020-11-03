@@ -21,7 +21,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   telemetry_event(%{
     event: [:commanded, :aggregate, :execute, :exception],
-    description: "Emitted when an aggregate returns an error",
+    description: "Emitted when an aggregate raises an exception",
     measurements: "%{duration: non_neg_integer()}",
     metadata:
       "%{execution_context: ExecutionContext.t(), aggregate: %__MODULE__{}, error: any(), caller: pid()}"
