@@ -804,8 +804,6 @@ defmodule Commanded.Event.Handler do
     measurements = %{duration: System.monotonic_time() - start}
     metadata = %{recorded_event: event, handler_state: state, context: context}
 
-    :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
-
     case handled_event do
       :ok ->
         :telemetry.execute([:commanded, :event, :handle, :stop], measurements, metadata)
