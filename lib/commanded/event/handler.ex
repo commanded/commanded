@@ -30,7 +30,7 @@ defmodule Commanded.Event.Handler do
   })
 
   telemetry_event(%{
-    event: [:commanded, :aggregate, :execute, :exception],
+    event: [:commanded, :event, :handle, :exception],
     description: "Emitted when an Event.Handler.handle/2 returns an error",
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
@@ -795,7 +795,7 @@ defmodule Commanded.Event.Handler do
     start = System.monotonic_time()
 
     :telemetry.execute(
-      [:commanded, :event, :handle],
+      [:commanded, :event, :handle, :start],
       %{system_time: System.system_time()},
       %{recorded_event: event, handler_state: state, context: context}
     )
