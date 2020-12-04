@@ -60,7 +60,7 @@ defmodule Commanded.Mixfile do
 
       # Telemetry
       {:telemetry, "~> 0.4.2"},
-      {:telemetry_registry, "~> 0.2.0"},
+      {:telemetry_registry, "~> 0.2.1"},
 
       # Optional dependencies
       {:jason, "~> 1.2", optional: true},
