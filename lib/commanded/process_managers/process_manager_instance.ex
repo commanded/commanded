@@ -9,6 +9,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   alias Commanded.ProcessManagers.{ProcessRouter, FailureContext}
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
+  alias Commanded.Telemetry
 
   defmodule State do
     @moduledoc false
@@ -137,9 +138,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   """
   @impl GenServer
   def handle_cast({:process_event, event}, %State{} = state) do
-    case event_already_seen?(event, state) do
-      true -> process_seen_event(event, state)
-      false -> process_unseen_event(event, state)
+    if event_already_seen?(event, state) do
+      process_seen_event(event, state)
+    else
+      process_unseen_event(event, state)
     end
   end
 
@@ -173,8 +175,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp process_seen_event(%RecordedEvent{} = event, %State{} = state) do
     %State{idle_timeout: idle_timeout} = state
 
+    telemetry_metadata = telemetry_metadata(event, state)
+    start_time = telemetry_start(telemetry_metadata)
+
     :ok = ack_event(event, state)
 
+    {:noreply, state, idle_timeout}
+
+    telemetry_stop(start_time, telemetry_metadata, [])
     {:noreply, state, idle_timeout}
   end
 
@@ -184,7 +192,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
     %State{idle_timeout: idle_timeout} = state
 
-    case handle_event(event, state) do
+    telemetry_metadata = telemetry_metadata(event, state)
+    start_time = telemetry_start(telemetry_metadata)
+
+    handle_result = handle_event(event, state)
+
+    case handle_result do
       {:error, _error} = error ->
         failure_context = build_failure_context(event, context, nil, state)
 
@@ -226,6 +239,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
             {:stop, reason, state}
         end
     end
+    |> tap(fn -> telemetry_stop(start_time, telemetry_metadata, handle_result) end)
   end
 
   # Process instance is given the event and returns applicable commands
@@ -515,5 +529,53 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %State{process_manager_name: process_manager_name, process_uuid: process_uuid} = state
 
     inspect(process_manager_name) <> "-" <> inspect(process_uuid)
+  end
+
+  defp telemetry_start(telemetry_metadata) do
+    Telemetry.start([:commanded, :process_manager, :handle], telemetry_metadata)
+  end
+
+  defp telemetry_stop(start_time, telemetry_metadata, handle_result) do
+    event_prefix = [:commanded, :process_manager, :handle]
+
+    case handle_result do
+      {:error, error} ->
+        Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :error, error))
+
+      {:stop, error, _state} ->
+        Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :error, error))
+
+      {:error, error, stacktrace} ->
+        Telemetry.exception(
+          event_prefix,
+          start_time,
+          :error,
+          error,
+          stacktrace,
+          telemetry_metadata
+        )
+
+      commands ->
+        commands = List.wrap(commands)
+        Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :commands, commands))
+    end
+  end
+
+  defp telemetry_metadata(%RecordedEvent{} = event, %State{} = state) do
+    state
+    |> Map.from_struct()
+    |> Map.take([
+      :application,
+      :process_manager_name,
+      :process_manager_module,
+      :process_state,
+      :process_uuid
+    ])
+    |> Map.put(:recorded_event, event)
+  end
+
+  defp tap(result, func) do
+    func.()
+    result
   end
 end
