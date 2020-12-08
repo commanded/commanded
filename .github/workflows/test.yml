@@ -4,13 +4,12 @@ on: [push, pull_request]
 
 jobs:
   build:
-
     name: Build and test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        otp: ['22.3']
-        elixir: ['1.10.4']
+        otp: ['22.3', '23.1']
+        elixir: ['1.11.2']
 
     steps:
     - uses: actions/checkout@v2
@@ -20,6 +19,7 @@ jobs:
       with:
         elixir-version: ${{matrix.elixir}}
         otp-version: ${{matrix.otp}}
+        experimental-otp: true
 
     - name: Restore dependencies cache
       uses: actions/cache@v2
