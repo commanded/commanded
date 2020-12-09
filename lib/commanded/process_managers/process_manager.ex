@@ -32,7 +32,14 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     description: "Emitted when a process manager raises an exception",
     measurements: "%{system_time: integer()}",
     metadata: """
-    %{application: Commanded.Application.t()}
+    %{application: Commanded.Application.t(),
+      process_manager_name: String.t() | Inspect.t(),
+      process_manager_module: module(),
+      process_state: term(),
+      process_uuid: String.t(),
+      kind: :throw | :error | :exit,
+      reason: any(),
+      stacktrace: list()}
     """
   })
 
