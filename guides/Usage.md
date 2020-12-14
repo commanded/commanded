@@ -76,7 +76,8 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
     ```elixir
     defmodule BankRouter do
-      use Commanded.Commands.Router
+      use Commanded.Commands.Router,
+        application: BankApp
 
       dispatch OpenBankAccount, to: BankAccount, identity: :account_number
     end
