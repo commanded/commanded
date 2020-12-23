@@ -93,7 +93,12 @@ defmodule Commanded.Commands.Dispatcher do
       case Task.yield(task, timeout) || Task.shutdown(task) do
         {:ok, result} -> result
         {:exit, {:normal, :aggregate_stopped}} = result -> result
-        {:exit, _reason} -> {:error, :aggregate_execution_failed}
+        {:exit, {{:nodedown, _node_name},{GenServer, :call,_}}} ->
+          # TODO: remove the node from the Registry?
+          {:error, :remote_aggregate_not_found}
+        {:exit, reason} = meow ->
+          IO.inspect(meow, label: "aggregate_execution_failed")
+          {:error, :aggregate_execution_failed}
         nil -> {:error, :aggregate_execution_timeout}
       end
 
