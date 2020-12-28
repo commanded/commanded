@@ -44,7 +44,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
                    transfer_uuid: ^transfer_uuid
                  },
                  source_type: "Elixir.Commanded.ExampleDomain.TransferMoneyProcessManager",
-                 source_uuid: expected_source_uuid,
+                 source_uuid: ^expected_source_uuid,
                  source_version: 1
                } = snapshot
 

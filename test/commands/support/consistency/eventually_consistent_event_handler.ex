@@ -8,18 +8,14 @@ defmodule Commanded.Commands.EventuallyConsistentEventHandler do
   alias Commanded.Commands.ConsistencyAggregateRoot
   alias ConsistencyAggregateRoot.{ConsistencyCommand, ConsistencyEvent, DispatchRequestedEvent}
 
-  @doc """
-  Simulate slow event handler.
-  """
+  # Simulate slow event handler.
   def handle(%ConsistencyEvent{}, _metadata) do
     :timer.sleep(:infinity)
 
     :ok
   end
 
-  @doc """
-  Dispatch a command.
-  """
+  # Dispatch a command.
   def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
     command = %ConsistencyCommand{uuid: uuid, delay: delay}
 
