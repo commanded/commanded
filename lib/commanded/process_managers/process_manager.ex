@@ -20,6 +20,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     measurements: "%{system_time: integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
+      commands: [struct()],
+      error: nil | any(),
       process_manager_name: String.t() | Inspect.t(),
       process_manager_module: module(),
       process_state: term(),
