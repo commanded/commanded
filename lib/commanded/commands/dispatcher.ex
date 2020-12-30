@@ -206,7 +206,7 @@ defmodule Commanded.Commands.Dispatcher do
     event_prefix = [:commanded, :application, :dispatch]
 
     case assigns do
-      {:error, error} ->
+      %{error: error} ->
         Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :error, error))
 
       _ ->
@@ -221,8 +221,7 @@ defmodule Commanded.Commands.Dispatcher do
 
     %{
       application: payload.application,
-      identity: payload.identity,
-      identity_prefix: payload.identity_prefix,
+      error: nil,
       execution_context: context
     }
   end

@@ -7,8 +7,6 @@ defmodule Commanded.Application do
     measurements: "%{system_time: integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
-      identity: term(),
-      identity_prefix: term(),
       execution_context: Commanded.Aggregates.ExecutionContext.t()}
     """
   })
@@ -19,8 +17,6 @@ defmodule Commanded.Application do
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
-      identity: term(),
-      identity_prefix: term(),
       execution_context: Commanded.Aggregates.ExecutionContext.t(),
       error: nil | any()}
     """
