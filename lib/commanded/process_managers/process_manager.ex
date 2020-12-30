@@ -370,6 +370,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | {:skip, :continue_pending}
               | {:stop, reason :: term()}
 
+  @optional_callbacks init: 1, handle: 2, apply: 2, error: 3, interested?: 1
+
   alias Commanded.ProcessManagers.ProcessManager
   alias Commanded.ProcessManagers.ProcessRouter
 
