@@ -459,6 +459,8 @@ defmodule Commanded.Event.Handler do
               | :skip
               | {:stop, reason :: term()}
 
+  @optional_callbacks init: 0, init: 1, error: 3
+
   defmacro __using__(opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
