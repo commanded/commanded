@@ -40,19 +40,19 @@ JSON serialization configuration depends upon which event store you are using wi
 - Postgres EventStore:
 
   ```elixir
-  config :eventstore, EventStore.Storage,
+  config :my_app, MyApp.EventStore,
     serializer: Commanded.Serialization.JsonSerializer
   ```
 
   You can also use the `EventStore.JsonSerializer` (`bytea` column type) and `EventStore.JsonbSerializer` (`jsonb` column type) serializers which are included in the EventStore library.
 
   ```elixir
-  config :eventstore, EventStore.Storage,
+  config :my_app, MyApp.EventStore,
     serializer: EventStore.JsonSerializer
   ```
 
   ```elixir
-  config :eventstore, EventStore.Storage,
+  config :my_app, MyApp.EventStore,
     serializer: EventStore.JsonbSerializer
   ```
 
