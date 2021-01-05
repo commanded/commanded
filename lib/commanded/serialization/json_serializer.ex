@@ -4,12 +4,15 @@ if Code.ensure_loaded?(Jason) do
     A serializer that uses the JSON format and Jason library.
     """
 
+    @behaviour EventStore.Serializer
+
     alias Commanded.EventStore.TypeProvider
     alias Commanded.Serialization.JsonDecoder
 
     @doc """
     Serialize given term to JSON binary data.
     """
+    @impl EventStore.Serializer
     def serialize(term) do
       Jason.encode!(term)
     end
@@ -17,6 +20,7 @@ if Code.ensure_loaded?(Jason) do
     @doc """
     Deserialize given JSON binary data to the expected type.
     """
+    @impl EventStore.Serializer
     def deserialize(binary, config \\ [])
 
     def deserialize(binary, config) do
