@@ -28,6 +28,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           application: ExampleApp,
           name: "ExampleProcessManager"
 
+        defstruct []
+
         def interested?(%AnEvent{uuid: uuid}), do: {:start, uuid}
 
         def handle(%ExampleProcessManager{}, %ExampleEvent{}) do
