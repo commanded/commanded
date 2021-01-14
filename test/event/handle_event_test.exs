@@ -77,8 +77,8 @@ defmodule Commanded.Event.HandleEventTest do
       send(handler, {:events, recorded_events})
 
       # Receive only interested events
-      assert_receive {:event, ^handler, ^interested_event1, metadata1}
-      assert_receive {:event, ^handler, ^interested_event2, metadata2}
+      assert_receive {:event, ^handler, ^interested_event1, _metadata1}
+      assert_receive {:event, ^handler, ^interested_event2, _metadata2}
 
       refute_receive {:event, _handler, _event, _metadata}
     end
