@@ -94,11 +94,20 @@ defmodule Commanded.Commands.Dispatcher do
 
     result =
       case Task.yield(task, timeout) || Task.shutdown(task) do
-        {:ok, result} -> result
-        {:exit, {:normal, :aggregate_stopped}} = result -> result
-        {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} -> {:error, :remote_aggregate_not_found}
-        {:exit, _reason} -> {:error, :aggregate_execution_failed}
-        nil -> {:error, :aggregate_execution_timeout}
+        {:ok, result} ->
+          result
+
+        {:exit, {:normal, :aggregate_stopped}} = result ->
+          result
+
+        {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} ->
+          {:error, :remote_aggregate_not_found}
+
+        {:exit, _reason} ->
+          {:error, :aggregate_execution_failed}
+
+        nil ->
+          {:error, :aggregate_execution_timeout}
       end
 
     case result do
