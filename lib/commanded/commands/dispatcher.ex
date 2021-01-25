@@ -101,7 +101,7 @@ defmodule Commanded.Commands.Dispatcher do
           result
 
         {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} ->
-          {:error, :remote_aggregate_not_found}
+          {:error, :remote_node_down}
 
         {:exit, _reason} ->
           {:error, :aggregate_execution_failed}
@@ -129,7 +129,7 @@ defmodule Commanded.Commands.Dispatcher do
         # Maybe retry command when aggregate process stopped by lifespan timeout
         maybe_retry(pipeline, payload, context)
 
-      {:error, :remote_aggregate_not_found} ->
+      {:error, :remote_node_down} ->
         # Maybe retry command when aggregate process not found on a remote node
         maybe_retry(pipeline, payload, context)
 
