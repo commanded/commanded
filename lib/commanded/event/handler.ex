@@ -651,7 +651,13 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def init(%Handler{} = state) do
+    Process.flag(:trap_exit, true)
     {:ok, state, {:continue, :subscribe_to_events}}
+  end
+
+  @impl GenServer
+  def terminate(reason, state) do
+    Logger.debug(fn -> describe(state) <> " is shutting down due to #{inspect(reason)}" end)
   end
 
   @doc false
