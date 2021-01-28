@@ -1,4 +1,50 @@
 defmodule Commanded.ProcessManagers.ProcessManager do
+  use TelemetryRegistry
+
+  telemetry_event(%{
+    event: [:commanded, :process_manager, :handle, :start],
+    description: "Emitted when a process manager starts handling an event",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      process_manager_name: String.t() | Inspect.t(),
+      process_manager_module: module(),
+      process_state: term(),
+      process_uuid: String.t()}
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :process_manager, :handle, :stop],
+    description: "Emitted when a process manager stops handling an event",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      commands: [struct()],
+      error: nil | any(),
+      process_manager_name: String.t() | Inspect.t(),
+      process_manager_module: module(),
+      process_state: term(),
+      process_uuid: String.t()}
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :process_manager, :handle, :exception],
+    description: "Emitted when a process manager raises an exception",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      process_manager_name: String.t() | Inspect.t(),
+      process_manager_module: module(),
+      process_state: term(),
+      process_uuid: String.t(),
+      kind: :throw | :error | :exit,
+      reason: any(),
+      stacktrace: list()}
+    """
+  })
+
   @moduledoc """
   Macro used to define a process manager.
 
@@ -221,6 +267,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   The above example requires three named Commanded applications to have already
   been started.
+
+  ## Telemetry
+
+  #{telemetry_docs()}
+
   """
 
   alias Commanded.ProcessManagers.FailureContext
