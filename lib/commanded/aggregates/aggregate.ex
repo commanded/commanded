@@ -545,9 +545,10 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   rescue
     error ->
-      Logger.error(fn -> Exception.format(:error, error, __STACKTRACE__) end)
+      stacktrace = __STACKTRACE__
+      Logger.error(Exception.format(:error, error, stacktrace))
 
-      {{:error, error, __STACKTRACE__}, state}
+      {{:error, error, stacktrace}, state}
   end
 
   defp apply_and_persist_events(pending_events, context, %Aggregate{} = state) do
