@@ -159,6 +159,7 @@ defmodule Commanded.Mixfile do
         ],
         "Event Store": [
           Commanded.EventStore,
+          Commanded.EventStore.Adapter,
           Commanded.EventStore.Adapters.InMemory,
           Commanded.EventStore.EventData,
           Commanded.EventStore.RecordedEvent,
@@ -167,12 +168,15 @@ defmodule Commanded.Mixfile do
         ],
         "Pub Sub": [
           Commanded.PubSub,
+          Commanded.PubSub.Adapter,
           Commanded.PubSub.LocalPubSub,
           Commanded.PubSub.PhoenixPubSub
         ],
         Registry: [
           Commanded.Registration,
-          Commanded.Registration.LocalRegistry
+          Commanded.Registration.Adapter,
+          Commanded.Registration.LocalRegistry,
+          Commanded.Registration.GlobalRegistry
         ],
         Serialization: [
           Commanded.Serialization.JsonDecoder,
@@ -193,6 +197,18 @@ defmodule Commanded.Mixfile do
           Commanded.AggregateCase,
           Commanded.Assertions.EventAssertions
         ]
+      ],
+      nest_modules_by_prefix: [
+        Commanded.Aggregate,
+        Commanded.Aggregates,
+        Commanded.Commands,
+        Commanded.Event,
+        Commanded.ProcessManagers,
+        Commanded.EventStore,
+        Commanded.PubSub,
+        Commanded.Registration,
+        Commanded.Serialization,
+        Commanded.Middleware
       ]
     ]
   end
