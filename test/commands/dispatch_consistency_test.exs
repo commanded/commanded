@@ -127,8 +127,8 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   end
 
   def start_event_handlers(_context) do
-    start_supervised!(StronglyConsistentEventHandler)
-    start_supervised!(EventuallyConsistentEventHandler)
+    start_supervised!(StronglyConsistentEventHandler, shutdown: :brutal_kill)
+    start_supervised!(EventuallyConsistentEventHandler, shutdown: :brutal_kill)
 
     :ok
   end

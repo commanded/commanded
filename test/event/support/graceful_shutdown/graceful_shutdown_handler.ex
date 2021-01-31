@@ -3,12 +3,17 @@ defmodule Commanded.Event.GracefulShutdownHandler do
     application: Commanded.DefaultApp,
     name: __MODULE__
 
-  def handle(%{sleep_for: milliseconds} = event, metadata) do
+  def handle(event, metadata) do
     %{reply_to: reply_to} = event
 
-    Process.sleep(milliseconds)
-
     send(reply_to, {:event, event, metadata})
+
+    receive do
+      :continue ->
+        send(reply_to, {:continue, event, metadata})
+
+        :ok
+    end
 
     :ok
   end

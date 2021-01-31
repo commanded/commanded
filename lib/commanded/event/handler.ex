@@ -652,6 +652,7 @@ defmodule Commanded.Event.Handler do
   @impl GenServer
   def init(%Handler{} = state) do
     Process.flag(:trap_exit, true)
+
     {:ok, state, {:continue, :subscribe_to_events}}
   end
 

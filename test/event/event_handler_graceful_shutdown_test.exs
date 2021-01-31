@@ -1,13 +1,13 @@
 defmodule Commanded.Event.EventHandlerGracefulShutdownTest do
   use ExUnit.Case
 
-  alias Commanded.Event.GracefulShutdownHandler
   alias Commanded.DefaultApp
+  alias Commanded.Event.GracefulShutdownHandler
   alias Commanded.Helpers.EventFactory
 
   defmodule AnEvent do
     @derive Jason.Encoder
-    defstruct [:reply_to, :sleep_for]
+    defstruct [:reply_to]
   end
 
   defmodule EventHandlersSupervisor do
@@ -39,14 +39,24 @@ defmodule Commanded.Event.EventHandlerGracefulShutdownTest do
 
     test "stop the event handler while it is handling an event" do
       supervisor = start_supervised!(EventHandlersSupervisor, restart: :transient)
-      {_, handler, _, _} = supervisor |> Supervisor.which_children() |> List.first()
+      [{_, handler, _, _}] = Supervisor.which_children(supervisor)
 
-      event = %AnEvent{reply_to: self(), sleep_for: 200}
+      event = %AnEvent{reply_to: self()}
       send_events_to_handler(handler, [event])
-      Supervisor.stop(supervisor, {:shutdown, :graceful})
 
-      assert Process.whereis(EventHandlersSupervisor) == nil
-      assert_received {:event, ^event, _metadata}
+      Task.async(fn ->
+        Supervisor.stop(supervisor, :shutdown)
+      end)
+
+      assert_receive {:event, ^event, _metadata}
+      refute_receive {:continue, ^event, _metadata}
+
+      ref = Process.monitor(handler)
+
+      send(handler, :continue)
+
+      assert_receive {:continue, ^event, _metadata}
+      assert_receive {:DOWN, ^ref, :process, ^handler, :shutdown}
     end
   end
 

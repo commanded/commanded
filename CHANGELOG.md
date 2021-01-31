@@ -7,7 +7,8 @@
 - Telemetry `[:commanded, :aggregate, :execute]` events ([#407](https://github.com/commanded/commanded/pull/407)).
 - Telemetry `[:commanded, :event, :handle]` events ([#408](https://github.com/commanded/commanded/pull/408)).
 - Telemetry `[:commanded, :process_manager, :handle]` events ([#418](https://github.com/commanded/commanded/pull/418)).
-- Telemetry `[:commanded, :application, :dispatch]` ([#423 ](https://github.com/commanded/commanded/pull/423)).
+- Telemetry `[:commanded, :application, :dispatch]` ([#423](https://github.com/commanded/commanded/pull/423)).
+- Graceful shutdown of event handlers ([#431](https://github.com/commanded/commanded/pull/431)).
 
 ## v1.2.0
 
