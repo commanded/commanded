@@ -33,7 +33,8 @@ defmodule Commanded.Commands.Dispatcher do
     ]
   end
 
-  # Dispatch the given command to the handler module for the aggregate as identified.
+  # Dispatch the given command to the handler module for the aggregate as
+  # identified.
   @spec dispatch(payload :: struct) ::
           :ok
           | {:ok, aggregate_state :: struct}
@@ -217,10 +218,12 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp telemetry_metadata(%Pipeline{} = pipeline, %Payload{} = payload) do
+    %Payload{application: application} = payload
+
     context = to_execution_context(pipeline, payload)
 
     %{
-      application: payload.application,
+      application: application,
       error: nil,
       execution_context: context
     }

@@ -4,9 +4,10 @@
 
 - Allow command identity to be provided during dispatch ([#406](https://github.com/commanded/commanded/pull/406)).
 - Define `Commanded.Telemetry` module to emit consistent telemetry events ([#414](https://github.com/commanded/commanded/pull/414)).
-- Telemetry `[:commanded, :aggregate, :execute]` events ([#407](https://github.com/commanded/commanded/pull/407))
-- Telemetry `[:commanded, :event, :handle]` events ([#408](https://github.com/commanded/commanded/pull/408))
-- Telemetry `[:commanded, :process_manager, :handle]` events ([#418](https://github.com/commanded/commanded/pull/418))
+- Telemetry `[:commanded, :aggregate, :execute]` events ([#407](https://github.com/commanded/commanded/pull/407)).
+- Telemetry `[:commanded, :event, :handle]` events ([#408](https://github.com/commanded/commanded/pull/408)).
+- Telemetry `[:commanded, :process_manager, :handle]` events ([#418](https://github.com/commanded/commanded/pull/418)).
+- Telemetry `[:commanded, :application, :dispatch]` ([#423 ](https://github.com/commanded/commanded/pull/423)).
 
 ## v1.2.0
 
