@@ -6,6 +6,7 @@ defmodule Commanded.Commands.Dispatcher do
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Middleware.Pipeline
+  alias Commanded.Telemetry
 
   defmodule Payload do
     @moduledoc false
@@ -32,10 +33,7 @@ defmodule Commanded.Commands.Dispatcher do
     ]
   end
 
-  @doc """
-  Dispatch the given command to the handler module for the aggregate as
-  identified.
-  """
+  # Dispatch the given command to the handler module for the aggregate as identified.
   @spec dispatch(payload :: struct) ::
           :ok
           | {:ok, aggregate_state :: struct}
@@ -44,10 +42,12 @@ defmodule Commanded.Commands.Dispatcher do
           | {:ok, Commanded.Commands.ExecutionResult.t()}
           | {:error, error :: term}
   def dispatch(%Payload{} = payload) do
-    pipeline =
-      payload
-      |> to_pipeline()
-      |> before_dispatch(payload)
+    pipeline = to_pipeline(payload)
+    telemetry_metadata = telemetry_metadata(pipeline, payload)
+
+    start_time = telemetry_start(telemetry_metadata)
+
+    pipeline = before_dispatch(pipeline, payload)
 
     # Stop command execution if pipeline has been halted
     unless Pipeline.halted?(pipeline) do
@@ -55,10 +55,12 @@ defmodule Commanded.Commands.Dispatcher do
 
       pipeline
       |> execute(payload, context)
+      |> telemetry_stop(start_time, telemetry_metadata)
       |> Pipeline.response()
     else
       pipeline
       |> after_failure(payload)
+      |> telemetry_stop(start_time, telemetry_metadata)
       |> Pipeline.response()
     end
   end
@@ -194,5 +196,33 @@ defmodule Commanded.Commands.Dispatcher do
     %Payload{middleware: middleware} = payload
 
     Pipeline.chain(pipeline, :after_failure, middleware)
+  end
+
+  defp telemetry_start(telemetry_metadata) do
+    Telemetry.start([:commanded, :application, :dispatch], telemetry_metadata)
+  end
+
+  defp telemetry_stop(%Pipeline{assigns: assigns} = pipeline, start_time, telemetry_metadata) do
+    event_prefix = [:commanded, :application, :dispatch]
+
+    case assigns do
+      %{error: error} ->
+        Telemetry.stop(event_prefix, start_time, Map.put(telemetry_metadata, :error, error))
+
+      _ ->
+        Telemetry.stop(event_prefix, start_time, telemetry_metadata)
+    end
+
+    pipeline
+  end
+
+  defp telemetry_metadata(%Pipeline{} = pipeline, %Payload{} = payload) do
+    context = to_execution_context(pipeline, payload)
+
+    %{
+      application: payload.application,
+      error: nil,
+      execution_context: context
+    }
   end
 end

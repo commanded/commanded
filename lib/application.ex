@@ -1,4 +1,27 @@
 defmodule Commanded.Application do
+  use TelemetryRegistry
+
+  telemetry_event(%{
+    event: [:commanded, :application, :dispatch, :start],
+    description: "Emitted when an application starts dispatching a command",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      execution_context: Commanded.Aggregates.ExecutionContext.t()}
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :application, :dispatch, :stop],
+    description: "Emitted when an application stops dispatching a command",
+    measurements: "%{duration: non_neg_integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      execution_context: Commanded.Aggregates.ExecutionContext.t(),
+      error: nil | any()}
+    """
+  })
+
   @moduledoc """
   Defines a Commanded application.
 
@@ -131,6 +154,11 @@ defmodule Commanded.Application do
 
   See the `Commanded.Commands.Router` module for more details about the
   supported options.
+
+  ## Telemetry
+
+  #{telemetry_docs()}
+
   """
 
   @type t :: module
