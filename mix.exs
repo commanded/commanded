@@ -30,8 +30,8 @@ defmodule Commanded.Mixfile do
     ]
   end
 
-  defp extra_applications(:test), do: [:logger, :phoenix_pubsub]
-  defp extra_applications(_env), do: [:logger]
+  defp extra_applications(:test), do: [:crypto, :logger, :phoenix_pubsub]
+  defp extra_applications(_env), do: [:crypto, :logger]
 
   defp elixirc_paths(env) when env in [:bench, :test],
     do: [
@@ -72,7 +72,7 @@ defmodule Commanded.Mixfile do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.1", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.0", only: :dev},
-      {:mox, "~> 0.5", only: [:bench, :test]}
+      {:mox, "~> 1.0", only: [:bench, :test]}
     ]
   end
 

@@ -175,12 +175,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp process_seen_event(%RecordedEvent{} = event, %State{} = state) do
     %State{idle_timeout: idle_timeout} = state
 
-    telemetry_metadata = telemetry_metadata(event, state)
-    start_time = telemetry_start(telemetry_metadata)
-
     :ok = ack_event(event, state)
-
-    telemetry_stop(start_time, telemetry_metadata, [])
 
     {:noreply, state, idle_timeout}
   end
@@ -196,51 +191,64 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
     case handle_event(event, state) do
       {:error, error} ->
-        failure_context = build_failure_context(event, context, nil, state)
+        failure_context = %FailureContext{
+          context: context,
+          last_event: event,
+          process_manager_state: state
+        }
 
         telemetry_stop(start_time, telemetry_metadata, {:error, error})
 
         handle_event_error({:error, error}, event, failure_context, state)
 
       {:error, error, stacktrace} ->
-        failure_context = build_failure_context(event, context, stacktrace, state)
+        failure_context = %FailureContext{
+          context: context,
+          last_event: event,
+          process_manager_state: state,
+          stacktrace: stacktrace
+        }
 
         telemetry_stop(start_time, telemetry_metadata, {:error, error, stacktrace})
 
         handle_event_error({:error, error}, event, failure_context, state)
 
       commands ->
+        commands = List.wrap(commands)
+
         # Copy event id, as causation id, and correlation id from handled event.
         opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
 
-        commands
-        |> List.wrap()
-        |> dispatch_commands(opts, state, event)
-        |> case do
-          :ok ->
-            telemetry_stop(start_time, telemetry_metadata, commands)
+        with :ok <- dispatch_commands(commands, opts, state, event) do
+          telemetry_stop(start_time, telemetry_metadata, {:ok, commands})
 
-            case mutate_state(event, state) do
-              {:error, error, stacktrace} ->
-                failure_context = build_failure_context(event, context, stacktrace, state)
+          case mutate_state(event, state) do
+            {:error, error, stacktrace} ->
+              failure_context = %FailureContext{
+                context: context,
+                last_event: event,
+                process_manager_state: state,
+                stacktrace: stacktrace
+              }
 
-                handle_event_error({:error, error}, event, failure_context, state)
+              handle_event_error({:error, error}, event, failure_context, state)
 
-              process_state ->
-                state = %State{
-                  state
-                  | process_state: process_state,
-                    last_seen_event: event_number
-                }
+            process_state ->
+              state = %State{
+                state
+                | process_state: process_state,
+                  last_seen_event: event_number
+              }
 
-                :ok = persist_state(event_number, state)
-                :ok = ack_event(event, state)
+              :ok = persist_state(event_number, state)
+              :ok = ack_event(event, state)
 
-                {:noreply, state, idle_timeout}
-            end
-
+              {:noreply, state, idle_timeout}
+          end
+        else
           {:stop, reason} ->
             telemetry_stop(start_time, telemetry_metadata, {:error, reason})
+
             {:stop, reason, state}
         end
     end
@@ -265,16 +273,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
         {:error, error, stacktrace}
     end
-  end
-
-  defp build_failure_context(failed_event, context, stacktrace, state) do
-    %FailureContext{
-      context: context,
-      last_event: failed_event,
-      pending_commands: [],
-      process_manager_state: state,
-      stacktrace: stacktrace
-    }
   end
 
   defp handle_event_error(
@@ -352,7 +350,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end
   end
 
-  # update the process instance's state by applying the event
+  # Update the process instance's state by applying the event.
   defp mutate_state(%RecordedEvent{} = event, %State{} = state) do
     %RecordedEvent{data: data} = event
 
@@ -543,6 +541,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     event_prefix = [:commanded, :process_manager, :handle]
 
     case handle_result do
+      {:ok, commands} ->
+        telemetry_metadata =
+          telemetry_metadata |> Map.put(:commands, commands) |> Map.put(:error, nil)
+
+        Telemetry.stop(event_prefix, start_time, telemetry_metadata)
+
       {:error, error} ->
         telemetry_metadata =
           telemetry_metadata
@@ -560,27 +564,25 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
           stacktrace,
           telemetry_metadata
         )
-
-      commands ->
-        commands = List.wrap(commands)
-
-        telemetry_metadata =
-          telemetry_metadata |> Map.put(:commands, commands) |> Map.put(:error, nil)
-
-        Telemetry.stop(event_prefix, start_time, telemetry_metadata)
     end
   end
 
   defp telemetry_metadata(%RecordedEvent{} = event, %State{} = state) do
-    state
-    |> Map.from_struct()
-    |> Map.take([
-      :application,
-      :process_manager_name,
-      :process_manager_module,
-      :process_state,
-      :process_uuid
-    ])
-    |> Map.put(:recorded_event, event)
+    %State{
+      application: application,
+      process_manager_name: process_manager_name,
+      process_manager_module: process_manager_module,
+      process_state: process_state,
+      process_uuid: process_uuid
+    } = state
+
+    %{
+      application: application,
+      process_manager_name: process_manager_name,
+      process_manager_module: process_manager_module,
+      process_state: process_state,
+      process_uuid: process_uuid,
+      recorded_event: event
+    }
   end
 end
