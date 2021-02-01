@@ -5,7 +5,7 @@ defmodule Commanded.Event.Handler do
 
   telemetry_event(%{
     event: [:commanded, :event, :handle, :start],
-    description: "Emitted when an Event.Handler.handle/2 callback is started",
+    description: "Emitted when an event handler starts handling an event",
     measurements: "%{system_time: integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
@@ -19,7 +19,7 @@ defmodule Commanded.Event.Handler do
 
   telemetry_event(%{
     event: [:commanded, :event, :handle, :stop],
-    description: "Emitted when an Event.Handler.handle/2 callback returns",
+    description: "Emitted when an event handler stops handling an event",
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{:application => Commanded.Application.t(),
@@ -34,7 +34,7 @@ defmodule Commanded.Event.Handler do
 
   telemetry_event(%{
     event: [:commanded, :event, :handle, :exception],
-    description: "Emitted when an Event.Handler.handle/2 raises an exception",
+    description: "Emitted when an event handler raises an exception",
     measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
