@@ -322,4 +322,16 @@ defmodule Commanded.Commands.RoutingCommandsTest do
       assert event.metadata == metadata
     end)
   end
+
+  test "make sure metadata must be map" do
+    metadata = [ip_address: "127.0.0.1"]
+
+    assert_raise ArgumentError, "metadata must be an map", fn ->
+      MultiCommandHandlerRouter.dispatch(
+        %OpenAccount{account_number: "ACC123", initial_balance: 1_000},
+        application: DefaultApp,
+        metadata: metadata
+      )
+    end
+  end
 end
