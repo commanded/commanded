@@ -519,7 +519,8 @@ defmodule Commanded.Commands.Router do
           command_uuid = Keyword.get(opts, :command_uuid, UUID.uuid4())
           consistency = Keyword.fetch!(opts, :consistency)
           correlation_id = Keyword.get(opts, :correlation_id, UUID.uuid4())
-          metadata = Keyword.fetch!(opts, :metadata)
+          metadata = opts |> Keyword.fetch!(:metadata) |> validate_metadata()
+
           retry_attempts = Keyword.get(opts, :retry_attempts)
           timeout = Keyword.fetch!(opts, :timeout)
 
@@ -588,6 +589,10 @@ defmodule Commanded.Commands.Router do
 
         {:error, :unregistered_command}
       end
+
+      # Make sure the metadata must be Map.t()
+      defp validate_metadata(value) when is_map(value), do: value
+      defp validate_metadata(_), do: raise(ArgumentError, message: "metadata must be an map")
     end
   end
 
