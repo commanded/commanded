@@ -9,6 +9,7 @@
 - Telemetry `[:commanded, :process_manager, :handle]` events ([#418](https://github.com/commanded/commanded/pull/418)).
 - Telemetry `[:commanded, :application, :dispatch]` ([#423](https://github.com/commanded/commanded/pull/423)).
 - Graceful shutdown of event handlers ([#431](https://github.com/commanded/commanded/pull/431)).
+- Ensure command dispatch metadata is a map ([#432](https://github.com/commanded/commanded/pull/432)).
 
 ## v1.2.0
 

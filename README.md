@@ -166,6 +166,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Štefan Ľupták](https://github.com/EskiMag)
 - [Tobiasz Małecki](https://github.com/amatalai)
 - [Yuri de Figueiredo](https://github.com/y86)
+- [Zven](https://github.com/zven21)
 
 ## Need help?
 
