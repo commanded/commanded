@@ -133,6 +133,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Ben Smith](https://github.com/slashdotdash)
+- [Benjamin Moss](https://github.com/drteeth)
 - [Bernardo Amorim](https://github.com/bamorim)
 - [Brenton Annan](https://github.com/brentonannan)
 - [Chris Brodt](https://github.com/uberbrodt)

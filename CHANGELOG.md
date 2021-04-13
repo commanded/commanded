@@ -2,6 +2,8 @@
 
 ## Next release
 
+### Enhancements
+
 - Allow command identity to be provided during dispatch ([#406](https://github.com/commanded/commanded/pull/406)).
 - Define `Commanded.Telemetry` module to emit consistent telemetry events ([#414](https://github.com/commanded/commanded/pull/414)).
 - Telemetry `[:commanded, :aggregate, :execute]` events ([#407](https://github.com/commanded/commanded/pull/407)).
@@ -10,6 +12,7 @@
 - Telemetry `[:commanded, :application, :dispatch]` ([#423](https://github.com/commanded/commanded/pull/423)).
 - Graceful shutdown of event handlers ([#431](https://github.com/commanded/commanded/pull/431)).
 - Ensure command dispatch metadata is a map ([#432](https://github.com/commanded/commanded/pull/432)).
+- Retry command execution on node down ([#429](https://github.com/commanded/commanded/pull/429)).
 
 ## v1.2.0
 
