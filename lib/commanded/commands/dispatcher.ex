@@ -94,10 +94,20 @@ defmodule Commanded.Commands.Dispatcher do
 
     result =
       case Task.yield(task, timeout) || Task.shutdown(task) do
-        {:ok, result} -> result
-        {:exit, {:normal, :aggregate_stopped}} = result -> result
-        {:exit, _reason} -> {:error, :aggregate_execution_failed}
-        nil -> {:error, :aggregate_execution_timeout}
+        {:ok, result} ->
+          result
+
+        {:exit, {:normal, :aggregate_stopped}} = result ->
+          result
+
+        {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} ->
+          {:error, :remote_node_down}
+
+        {:exit, _reason} ->
+          {:error, :aggregate_execution_failed}
+
+        nil ->
+          {:error, :aggregate_execution_timeout}
       end
 
     case result do
@@ -117,13 +127,11 @@ defmodule Commanded.Commands.Dispatcher do
 
       {:exit, {:normal, :aggregate_stopped}} ->
         # Maybe retry command when aggregate process stopped by lifespan timeout
-        case ExecutionContext.retry(context) do
-          {:ok, context} ->
-            execute(pipeline, payload, context)
+        maybe_retry(pipeline, payload, context)
 
-          reply ->
-            reply
-        end
+      {:error, :remote_node_down} ->
+        # Maybe retry command when aggregate process not found on a remote node
+        maybe_retry(pipeline, payload, context)
 
       {:error, error} ->
         pipeline
@@ -227,5 +235,15 @@ defmodule Commanded.Commands.Dispatcher do
       error: nil,
       execution_context: context
     }
+  end
+
+  defp maybe_retry(pipeline, payload, context) do
+    case ExecutionContext.retry(context) do
+      {:ok, context} ->
+        execute(pipeline, payload, context)
+
+      reply ->
+        reply
+    end
   end
 end
