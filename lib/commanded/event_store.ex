@@ -13,14 +13,22 @@ defmodule Commanded.EventStore do
   Append one or more events to a stream atomically.
   """
   def append_to_stream(application, stream_uuid, expected_version, events) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    meta = %{
+      application: application,
+      stream_uuid: stream_uuid,
+      expected_version: expected_version
+    }
 
-    adapter.append_to_stream(
-      adapter_meta,
-      stream_uuid,
-      expected_version,
-      events
-    )
+    span(:append_to_stream, meta, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
+
+      adapter.append_to_stream(
+        adapter_meta,
+        stream_uuid,
+        expected_version,
+        events
+      )
+    end)
   end
 
   @doc """
@@ -28,20 +36,24 @@ defmodule Commanded.EventStore do
   originally written.
   """
   def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    meta = %{application: application, stream_uuid: stream_uuid}
 
-    case adapter.stream_forward(
-           adapter_meta,
-           stream_uuid,
-           start_version,
-           read_batch_size
-         ) do
-      {:error, _error} = error ->
-        error
+    span(:stream_forward, meta, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-      stream ->
-        Upcast.upcast_event_stream(stream, additional_metadata: %{application: application})
-    end
+      case adapter.stream_forward(
+             adapter_meta,
+             stream_uuid,
+             start_version,
+             read_batch_size
+           ) do
+        {:error, _error} = error ->
+          error
+
+        stream ->
+          Upcast.upcast_event_stream(stream, additional_metadata: %{application: application})
+      end
+    end)
   end
 
   @doc """
@@ -212,5 +224,11 @@ defmodule Commanded.EventStore do
     end
 
     {adapter, config}
+  end
+
+  defp span(event, meta, func) do
+    :telemetry.span([:commanded, :event_store, event], meta, fn ->
+      {func.(), %{}}
+    end)
   end
 end
