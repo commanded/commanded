@@ -7,9 +7,7 @@ defmodule Commanded.Commands.StronglyConsistentEventHandler do
   alias Commanded.Commands.{ConsistencyAggregateRoot, ConsistencyApp}
   alias ConsistencyAggregateRoot.{ConsistencyCommand, ConsistencyEvent, DispatchRequestedEvent}
 
-  @doc """
-  Dispatch a command with consistency `:strong` after an optional delay.
-  """
+  # Dispatch a command with consistency `:strong` after an optional delay.
   def handle(%DispatchRequestedEvent{uuid: uuid, delay: delay}, _metadata) do
     :timer.sleep(delay)
 
@@ -18,9 +16,7 @@ defmodule Commanded.Commands.StronglyConsistentEventHandler do
     ConsistencyApp.dispatch(command, consistency: :strong)
   end
 
-  @doc """
-  Block for a requested delay.
-  """
+  # Block for a requested delay.
   def handle(%ConsistencyEvent{delay: delay}, _metadata) do
     :timer.sleep(delay)
 
