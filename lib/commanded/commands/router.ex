@@ -145,6 +145,9 @@ defmodule Commanded.Commands.Router do
 
     - `:aggregate_version` - to return only the aggregate version.
 
+    - `:events` - to return the resultant domain events. An empty list will be
+      returned if no events were produced.
+
     - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
       struct containing the aggregate's identity, state, version, and any events
       produced from the command along with their associated metadata.
@@ -436,6 +439,9 @@ defmodule Commanded.Commands.Router do
             - `:aggregate_version` - to include the aggregate stream version
               in the successful response: `{:ok, aggregate_version}`.
 
+            - `:events` - to return the resultant domain events. An empty list
+              will be returned if no events were produced.
+
             - `:execution_result` - to return a `Commanded.Commands.ExecutionResult`
               struct containing the aggregate's identity, version, and any
               events produced from the command along with their associated
@@ -535,6 +541,7 @@ defmodule Commanded.Commands.Router do
               (returning = Keyword.get(opts, :returning)) in [
                 :aggregate_state,
                 :aggregate_version,
+                :events,
                 :execution_result,
                 false
               ] ->
@@ -607,6 +614,7 @@ defmodule Commanded.Commands.Router do
       (default_dispatch_return = get_opt(opts, :default_dispatch_return)) in [
         :aggregate_state,
         :aggregate_version,
+        :events,
         :execution_result,
         false
       ] ->

@@ -4,9 +4,14 @@ defmodule Commanded.Commands.DispatchReturnTest do
   alias Commanded.Commands.ExecutionResult
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.ExampleDomain.BankAccount.Commands.{CloseAccount, DepositMoney, OpenAccount}
+
+  alias Commanded.ExampleDomain.BankAccount.Events.{
+    BankAccountClosed,
+    BankAccountOpened,
+    MoneyDeposited
+  }
+
   alias Commanded.Helpers.CommandAuditMiddleware
 
   setup do
@@ -25,8 +30,7 @@ defmodule Commanded.Commands.DispatchReturnTest do
     test "should return an error on failure" do
       command = %OpenAccount{account_number: "ACC123", initial_balance: -1}
 
-      assert {:error, :invalid_initial_balance} ==
-               BankApp.dispatch(command, returning: false)
+      assert {:error, :invalid_initial_balance} == BankApp.dispatch(command, returning: false)
     end
   end
 
@@ -73,6 +77,64 @@ defmodule Commanded.Commands.DispatchReturnTest do
 
       assert {:error, :invalid_initial_balance} ==
                BankApp.dispatch(command, returning: :aggregate_version)
+    end
+  end
+
+  describe "dispatch return events" do
+    test "should return resultant events" do
+      assert {:ok, events} =
+               BankApp.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1_000},
+                 returning: :events
+               )
+
+      assert match?(
+               [
+                 %BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}
+               ],
+               events
+             )
+
+      assert {:ok, events} =
+               BankApp.dispatch(
+                 %DepositMoney{account_number: "ACC123", amount: 100},
+                 returning: :events
+               )
+
+      assert match?(
+               [
+                 %MoneyDeposited{
+                   account_number: "ACC123",
+                   transfer_uuid: _transfer_uuid,
+                   amount: 100,
+                   balance: 1_100
+                 }
+               ],
+               events
+             )
+    end
+
+    test "should return empty list when no events produced" do
+      assert {:ok, _events} =
+               BankApp.dispatch(%OpenAccount{account_number: "ACC123", initial_balance: 1},
+                 returning: :events
+               )
+
+      assert {:ok, events} =
+               BankApp.dispatch(%CloseAccount{account_number: "ACC123"}, returning: :events)
+
+      assert match?(
+               [%BankAccountClosed{account_number: "ACC123"}],
+               events
+             )
+
+      assert {:ok, []} =
+               BankApp.dispatch(%CloseAccount{account_number: "ACC123"}, returning: :events)
+    end
+
+    test "should return an error on failure" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: -1}
+
+      assert {:error, :invalid_initial_balance} == BankApp.dispatch(command, returning: :events)
     end
   end
 

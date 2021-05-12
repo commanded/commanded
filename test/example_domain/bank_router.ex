@@ -4,6 +4,7 @@ defmodule Commanded.ExampleDomain.BankRouter do
   use Commanded.Commands.Router
 
   alias Commanded.ExampleDomain.BankAccount
+  alias Commanded.ExampleDomain.BankAccount.Commands.CloseAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
@@ -22,6 +23,7 @@ defmodule Commanded.ExampleDomain.BankRouter do
   dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount
   dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount
   dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount
+  dispatch CloseAccount, to: OpenAccountHandler, aggregate: BankAccount
 
   # Money transfer
   identify MoneyTransfer, by: :transfer_uuid
