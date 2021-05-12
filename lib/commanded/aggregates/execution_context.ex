@@ -86,6 +86,9 @@ defmodule Commanded.Aggregates.ExecutionContext do
         :aggregate_version ->
           {:ok, aggregate_version, events, aggregate_version}
 
+        :events ->
+          {:ok, aggregate_version, events, events}
+
         :execution_result ->
           result = %ExecutionResult{
             aggregate_uuid: aggregate_uuid,
