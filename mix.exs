@@ -59,8 +59,8 @@ defmodule Commanded.Mixfile do
       {:elixir_uuid, "~> 1.2"},
 
       # Telemetry
-      {:telemetry, "~> 0.4.2"},
-      {:telemetry_registry, "~> 0.2.1"},
+      {:telemetry, "~> 0.4"},
+      {:telemetry_registry, "~> 0.2"},
 
       # Optional dependencies
       {:jason, "~> 1.2", optional: true},
@@ -68,9 +68,9 @@ defmodule Commanded.Mixfile do
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
-      {:dialyxir, "~> 1.0", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.1", only: :dev, runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:local_cluster, "~> 1.1", only: :test, runtime: false},
+      {:local_cluster, "~> 1.2", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.0", only: :dev},
       {:mox, "~> 1.0", only: [:bench, :test]}
     ]
