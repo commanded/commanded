@@ -38,6 +38,9 @@ Or configure your application to use the `:global` registry in config:
 config :my_app, MyApp.Application, registry: :global
 ```
 
+Note that when clusters are formed dynamically (e.g. using [libcluster](https://hex.pm/packages/libcluster)]), the typical of sequence of events is that first all nodes will start all processes, then the cluster is formed and `:global` will kill off duplicate names. This is ugly in the logs but expected; it also means that if your supervisor's `:max_restarts` is too low - lower than the number of event handlers/projectors you start - it will immediately exit and if that was your
+application supervisor your app gets shutdown. The solution is simple: keep `:max_restarts` above the number of event handlers you start under your supervisor and the transition from no cluster to cluster will be clean. 
+
 ### Commanded Swarm registry
 
 Add `commanded_swarm_registry` to your list of dependencies in `mix.exs`:
