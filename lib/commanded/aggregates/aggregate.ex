@@ -202,20 +202,31 @@ defmodule Commanded.Aggregates.Aggregate do
     catch
       :exit, {reason, {GenServer, :call, [^name, :aggregate_state, ^timeout]}}
       when reason in [:normal, :noproc] ->
-        snapshot_options =
-          application
-          |> Config.get(:snapshotting)
-          |> Kernel.||(%{})
-          |> Map.get(aggregate_module, [])
+        task =
+          Task.async(fn ->
+            snapshot_options =
+              application
+              |> Config.get(:snapshotting)
+              |> Kernel.||(%{})
+              |> Map.get(aggregate_module, [])
 
-        %Aggregate{
-          application: application,
-          aggregate_module: aggregate_module,
-          aggregate_uuid: aggregate_uuid,
-          snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
-        }
-        |> Commanded.Aggregates.AggregateStateBuilder.populate()
-        |> Map.fetch!(:aggregate_state)
+            %Aggregate{
+              application: application,
+              aggregate_module: aggregate_module,
+              aggregate_uuid: aggregate_uuid,
+              snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
+            }
+            |> Commanded.Aggregates.AggregateStateBuilder.populate()
+            |> Map.fetch!(:aggregate_state)
+          end)
+
+        case Task.yield(task, timeout) || Task.shutdown(task) do
+          {:ok, result} ->
+            result
+
+          nil ->
+            exit({:timeout, {GenServer, :call, [name, :aggregate_state, timeout]}})
+        end
     end
   end
 
