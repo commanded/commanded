@@ -99,6 +99,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
   require Logger
 
+  alias Commanded.Application.Config
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.AggregateStateBuilder
   alias Commanded.Aggregates.ExecutionContext
@@ -195,7 +196,27 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   def aggregate_state(application, aggregate_module, aggregate_uuid, timeout \\ 5_000) do
     name = via_name(application, aggregate_module, aggregate_uuid)
-    GenServer.call(name, :aggregate_state, timeout)
+
+    try do
+      GenServer.call(name, :aggregate_state, timeout)
+    catch
+      :exit, {reason, {GenServer, :call, [^name, :aggregate_state, ^timeout]}}
+      when reason in [:normal, :noproc] ->
+        snapshot_options =
+          application
+          |> Config.get(:snapshotting)
+          |> Kernel.||(%{})
+          |> Map.get(aggregate_module, [])
+
+        %Aggregate{
+          application: application,
+          aggregate_module: aggregate_module,
+          aggregate_uuid: aggregate_uuid,
+          snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
+        }
+        |> Commanded.Aggregates.AggregateStateBuilder.populate()
+        |> Map.fetch!(:aggregate_state)
+    end
   end
 
   @doc false
