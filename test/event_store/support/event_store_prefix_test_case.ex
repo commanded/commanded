@@ -40,6 +40,7 @@ defmodule Commanded.EventStore.EventStorePrefixTestCase do
 
     defp build_event(account_number, correlation_id, causation_id) do
       %EventData{
+        event_id: UUID.uuid4(),
         correlation_id: correlation_id,
         causation_id: causation_id,
         event_type: "#{__MODULE__}.BankAccountOpened",

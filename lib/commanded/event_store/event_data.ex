@@ -7,6 +7,7 @@ defmodule Commanded.EventStore.EventData do
   @type uuid :: String.t()
 
   @type t :: %Commanded.EventStore.EventData{
+          event_id: uuid(),
           causation_id: uuid(),
           correlation_id: uuid(),
           event_type: String.t(),
@@ -15,6 +16,7 @@ defmodule Commanded.EventStore.EventData do
         }
 
   defstruct [
+    :event_id,
     :causation_id,
     :correlation_id,
     :event_type,

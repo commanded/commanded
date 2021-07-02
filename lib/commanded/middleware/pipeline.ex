@@ -9,7 +9,7 @@ defmodule Commanded.Middleware.Pipeline do
   ## Pipeline fields
 
     - `application` - the Commanded application.
-    
+
     - `assigns` - shared user data as a map.
 
     - `causation_id` - an optional UUID used to identify the cause of the

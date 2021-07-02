@@ -162,6 +162,7 @@ defmodule Event.UpcasterTest do
 
   defp create_event(%{__struct__: event_type} = data) do
     %EventData{
+      event_id: UUID.uuid4(),
       event_type: to_string(event_type),
       data: data,
       metadata: %{}

@@ -45,7 +45,8 @@ defmodule Commanded.Application do
           event_store: MyApp.EventStore
         ],
         pubsub: :local,
-        registry: :local
+        registry: :local,
+        uuid_generator: &UUID.uuid4/0
 
   Alternatively, you can include the configuration when defining the
   application:
@@ -58,7 +59,8 @@ defmodule Commanded.Application do
             event_store: MyApp.EventStore
           ],
           pubsub: :local,
-          registry: :local
+          registry: :local,
+          uuid_generator: &UUID.uuid4/0
 
         router(MyApp.Router)
       end
@@ -149,7 +151,8 @@ defmodule Commanded.Application do
           default_dispatch_opts: [
             consistency: :eventual,
             returning: :aggregate_version
-          ]
+          ],
+          uuid_generator: &Commanded.UUID.uuid4/0
       end
 
   See the `Commanded.Commands.Router` module for more details about the
@@ -267,7 +270,7 @@ defmodule Commanded.Application do
 
     - `command` is a command struct which must be registered with a
       `Commanded.Commands.Router` and included in the application.
-      
+
   """
   @callback dispatch(command :: struct()) ::
               :ok
@@ -387,4 +390,32 @@ defmodule Commanded.Application do
   @doc false
   @spec registry_adapter(Commanded.Application.t()) :: {module, map}
   def registry_adapter(application), do: Config.get(application, :registry)
+
+  @type uuid :: String.t()
+
+  @doc false
+  @spec uuid_generator(Commanded.Application.t(), boolean()) :: (() -> uuid) | nil
+  def uuid_generator(application, true) do
+    application
+    |> Config.get(:uuid_generator)
+    |> check_generator(application)
+  end
+
+  def uuid_generator(application, _required) do
+    try do
+      Config.get(application, :uuid_generator)
+    rescue
+      _ -> nil
+    end
+    |> check_generator(application)
+  end
+
+  defp check_generator(nil, _application), do: nil
+
+  defp check_generator(generator, application)
+       when not is_nil(generator) and not is_function(generator, 0) do
+    raise ArgumentError, "invalid :uuid_generator config for application " <> inspect(application)
+  end
+
+  defp check_generator(generator, _application), do: generator
 end

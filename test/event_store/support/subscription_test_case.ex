@@ -553,6 +553,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
     defp build_event(account_number) do
       %EventData{
+        event_id: UUID.uuid4(),
         causation_id: UUID.uuid4(),
         correlation_id: UUID.uuid4(),
         event_type: "#{__MODULE__}.BankAccountOpened",

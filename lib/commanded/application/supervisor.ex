@@ -26,6 +26,7 @@ defmodule Commanded.Application.Supervisor do
       |> Keyword.merge(opts)
       |> Keyword.put(:otp_app, otp_app)
       |> Keyword.put(:application, application)
+      |> Keyword.put_new(:uuid_generator, &Commanded.UUID.uuid4/0)
 
     case application_init(application, config) do
       {:ok, config} -> {:ok, config}

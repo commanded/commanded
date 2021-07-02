@@ -3,6 +3,7 @@ defmodule Commanded.Commands.Dispatcher do
 
   require Logger
 
+  alias Commanded.Application
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Middleware.Pipeline
@@ -49,6 +50,18 @@ defmodule Commanded.Commands.Dispatcher do
     start_time = telemetry_start(telemetry_metadata)
 
     pipeline = before_dispatch(pipeline, payload)
+
+    uuid_generator = Application.uuid_generator(pipeline.application, true)
+
+    uuid_updater = fn
+      nil -> uuid_generator.()
+      value -> value
+    end
+
+    pipeline =
+      pipeline
+      |> Map.update!(:command_uuid, uuid_updater)
+      |> Map.update!(:correlation_id, uuid_updater)
 
     # Stop command execution if pipeline has been halted
     unless Pipeline.halted?(pipeline) do

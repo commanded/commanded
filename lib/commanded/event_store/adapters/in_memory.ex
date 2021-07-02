@@ -446,6 +446,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp map_to_recorded_event(event_number, stream_uuid, stream_version, now, %EventData{} = event) do
     %EventData{
+      event_id: event_id,
       causation_id: causation_id,
       correlation_id: correlation_id,
       event_type: event_type,
@@ -454,7 +455,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     } = event
 
     %RecordedEvent{
-      event_id: UUID.uuid4(),
+      event_id: event_id,
       event_number: event_number,
       stream_id: stream_uuid,
       stream_version: stream_version,
