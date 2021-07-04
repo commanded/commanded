@@ -1,6 +1,7 @@
 defmodule Commanded.DynamicApplicationsTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.ExampleApplication
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.Helpers.CommandAuditMiddleware

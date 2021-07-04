@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Pause

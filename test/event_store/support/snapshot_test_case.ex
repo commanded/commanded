@@ -2,6 +2,7 @@ defmodule Commanded.EventStore.SnapshotTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
+    alias Commanded.UUID
     alias Commanded.EventStore.SnapshotData
 
     defmodule BankAccountOpened do

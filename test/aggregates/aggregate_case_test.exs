@@ -1,6 +1,7 @@
 defmodule Commanded.AggregateCaseTest do
   use Commanded.AggregateCase, aggregate: Commanded.Aggregate.Multi.BankAccount, async: true
 
+  alias Commanded.UUID
   alias Commanded.Aggregate.Multi.BankAccount
   alias Commanded.Aggregate.Multi.BankAccount.Commands.DepositMoney
   alias Commanded.Aggregate.Multi.BankAccount.Commands.OpenAccount

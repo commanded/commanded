@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManager.MultiRoutingTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.UUID
   alias Commanded.ProcessManagers.ProcessRouter
   alias Commanded.ProcessManagers.{TodoApp, TodoProcessManager, TodoRouter}
   alias Commanded.ProcessManagers.Todo.Commands.CreateTodo

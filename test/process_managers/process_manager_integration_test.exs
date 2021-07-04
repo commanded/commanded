@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerIntegrationTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.UUID
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankRouter
   alias Commanded.ExampleDomain.TransferMoneyProcessManager

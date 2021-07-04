@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManagers.ResumeProcessManagerTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.UUID
   alias Commanded.Helpers.{ProcessHelper, Wait}
   alias Commanded.ProcessManagers.ResumeApp
   alias Commanded.ProcessManagers.{ProcessRouter, ProcessManagerInstance}

@@ -3,6 +3,7 @@ defmodule Commanded.Event.ResetEventHandlerTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.UUID
   alias Commanded.EventStore
   alias Commanded.Helpers.Wait
   alias Commanded.ExampleDomain.BankApp

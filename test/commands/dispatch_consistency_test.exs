@@ -1,6 +1,8 @@
 defmodule Commanded.Commands.DispatchConsistencyTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
+
   alias Commanded.Commands.{
     ConsistencyAggregateRoot,
     ConsistencyPrefixRouter,

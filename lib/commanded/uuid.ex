@@ -8,11 +8,17 @@ defmodule Commanded.UUID do
   @variant10 2
   @uuid_v4 4
 
+  @uuid_regex ~r/^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/
+
   def uuid4() do
     <<u0::48, _::4, u1::12, _::2, u2::62>> = :crypto.strong_rand_bytes(16)
 
     <<u0::48, @uuid_v4::4, u1::12, @variant10::2, u2::62>>
     |> uuid_to_string_default()
+  end
+
+  def uuid4?(uuid) do
+    Regex.match?(@uuid_regex, uuid)
   end
 
   defp uuid_to_string_default(<<

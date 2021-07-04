@@ -4,6 +4,7 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
   import Commanded.Assertions.EventAssertions
   import Commanded.Enumerable
 
+  alias Commanded.UUID
   alias Commanded.EventStore
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ExampleApp

@@ -4,6 +4,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
   define_tests do
     import Commanded.Enumerable, only: [pluck: 2]
 
+    alias Commanded.UUID
     alias Commanded.EventStore.EventData
 
     defmodule BankAccountOpened do
@@ -243,7 +244,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
     end
 
     defp assert_is_uuid(uuid) do
-      assert uuid |> UUID.string_to_binary!() |> is_binary()
+      assert UUID.uuid4?(uuid)
     end
 
     # Returns `true` if module implements behaviour.

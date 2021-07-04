@@ -1,6 +1,7 @@
 defmodule Commanded.Commands.CompositeRouterTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.Commands.Composite.CompositeCompositeRouter
   alias Commanded.Commands.Composite.ExampleCompositeRouter
   alias Commanded.Commands.Composite.UnregisteredCommand

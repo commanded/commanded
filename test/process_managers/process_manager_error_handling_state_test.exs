@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess
   alias Commanded.ProcessManagers.ErrorRouter
   alias Commanded.ProcessManagers.ExampleApp

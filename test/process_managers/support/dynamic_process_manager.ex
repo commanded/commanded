@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManagers.DynamicProcessManager do
   @moduledoc false
 
+  alias Commanded.UUID
   alias Commanded.ProcessManagers.DynamicProcessManager
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened

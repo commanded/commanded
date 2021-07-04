@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManager.DynamicProcessManagerApplicationTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened

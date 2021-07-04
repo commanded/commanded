@@ -2,6 +2,7 @@ defmodule Commanded.EventStore.EventStorePrefixTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
+    alias Commanded.UUID
     alias Commanded.EventStore.EventData
 
     defmodule BankAccountOpened do

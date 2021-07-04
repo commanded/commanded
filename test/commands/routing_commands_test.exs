@@ -1,6 +1,7 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Commands.UnregisteredCommand
   alias Commanded.EventStore
