@@ -136,6 +136,7 @@ defmodule Commanded.Mixfile do
         Aggregates: [
           Commanded.Aggregate.Multi,
           Commanded.Aggregates.Aggregate,
+          Commanded.Aggregates.AggregateStateBuilder,
           Commanded.Aggregates.AggregateLifespan,
           Commanded.Aggregates.DefaultLifespan,
           Commanded.Aggregates.ExecutionContext,

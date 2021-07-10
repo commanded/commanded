@@ -202,6 +202,15 @@ defmodule Commanded.Application do
         Supervisor.stop(pid, :normal, timeout)
       end
 
+      def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5000) do
+        Commanded.Aggregates.Aggregate.aggregate_state(
+          __MODULE__,
+          aggregate_module,
+          aggregate_uuid,
+          timeout
+        )
+      end
+
       defp name(opts) do
         case Keyword.get(opts, :name) do
           nil ->
