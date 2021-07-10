@@ -16,9 +16,9 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :eventual)
       :ok = Subscriptions.register(DefaultApp, "handler3", Handler3, :strong)
 
-      assert Subscriptions.all(DefaultApp) == [
-               {"handler3", Handler3, self()},
-               {"handler1", Handler1, self()}
+      assert Subscriptions.all(DefaultApp) |> Enum.sort() == [
+               {"handler1", Handler1, self()},
+               {"handler3", Handler3, self()}
              ]
     end
 
