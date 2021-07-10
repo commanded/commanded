@@ -29,9 +29,7 @@ defmodule Commanded.Middleware.Logger do
 
   def after_failure(%Pipeline{assigns: %{error: error, error_reason: error_reason}} = pipeline) do
     Logger.info(fn ->
-      "#{log_context(pipeline)} failed #{inspect(error)} in #{formatted_diff(delta(pipeline))}, due to: #{
-        inspect(error_reason)
-      }"
+      "#{log_context(pipeline)} failed #{inspect(error)} in #{formatted_diff(delta(pipeline))}, due to: #{inspect(error_reason)}"
     end)
 
     pipeline

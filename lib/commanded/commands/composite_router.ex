@@ -78,9 +78,7 @@ defmodule Commanded.Commands.CompositeRouter do
             @registered_commands Map.put(@registered_commands, command, unquote(router_module))
 
           existing_router ->
-            raise "duplicate registration for #{inspect(command)} command, registered in both #{
-                    inspect(existing_router)
-                  } and #{inspect(unquote(router_module))}"
+            raise "duplicate registration for #{inspect(command)} command, registered in both #{inspect(existing_router)} and #{inspect(unquote(router_module))}"
         end
       end
     end

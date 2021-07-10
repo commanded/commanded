@@ -301,9 +301,7 @@ defmodule Commanded.Commands.Router do
                 by
 
               invalid ->
-                raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{
-                        inspect(invalid)
-                      }"
+                raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
             end
 
           prefix =
@@ -318,9 +316,7 @@ defmodule Commanded.Commands.Router do
                 prefix
 
               invalid ->
-                raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{
-                        inspect(invalid)
-                      }"
+                raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{inspect(invalid)}"
             end
 
           @registered_identities Map.put(@registered_identities, aggregate_module,
@@ -329,9 +325,7 @@ defmodule Commanded.Commands.Router do
                                  )
 
         config ->
-          raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{
-                  inspect(Keyword.get(config, :by))
-                }`"
+          raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
       end
     end
   end
@@ -359,9 +353,7 @@ defmodule Commanded.Commands.Router do
            end) do
           raise ArgumentError,
             message:
-              "Command `#{inspect(unquote(command_module))}` has already been registered in router `#{
-                inspect(__MODULE__)
-              }`"
+              "Command `#{inspect(unquote(command_module))}` has already been registered in router `#{inspect(__MODULE__)}`"
         end
 
         @registered_commands {
