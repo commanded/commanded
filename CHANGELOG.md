@@ -14,6 +14,7 @@
 - Ensure command dispatch metadata is a map ([#432](https://github.com/commanded/commanded/pull/432)).
 - Retry command execution on node down ([#429](https://github.com/commanded/commanded/pull/429)).
 - Dispatch returning resultant events ([#444](https://github.com/commanded/commanded/pull/444)).
+- Get aggregate state ([#448](https://github.com/commanded/commanded/pull/448)).
 
 ## v1.2.0
 
