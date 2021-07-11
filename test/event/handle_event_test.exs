@@ -4,6 +4,7 @@ defmodule Commanded.Event.HandleEventTest do
   import Commanded.Enumerable, only: [pluck: 2]
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Event.AppendingEventHandler
   alias Commanded.Event.EchoHandler

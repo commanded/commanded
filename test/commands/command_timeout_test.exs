@@ -1,6 +1,7 @@
 defmodule Commanded.Commands.CommandTimeoutTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Commands.{TimeoutRouter, TimeoutCommand}
 

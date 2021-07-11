@@ -3,6 +3,7 @@ defmodule Commanded.Aggregate.MultiTest do
 
   import Commanded.Enumerable
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.EventStore
   alias Commanded.Aggregate.Multi

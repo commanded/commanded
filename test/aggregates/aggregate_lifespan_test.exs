@@ -1,6 +1,7 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.Aggregates.{DefaultLifespanRouter, LifespanAggregate, LifespanRouter}
   alias Commanded.Aggregates.LifespanAggregate.{Command, Event}
   alias Commanded.DefaultApp

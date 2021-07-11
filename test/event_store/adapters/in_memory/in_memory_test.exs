@@ -1,6 +1,7 @@
 defmodule Commanded.EventStore.Adapters.InMemoryTest do
   use Commanded.EventStore.InMemoryTestCase
 
+  alias Commanded.UUID
   alias Commanded.EventStore.Adapters.InMemory
   alias Commanded.EventStore.EventData
 

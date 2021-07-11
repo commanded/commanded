@@ -3,6 +3,7 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
 
   import Commanded.Helpers.ProcessHelper, only: [shutdown_aggregate: 3]
 
+  alias Commanded.UUID
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.ExampleDomain.{BankApp, BankAccount, OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount

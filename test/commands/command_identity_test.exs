@@ -1,6 +1,7 @@
 defmodule Commanded.Commands.CommandIdentityTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.Helpers.CommandAuditMiddleware
@@ -17,7 +18,7 @@ defmodule Commanded.Commands.CommandIdentityTest do
       command = %OpenAccount{account_number: "ACC123", initial_balance: 1_000}
       :ok = BankApp.dispatch(command)
       [command_uuid] = CommandAuditMiddleware.dispatched_commands(& &1.command_uuid)
-      assert {:ok, _} = UUID.info(command_uuid)
+      assert UUID.uuid4?(command_uuid)
     end
 
     test "should accept provided command_uuid" do

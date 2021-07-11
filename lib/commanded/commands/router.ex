@@ -507,16 +507,18 @@ defmodule Commanded.Commands.Router do
         @command_opts command_opts
 
         defp do_dispatch(%@command_module{} = command, opts) do
+          alias Commanded.Application
           alias Commanded.Commands.Dispatcher
           alias Commanded.Commands.Dispatcher.Payload
 
           opts = Keyword.merge(@command_opts, opts)
 
           application = Keyword.fetch!(opts, :application)
+          uuid_generator = Application.uuid_generator(application, false) || fn -> nil end
           causation_id = Keyword.get(opts, :causation_id)
-          command_uuid = Keyword.get(opts, :command_uuid, UUID.uuid4())
+          command_uuid = Keyword.get_lazy(opts, :command_uuid, uuid_generator)
           consistency = Keyword.fetch!(opts, :consistency)
-          correlation_id = Keyword.get(opts, :correlation_id, UUID.uuid4())
+          correlation_id = Keyword.get_lazy(opts, :correlation_id, uuid_generator)
           metadata = opts |> Keyword.fetch!(:metadata) |> validate_metadata()
 
           retry_attempts = Keyword.get(opts, :retry_attempts)

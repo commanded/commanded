@@ -1,6 +1,7 @@
 defmodule Commanded.Aggregates.AggregateConcurrencyTest do
   use Commanded.MockEventStoreCase
 
+  alias Commanded.UUID
   alias Commanded.MockedApp
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.EventStore.RecordedEvent

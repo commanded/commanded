@@ -48,7 +48,8 @@ defmodule Commanded.Mixfile do
       "test/pubsub/support",
       "test/registration/support",
       "test/subscriptions/support",
-      "test/support"
+      "test/support",
+      "test/uuid_generator/support"
     ]
 
   defp elixirc_paths(_env), do: ["lib", "test/helpers"]
@@ -56,13 +57,13 @@ defmodule Commanded.Mixfile do
   defp deps do
     [
       {:backoff, "~> 1.1"},
-      {:elixir_uuid, "~> 1.2"},
 
       # Telemetry
       {:telemetry, "~> 0.4"},
       {:telemetry_registry, "~> 0.2"},
 
       # Optional dependencies
+      {:elixir_uuid, "~> 1.2", optional: true},
       {:jason, "~> 1.2", optional: true},
       {:phoenix_pubsub, "~> 2.0", optional: true},
 

@@ -14,6 +14,9 @@ defmodule Commanded.EventStore do
   """
   def append_to_stream(application, stream_uuid, expected_version, events) do
     {adapter, adapter_meta} = Application.event_store_adapter(application)
+    uuid_generator = Application.uuid_generator(application, true)
+
+    events = Enum.map(events, &Map.put(&1, :event_id, uuid_generator.()))
 
     adapter.append_to_stream(
       adapter_meta,

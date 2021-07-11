@@ -1,6 +1,7 @@
 defmodule Commanded.Application.TelemetryTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Middleware.Commands.IncrementCount
   alias Commanded.Middleware.Commands.RaiseError

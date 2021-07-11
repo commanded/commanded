@@ -1,6 +1,7 @@
 defmodule Commanded.Mix.Tasks.ResetEventHandlerTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.BankAccountHandler
