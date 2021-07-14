@@ -407,7 +407,7 @@ defmodule Commanded.Aggregates.Aggregate do
   # Handle events appended to the aggregate's stream, received by its
   # event store subscription, by applying any missed events to its state.
   defp handle_event(%RecordedEvent{} = event, %Aggregate{} = state) do
-    %RecordedEvent{data: data, stream_version: stream_version} = event
+    %RecordedEvent{data: data, event_number: event_number} = event
 
     %Aggregate{
       aggregate_module: aggregate_module,
@@ -417,12 +417,12 @@ defmodule Commanded.Aggregates.Aggregate do
 
     expected_version = aggregate_version + 1
 
-    case stream_version do
+    case event_number do
       ^expected_version ->
         # apply event to aggregate's state
         %Aggregate{
           state
-          | aggregate_version: stream_version,
+          | aggregate_version: event_number,
             aggregate_state: aggregate_module.apply(aggregate_state, data)
         }
 

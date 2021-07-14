@@ -63,7 +63,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
           # specify invalid stream version
           %EventStore.RecordedEvent{
             recorded_event
-            | stream_version: 999
+            | event_number: 999
           }
         end)
 

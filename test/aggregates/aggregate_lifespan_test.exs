@@ -310,7 +310,7 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       events = [
         %RecordedEvent{
           event_id: UUID.uuid4(),
-          stream_version: 1,
+          event_number: 1,
           data: %Event{uuid: aggregate_uuid}
         }
       ]

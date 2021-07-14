@@ -64,12 +64,12 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
   # Rebuild aggregate state from a `Stream` of its events.
   defp rebuild_from_event_stream(event_stream, %Aggregate{} = state) do
     Enum.reduce(event_stream, state, fn event, state ->
-      %RecordedEvent{data: data, stream_version: stream_version} = event
+      %RecordedEvent{data: data, event_number: event_number} = event
       %Aggregate{aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state
 
       %Aggregate{
         state
-        | aggregate_version: stream_version,
+        | aggregate_version: event_number,
           aggregate_state: aggregate_module.apply(aggregate_state, data)
       }
     end)
