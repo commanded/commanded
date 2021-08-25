@@ -15,7 +15,7 @@ To support deployment to a cluster of nodes and distributed Erlang you must conf
 
 ### `:global` registry
 
-Use Erlang's [`:global`](http://erlang.org/doc/man/global.html) name registration facility with distributed Erlang. The global name server starts automatically when a node is started. The registered names are stored in replica global name tables on every node. Thus, the translation of a name to a pid is fast, as it is always done locally.
+Use Erlang's [`:global`](http://erlang.org/doc/man/global.html) name registration facility with distributed Erlang. The global name server starts automatically when a node is started. The registered names are stored in replicated global name tables on every node. Thus, the translation of a name to a pid is fast, as it is always done locally.
 
 Define the `:global` registry for your application:
 
@@ -38,8 +38,8 @@ Or configure your application to use the `:global` registry in config:
 config :my_app, MyApp.Application, registry: :global
 ```
 
-Note that when clusters are formed dynamically (e.g. using [libcluster](https://hex.pm/packages/libcluster)]), the typical of sequence of events is that first all nodes will start all processes, then the cluster is formed and `:global` will kill off duplicate names. This is ugly in the logs but expected; it also means that if your supervisor's `:max_restarts` is too low - lower than the number of event handlers/projectors you start - it will immediately exit and if that was your
-application supervisor your app gets shutdown. The solution is simple: keep `:max_restarts` above the number of event handlers you start under your supervisor and the transition from no cluster to cluster will be clean. 
+Note that when clusters are formed dynamically (e.g. using [libcluster](https://hex.pm/packages/libcluster)]), the typical sequence of events is that first all nodes will start all processes, then the cluster is formed and `:global` will kill off duplicate names. This is ugly in the logs but expected; it also means that if your supervisor's `:max_restarts` is too low - lower than the number of event handlers/projectors you start - it will immediately exit and if that was your
+application supervisor, your app gets shutdown. The solution is simple: keep `:max_restarts` above the number of event handlers you start under your supervisor and the transition from no cluster to cluster will be clean. 
 
 ### Commanded Swarm registry
 
@@ -64,7 +64,7 @@ Configure your application to use the Swarm registry:
 config :my_app, MyApp.Application, registry: Commanded.Registration.SwarmRegistry
 ```
 
-This uses the [Swarm](https://hex.pm/packages/swarm) to distribute process amongst the available nodes in the cluster.
+This uses the [Swarm](https://hex.pm/packages/swarm) to distribute processes amongst the available nodes in the cluster.
 
 ### Phoenix pub/sub
 
@@ -76,7 +76,7 @@ defp deps do
 end
 ```
 
-Fetch mix deps and configure the pubsub settings for your application in the environment config file:
+Fetch mix dependencies and configure the pubsub settings for your application in the environment config file:
 
 ```elixir
 # config/config.exs
@@ -95,7 +95,7 @@ The PG2 adapter is preferable for cluster deployment since it is provided by Erl
 
 If using PostgreSQL-based Elixir EventStore please also refer to its documentation about [running on a clustering of nodes](https://hexdocs.pm/eventstore/cluster.html).
 
-## Multi node, but not distributed Erlang deployment
+## Multi-node, but not distributed Erlang deployment
 
 Running multiple nodes, but choosing not to connect the nodes together to form a distributed Erlang cluster, requires that you use the local registry and Phoenix's pub/sub library with its Redis adapter.
 

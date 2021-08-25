@@ -1,6 +1,6 @@
 # Getting started
 
-Commanded can be installed from hex as follows.
+Commanded can be installed from the package manager hex as follows.
 
 1. Add `commanded` to your list of dependencies in `mix.exs`:
 
@@ -32,4 +32,4 @@ Commanded can be installed from hex as follows.
     end
     ```
 
-5. Configure one of the supported event stores by following the "Choosing an Event Store" guide.
+5. Configure one of the supported event stores by following the [Choosing an Event Store](https://github.com/commanded/commanded/blob/master/guides/Choosing%20an%20Event%20Store.md) guide.

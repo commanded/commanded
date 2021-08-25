@@ -2,7 +2,7 @@
 
 ## Domain events
 
-Domain events indicate that something of importance has occurred, within the context of an aggregate. They are named in the past tense: account registered; funds transferred; fraudulent activity detected.
+Domain events indicate that something of importance has occurred, within the context of an aggregate. They **should** be named in the past tense: account registered; funds transferred; fraudulent activity detected etc.
 
 Create a module per domain event and define the fields with `defstruct`. An event **should contain** a field to uniquely identify the aggregate instance (e.g. `account_number`).
 
@@ -15,13 +15,13 @@ defmodule BankAccountOpened do
 end
 ```
 
-Note, due to event serialization you should expect that only: strings, numbers and boolean values defined in an event are preserved; any other value will be converted to a string. You can control this behaviour as described in serialization section.
+Note, due to event serialization you should expect that only: strings, numbers and boolean values defined in an event are preserved; any other value will be converted to a string. You can control this behaviour as described in [serialization](https://github.com/commanded/commanded/blob/master/guides/Serialization.md) section.
 
 ## Event handlers
 
 Event handlers allow you to execute code that reacts to domain events: to build read model projections; dispatch commands to other aggregates; and to interact with third-party systems such as sending emails.
 
-Commanded guarantees only one instance of an event handler will run, regardless of how many nodes are running (even when not using distributed Erlang). This is enforced by the event store subscription (Postgres advisory locks in Elixir Event Store).
+Commanded guarantees only one instance of an event handler will run, regardless of how many nodes are running (even when not using distributed Erlang). This is enforced by the event store subscription (PostgreSQL advisory locks in Elixir Event Store).
 
 Use the `Commanded.Event.Handler` macro within your event handler module to implement the defined behaviour. This consists of a single `handle/2` function that receives each published domain event and its metadata, including the event's unique event number. It should return `:ok` on success or `{:error, :reason}` on failure. You can return `{:error, :already_seen_event}` to skip events that have already been handled, due to the at-least-once event delivery of the supported event stores.
 
@@ -68,7 +68,7 @@ You can optionally override `:start_from` by passing it as param:
 
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
-You should start your event handlers using a [supervisor](#supervision) to ensure they are restarted on error.
+You should start your event handlers using a [supervisor](https://github.com/commanded/commanded/blob/master/guides/Supervision.md#) to ensure they are restarted on error.
 
 ### Subscribing to an individual stream
 
@@ -192,7 +192,7 @@ end
 
 ## Reset an EventHandler
 
-An event handler can be reset (using mix task), it will restart the event store subscription from the configured
+An event handler can be reset (using a mix task), it will restart the event store subscription from the configured
 `start_from`. This allow an individual handler to be restart while the app is still running.
 
 You can define a `before_reset/1` method that will be called before resetting the event handler.

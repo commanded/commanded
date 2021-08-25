@@ -258,6 +258,7 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   end
 end
 ```
+Note: The default JSON encoding of a `DateTime` struct uses the `to_iso8601/1` function which is why we must decode it using the `from_iso8601/1` function. 
 
 ### Rebuilding an aggregate snapshot
 
