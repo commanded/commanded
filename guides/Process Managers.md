@@ -46,7 +46,7 @@ This callback function is optional, the default behaviour is to retain the proce
 
 ## `error/3`
 
-You can define an `c:error/3` callback function to handle any errors or exceptions during event handling or returned by commands dispatched from your process manager. The function is passed the error (e.g. `{:error, :failure}`), the failed event or command, and a failure context. See [`Commanded.ProcessManagers.FailureContext`](https://hexdocs.pm/commanded/Commanded.ProcessManagers.FailureContext.html#content) for details.
+You can define an `c:error/3` callback function to handle any errors or exceptions during event handling or returned by commands dispatched from your process manager. The function is passed the error (e.g. `{:error, :failure}`), the failed event or command, and a failure context. See `Commanded.ProcessManagers.FailureContext` for details.
 
 Use pattern matching on the error and/or failed event/command to explicitly handle certain errors, events, or commands. You can choose to retry, skip, ignore, or stop the process manager after a command dispatch error.
 
@@ -223,4 +223,4 @@ Process manager instance state is persisted to storage after each handled event.
 - `event_timeout` - a timeout for event handling to ensure that events are processed in a timely manner without getting stuck.
 - `idle_timeout` - to reduce memory usage you can configure an idle timeout, in milliseconds, after which an inactive process instance will be shutdown.
 
-See the [`ProcessManager` module docs](https://hexdocs.pm/commanded/Commanded.ProcessManagers.ProcessManager.html#content) for more details.
+Refer to the `Commanded.ProcessManagers.ProcessManager` module docs for more details.

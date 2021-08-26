@@ -77,7 +77,7 @@ defmodule OpenAccountHandler do
 end
 ```
 
-Command handlers execute in the context of the dispatch call, as such they are limited to the timeout period specified. The default timeout is five seconds, the same as a [`GenServer`](https://hexdocs.pm/elixir/GenServer.html#module-timeouts) call. You can increase the timeout value for individual commands as required - see the section on [Timeouts](#timeouts) below.
+Command handlers execute in the context of the dispatch call, as such they are limited to the timeout period specified. The default timeout is five seconds, the same as a `GenServer` call. You can increase the timeout value for individual commands as required - see the section on [Timeouts](#timeouts) below.
 
 ### Dispatch directly to aggregate
 
@@ -187,7 +187,7 @@ open_account = %OpenAccount{
 
 ### Timeouts
 
-A command handler has a default timeout of 5 seconds. The same default as a [`GenServer`](https://hexdocs.pm/elixir/GenServer.html#module-timeouts) process call. It must handle the command in this period, otherwise the call fails and the caller process exits.
+A command handler has a default timeout of 5 seconds. The same default as a `GenServer.call/3` process call. It must handle the command in this period, otherwise the call fails and the caller process exits.
 
 You can configure a different timeout value during command registration by providing a `timeout` option, defined in milliseconds:
 
@@ -360,7 +360,7 @@ end
 
 Commands dispatched by a process manager will be automatically assigned the appropriate causation and correlation ids from the source domain event.
 
-You can use [Commanded audit middleware](https://github.com/commanded/commanded-audit-middleware) to record every dispatched command. This allows you to follow the chain of commands and events by using the causation id. The correlation id can be used to find all related commands and events.
+You can use [Commanded audit middleware](https://hex.pm/packages/commanded_audit_middleware) to record every dispatched command. This allows you to follow the chain of commands and events by using the causation id. The correlation id can be used to find all related commands and events.
 
 ### Event metadata
 

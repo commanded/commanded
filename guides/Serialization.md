@@ -58,7 +58,7 @@ JSON serialization configuration depends upon which event store you are using wi
 
   Note that the two EventStore serializers do not implement the `Commanded.Serialization.JsonSerializer` decoding protocol.
 
-- Event Store:
+- EventStoreDB:
 
   ```elixir
   config :commanded_extreme_adapter,
@@ -110,7 +110,7 @@ Configure your own serializer in `config/config.exs` for the event store you are
   config :my_app, MyApp.EventStore, serializer: MyApp.MessagePackSerializer
   ```
 
-- Event Store:
+- EventStoreDB:
 
   ```elixir
   config :my_app, MyApp, serializer: MyApp.MessagePackSerializer

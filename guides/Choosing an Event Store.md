@@ -4,7 +4,7 @@ You must decide which event store to use with Commanded. You have a choice betwe
 
 - PostgreSQL-based Elixir [EventStore](https://github.com/commanded/eventstore) ([adapter](https://github.com/commanded/commanded-eventstore-adapter)).
 
-- [Event Store](https://eventstore.org/) ([adapter](https://github.com/commanded/commanded-extreme-adapter)).
+- [EventStoreDB](https://www.eventstore.com/) ([adapter](https://github.com/commanded/commanded-extreme-adapter)).
 
 There is also an [in-memory event store adapter](https://github.com/commanded/commanded/wiki/In-memory-event-store) for *test use only*.
 
@@ -14,23 +14,23 @@ Want to use a different event store? Then you will need to write your own event 
 
 ## PostgreSQL-based Elixir EventStore
 
-Use [EventStore Adapter](https://github.com/commanded/commanded-eventstore-adapter) to persist events to a PostgreSQL database. As the name implies, this is an adapter for [EventStore](https://github.com/commanded/eventstore), which is open-source and implemented in Elixir.
+Use [`:commanded_eventstore_adapter`](https://github.com/commanded/commanded-eventstore-adapter) to persist events to a PostgreSQL database. As the name implies, this is the adapter for [EventStore](https://github.com/commanded/eventstore), which is open-source event store using PostgreSQL for persistence and implemented in Elixir.
 
 ---
 
-## Event Store
+## [EventStoreDB](https://www.eventstore.com/)
 
-Use the [Extreme Adapter](https://github.com/commanded/commanded-extreme-adapter) to persist events to [Event Store](https://eventstore.org/): an open-source, functional database with Complex Event Processing in JavaScript. It can run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
+Use [`:commanded_extreme_adapter`](https://github.com/commanded/commanded-extreme-adapter) to persist events to [EventStoreDB](https://www.eventstore.com/): an open-source database, the best data storage solution for event-sourced systems. It can be run as a cluster of nodes containing the same data, which remains available for writes provided at least half the nodes are alive and connected.
 
-The quickest way to get started with Event Store is by using their official [Event Store Docker container](https://store.docker.com/community/images/eventstore/eventstore).
+The quickest way to get started with EventStoreDB is by using their official [EventStoreDB Docker container](https://hub.docker.com/r/eventstore/eventstore).
 
-The Commanded adapter uses the [Extreme](https://github.com/exponentially/extreme) Elixir TCP client to connect to the Event Store.
+The Commanded adapter uses the [`:extreme`](https://github.com/exponentially/extreme) Elixir TCP client to connect to EventStoreDB.
 
-### Running the Event Store
+### Running EventStoreDB
 
-You **must** run the Event Store with all projections enabled and standard projections started.
+You **must** run EventStoreDB with all projections enabled and standard projections started.
 
-Use the `--run-projections=all --start-standard-projections=true` flags when running the Event Store executable.
+Use the `--run-projections=all --start-standard-projections=true` flags when running the EventStoreDB executable.
 
 ---
 
