@@ -6,7 +6,7 @@ An aggregate is comprised of its state, public command functions, and state muta
 
 In a CQRS application all state must be derived from the published domain events. This prevents tight coupling between aggregate instances, such as querying for their state, and ensures their state isn't exposed.
 
-If an aggregate needs data owned by another aggregate, then you should lookup the data from a projection and include it in the command before dispatch. Usually this would be a projection into a read model built for querying. You can use Commanded Ecto projections to project events into a SQL database. 
+If an aggregate needs data owned by another aggregate, then you should lookup the data from a projection and include it in the command before dispatch. Usually this would be a projection into a read model built for querying. You can use Commanded Ecto projections to project events into a SQL database.
 
 ## Aggregate state
 
@@ -20,9 +20,9 @@ end
 
 ## Command functions
 
-A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events.
+A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events. You can return a single event or a list of events:  `%Event{}`, `[%Event{}]`, `{:ok, %Event{}}`, or `{:ok, [%Event{}]}`.
 
-To respond without returning an event you can return `nil` or an empty list `[]`.
+To respond without returning an event you can return `:ok`, `nil` or an empty list as either `[]` or `{:ok, []}`.
 
 For business rule violations and errors you may return an `{:error, error}` tagged tuple or raise an exception.
 
@@ -30,8 +30,12 @@ Name your public command functions `execute/2` to dispatch commands directly to 
 
 ```elixir
 defmodule ExampleAggregate do
-  def execute(%ExampleAggregate{uuid: nil}, %Create{uuid: uuid, name: name}) do
-    %Created{uuid: uuid, name: name}
+  def execute(%ExampleAggregate{uuid: nil}, %Create{} = command) do
+    %Create{uuid: uuid, name: name} = command
+
+    event = %Created{uuid: uuid, name: name}
+
+    {:ok, event}
   end
 
   def execute(%ExampleAggregate{}, %Create{}),
@@ -47,7 +51,9 @@ Pattern matching is used to invoke the respective `apply/2` function for an even
 
 ```elixir
 defmodule ExampleAggregate do
-  def apply(%ExampleAggregate{}, %Created{uuid: uuid, name: name}) do
+  def apply(%ExampleAggregate{}, %Created{} = event) do
+    %Created{uuid: uuid, name: name} = event
+
     %ExampleAggregate{uuid: uuid, name: name}
   end
 end
@@ -61,12 +67,14 @@ You can define your aggregate with public API functions using the language of yo
 defmodule BankAccount do
   defstruct [:account_number, :balance]
 
-  # public command API
+  # Public API
 
   def open_account(%BankAccount{account_number: nil}, account_number, initial_balance)
     when initial_balance > 0
   do
-    %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
+    event = %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
+
+    {:ok, event}
   end
 
   def open_account(%BankAccount{}, _account_number, initial_balance)
@@ -79,9 +87,11 @@ defmodule BankAccount do
     {:error, :account_already_opened}
   end
 
-  # state mutators
+  # State mutators
 
-  def apply(%BankAccount{} = account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}) do
+  def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
+    %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
+
     %BankAccount{account |
       account_number: account_number,
       balance: initial_balance
@@ -99,7 +109,9 @@ defmodule Commanded.ExampleDomain.OpenAccountHandler do
 
   @behaviour Commanded.Commands.Handler
 
-  def handle(%BankAccount{} = aggregate, %OpenAccount{account_number: account_number, initial_balance: initial_balance}) do
+  def handle(%BankAccount{} = aggregate, %OpenAccount{} = command) do
+    %OpenAccount{account_number: account_number, initial_balance: initial_balance} = command
+
     BankAccount.open_account(aggregate, account_number, initial_balance)
   end
 end
@@ -113,11 +125,15 @@ In this example the `execute/2` function pattern matches on the `OpenAccount` co
 defmodule BankAccount do
   defstruct [:account_number, :balance]
 
-  # public command API
+  # Public API
 
-  def execute(%BankAccount{account_number: nil}, %OpenAccount{account_number: account_number, initial_balance: initial_balance})
-    when initial_balance > 0
+  def execute(
+    %BankAccount{account_number: nil},
+    %OpenAccount{initial_balance: initial_balance} = command
+    ) when initial_balance > 0
   do
+    %OpenAccount{account_number: account_number} = command
+
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
@@ -131,9 +147,11 @@ defmodule BankAccount do
     {:error, :account_already_opened}
   end
 
-  # state mutators
+  # State mutators
 
-  def apply(%BankAccount{} = account, %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}) do
+  def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
+    %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
+
     %BankAccount{account |
       account_number: account_number,
       balance: initial_balance
@@ -162,7 +180,7 @@ defmodule BankAccount do
 
   alias Commanded.Aggregate.Multi
 
-  # Public command API
+  # Public API
 
   def execute(
     %BankAccount{state: :active} = account,
@@ -185,21 +203,29 @@ defmodule BankAccount do
 
   # Private helpers
 
-  defp withdraw_money(%BankAccount{account_number: account_number, balance: balance}, amount) do
-    %MoneyWithdrawn{
+  defp withdraw_money(%BankAccount{} = account, amount) do
+    %BankAccount{account_number: account_number, balance: balance} = account
+
+    event = %MoneyWithdrawn{
       account_number: account_number,
       amount: amount,
       balance: balance - amount
     }
+
+    {:ok, event}
   end
 
-  defp check_balance(%BankAccount{account_number: account_number, balance: balance})
+  defp check_balance(%BankAccount{balance: balance} = account)
     when balance < 0
   do
-    %AccountOverdrawn{account_number: account_number, balance: balance}
+    %BankAccount{account_number: account_number} = account
+
+    event = %AccountOverdrawn{account_number: account_number, balance: balance}
+
+    {:ok, event}
   end
 
-  defp check_balance(%BankAccount{}), do: []
+  defp check_balance(%BankAccount{}), do: :ok
 end
 ```
 
@@ -258,6 +284,7 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   end
 end
 ```
+Note: The default JSON encoding of a `DateTime` struct uses the `to_iso8601/1` function which is why we must decode it using the `from_iso8601/1` function.
 
 ### Rebuilding an aggregate snapshot
 

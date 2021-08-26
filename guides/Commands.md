@@ -187,7 +187,7 @@ open_account = %OpenAccount{
 
 ### Timeouts
 
-A command handler has a default timeout of 5 seconds. The same default as a `GenServer` process call. It must handle the command in this period, otherwise the call fails and the caller exits.
+A command handler has a default timeout of 5 seconds. The same default as a `GenServer.call/3` process call. It must handle the command in this period, otherwise the call fails and the caller process exits.
 
 You can configure a different timeout value during command registration by providing a `timeout` option, defined in milliseconds:
 
@@ -270,7 +270,7 @@ Using `:eventual` consistency, or omitting the `consistency` option, will cause 
 
 #### Configure default consistency
 
-You may override the default consistency (`:eventual`) by setting `default_consistency` in environment config (e.g. `config/config.exs`):
+You may override the default consistency (`:eventual`) by setting `default_consistency` in your environment config (e.g. `config/config.exs`):
 
 ```elixir
 config :commanded, default_consistency: :strong
@@ -326,7 +326,7 @@ You can optionally choose to include the aggregate's version as part of the disp
 
 This is useful when you need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
 
-### Correlation and causation ids
+### Causation and correlation ids
 
 To assist with monitoring and debugging your deployed application it is useful to track the causation and correlation ids for your commands and events.
 
@@ -339,7 +339,7 @@ You can set causation and correlation ids when dispatching a command:
 :ok = BankApp.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
 ```
 
-When dispatching a command in an event handler, you should copy these values from the event your are processing:
+When dispatching a command in an event handler, you should copy these values from the metadata (second) argument associated with the event you are handling:
 
 ```elixir
 defmodule ExampleHandler do  
@@ -360,7 +360,7 @@ end
 
 Commands dispatched by a process manager will be automatically assigned the appropriate causation and correlation ids from the source domain event.
 
-You can use [Commanded audit middleware](https://github.com/commanded/commanded-audit-middleware) to record every dispatched command. This allows you to follow the chain of commands and events by using the causation id. The correlation id can be used to find all related commands and events.
+You can use [Commanded audit middleware](https://hex.pm/packages/commanded_audit_middleware) to record every dispatched command. This allows you to follow the chain of commands and events by using the causation id. The correlation id can be used to find all related commands and events.
 
 ### Event metadata
 
@@ -370,7 +370,7 @@ It's helpful for debugging to have additional metadata associated with events is
 :ok = BankApp.dispatch(command, metadata: %{"issuer_id" => issuer_id, "user_id" => "user@example.com"})
 ```
 
-Note, due metadata serialization you should expect that only: strings, numbers, and boolean values are preserved; any other value will be converted to a string.
+Note, due to metadata serialization you should expect that only: strings, numbers, and boolean values are preserved; any other value will be converted to a string.
 
 You should always use string keys in your metadata map; atom keys will be converted to strings.
 
@@ -409,7 +409,7 @@ defmodule BankRouter do
 end
 ```
 
-The inactivity timeout is specified in milliseconds, after which time the aggregate process will be stopped if no other messages are received.
+The inactivity timeout is specified in milliseconds, after which time the aggregate process will be stopped if no other messages are received by it.
 
 Return `:stop` or `{:stop, reason}` to immediately shutdown the aggregate process. Return `:infinity` to prevent the aggregate instance from shutting down.
 
@@ -419,7 +419,7 @@ You can also return `:hibernate` and the process is hibernated, it will continue
 
 Allows a command router to define middleware modules that are executed before and after success or failure of each command dispatch.
 
-This provides an extension point to add in command validation, authorization, logging, and other behaviour that you want to be called for every command the router dispatches.
+This provides an extension point to add in command validation, authorization, logging, and other cross-cutting behaviour that you want to be called for every command the router dispatches.
 
 ```elixir
 defmodule BankingRouter do
@@ -436,7 +436,7 @@ defmodule BankingRouter do
 end
 ```
 
-The middleware modules are executed in the order they’ve been defined. They will receive a `Commanded.Middleware.Pipeline` struct containing the command being dispatched.
+The middleware modules are executed in the order they’ve been defined. They will receive a `Commanded.Middleware.Pipeline` struct containing the command being dispatched, in the `:command` field.
 
 ### Example middleware
 

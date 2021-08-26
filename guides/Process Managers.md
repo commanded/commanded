@@ -74,7 +74,7 @@ For command dispatch failures, when failure source is a command, you can also re
 
 ## Supervision
 
-Supervise you process managers to ensure they are restarted on error.
+Supervise your process managers to ensure they are restarted on error.
 
 ```elixir
 defmodule Bank.Payments.Supervisor do
@@ -97,7 +97,7 @@ end
 
 ### Supervision caveats
 
-The default error handling strategy is to stop the process manager. When supervised, the process will be restarted and will attempt to handle the same event again, which will likely result in the same error. This could lead to too many restarts of the supervisor, which may eventually cause the application to stop, depending upon your supervision tree.
+The default error handling strategy is to stop the process manager. When supervised, the process will be restarted and will attempt to handle the same event again, which will likely result in the same error. This could lead to too many restarts of the supervisor, which may eventually cause the application to stop, depending upon your supervision tree and its strategy.
 
 To prevent this you can choose to define the default error handling strategy as `:skip` to skip over any problematic events.
 
@@ -213,7 +213,7 @@ The name given to the process manager *must* be unique. This is used when subscr
 {:ok, _pid} = TransferMoneyProcessManager.start_link(start_from: :current)
 ```
 
-You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use the origin so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
+You can choose to start the process router's event store subscription from the `:origin`, `:current` position or an exact event number using the `start_from` option. The default is to use `:origin` so it will receive all events. You typically use `:current` when adding a new process manager to an already deployed system containing historical events.
 
 Process manager instance state is persisted to storage after each handled event. This allows the process manager to resume should the host process terminate.
 
@@ -223,4 +223,4 @@ Process manager instance state is persisted to storage after each handled event.
 - `event_timeout` - a timeout for event handling to ensure that events are processed in a timely manner without getting stuck.
 - `idle_timeout` - to reduce memory usage you can configure an idle timeout, in milliseconds, after which an inactive process instance will be shutdown.
 
-See the process manager module docs for more details.
+Refer to the `Commanded.ProcessManagers.ProcessManager` module docs for more details.

@@ -4,7 +4,7 @@
 
 JSON serialization can be used for event data & metadata, and aggregate and process manager snapshots.
 
-To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add `jason` to your deps:
+To enable JSON serialization with the included `Commanded.Serialization.JsonSerializer` module add the `jason` library to your deps:
 
 ```elixir
 def deps do
@@ -58,7 +58,7 @@ JSON serialization configuration depends upon which event store you are using wi
 
   Note that the two EventStore serializers do not implement the `Commanded.Serialization.JsonSerializer` decoding protocol.
 
-- Event Store:
+- EventStoreDB:
 
   ```elixir
   config :commanded_extreme_adapter,
@@ -104,13 +104,13 @@ You can implement your own serializer module to use an alternative serialization
 
 Configure your own serializer in `config/config.exs` for the event store you are using.
 
-- Postgres EventStore:
+- PostgreSQL EventStore:
 
   ```elixir
   config :my_app, MyApp.EventStore, serializer: MyApp.MessagePackSerializer
   ```
 
-- Event Store:
+- EventStoreDB:
 
   ```elixir
   config :my_app, MyApp, serializer: MyApp.MessagePackSerializer
