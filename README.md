@@ -166,6 +166,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Raphaël Lustin](https://github.com/rlustin)
 - [Štefan Ľupták](https://github.com/EskiMag)
 - [Tobiasz Małecki](https://github.com/amatalai)
+- [Willy Wombat](https://github.com/octowombat)
 - [Yuri de Figueiredo](https://github.com/y86)
 - [Zven](https://github.com/zven21)
 
