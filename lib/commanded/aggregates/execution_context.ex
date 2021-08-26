@@ -69,7 +69,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     {:ok, context}
   end
 
-  def format_reply(result, %ExecutionContext{} = context, %Aggregate{} = aggregate) do
+  def format_reply({:ok, events}, %ExecutionContext{} = context, %Aggregate{} = aggregate) do
     %Aggregate{
       aggregate_uuid: aggregate_uuid,
       aggregate_state: aggregate_state,
@@ -78,34 +78,37 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
     %ExecutionContext{metadata: metadata, returning: returning} = context
 
-    with {:ok, events} <- result do
-      case returning do
-        :aggregate_state ->
-          {:ok, aggregate_version, events, aggregate_state}
+    case returning do
+      :aggregate_state ->
+        {:ok, aggregate_version, events, aggregate_state}
 
-        :aggregate_version ->
-          {:ok, aggregate_version, events, aggregate_version}
+      :aggregate_version ->
+        {:ok, aggregate_version, events, aggregate_version}
 
-        :events ->
-          {:ok, aggregate_version, events, events}
+      :events ->
+        {:ok, aggregate_version, events, events}
 
-        :execution_result ->
-          result = %ExecutionResult{
-            aggregate_uuid: aggregate_uuid,
-            aggregate_state: aggregate_state,
-            aggregate_version: aggregate_version,
-            events: events,
-            metadata: metadata
-          }
+      :execution_result ->
+        result = %ExecutionResult{
+          aggregate_uuid: aggregate_uuid,
+          aggregate_state: aggregate_state,
+          aggregate_version: aggregate_version,
+          events: events,
+          metadata: metadata
+        }
 
-          {:ok, aggregate_version, events, result}
+        {:ok, aggregate_version, events, result}
 
-        false ->
-          {:ok, aggregate_version, events}
-      end
-    else
-      {:error, _error} = reply -> reply
-      {:error, error, _stacktrace} -> {:error, error}
+      false ->
+        {:ok, aggregate_version, events}
     end
+  end
+
+  def format_reply({:error, _error} = reply, _context, _aggregate) do
+    reply
+  end
+
+  def format_reply({:error, error, _stacktrace}, _context, _aggregate) do
+    {:error, error}
   end
 end
