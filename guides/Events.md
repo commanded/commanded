@@ -15,7 +15,7 @@ defmodule BankAccountOpened do
 end
 ```
 
-Note, due to event serialization you should expect that only: strings, numbers and boolean values defined in an event are preserved; any other value will be converted to a string. You can control this behaviour as described in [serialization](https://github.com/commanded/commanded/blob/master/guides/Serialization.md) section.
+Note, due to event serialization you should expect that only: strings, numbers and boolean values defined in an event are preserved; any other value will be converted to a string. You can control this behaviour as described in the [Serialization](https://hexdocs.pm/commanded/serialization.html#content) guide.
 
 ## Event handlers
 
@@ -68,7 +68,7 @@ You can optionally override `:start_from` by passing it as param:
 
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
-You should start your event handlers using a [supervisor](https://github.com/commanded/commanded/blob/master/guides/Supervision.md#) to ensure they are restarted on error.
+You should start your event handlers using a supervisor (see the [Supervision](https://hexdocs.pm/commanded/supervision.html#content) guide) to ensure they are restarted on error.
 
 ### Subscribing to an individual stream
 

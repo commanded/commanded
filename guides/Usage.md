@@ -4,11 +4,11 @@ Commanded provides the building blocks for you to create your own Elixir applica
 
 A separate guide is provided for each of the components you can build:
 
-- [Application](https://github.com/commanded/commanded/blob/master/guides/Application.md)
-- [Aggregates](https://github.com/commanded/commanded/blob/master/guides/Aggregates.md)
-- [Commands, registration and dispatch](https://github.com/commanded/commanded/blob/master/guides/Commands.md)
-- [Events and handlers](https://github.com/commanded/commanded/blob/master/guides/Events.md)
-- [Process managers](https://github.com/commanded/commanded/blob/master/guides/Process%20Managers.md)
+- [Application](https://hexdocs.pm/commanded/application.html#content)
+- [Aggregates](https://hexdocs.pm/commanded/aggregates.html#content)
+- [Commands, registration and dispatch](https://hexdocs.pm/commanded/commands.html#content)
+- [Events and handlers](https://hexdocs.pm/commanded/events.html#content)
+- [Process managers](https://hexdocs.pm/commanded/process-managers.html#content)
 
 Commanded uses strong consistency for command dispatch (write model) and eventual consistency, by default, for the read model. Receiving an `:ok` reply from dispatch indicates the command was successfully handled and any created domain events fully persisted to your chosen event store. You may opt-in to strong consistency for individual event handlers and command dispatch as required.
 

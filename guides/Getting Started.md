@@ -32,4 +32,4 @@ Commanded can be installed from the package manager hex as follows.
     end
     ```
 
-5. Configure one of the supported event stores by following the [Choosing an Event Store](https://github.com/commanded/commanded/blob/master/guides/Choosing%20an%20Event%20Store.md) guide.
+5. Configure one of the supported event stores by following the [Choosing an Event Store](https://hexdocs.pm/commanded/choosing-an-event-store.html#content) guide.
