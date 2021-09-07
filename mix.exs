@@ -59,7 +59,7 @@ defmodule Commanded.Mixfile do
       {:elixir_uuid, "~> 1.2"},
 
       # Telemetry
-      {:telemetry, "~> 0.4"},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
       {:telemetry_registry, "~> 0.2"},
 
       # Optional dependencies
