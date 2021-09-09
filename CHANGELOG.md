@@ -15,6 +15,7 @@
 - Retry command execution on node down ([#429](https://github.com/commanded/commanded/pull/429)).
 - Dispatch returning resultant events ([#444](https://github.com/commanded/commanded/pull/444)).
 - Get aggregate state ([#448](https://github.com/commanded/commanded/pull/448)).
+- Support telemetry v1.0 ([#456](https://github.com/commanded/commanded/pull/456)).
 
 ## v1.2.0
 

@@ -157,6 +157,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Luís Ferreira](https://github.com/zamith)
 - [Marcelo Dominguez](https://github.com/marpo60)
 - [Matt Doughty](https://github.com/m-doughty)
+- [Michael Herold](https://github.com/michaelherold)
 - [Miguel Palhas](https://github.com/naps62)
 - [Nigel Thorne](https://github.com/nigelthorne)
 - [Olafur Arason](https://github.com/olafura)

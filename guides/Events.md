@@ -158,10 +158,9 @@ The available options are `:eventual` (default) and `:strong`:
 
 You request the consistency guarantee, either `:strong` or `:eventual`, when dispatching a command. Strong consistency will block the command dispatch and wait for all strongly consistent event handlers to successfully process all events created by the command. Whereas eventual consistency will immediately return after command dispatch, without waiting for any event handlers, even those configured for strong consistency.
 
-### How does it work
+### How does it work?
 
-An event handler is a `GenServer` process that [subscribes](https://github.com/commanded/commanded/blob/bd3be98a225629816127cf8ef6624632cd09766e/lib/commanded/event/handler.ex#L775) to the configured event store. For each event persisted to the store the [`handle/2` callback](https://github.com/commanded/commanded/blob/bd3be98a225629816127cf8ef6624632cd09766e/lib/commanded/event/handler.ex#L874) is called, passing the domain event and its metadata.
-
+An event handler is a `GenServer` process that subscribes to the configured event store. For each event persisted to the store the `handle/2` callback is called, passing the domain event and its metadata.
 
 ## Upcasting events
 
@@ -200,7 +199,7 @@ end
 An event handler can be reset (using a mix task), it will restart the event store subscription from the configured
 `start_from`. This allow an individual handler to be restart while the app is still running.
 
-You can define a `before_reset/1` method that will be called before resetting the event handler.
+You can define a `before_reset/1` function that will be called before resetting the event handler.
 
 ```elixir
 defmodule ExampleHandler do
@@ -216,6 +215,5 @@ defmodule ExampleHandler do
     # Do something
     :ok
   end
-
 end
 ```

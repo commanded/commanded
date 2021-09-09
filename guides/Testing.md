@@ -93,10 +93,10 @@ end
 
 ## Aggregate state testing
 
-Sometimes it's useful to compare an expected aggregate's state with the previous one. This kind of method should be used
+Sometimes it's useful to compare an expected aggregate's state with the previous one. This kind of function should be used
 only for testing.
 
-For this purpose, Commanded provides an `aggregate_state` method which returns the current aggregate state.
+For this purpose, Commanded provides an `aggregate_state` function which returns the current aggregate state.
 
 ```elixir
 import Commanded.Assertions.EventAssertions
