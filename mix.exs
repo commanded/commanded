@@ -233,7 +233,8 @@ defmodule Commanded.Mixfile do
       licenses: ["MIT"],
       links: %{
         "GitHub" => "https://github.com/commanded/commanded",
-        "Docs" => "https://hexdocs.pm/commanded/"
+        "Docs" => "https://hexdocs.pm/commanded/",
+        "Sponsor" => "https://opencollective.com/commanded"
       }
     ]
   end
