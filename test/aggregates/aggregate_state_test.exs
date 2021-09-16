@@ -1,6 +1,7 @@
 defmodule Commanded.Aggregates.AggregateStateTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
 
   alias Commanded.Aggregates.{

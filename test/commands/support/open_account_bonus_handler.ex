@@ -5,6 +5,7 @@ defmodule Commanded.Commands.OpenAccountBonusHandler do
     application: BankApp,
     name: "OpenAccountBonus"
 
+  alias Commanded.UUID
   alias Commanded.ExampleDomain.BankRouter
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened

@@ -3,6 +3,7 @@ defmodule Commanded.Middleware.MiddlewareTest do
 
   import Commanded.Enumerable
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Commands.ExecutionResult
   alias Commanded.Middleware.Pipeline

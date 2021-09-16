@@ -1,6 +1,7 @@
 defmodule Event.UpcasterTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.Aggregates.Aggregate
   alias Commanded.DefaultApp
   alias Commanded.EventStore
@@ -115,7 +116,7 @@ defmodule Event.UpcasterTest do
     end
 
     test "will receive upcasted events" do
-      process_id = UUID.uuid4(:hex)
+      process_id = UUID.uuid4()
       reply_to = :erlang.pid_to_list(self())
 
       write_events(Application, [
@@ -162,6 +163,7 @@ defmodule Event.UpcasterTest do
 
   defp create_event(%{__struct__: event_type} = data) do
     %EventData{
+      event_id: UUID.uuid4(),
       event_type: to_string(event_type),
       data: data,
       metadata: %{}

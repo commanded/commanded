@@ -1,5 +1,7 @@
 defmodule Commanded.Helpers.EventFactory do
   @moduledoc false
+
+  alias Commanded.UUID
   alias Commanded.EventStore.RecordedEvent
 
   def map_to_recorded_events(events, initial_event_number \\ 1, opts \\ []) do

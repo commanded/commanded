@@ -191,7 +191,7 @@ defmodule Commanded.Assertions.EventAssertions do
   @doc false
   def with_subscription(application, callback_fn, opts \\ [])
       when is_function(callback_fn, 1) do
-    subscription_name = UUID.uuid4()
+    subscription_name = Commanded.Application.uuid_generator!(application).()
     stream = Keyword.get(opts, :stream, :all)
     start_from = Keyword.get(opts, :start_from, :origin)
 

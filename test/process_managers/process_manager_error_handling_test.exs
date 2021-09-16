@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.Helpers.EventFactory
   alias Commanded.ProcessManagers.DefaultErrorHandlingProcessManager
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess

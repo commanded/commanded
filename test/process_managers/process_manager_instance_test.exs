@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
   import Mox
 
+  alias Commanded.UUID
   alias Commanded.Application.Config
   alias Commanded.Application.Mock, as: MockApplication
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney

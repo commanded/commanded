@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   use Commanded.MockEventStoreCase
 
+  alias Commanded.UUID
   alias Commanded.Helpers.EventFactory
   alias Commanded.Helpers.Wait
   alias Commanded.ProcessManagers.ProcessRouter

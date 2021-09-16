@@ -3,6 +3,7 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.UUID
   alias Commanded.Commands.OpenAccountBonusHandler
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankApp

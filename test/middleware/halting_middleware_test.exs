@@ -1,6 +1,7 @@
 defmodule Commanded.Middleware.HaltingMiddlewareTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.HaltingRouter

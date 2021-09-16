@@ -4,6 +4,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
   define_tests do
     import Commanded.Enumerable, only: [pluck: 2]
 
+    alias Commanded.UUID
     alias Commanded.EventStore.EventData
 
     defmodule BankAccountOpened do
@@ -226,6 +227,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
 
     defp build_event(account_number, correlation_id, causation_id) do
       %EventData{
+        event_id: UUID.uuid4(),
         correlation_id: correlation_id,
         causation_id: causation_id,
         event_type: "#{__MODULE__}.BankAccountOpened",
@@ -242,7 +244,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
     end
 
     defp assert_is_uuid(uuid) do
-      assert uuid |> UUID.string_to_binary!() |> is_binary()
+      assert UUID.uuid4?(uuid)
     end
 
     # Returns `true` if module implements behaviour.

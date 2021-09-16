@@ -52,6 +52,7 @@ defmodule Commanded.Event.Mapper do
   @spec map_to_event_data(struct, Keyword.t()) :: EventData.t()
   def map_to_event_data(event, fields) do
     %EventData{
+      event_id: Keyword.get(fields, :event_id),
       causation_id: Keyword.get(fields, :causation_id),
       correlation_id: Keyword.get(fields, :correlation_id),
       event_type: TypeProvider.to_string(event),

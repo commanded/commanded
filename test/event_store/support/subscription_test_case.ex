@@ -2,6 +2,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
+    alias Commanded.UUID
     alias Commanded.EventStore.EventData
     alias Commanded.EventStore.Subscriber
     alias Commanded.EventStore.RecordedEvent
@@ -553,6 +554,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
     defp build_event(account_number) do
       %EventData{
+        event_id: UUID.uuid4(),
         causation_id: UUID.uuid4(),
         correlation_id: UUID.uuid4(),
         event_type: "#{__MODULE__}.BankAccountOpened",

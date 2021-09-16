@@ -1,6 +1,7 @@
 defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
   use ExUnit.Case
 
+  alias Commanded.UUID
   alias Commanded.DefaultApp
   alias Commanded.Event.DefaultErrorEventHandler
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount

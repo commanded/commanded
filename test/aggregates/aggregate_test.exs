@@ -3,6 +3,7 @@ defmodule Commanded.Aggregates.AggregateTest do
 
   import ExUnit.CaptureLog
 
+  alias Commanded.UUID
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.DefaultApp
