@@ -63,7 +63,6 @@ defmodule Commanded.Mixfile do
       {:telemetry_registry, "~> 0.2"},
 
       # Optional dependencies
-      {:elixir_uuid, "~> 1.2", optional: true},
       {:jason, "~> 1.2", optional: true},
       {:phoenix_pubsub, "~> 2.0", optional: true},
 

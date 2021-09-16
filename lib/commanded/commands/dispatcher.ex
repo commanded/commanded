@@ -51,7 +51,7 @@ defmodule Commanded.Commands.Dispatcher do
 
     pipeline = before_dispatch(pipeline, payload)
 
-    uuid_generator = Application.uuid_generator(pipeline.application, true)
+    uuid_generator = Application.uuid_generator!(pipeline.application)
 
     uuid_updater = fn
       nil -> uuid_generator.()

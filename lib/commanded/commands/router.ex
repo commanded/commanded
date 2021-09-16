@@ -514,7 +514,7 @@ defmodule Commanded.Commands.Router do
           opts = Keyword.merge(@command_opts, opts)
 
           application = Keyword.fetch!(opts, :application)
-          uuid_generator = Application.uuid_generator(application, false) || fn -> nil end
+          uuid_generator = Application.uuid_generator!(application)
           causation_id = Keyword.get(opts, :causation_id)
           command_uuid = Keyword.get_lazy(opts, :command_uuid, uuid_generator)
           consistency = Keyword.fetch!(opts, :consistency)

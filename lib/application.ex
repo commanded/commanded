@@ -394,18 +394,12 @@ defmodule Commanded.Application do
   @type uuid :: String.t()
 
   @doc false
-  @spec uuid_generator(Commanded.Application.t(), boolean()) :: (() -> uuid) | nil
-  def uuid_generator(application, true) do
-    application
-    |> Config.get(:uuid_generator)
-    |> check_generator(application)
-  end
-
-  def uuid_generator(application, _required) do
+  @spec uuid_generator!(Commanded.Application.t()) :: (() -> uuid) | nil
+  def uuid_generator!(application) do
     try do
       Config.get(application, :uuid_generator)
     rescue
-      _ -> nil
+      _ -> fn -> nil end
     end
     |> check_generator(application)
   end
