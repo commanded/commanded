@@ -62,6 +62,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:interested?/1`
   - `c:handle/2`
   - `c:apply/2`
+  - `c:after_command/2
   - `c:error/3`
 
   Please read the [Process managers](process-managers.html) guide for more
@@ -82,6 +83,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           [
             %ExampleCommand{}
           ]
+        end
+
+        def after_command(%ExampleProcessManager{}, %ExampleCommand{}) do
+          :stop
         end
 
         def error({:error, failure}, %ExampleEvent{}, _failure_context) do
@@ -335,6 +340,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | false
 
   @doc """
+  """
+  @callback after_command(process_manager, domain_event) :: :continue | :stop
+
+  @doc """
   Process manager instance handles a domain event, returning any commands to
   dispatch.
 
@@ -423,7 +432,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | {:skip, :continue_pending}
               | {:stop, reason :: term()}
 
-  @optional_callbacks init: 1, handle: 2, apply: 2, error: 3, interested?: 1
+  @optional_callbacks init: 1, handle: 2, apply: 2, error: 3, interested?: 1, after_command: 2
 
   alias Commanded.ProcessManagers.ProcessManager
   alias Commanded.ProcessManagers.ProcessRouter
@@ -480,6 +489,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   defmacro __before_compile__(_env) do
     # Include default fallback functions at end, with lowest precedence
     quote generated: true do
+      @doc false
+      def after_command(_process_manager, _event), do: :continue
+
       @doc false
       def interested?(_event), do: false
 
