@@ -340,6 +340,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | false
 
   @doc """
+  Stop the process manager instance after a command is successfully
+  dispatched.
+
+  The `c:after_command/2` function can be omitted if you do not need to stop
+  after a specific command or if you would instead use the `c:interested?/1`
+  stop mechanism.
   """
   @callback after_command(process_manager, domain_event) :: :continue | :stop
 
