@@ -363,10 +363,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     case process_manager_module.after_command(process_state, command) do
       :stop ->
         Logger.debug(fn ->
-          describe(state) <> " has been stopped by command " <> describe(command)
+          describe(state) <> " has been stopped by command " <> inspect(command)
         end)
 
-        {:stop, :normal, :ok, state}
+        :ok = delete_state(state)
+
+        {:stop, :normal, state}
 
       _ ->
         handle_after_command(commands, state)
