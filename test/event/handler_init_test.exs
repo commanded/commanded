@@ -42,6 +42,7 @@ defmodule Commanded.Event.HandlerInitTest do
 
       assert_receive {:init, :tenant1}
       assert_receive {:init, :tenant1}
+      refute_receive {:init, :tenant1}
     end
   end
 

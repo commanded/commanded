@@ -517,10 +517,8 @@ defmodule Commanded.Event.Handler do
       def child_spec(opts) do
         opts = Keyword.merge(@opts, opts)
 
-        {application, name, _config} = Handler.parse_config!(__MODULE__, opts)
-
         default = %{
-          id: {__MODULE__, application, name},
+          id: {__MODULE__, opts},
           start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker
