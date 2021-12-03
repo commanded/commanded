@@ -77,7 +77,7 @@ defmodule Commanded.Event.EventHandlerStateTest do
       assert_receive {:event, ^event1, metadata}
       assert match?(%{state: 11}, metadata)
 
-      %{id: id} = StatefulEventHandler.child_spec([])
+      %{id: id} = StatefulEventHandler.child_spec(state: 10)
 
       stop_supervised!(id)
 

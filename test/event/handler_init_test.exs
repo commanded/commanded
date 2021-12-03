@@ -34,6 +34,16 @@ defmodule Commanded.Event.HandlerInitTest do
       assert_handler_name(handler2, "Commanded.Event.RuntimeConfigHandler.tenant2")
       assert_handler_name(handler3, "Commanded.Event.RuntimeConfigHandler.tenant3")
     end
+
+    test "should be called on restart if the process crashes" do
+      handler = start_supervised!({RuntimeConfigHandler, tenant: :tenant1, reply_to: self()})
+
+      Process.exit(handler, :kill)
+
+      assert_receive {:init, :tenant1}
+      assert_receive {:init, :tenant1}
+      refute_receive {:init, :tenant1}
+    end
   end
 
   describe "event handler `init/0` callback" do
