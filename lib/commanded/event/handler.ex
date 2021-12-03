@@ -515,8 +515,6 @@ defmodule Commanded.Event.Handler do
 
       """
       def child_spec(opts) do
-        opts = Keyword.merge(@opts, opts)
-
         default = %{
           id: {__MODULE__, opts},
           start: {__MODULE__, :start_link, [opts]},

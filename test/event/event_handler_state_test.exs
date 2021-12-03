@@ -65,7 +65,8 @@ defmodule Commanded.Event.EventHandlerStateTest do
     end
 
     test "state is reset when process restarts" do
-      handler = start_supervised!({StatefulEventHandler, state: 10})
+      opts = [state: 10]
+      handler = start_supervised!({StatefulEventHandler, opts})
 
       event1 = %AnEvent{reply_to: self(), update_state?: true}
       event2 = %AnEvent{reply_to: self(), update_state?: true}
@@ -81,7 +82,7 @@ defmodule Commanded.Event.EventHandlerStateTest do
 
       stop_supervised!(id)
 
-      handler = start_supervised!({StatefulEventHandler, state: 10})
+      handler = start_supervised!({StatefulEventHandler, opts})
 
       event3 = %AnEvent{reply_to: self(), update_state?: true}
       send_events_to_handler(handler, [event3], 3)
