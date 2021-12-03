@@ -455,13 +455,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       """
       def child_spec(opts) do
-        opts = Keyword.merge(@opts, opts)
-
-        {application, name, config} = ProcessManager.parse_config!(__MODULE__, opts)
-
         default = %{
-          id: {__MODULE__, application, name},
-          start: {ProcessRouter, :start_link, [application, name, __MODULE__, config]},
+          id: {__MODULE__, opts},
+          start: {__MODULE__, :start_link, [opts]},
           restart: :permanent,
           type: :worker
         }

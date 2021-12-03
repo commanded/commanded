@@ -22,5 +22,15 @@ defmodule Commanded.ProcessManager.ProcessManagerInitTest do
       assert_receive {:init, :tenant2}
       assert_receive {:init, :tenant3}
     end
+
+    test "should be called on restart if the process crashes" do
+      pm = start_supervised!({RuntimeConfigProcessManager, tenant: :tenant1, reply_to: self()})
+
+      Process.exit(pm, :kill)
+
+      assert_receive {:init, :tenant1}
+      assert_receive {:init, :tenant1}
+      refute_receive {:init, :tenant1}
+    end
   end
 end
