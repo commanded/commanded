@@ -5,6 +5,7 @@
 ### Bug fixes
 
 - Event Handler not calling `init/1` callback function on restart ([#463](https://github.com/commanded/commanded/pull/463)).
+- Call process manager `init/1` function on process restart ([#464](https://github.com/commanded/commanded/pull/464)).
 
 ## v1.3.0
 
