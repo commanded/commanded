@@ -65,9 +65,11 @@ defmodule Commanded.EventStore do
   The subscriber does not need to acknowledge receipt of the events.
   """
   def subscribe(application, stream_uuid) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    span(:subscribe, %{}, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.subscribe(adapter_meta, stream_uuid)
+      adapter.subscribe(adapter_meta, stream_uuid)
+    end)
   end
 
   @doc """
@@ -112,26 +114,28 @@ defmodule Commanded.EventStore do
         start_from,
         options \\ []
       ) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    span(:subscribe_to, %{}, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    if function_exported?(adapter, :subscribe_to, 6) do
-      adapter.subscribe_to(
-        adapter_meta,
-        stream_uuid,
-        subscription_name,
-        subscriber,
-        start_from,
-        options
-      )
-    else
-      adapter.subscribe_to(
-        adapter_meta,
-        stream_uuid,
-        subscription_name,
-        subscriber,
-        start_from
-      )
-    end
+      if function_exported?(adapter, :subscribe_to, 6) do
+        adapter.subscribe_to(
+          adapter_meta,
+          stream_uuid,
+          subscription_name,
+          subscriber,
+          start_from,
+          options
+        )
+      else
+        adapter.subscribe_to(
+          adapter_meta,
+          stream_uuid,
+          subscription_name,
+          subscriber,
+          start_from
+        )
+      end
+    end)
   end
 
   @doc """
@@ -139,9 +143,11 @@ defmodule Commanded.EventStore do
   a subscription to an event stream.
   """
   def ack_event(application, subscription, event) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    span(:ack_event, %{}, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.ack_event(adapter_meta, subscription, event)
+      adapter.ack_event(adapter_meta, subscription, event)
+    end)
   end
 
   @doc """
@@ -155,9 +161,11 @@ defmodule Commanded.EventStore do
 
   """
   def unsubscribe(application, subscription) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    span(:unsubscribe, %{}, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.unsubscribe(adapter_meta, subscription)
+      adapter.unsubscribe(adapter_meta, subscription)
+    end)
   end
 
   @doc """
@@ -169,9 +177,11 @@ defmodule Commanded.EventStore do
 
   """
   def delete_subscription(application, subscribe_to, handler_name) do
-    {adapter, adapter_meta} = Application.event_store_adapter(application)
+    span(:delete_subscription, %{}, fn ->
+      {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.delete_subscription(adapter_meta, subscribe_to, handler_name)
+      adapter.delete_subscription(adapter_meta, subscribe_to, handler_name)
+    end)
   end
 
   @doc """
@@ -180,7 +190,9 @@ defmodule Commanded.EventStore do
   def read_snapshot(application, source_uuid) do
     {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.read_snapshot(adapter_meta, source_uuid)
+    span(:read_snapshot, %{}, fn ->
+      adapter.read_snapshot(adapter_meta, source_uuid)
+    end)
   end
 
   @doc """
@@ -189,7 +201,9 @@ defmodule Commanded.EventStore do
   def record_snapshot(application, snapshot) do
     {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.record_snapshot(adapter_meta, snapshot)
+    span(:record_snapshot, %{}, fn ->
+      adapter.record_snapshot(adapter_meta, snapshot)
+    end)
   end
 
   @doc """
@@ -198,7 +212,9 @@ defmodule Commanded.EventStore do
   def delete_snapshot(application, source_uuid) do
     {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-    adapter.delete_snapshot(adapter_meta, source_uuid)
+    span(:delete_snapshot, %{}, fn ->
+      adapter.delete_snapshot(adapter_meta, source_uuid)
+    end)
   end
 
   @doc """
@@ -226,9 +242,10 @@ defmodule Commanded.EventStore do
     {adapter, config}
   end
 
+  # TODO convert to macro
   defp span(event, meta, func) do
     :telemetry.span([:commanded, :event_store, event], meta, fn ->
-      {func.(), %{}}
+      {func.(), meta}
     end)
   end
 end
