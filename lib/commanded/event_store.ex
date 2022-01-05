@@ -1,6 +1,4 @@
 defmodule Commanded.EventStore do
-  use TelemetryRegistry
-
   @moduledoc """
   Use the event store configured for a Commanded application.
 
