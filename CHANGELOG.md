@@ -2,7 +2,8 @@
 
 ## Next release
 
--  Allow a process manager to stop after dispatching a command ([#460](https://github.com/commanded/commanded/pull/460)).
+- Allow a process manager to stop after dispatching a command ([#460](https://github.com/commanded/commanded/pull/460)).
+- Replace `use Mix.Config` with `import Config` in config files ([#467](https://github.com/commanded/commanded/pull/467)).
 
 ## v1.3.1
 
