@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 alias Commanded.EventStore.Adapters.InMemory
 alias Commanded.Serialization.JsonSerializer
