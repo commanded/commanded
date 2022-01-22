@@ -1,4 +1,9 @@
 [
+  # Erlang v24.x
+  {"lib/commanded/event/upcaster.ex", :unknown_function},
+  {"lib/commanded/serialization/json_decoder.ex", :unknown_function},
+
+  # Erlang v23.x
   {":0:unknown_function Function Commanded.Event.Upcaster.Atom.__impl__/1 does not exist.",
    :unknown_function},
   {":0:unknown_function Function Commanded.Event.Upcaster.BitString.__impl__/1 does not exist.",
