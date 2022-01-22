@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+-  Allow a process manager to stop after dispatching a command ([#460](https://github.com/commanded/commanded/pull/460)).
+
 ## v1.3.1
 
 ### Bug fixes

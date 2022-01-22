@@ -5,14 +5,7 @@ defmodule Commanded.ProcessManagers.AfterCommandProcessManager do
   alias Commanded.ProcessManagers.AfterCommandProcessManager
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
 
-  alias Commanded.ProcessManagers.ExampleAggregate.Events.{
-    Errored,
-    Interested,
-    Paused,
-    Raised,
-    Started,
-    Stopped
-  }
+  alias Commanded.ProcessManagers.ExampleAggregate.Events.{Interested, Started}
 
   use Commanded.ProcessManagers.ProcessManager,
     application: ExampleApp,
