@@ -184,8 +184,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
       event
 
-    %State{idle_timeout: idle_timeout} = state
-
     telemetry_metadata = telemetry_metadata(event, state)
     start_time = telemetry_start(telemetry_metadata)
 
@@ -243,7 +241,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
               :ok = persist_state(event_number, state)
               :ok = ack_event(event, state)
 
-              {:noreply, state, idle_timeout}
+              handle_after_command(commands, state)
           end
         else
           {:stop, reason} ->
@@ -347,6 +345,33 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
         # Stop process manager with original error
         {:stop, error, state}
+    end
+  end
+
+  defp handle_after_command([], %State{} = state) do
+    %State{idle_timeout: idle_timeout} = state
+
+    {:noreply, state, idle_timeout}
+  end
+
+  defp handle_after_command([command | commands], %State{} = state) do
+    %State{
+      process_manager_module: process_manager_module,
+      process_state: process_state
+    } = state
+
+    case process_manager_module.after_command(process_state, command) do
+      :stop ->
+        Logger.debug(fn ->
+          describe(state) <> " has been stopped by command " <> inspect(command)
+        end)
+
+        :ok = delete_state(state)
+
+        {:stop, :normal, state}
+
+      _ ->
+        handle_after_command(commands, state)
     end
   end
 
