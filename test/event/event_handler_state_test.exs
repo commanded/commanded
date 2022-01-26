@@ -10,7 +10,7 @@ defmodule Commanded.Event.EventHandlerStateTest do
     defstruct [:reply_to, :update_state?]
   end
 
-  describe "event handler state" do
+  describe "event handler state with ephemeral persistence" do
     setup do
       start_supervised!(DefaultApp)
       :ok

@@ -14,7 +14,7 @@ defmodule Commanded.Event.HandlerConfigTest do
     :ok
   end
 
-  test "should default to `:eventual` consistency and start from `:origin`" do
+  test "should default to `:eventual` consistency, `:ephemeral` persistence and start from `:origin`" do
     {:ok, handler} = DefaultConfigHandler.start_link()
 
     assert_config(handler,
@@ -22,7 +22,8 @@ defmodule Commanded.Event.HandlerConfigTest do
       name: "Commanded.Event.HandlerConfigTest.DefaultConfigHandler",
       consistency: :eventual,
       start_from: :origin,
-      subscribe_to: :all
+      subscribe_to: :all,
+      persistence: :ephemeral
     )
   end
 
@@ -37,7 +38,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "Commanded.Event.HandlerConfigTest.DefaultConfigHandler",
         consistency: :strong,
         start_from: :origin,
-        subscribe_to: :all
+        subscribe_to: :all,
+        persistence: :ephemeral
       )
 
       Application.put_env(:commanded, :default_consistency, :eventual)
@@ -62,7 +64,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
         consistency: :strong,
         start_from: :current,
-        subscribe_to: "stream1"
+        subscribe_to: "stream1",
+        persistence: :ephemeral
       )
     end
 
@@ -71,7 +74,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         ExampleHandler.start_link(
           consistency: :eventual,
           start_from: :origin,
-          subscribe_to: "stream2"
+          subscribe_to: "stream2",
+          persistence: :permanent
         )
 
       assert_config(handler,
@@ -79,7 +83,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
         consistency: :eventual,
         start_from: :origin,
-        subscribe_to: "stream2"
+        subscribe_to: "stream2",
+        persistence: :permanent
       )
     end
 
@@ -91,7 +96,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
         consistency: :strong,
         start_from: :origin,
-        subscribe_to: "stream1"
+        subscribe_to: "stream1",
+        persistence: :ephemeral
       )
     end
 
@@ -103,7 +109,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "handler_name",
         consistency: :strong,
         start_from: :current,
-        subscribe_to: "stream1"
+        subscribe_to: "stream1",
+        persistence: :ephemeral
       )
     end
 
@@ -117,7 +124,21 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
         consistency: :strong,
         start_from: :current,
-        subscribe_to: "stream1"
+        subscribe_to: "stream1",
+        persistence: :ephemeral
+      )
+    end
+
+    test "allow permanent to be provided" do
+      {:ok, handler} = ExampleHandler.start_link(persistence: :permanent)
+
+      assert_config(handler,
+        application: Commanded.DefaultApp,
+        name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
+        consistency: :strong,
+        start_from: :current,
+        subscribe_to: "stream1",
+        persistence: :permanent
       )
     end
   end
@@ -131,7 +152,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
         consistency: :strong,
         start_from: :current,
-        subscribe_to: "stream1"
+        subscribe_to: "stream1",
+        persistence: :ephemeral
       )
     end
 
@@ -144,7 +166,8 @@ defmodule Commanded.Event.HandlerConfigTest do
            application: :dynamic_app,
            name: "handler_name",
            consistency: :eventual,
-           start_from: :origin}
+           start_from: :origin,
+           persistence: :permanent}
         )
 
       assert_config(handler,
@@ -152,7 +175,8 @@ defmodule Commanded.Event.HandlerConfigTest do
         name: "handler_name",
         consistency: :eventual,
         start_from: :origin,
-        subscribe_to: "stream1"
+        subscribe_to: "stream1",
+        persistence: :permanent
       )
     end
   end
@@ -218,7 +242,8 @@ defmodule Commanded.Event.HandlerConfigTest do
       application: application,
       handler_name: name,
       consistency: consistency,
-      subscription: %Subscription{subscribe_from: subscribe_from, subscribe_to: subscribe_to}
+      subscription: %Subscription{subscribe_from: subscribe_from, subscribe_to: subscribe_to},
+      persistence: persistence
     } = :sys.get_state(handler)
 
     actual_config = [
@@ -226,7 +251,8 @@ defmodule Commanded.Event.HandlerConfigTest do
       name: name,
       consistency: consistency,
       start_from: subscribe_from,
-      subscribe_to: subscribe_to
+      subscribe_to: subscribe_to,
+      persistence: persistence
     ]
 
     assert actual_config == expected_config
