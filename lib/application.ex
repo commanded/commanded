@@ -201,11 +201,11 @@ defmodule Commanded.Application do
         Commanded.Application.Supervisor.start_link(__MODULE__, @otp_app, @config, name, opts)
       end
 
-      def stop(pid, timeout \\ 5000) do
+      def stop(pid, timeout \\ 5_000) do
         Supervisor.stop(pid, :normal, timeout)
       end
 
-      def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5000) do
+      def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5_000) do
         Aggregate.aggregate_state(
           __MODULE__,
           aggregate_module,

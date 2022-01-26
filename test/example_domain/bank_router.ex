@@ -7,11 +7,13 @@ defmodule Commanded.ExampleDomain.BankRouter do
   alias Commanded.ExampleDomain.BankAccount.Commands.CloseAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.BankAccount.Commands.LockAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.DepositMoneyHandler
   alias Commanded.ExampleDomain.MoneyTransfer
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
   alias Commanded.ExampleDomain.OpenAccountHandler
+  alias Commanded.ExampleDomain.LockAccountHandler
   alias Commanded.ExampleDomain.TransferMoneyHandler
   alias Commanded.ExampleDomain.WithdrawMoneyHandler
   alias Commanded.Helpers.CommandAuditMiddleware
@@ -21,6 +23,7 @@ defmodule Commanded.ExampleDomain.BankRouter do
   # Bank account
   identify BankAccount, by: :account_number
   dispatch OpenAccount, to: OpenAccountHandler, aggregate: BankAccount
+  dispatch LockAccount, to: LockAccountHandler, aggregate: BankAccount
   dispatch DepositMoney, to: DepositMoneyHandler, aggregate: BankAccount
   dispatch WithdrawMoney, to: WithdrawMoneyHandler, aggregate: BankAccount
   dispatch CloseAccount, to: OpenAccountHandler, aggregate: BankAccount

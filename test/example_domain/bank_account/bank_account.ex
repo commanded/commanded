@@ -11,6 +11,10 @@ defmodule Commanded.ExampleDomain.BankAccount do
       defstruct [:account_number, :initial_balance]
     end
 
+    defmodule LockAccount do
+      defstruct [:account_number]
+    end
+
     defmodule DepositMoney do
       defstruct [:account_number, :transfer_uuid, :amount]
     end
@@ -28,6 +32,11 @@ defmodule Commanded.ExampleDomain.BankAccount do
     defmodule BankAccountOpened do
       @derive Jason.Encoder
       defstruct [:account_number, :initial_balance]
+    end
+
+    defmodule BankAccountLocked do
+      @derive Jason.Encoder
+      defstruct [:account_number]
     end
 
     defmodule MoneyDeposited do
@@ -51,15 +60,18 @@ defmodule Commanded.ExampleDomain.BankAccount do
     end
   end
 
-  alias Commands.{CloseAccount, DepositMoney, OpenAccount, WithdrawMoney}
+  alias Commands.OpenAccount
+  alias Commands.LockAccount
+  alias Commands.DepositMoney
+  alias Commands.WithdrawMoney
+  alias Commands.CloseAccount
 
-  alias Events.{
-    AccountOverdrawn,
-    BankAccountClosed,
-    BankAccountOpened,
-    MoneyDeposited,
-    MoneyWithdrawn
-  }
+  alias Events.BankAccountOpened
+  alias Events.BankAccountLocked
+  alias Events.MoneyDeposited
+  alias Events.MoneyWithdrawn
+  alias Events.AccountOverdrawn
+  alias Events.BankAccountClosed
 
   def open_account(
         %BankAccount{state: nil},
@@ -73,6 +85,24 @@ defmodule Commanded.ExampleDomain.BankAccount do
 
   def open_account(%BankAccount{state: nil}, %OpenAccount{}),
     do: {:error, :invalid_initial_balance}
+
+  def lock_account(
+        %BankAccount{state: :active},
+        %LockAccount{account_number: account_number}
+      ) do
+    # simulate long running command execution
+    Process.sleep(55)
+
+    %BankAccountLocked{
+      account_number: account_number
+    }
+  end
+
+  def lock_account(%BankAccount{state: :locked}, %LockAccount{}),
+    do: {:error, :account_already_locked}
+
+  def lock_account(%BankAccount{state: :closed}, %LockAccount{}),
+    do: {:error, :account_closed}
 
   def deposit(
         %BankAccount{state: :active} = account,
@@ -136,6 +166,10 @@ defmodule Commanded.ExampleDomain.BankAccount do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
 
     %BankAccount{state | account_number: account_number, balance: initial_balance, state: :active}
+  end
+
+  def apply(%BankAccount{} = state, %BankAccountLocked{}) do
+    %BankAccount{state | state: :locked}
   end
 
   def apply(%BankAccount{} = state, %MoneyDeposited{balance: balance}),
