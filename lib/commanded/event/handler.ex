@@ -376,6 +376,17 @@ defmodule Commanded.Event.Handler do
               | {:error, reason :: any()}
 
   @doc """
+  Handle a batch of domain events and their metadata.
+
+  TODO describe API
+  """
+  @callback handle_batch([domain_event], metadata) ::
+              :ok
+              | {:ok, new_state :: any()}
+              | {:error, :already_seen_event}
+              | {:error, reason :: any()}
+
+  @doc """
   Called when an event `handle/2` callback returns an error.
 
   The `c:error/3` function allows you to control how event handling failures
@@ -459,7 +470,7 @@ defmodule Commanded.Event.Handler do
               | :skip
               | {:stop, reason :: term()}
 
-  @optional_callbacks init: 0, init: 1, error: 3
+  @optional_callbacks init: 0, init: 1, error: 3, handle: 2, handle_batch: 2
 
   defmacro __using__(opts) do
     quote location: :keep do
@@ -549,7 +560,8 @@ defmodule Commanded.Event.Handler do
     :start_from,
     :subscribe_to,
     :subscription_opts,
-    :state
+    :state,
+    :batch_size
   ]
 
   @doc false
@@ -576,6 +588,23 @@ defmodule Commanded.Event.Handler do
       raise ArgumentError, inspect(module) <> " expects :name option"
     end
 
+    {batch_size, config} = Keyword.pop(config, :batch_size)
+
+    config =
+      case batch_size do
+        nil ->
+          # Delegate to `handle_event/2` when `batch_size` is not specified
+          Keyword.put(config, :handler_callback, :event)
+
+        size when is_integer(size) ->
+          config
+          |> Keyword.update(:subscription_opts, [buffer_size: size], fn opts ->
+            Keyword.put(opts, :buffer_size, size)
+          end)
+          # Delegate to `handle_batch/2` when `batch_size` is specified
+          |> Keyword.put(:handler_callback, :batch)
+      end
+
     {application, name, config}
   end
 
@@ -600,6 +629,7 @@ defmodule Commanded.Event.Handler do
   defstruct [
     :application,
     :consistency,
+    :handler_callback,
     :handler_name,
     :handler_module,
     :handler_state,
@@ -628,6 +658,7 @@ defmodule Commanded.Event.Handler do
       application: application,
       handler_name: handler_name,
       handler_module: handler_module,
+      handler_callback: Keyword.fetch!(handler_opts, :handler_callback),
       handler_state: Keyword.get(handler_opts, :state),
       consistency: consistency,
       subscription: subscription
@@ -719,7 +750,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   @impl GenServer
-  def handle_info({:events, events}, %Handler{} = state) do
+  def handle_info({:events, events}, %Handler{handler_callback: :event} = state) do
     %Handler{application: application} = state
 
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
@@ -729,6 +760,25 @@ defmodule Commanded.Event.Handler do
         events
         |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
         |> Enum.reduce(state, &handle_event/2)
+
+      {:noreply, state}
+    catch
+      {:error, reason} ->
+        # Stop after event handling returned an error
+        {:stop, reason, state}
+    end
+  end
+
+  def handle_info({:events, events}, %Handler{handler_callback: :batch} = state) do
+    %Handler{application: application} = state
+
+    Logger.debug(fn -> describe(state) <> " received batch: #{inspect(events)}" end)
+
+    try do
+      state =
+        events
+        |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
+        |> handle_batch(state)
 
       {:noreply, state}
     catch
@@ -857,6 +907,28 @@ defmodule Commanded.Event.Handler do
         failure_context = build_failure_context(event, context, state)
 
         handle_event_error(error, event, failure_context, state)
+    end
+  end
+
+  defp handle_batch(events, %Handler{} = state) do
+    # 1. partition seen and unseen events
+    # 2. Confirm seen events
+    # 3. Dispatch to module.handle_batch
+    # 4. Confirm batch
+    %Handler{handler_module: handler_module} = state
+    events = Enum.map(events, fn %RecordedEvent{data: data} -> data end)
+
+    # TODO
+    metadata = %{}
+
+    try do
+      handler_module.handle_batch(events, metadata)
+      state
+    rescue
+      error ->
+        stacktrace = __STACKTRACE__
+        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+        {:error, error, stacktrace}
     end
   end
 
