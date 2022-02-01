@@ -15,16 +15,17 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Set up Elixir
+      id: beam
       uses: erlef/setup-beam@v1
       with:
-        elixir-version: ${{matrix.elixir}}
-        otp-version: ${{matrix.otp}}
+        elixir-version: ${{ matrix.elixir }}
+        otp-version: ${{ matrix.otp }}
 
     - name: Restore dependencies cache
       uses: actions/cache@v2
       with:
         path: deps
-        key: ${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-mix-${{ hashFiles('**/mix.lock') }}
+        key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
         restore-keys: ${{ runner.os }}-mix-
 
     - name: Install dependencies
@@ -43,7 +44,8 @@ jobs:
       id: plt-cache
       with:
         path: priv/plts
-        key: ${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-plts-${{ hashFiles('**/mix.lock') }}
+        key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-plts-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-plts-
 
     - name: Create Dialyzer PLTs
       if: steps.plt-cache.outputs.cache-hit != 'true'
