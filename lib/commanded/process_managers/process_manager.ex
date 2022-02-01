@@ -17,7 +17,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   telemetry_event(%{
     event: [:commanded, :process_manager, :handle, :stop],
     description: "Emitted when a process manager stops handling an event",
-    measurements: "%{system_time: integer()}",
+    measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
       commands: [struct()],
@@ -32,7 +32,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   telemetry_event(%{
     event: [:commanded, :process_manager, :handle, :exception],
     description: "Emitted when a process manager raises an exception",
-    measurements: "%{system_time: integer()}",
+    measurements: "%{duration: non_neg_integer()}",
     metadata: """
     %{application: Commanded.Application.t(),
       process_manager_name: String.t() | Inspect.t(),
