@@ -8,6 +8,7 @@ defmodule Commanded.Commands.OpenAccountBonusHandler do
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankRouter
+  alias Uniq.UUID
 
   def handle(%BankAccountOpened{} = command, metadata) do
     %BankAccountOpened{account_number: account_number} = command

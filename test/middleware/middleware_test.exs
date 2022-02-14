@@ -17,6 +17,7 @@ defmodule Commanded.Middleware.MiddlewareTest do
   }
 
   alias Commanded.Middleware.Pipeline
+  alias Uniq.UUID
 
   defmodule FirstMiddleware do
     @behaviour Commanded.Middleware

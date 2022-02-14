@@ -8,6 +8,7 @@ defmodule Commanded.EventStore.TelemetryTest do
   alias Commanded.EventStore.SnapshotData
   alias Commanded.Middleware.Commands.IncrementCount
   alias Commanded.Middleware.Commands.RaiseError
+  alias Uniq.UUID
 
   setup do
     start_supervised!(DefaultApp)

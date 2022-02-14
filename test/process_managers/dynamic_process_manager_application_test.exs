@@ -6,6 +6,7 @@ defmodule Commanded.ProcessManager.DynamicProcessManagerApplicationTest do
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.{CommandAuditMiddleware, Wait}
   alias Commanded.ProcessManagers.{DynamicProcessManager, ProcessRouter}
+  alias Uniq.UUID
 
   setup_all do
     start_supervised!(CommandAuditMiddleware)

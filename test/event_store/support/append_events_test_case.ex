@@ -5,6 +5,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
     import Commanded.Enumerable, only: [pluck: 2]
 
     alias Commanded.EventStore.EventData
+    alias Uniq.UUID
 
     defmodule BankAccountOpened do
       @derive Jason.Encoder

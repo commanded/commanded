@@ -15,6 +15,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   alias Commanded.ProcessManagers.IdentityProcessManager.AnEvent
   alias Commanded.ProcessManagers.{ProcessManagerInstance, ProcessRouter}
   alias Commanded.Registration.LocalRegistry
+  alias Uniq.UUID
 
   setup :set_mox_global
   setup :verify_on_exit!

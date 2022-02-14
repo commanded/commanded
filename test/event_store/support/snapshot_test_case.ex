@@ -3,6 +3,7 @@ defmodule Commanded.EventStore.SnapshotTestCase do
 
   define_tests do
     alias Commanded.EventStore.SnapshotData
+    alias Uniq.UUID
 
     defmodule BankAccountOpened do
       @derive Jason.Encoder

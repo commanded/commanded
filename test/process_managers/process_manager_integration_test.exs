@@ -10,6 +10,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerIntegrationTest do
   alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.ProcessManagers.ProcessRouter
+  alias Uniq.UUID
 
   setup do
     start_supervised!(CommandAuditMiddleware)

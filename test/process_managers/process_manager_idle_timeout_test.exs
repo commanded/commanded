@@ -1,6 +1,7 @@
 defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
   use ExUnit.Case
 
+  alias Uniq.UUID
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Start, Stop}
 
   alias Commanded.ProcessManagers.{

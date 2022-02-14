@@ -4,6 +4,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingTest do
   alias Commanded.Helpers.EventFactory
   alias Commanded.ProcessManagers.DefaultErrorHandlingProcessManager
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.StartProcess
+  alias Uniq.UUID
 
   alias Commanded.ProcessManagers.ErrorAggregate.Events.{
     ProcessApplyException,

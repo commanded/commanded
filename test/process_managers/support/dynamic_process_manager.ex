@@ -5,6 +5,7 @@ defmodule Commanded.ProcessManagers.DynamicProcessManager do
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.ProcessManagers.DynamicProcessManager
+  alias Uniq.UUID
 
   use Commanded.ProcessManagers.ProcessManager,
     application: BankApp,

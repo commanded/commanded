@@ -4,6 +4,7 @@ defmodule Commanded.Commands.CommandIdentityTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.CommandAuditMiddleware
+  alias Uniq.UUID
 
   setup do
     start_supervised!(CommandAuditMiddleware)

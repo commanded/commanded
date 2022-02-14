@@ -56,7 +56,7 @@ defmodule Commanded.Mixfile do
   defp deps do
     [
       {:backoff, "~> 1.1"},
-      {:elixir_uuid, "~> 1.2"},
+      {:uniq, "~> 0.4"},
 
       # Telemetry
       {:telemetry, "~> 0.4 or ~> 1.0"},

@@ -13,6 +13,7 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.Helpers.ProcessHelper
+  alias Uniq.UUID
 
   setup do
     start_supervised!(CommandAuditMiddleware)

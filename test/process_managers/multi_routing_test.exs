@@ -9,6 +9,7 @@ defmodule Commanded.ProcessManager.MultiRoutingTest do
   alias Commanded.ProcessManagers.{TodoApp, TodoProcessManager, TodoRouter}
   alias Commanded.ProcessManagers.TodoList.Commands.{CreateList, MarkAllDone}
   alias Commanded.ProcessManagers.TodoList.Events.ListAllDone
+  alias Uniq.UUID
 
   setup do
     start_supervised!(TodoApp)

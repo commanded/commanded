@@ -9,6 +9,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   alias Commanded.ProcessManagers.RoutingProcessManager.Errored
   alias Commanded.ProcessManagers.RoutingProcessManager.Started
   alias Commanded.ProcessManagers.RoutingProcessManager.Stopped
+  alias Uniq.UUID
 
   setup do
     mock_event_store()

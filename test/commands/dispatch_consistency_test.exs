@@ -16,6 +16,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
   alias ConsistencyAggregateRoot.ConsistencyCommand
   alias ConsistencyAggregateRoot.NoOpCommand
   alias ConsistencyAggregateRoot.RequestDispatchCommand
+  alias Uniq.UUID
 
   setup do
     start_supervised!(ConsistencyApp)

@@ -6,6 +6,7 @@ defmodule Commanded.Middleware.HaltingMiddlewareTest do
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.Middleware.Commands.{IncrementCount, Validate}
   alias Commanded.ValidatingRouter
+  alias Uniq.UUID
 
   setup do
     start_supervised!(DefaultApp)

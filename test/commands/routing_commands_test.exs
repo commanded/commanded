@@ -1,6 +1,7 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
   use ExUnit.Case
 
+  alias Uniq.UUID
   alias Commanded.Commands.AggregateRoot.{Command, Command2}
 
   alias Commanded.Commands.{

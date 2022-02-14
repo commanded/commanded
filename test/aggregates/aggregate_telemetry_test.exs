@@ -1,6 +1,7 @@
 defmodule Commanded.Aggregates.AggregateTelemetryTest do
   use ExUnit.Case
 
+  alias Uniq.UUID
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.DefaultApp
 

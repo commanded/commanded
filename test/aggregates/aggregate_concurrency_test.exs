@@ -7,6 +7,7 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
   alias Commanded.ExampleDomain.{BankAccount, DepositMoneyHandler, OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney, OpenAccount}
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Uniq.UUID
 
   setup do
     expect(MockEventStore, :subscribe_to, fn

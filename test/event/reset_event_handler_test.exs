@@ -9,6 +9,7 @@ defmodule Commanded.Event.ResetEventHandlerTest do
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.Wait
+  alias Uniq.UUID
 
   describe "reset event handler" do
     setup do

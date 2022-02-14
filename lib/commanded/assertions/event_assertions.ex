@@ -17,6 +17,7 @@ defmodule Commanded.Assertions.EventAssertions do
 
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
+  alias Uniq.UUID
 
   @doc """
   Assert that events matching their respective predicates have a matching

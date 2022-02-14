@@ -25,6 +25,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     ]
   end
 
+  alias Uniq.UUID
   alias Commanded.EventStore.Adapters.InMemory.{PersistentSubscription, State, Subscription}
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
 

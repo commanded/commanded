@@ -3,6 +3,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
 
   import Commanded.Enumerable, only: [pluck: 2]
 
+  alias Uniq.UUID
   alias Commanded.Aggregates.{Aggregate, AppendItemsHandler, ExampleAggregate, ExecutionContext}
   alias Commanded.Aggregates.ExampleAggregate.Commands.{AppendItems, NoOp}
   alias Commanded.{DefaultApp, EventStore}

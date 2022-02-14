@@ -2,6 +2,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
+    alias Uniq.UUID
     alias Commanded.EventStore.{EventData, RecordedEvent, Subscriber}
     alias Commanded.Helpers.ProcessHelper
 

@@ -6,6 +6,7 @@ defmodule Event.UpcasterTest do
   alias Commanded.EventStore.{EventData, RecordedEvent}
   alias Commanded.Event.Upcast.Events.{EventFive, EventFour, EventOne, EventThree, EventTwo, Stop}
   alias Commanded.Event.Upcast.UpcastAggregate
+  alias Uniq.UUID
 
   setup do
     start_supervised!(DefaultApp)

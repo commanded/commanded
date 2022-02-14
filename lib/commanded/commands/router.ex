@@ -207,6 +207,7 @@ defmodule Commanded.Commands.Router do
   """
 
   alias Commanded.Commands.Router
+  alias Uniq.UUID
 
   defmacro __using__(opts) do
     quote do
