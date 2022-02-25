@@ -72,6 +72,7 @@ defmodule Commanded.Mixfile do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.2", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.0", only: :dev},
+      {:credo, "~> 1.6", only: [:dev, :test]},
       {:mox, "~> 1.0", only: [:bench, :test]}
     ]
   end
