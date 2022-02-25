@@ -42,6 +42,7 @@ defmodule Commanded.Application.Config do
     :ets.lookup_element(__MODULE__, application, 4)
   rescue
     ArgumentError ->
+      # credo:disable-for-next-line
       raise "could not lookup #{inspect(application)} because it was not started or it does not exist"
   end
 end

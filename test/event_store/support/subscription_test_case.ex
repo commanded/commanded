@@ -525,12 +525,14 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         assert received_event.event_number == expected_event_number
       end)
 
+      last_event = List.last(received_events)
+
       case Keyword.get(opts, :subscription) do
         nil ->
           :ok
 
         subscription ->
-          event_store.ack_event(event_store_meta, subscription, List.last(received_events))
+          event_store.ack_event(event_store_meta, subscription, last_event)
       end
 
       case expected_count - length(received_events) do

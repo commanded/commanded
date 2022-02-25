@@ -121,7 +121,7 @@ defmodule Commanded.Aggregate.MultiTest do
         %ExampleAggregate{}
         |> Multi.new()
         |> Multi.execute(fn %ExampleAggregate{events: events} ->
-          assert length(events) == 0
+          assert Enum.empty?(events)
 
           %Event{data: 1}
         end)

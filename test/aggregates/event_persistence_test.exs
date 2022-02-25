@@ -62,7 +62,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
         function: :noop
       })
 
-    assert length(events) == 0
+    assert Enum.empty?(events)
 
     recorded_events = EventStore.stream_forward(DefaultApp, aggregate_uuid, 0) |> Enum.to_list()
     assert length(recorded_events) == 1
