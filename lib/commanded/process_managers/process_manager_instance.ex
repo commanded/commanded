@@ -6,9 +6,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   require Logger
 
   alias Commanded.Application
-  alias Commanded.ProcessManagers.{ProcessRouter, FailureContext}
   alias Commanded.EventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
+  alias Commanded.ProcessManagers.{FailureContext, ProcessRouter}
   alias Commanded.Telemetry
 
   defmodule State do

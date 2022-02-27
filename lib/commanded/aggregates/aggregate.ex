@@ -99,10 +99,10 @@ defmodule Commanded.Aggregates.Aggregate do
 
   require Logger
 
-  alias Commanded.Application.Config
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.AggregateStateBuilder
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Application.Config
   alias Commanded.Event.Mapper
   alias Commanded.Event.Upcast
   alias Commanded.EventStore
