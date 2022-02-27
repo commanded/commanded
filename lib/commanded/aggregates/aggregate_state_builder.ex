@@ -1,4 +1,6 @@
 defmodule Commanded.Aggregates.AggregateStateBuilder do
+  @moduledoc false
+
   alias Commanded.Aggregates.Aggregate
 
   alias Commanded.EventStore
