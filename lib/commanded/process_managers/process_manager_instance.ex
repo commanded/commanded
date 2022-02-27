@@ -181,24 +181,89 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp process_unseen_event(%RecordedEvent{} = event, %State{} = state, context \\ %{}) do
-    %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
-      event
-
     telemetry_metadata = telemetry_metadata(event, state)
     start_time = telemetry_start(telemetry_metadata)
 
     case handle_event(event, state) do
       {:error, error} ->
-        failure_context = %FailureContext{
-          context: context,
-          last_event: event,
-          process_manager_state: state
-        }
+        handle_process_unseen_event_error(
+          error,
+          start_time,
+          telemetry_metadata,
+          event,
+          state,
+          context
+        )
 
-        telemetry_stop(start_time, telemetry_metadata, {:error, error})
+      {:error, error, stacktrace} ->
+        handle_process_unseen_event_error(
+          error,
+          start_time,
+          telemetry_metadata,
+          stacktrace,
+          event,
+          state,
+          context
+        )
 
-        handle_event_error({:error, error}, event, failure_context, state)
+      commands ->
+        do_process_unseen_event(event, start_time, telemetry_metadata, state, context, commands)
+    end
+  end
 
+  defp handle_process_unseen_event_error(
+         error,
+         start_time,
+         telemetry_metadata,
+         stacktrace \\ nil,
+         event,
+         state,
+         context
+       ) do
+    failure_context = %FailureContext{
+      context: context,
+      last_event: event,
+      process_manager_state: state,
+      stacktrace: stacktrace
+    }
+
+    if is_nil(stacktrace),
+      do: telemetry_stop(start_time, telemetry_metadata, {:error, error}),
+      else: telemetry_stop(start_time, telemetry_metadata, {:error, error, stacktrace})
+
+    handle_event_error({:error, error}, event, failure_context, state)
+  end
+
+  defp do_process_unseen_event(event, start_time, telemetry_metadata, state, context, commands) do
+    %RecordedEvent{
+      correlation_id: correlation_id,
+      event_id: event_id
+    } = event
+
+    commands = List.wrap(commands)
+
+    # Copy event id, as causation id, and correlation id from handled event.
+    opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
+
+    case dispatch_commands(commands, opts, state, event) do
+      :ok ->
+        telemetry_stop(start_time, telemetry_metadata, {:ok, commands})
+        do_mutate_event_state(event, state, context, commands)
+
+      {:stop, reason} ->
+        telemetry_stop(start_time, telemetry_metadata, {:error, reason})
+
+        {:stop, reason, state}
+    end
+  end
+
+  defp do_mutate_event_state(
+         %RecordedEvent{event_number: event_number} = event,
+         state,
+         context,
+         commands
+       ) do
+    case mutate_state(event, state) do
       {:error, error, stacktrace} ->
         failure_context = %FailureContext{
           context: context,
@@ -207,48 +272,19 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
           stacktrace: stacktrace
         }
 
-        telemetry_stop(start_time, telemetry_metadata, {:error, error, stacktrace})
-
         handle_event_error({:error, error}, event, failure_context, state)
 
-      commands ->
-        commands = List.wrap(commands)
+      process_state ->
+        state = %State{
+          state
+          | process_state: process_state,
+            last_seen_event: event_number
+        }
 
-        # Copy event id, as causation id, and correlation id from handled event.
-        opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
+        :ok = persist_state(event_number, state)
+        :ok = ack_event(event, state)
 
-        with :ok <- dispatch_commands(commands, opts, state, event) do
-          telemetry_stop(start_time, telemetry_metadata, {:ok, commands})
-
-          case mutate_state(event, state) do
-            {:error, error, stacktrace} ->
-              failure_context = %FailureContext{
-                context: context,
-                last_event: event,
-                process_manager_state: state,
-                stacktrace: stacktrace
-              }
-
-              handle_event_error({:error, error}, event, failure_context, state)
-
-            process_state ->
-              state = %State{
-                state
-                | process_state: process_state,
-                  last_seen_event: event_number
-              }
-
-              :ok = persist_state(event_number, state)
-              :ok = ack_event(event, state)
-
-              handle_after_command(commands, state)
-          end
-        else
-          {:stop, reason} ->
-            telemetry_stop(start_time, telemetry_metadata, {:error, reason})
-
-            {:stop, reason, state}
-        end
+        handle_after_command(commands, state)
     end
   end
 

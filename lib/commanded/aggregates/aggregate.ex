@@ -477,36 +477,16 @@ defmodule Commanded.Aggregates.Aggregate do
     Kernel.apply(handler, before_execute, [aggregate_state, context])
   end
 
-  defp execute_command(%ExecutionContext{} = context, %Aggregate{} = state) do
-    %ExecutionContext{command: command, handler: handler, function: function} = context
-    %Aggregate{aggregate_state: aggregate_state} = state
-
+  defp execute_command(
+         %ExecutionContext{command: command} = context,
+         %Aggregate{aggregate_state: aggregate_state} = state
+       ) do
     Logger.debug(fn -> describe(state) <> " executing command: " <> inspect(command) end)
 
-    with :ok <- before_execute_command(aggregate_state, context) do
-      case Kernel.apply(handler, function, [aggregate_state, command]) do
-        {:error, _error} = reply ->
-          {reply, state}
+    case before_execute_command(aggregate_state, context) do
+      :ok ->
+        do_execute_command(context, state)
 
-        none when none in [:ok, nil, []] ->
-          {{:ok, []}, state}
-
-        %Commanded.Aggregate.Multi{} = multi ->
-          case Commanded.Aggregate.Multi.run(multi) do
-            {:error, _error} = reply ->
-              {reply, state}
-
-            {aggregate_state, pending_events} ->
-              persist_events(pending_events, aggregate_state, context, state)
-          end
-
-        {:ok, pending_events} ->
-          apply_and_persist_events(pending_events, context, state)
-
-        pending_events ->
-          apply_and_persist_events(pending_events, context, state)
-      end
-    else
       {:error, _error} = reply ->
         {reply, state}
     end
@@ -516,6 +496,40 @@ defmodule Commanded.Aggregates.Aggregate do
       Logger.error(Exception.format(:error, error, stacktrace))
 
       {{:error, error, stacktrace}, state}
+  end
+
+  defp do_execute_command(
+         %ExecutionContext{command: command, handler: handler, function: function} = context,
+         %Aggregate{aggregate_state: aggregate_state} = state
+       ) do
+    args = [aggregate_state, command]
+
+    case Kernel.apply(handler, function, args) do
+      {:error, _error} = reply ->
+        {reply, state}
+
+      none when none in [:ok, nil, []] ->
+        {{:ok, []}, state}
+
+      %Commanded.Aggregate.Multi{} = multi ->
+        do_execute_multi_command(multi, context, state)
+
+      {:ok, pending_events} ->
+        apply_and_persist_events(pending_events, context, state)
+
+      pending_events ->
+        apply_and_persist_events(pending_events, context, state)
+    end
+  end
+
+  defp do_execute_multi_command(multi, context, state) do
+    case Commanded.Aggregate.Multi.run(multi) do
+      {:error, _error} = reply ->
+        {reply, state}
+
+      {aggregate_state, pending_events} ->
+        persist_events(pending_events, aggregate_state, context, state)
+    end
   end
 
   defp apply_and_persist_events(pending_events, context, %Aggregate{} = state) do
@@ -534,35 +548,20 @@ defmodule Commanded.Aggregates.Aggregate do
   defp persist_events(pending_events, aggregate_state, context, %Aggregate{} = state) do
     %Aggregate{aggregate_version: expected_version} = state
 
-    with :ok <- append_to_stream(pending_events, context, state) do
-      aggregate_version = expected_version + length(pending_events)
+    case append_to_stream(pending_events, context, state) do
+      :ok ->
+        aggregate_version = expected_version + length(pending_events)
 
-      state = %Aggregate{
-        state
-        | aggregate_state: aggregate_state,
-          aggregate_version: aggregate_version
-      }
+        state = %Aggregate{
+          state
+          | aggregate_state: aggregate_state,
+            aggregate_version: aggregate_version
+        }
 
-      {{:ok, pending_events}, state}
-    else
+        {{:ok, pending_events}, state}
+
       {:error, :wrong_expected_version} ->
-        # Fetch missing events from event store
-        state = AggregateStateBuilder.rebuild_from_events(state)
-
-        # Retry command if there are any attempts left
-        case ExecutionContext.retry(context) do
-          {:ok, context} ->
-            Logger.debug(fn -> describe(state) <> " wrong expected version, retrying command" end)
-
-            execute_command(context, state)
-
-          reply ->
-            Logger.debug(fn ->
-              describe(state) <> " wrong expected version, but not retrying command"
-            end)
-
-            {reply, state}
-        end
+        maybe_retry_command(state, context)
 
       {:error, _error} = reply ->
         {reply, state}
@@ -592,6 +591,26 @@ defmodule Commanded.Aggregates.Aggregate do
       )
 
     EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
+  end
+
+  defp maybe_retry_command(state, context) do
+    # Fetch missing events from event store
+    state = AggregateStateBuilder.rebuild_from_events(state)
+
+    # Retry command if there are any attempts left
+    case ExecutionContext.retry(context) do
+      {:ok, context} ->
+        Logger.debug(fn -> describe(state) <> " wrong expected version, retrying command" end)
+
+        execute_command(context, state)
+
+      reply ->
+        Logger.debug(fn ->
+          describe(state) <> " wrong expected version, but not retrying command"
+        end)
+
+        {reply, state}
+    end
   end
 
   defp telemetry_start(telemetry_metadata) do
