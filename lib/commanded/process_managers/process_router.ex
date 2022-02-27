@@ -35,6 +35,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     ]
   end
 
+  @interested_events ~w(start start! continue continue!)a
+
   def start_link(application, process_name, process_module, opts \\ []) do
     {start_opts, router_opts} =
       Keyword.split(opts, [:debug, :name, :timeout, :spawn_opt, :hibernate_after])
@@ -291,116 +293,120 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     not is_nil(last_seen_event) and event_number <= last_seen_event
   end
 
-  defp handle_event(%RecordedEvent{} = event, %State{} = state) do
-    %RecordedEvent{data: data} = event
-    %State{process_manager_module: process_manager_module} = state
+  defp handle_event(
+         %RecordedEvent{data: data} = event,
+         %State{process_manager_module: process_manager_module} = state
+       ) do
+    data
+    |> process_manager_module.interested?()
+    |> maybe_log_handle_event(event, state)
+    |> do_handle_event(event, state)
+  rescue
+    e -> handle_routing_error({:error, e}, event, state)
+  catch
+    reply -> reply
+  end
 
-    try do
-      case process_manager_module.interested?(data) do
-        {:start, []} ->
-          ack_and_continue(event, state)
+  defp maybe_log_handle_event({atom, []} = reply, _, _)
+       when is_atom(atom) and atom in @interested_events do
+    reply
+  end
 
-        {:start, process_uuid} ->
-          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+  defp maybe_log_handle_event({atom, _process_uuid} = reply, event, state)
+       when is_atom(atom) and atom in @interested_events do
+    Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
 
-          process_uuid
-          |> List.wrap()
-          |> Enum.reduce(state, fn process_uuid, state ->
-            {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+    reply
+  end
 
-            delegate_event(process_instance, event, state)
-          end)
+  defp maybe_log_handle_event({:stop, _process_uuid} = reply, event, state) do
+    Logger.debug(fn -> describe(state) <> " has been stopped by event " <> describe(event) end)
 
-        {:start!, []} ->
-          ack_and_continue(event, state)
+    reply
+  end
 
-        {:start!, process_uuid} ->
-          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+  defp maybe_log_handle_event(false, _, _), do: false
 
-          {state, process_instances} =
-            process_uuid
-            |> List.wrap()
-            |> Enum.reduce({state, []}, fn process_uuid, {state, process_instances} ->
-              {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+  defp do_handle_event({atom, []}, event, state)
+       when is_atom(atom) and atom in @interested_events do
+    ack_and_continue(event, state)
+  end
 
-              if ProcessManagerInstance.new?(process_instance) do
-                {state, [process_instance | process_instances]}
-              else
-                error = {:error, {:start!, :process_already_started}}
-                reply = handle_routing_error(error, event, state)
+  defp do_handle_event({:start, process_uuid}, event, state) do
+    process_uuid
+    |> List.wrap()
+    |> Enum.reduce(state, fn process_uuid, state ->
+      {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
 
-                throw(reply)
-              end
-            end)
+      delegate_event(process_instance, event, state)
+    end)
+  end
 
-          process_instances
-          |> Enum.reverse()
-          |> Enum.reduce(state, &delegate_event(&1, event, &2))
+  defp do_handle_event({:start!, process_uuid}, event, state) do
+    {state, process_instances} =
+      process_uuid
+      |> List.wrap()
+      |> Enum.reduce({state, []}, fn process_uuid, {state, process_instances} ->
+        {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
 
-        {:continue, []} ->
-          ack_and_continue(event, state)
+        if ProcessManagerInstance.new?(process_instance) do
+          {state, [process_instance | process_instances]}
+        else
+          error = {:error, {:start!, :process_already_started}}
+          reply = handle_routing_error(error, event, state)
 
-        {:continue, process_uuid} ->
-          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+          throw(reply)
+        end
+      end)
 
-          process_uuid
-          |> List.wrap()
-          |> Enum.reduce(state, fn process_uuid, state ->
-            {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+    process_instances
+    |> Enum.reverse()
+    |> Enum.reduce(state, &delegate_event(&1, event, &2))
+  end
 
-            delegate_event(process_instance, event, state)
-          end)
+  defp do_handle_event({:continue, process_uuid}, event, state) do
+    process_uuid
+    |> List.wrap()
+    |> Enum.reduce(state, fn process_uuid, state ->
+      {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
 
-        {:continue!, []} ->
-          ack_and_continue(event, state)
+      delegate_event(process_instance, event, state)
+    end)
+  end
 
-        {:continue!, process_uuid} ->
-          Logger.debug(fn -> describe(state) <> " is interested in event " <> describe(event) end)
+  defp do_handle_event({:continue!, process_uuid}, event, state) do
+    {state, process_instances} =
+      process_uuid
+      |> List.wrap()
+      |> Enum.reduce({state, []}, fn process_uuid, {state, process_instances} ->
+        {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
 
-          {state, process_instances} =
-            process_uuid
-            |> List.wrap()
-            |> Enum.reduce({state, []}, fn process_uuid, {state, process_instances} ->
-              {process_instance, state} = start_or_continue_process_manager(process_uuid, state)
+        if ProcessManagerInstance.new?(process_instance) do
+          error = {:error, {:continue!, :process_not_started}}
+          reply = handle_routing_error(error, event, state)
 
-              if ProcessManagerInstance.new?(process_instance) do
-                error = {:error, {:continue!, :process_not_started}}
-                reply = handle_routing_error(error, event, state)
+          throw(reply)
+        else
+          {state, [process_instance | process_instances]}
+        end
+      end)
 
-                throw(reply)
-              else
-                {state, [process_instance | process_instances]}
-              end
-            end)
+    process_instances
+    |> Enum.reverse()
+    |> Enum.reduce(state, &delegate_event(&1, event, &2))
+  end
 
-          process_instances
-          |> Enum.reverse()
-          |> Enum.reduce(state, &delegate_event(&1, event, &2))
+  defp do_handle_event({:stop, process_uuid}, event, state) do
+    state =
+      process_uuid
+      |> List.wrap()
+      |> Enum.reduce(state, &stop_process_manager/2)
 
-        {:stop, process_uuid} ->
-          Logger.debug(fn ->
-            describe(state) <> " has been stopped by event " <> describe(event)
-          end)
+    ack_and_continue(event, state)
+  end
 
-          state =
-            process_uuid
-            |> List.wrap()
-            |> Enum.reduce(state, &stop_process_manager/2)
-
-          ack_and_continue(event, state)
-
-        false ->
-          Logger.debug(fn ->
-            describe(state) <> " is not interested in event " <> describe(event)
-          end)
-
-          ack_and_continue(event, state)
-      end
-    rescue
-      e -> handle_routing_error({:error, e}, event, state)
-    catch
-      reply -> reply
-    end
+  defp do_handle_event(false, event, state) do
+    ack_and_continue(event, state)
   end
 
   defp handle_routing_error(error, %RecordedEvent{} = failed_event, %State{} = state) do

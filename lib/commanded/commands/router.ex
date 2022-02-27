@@ -287,47 +287,61 @@ defmodule Commanded.Commands.Router do
   """
   defmacro identify(aggregate_module, opts) do
     quote location: :keep, bind_quoted: [aggregate_module: aggregate_module, opts: opts] do
-      case Map.get(@registered_identities, aggregate_module) do
-        nil ->
-          by =
-            case Keyword.get(opts, :by) do
-              nil ->
-                raise "#{inspect(aggregate_module)} aggregate identity is missing the `by` option"
+      data =
+        Commanded.Commands.Router.__location__(@registered_identities, aggregate_module, opts)
 
-              by when is_atom(by) ->
-                by
-
-              by when is_function(by, 1) ->
-                by
-
-              invalid ->
-                raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
-            end
-
-          prefix =
-            case Keyword.get(opts, :prefix) do
-              nil ->
-                nil
-
-              prefix when is_function(prefix, 0) ->
-                prefix
-
-              prefix when is_binary(prefix) ->
-                prefix
-
-              invalid ->
-                raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{inspect(invalid)}"
-            end
-
-          @registered_identities Map.put(@registered_identities, aggregate_module,
-                                   by: by,
-                                   prefix: prefix
-                                 )
-
-        config ->
-          raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
-      end
+      @registered_identities Map.put(@registered_identities, aggregate_module, data)
     end
+  end
+
+  @doc false
+  def __location__(registered_identities, aggregate_module, opts) do
+    registered_identities
+    |> Map.get(aggregate_module)
+    |> do_location(aggregate_module, opts)
+  end
+
+  defp get_by(aggregate_module, opts) do
+    case Keyword.get(opts, :by) do
+      nil ->
+        raise "#{inspect(aggregate_module)} aggregate identity is missing the `by` option"
+
+      by when is_atom(by) ->
+        by
+
+      by when is_function(by, 1) ->
+        by
+
+      invalid ->
+        raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
+    end
+  end
+
+  defp get_prefix(aggregate_module, opts) do
+    case Keyword.get(opts, :prefix) do
+      nil ->
+        nil
+
+      prefix when is_function(prefix, 0) ->
+        prefix
+
+      prefix when is_binary(prefix) ->
+        prefix
+
+      invalid ->
+        raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{inspect(invalid)}"
+    end
+  end
+
+  defp do_location(nil, aggregate_module, opts) do
+    by = get_by(aggregate_module, opts)
+    prefix = get_prefix(aggregate_module, opts)
+
+    [by: by, prefix: prefix]
+  end
+
+  defp do_location(config, aggregate_module, _) do
+    raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
   end
 
   @doc """
@@ -468,6 +482,7 @@ defmodule Commanded.Commands.Router do
               | {:error, :consistency_timeout}
               | {:error, reason :: term()}
 
+  # credo:disable-for-next-line
   defmacro __before_compile__(_env) do
     quote generated: true do
       @doc false
@@ -652,9 +667,11 @@ defmodule Commanded.Commands.Router do
   end
 
   defp parse_opts([{param, _value} | _opts], _result) do
+    available_params = Enum.map_join(@register_params, ", ", &to_string/1)
+
     raise """
     unexpected dispatch parameter "#{param}"
-    available params are: #{@register_params |> Enum.map(&to_string/1) |> Enum.join(", ")}
+    available params are: #{available_params}
     """
   end
 

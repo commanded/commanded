@@ -922,60 +922,102 @@ defmodule Commanded.Event.Handler do
     %RecordedEvent{data: data} = failed_event
     %Handler{handler_module: handler_module} = state
 
-    case handler_module.error(error, data, failure_context) do
-      {:retry, %FailureContext{context: context}} when is_map(context) ->
-        # Retry the failed event
-        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+    error
+    |> handler_module.error(data, failure_context)
+    |> log_handle_event_error_response(state)
+    |> maybe_apply_delay()
+    |> do_handle_event_error(failed_event, state, error)
+  end
 
-        handle_event(failed_event, context, state)
+  defp log_handle_event_error_response({:retry, _} = reply, state) do
+    Logger.info(fn -> describe(state) <> " is retrying failed event" end)
 
-      {:retry, context} when is_map(context) ->
-        # Retry the failed event
-        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+    reply
+  end
 
-        handle_event(failed_event, context, state)
+  defp log_handle_event_error_response({:retry, delay, _} = reply, state)
+       when is_integer(delay) and delay >= 0 do
+    Logger.info(fn ->
+      describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
+    end)
 
-      {:retry, delay, %FailureContext{context: context}}
-      when is_map(context) and is_integer(delay) and delay >= 0 ->
-        # Retry the failed event after waiting for the given delay, in milliseconds
-        Logger.info(fn ->
-          describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
-        end)
+    reply
+  end
 
-        :timer.sleep(delay)
+  defp log_handle_event_error_response(:skip, state) do
+    Logger.info(fn -> describe(state) <> " is skipping event" end)
 
-        handle_event(failed_event, context, state)
+    :skip
+  end
 
-      {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
-        # Retry the failed event after waiting for the given delay, in milliseconds
-        Logger.info(fn ->
-          describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
-        end)
+  defp log_handle_event_error_response({:stop, reason} = reply, state) do
+    Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
 
-        :timer.sleep(delay)
+    reply
+  end
 
-        handle_event(failed_event, context, state)
+  defp log_handle_event_error_response(invalid, state) do
+    Logger.warn(fn ->
+      describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
+    end)
 
-      :skip ->
-        # Skip the failed event by confirming receipt
-        Logger.info(fn -> describe(state) <> " is skipping event" end)
+    invalid
+  end
 
-        confirm_receipt(failed_event, state)
+  defp maybe_apply_delay({:retry, delay, _} = reply) when is_integer(delay) and delay >= 0 do
+    :timer.sleep(delay)
 
-      {:stop, reason} ->
-        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
+    reply
+  end
 
-        # Stop event handler with given reason
-        throw({:error, reason})
+  defp maybe_apply_delay(reply), do: reply
 
-      invalid ->
-        Logger.warn(fn ->
-          describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
-        end)
+  # Retry the failed event
+  defp do_handle_event_error(
+         {:retry, %FailureContext{context: context}},
+         failed_event,
+         state,
+         _
+       )
+       when is_map(context) do
+    handle_event(failed_event, context, state)
+  end
 
-        # Stop event handler with original error
-        throw(error)
-    end
+  # Retry the failed event
+  defp do_handle_event_error({:retry, context}, failed_event, state, _) when is_map(context) do
+    handle_event(failed_event, context, state)
+  end
+
+  # Retry the failed event after waiting for the given delay, in milliseconds
+  defp do_handle_event_error(
+         {:retry, delay, %FailureContext{context: context}},
+         failed_event,
+         state,
+         _
+       )
+       when is_map(context) and is_integer(delay) and delay >= 0 do
+    handle_event(failed_event, context, state)
+  end
+
+  # Retry the failed event after waiting for the given delay, in milliseconds
+  defp do_handle_event_error({:retry, delay, context}, failed_event, state, _)
+       when is_map(context) and is_integer(delay) and delay >= 0 do
+    handle_event(failed_event, context, state)
+  end
+
+  # Skip the failed event by confirming receipt
+  defp do_handle_event_error(:skip, failed_event, state, _) do
+    confirm_receipt(failed_event, state)
+  end
+
+  # Stop event handler with given error
+  defp do_handle_event_error({:stop, reason}, _, _, _) do
+    throw({:error, reason})
+  end
+
+  # Stop event handler with original error
+  defp do_handle_event_error(_, _, _, error) do
+    throw(error)
   end
 
   defp log_event_error({:error, reason}, %RecordedEvent{} = failed_event, %Handler{} = state) do

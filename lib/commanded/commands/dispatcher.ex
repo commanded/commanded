@@ -5,6 +5,7 @@ defmodule Commanded.Commands.Dispatcher do
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Aggregates.Supervisor
   alias Commanded.Middleware.Pipeline
   alias Commanded.Telemetry
 
@@ -51,16 +52,16 @@ defmodule Commanded.Commands.Dispatcher do
     pipeline = before_dispatch(pipeline, payload)
 
     # Stop command execution if pipeline has been halted
-    unless Pipeline.halted?(pipeline) do
+    if Pipeline.halted?(pipeline) do
+      pipeline
+      |> after_failure(payload)
+      |> telemetry_stop(start_time, telemetry_metadata)
+      |> Pipeline.response()
+    else
       context = to_execution_context(pipeline, payload)
 
       pipeline
       |> execute(payload, context)
-      |> telemetry_stop(start_time, telemetry_metadata)
-      |> Pipeline.response()
-    else
-      pipeline
-      |> after_failure(payload)
       |> telemetry_stop(start_time, telemetry_metadata)
       |> Pipeline.response()
     end
@@ -72,78 +73,84 @@ defmodule Commanded.Commands.Dispatcher do
 
   defp execute(%Pipeline{} = pipeline, %Payload{} = payload, %ExecutionContext{} = context) do
     %Pipeline{application: application, assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline
-    %Payload{aggregate_module: aggregate_module, timeout: timeout} = payload
+    %Payload{aggregate_module: module, timeout: timeout} = payload
 
-    {:ok, ^aggregate_uuid} =
-      Commanded.Aggregates.Supervisor.open_aggregate(
-        application,
-        aggregate_module,
-        aggregate_uuid
-      )
+    with {:ok, ^aggregate_uuid} <- Supervisor.open_aggregate(application, module, aggregate_uuid) do
+      application
+      |> start_aggregator_task(module, aggregate_uuid, context, timeout)
+      |> retrieve_task_result(timeout)
+      |> handle_execution_result(pipeline, payload, context)
+    end
+  end
 
+  defp start_aggregator_task(application, aggregate_module, aggregate_uuid, context, timeout) do
     task_dispatcher_name = Module.concat([application, Commanded.Commands.TaskDispatcher])
 
-    task =
-      Task.Supervisor.async_nolink(task_dispatcher_name, Aggregate, :execute, [
-        application,
-        aggregate_module,
-        aggregate_uuid,
-        context,
-        timeout
-      ])
+    Task.Supervisor.async_nolink(task_dispatcher_name, Aggregate, :execute, [
+      application,
+      aggregate_module,
+      aggregate_uuid,
+      context,
+      timeout
+    ])
+  end
 
-    result =
-      case Task.yield(task, timeout) || Task.shutdown(task) do
-        {:ok, result} ->
-          result
+  defp retrieve_task_result(task, timeout) do
+    case Task.yield(task, timeout) || Task.shutdown(task) do
+      {:ok, result} ->
+        result
 
-        {:exit, {:normal, :aggregate_stopped}} = result ->
-          result
+      {:exit, {:normal, :aggregate_stopped}} = result ->
+        result
 
-        {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} ->
-          {:error, :remote_node_down}
+      {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} ->
+        {:error, :remote_node_down}
 
-        {:exit, _reason} ->
-          {:error, :aggregate_execution_failed}
+      {:exit, _reason} ->
+        {:error, :aggregate_execution_failed}
 
-        nil ->
-          {:error, :aggregate_execution_timeout}
-      end
-
-    case result do
-      {:ok, aggregate_version, events} ->
-        pipeline
-        |> Pipeline.assign(:aggregate_version, aggregate_version)
-        |> Pipeline.assign(:events, events)
-        |> after_dispatch(payload)
-        |> Pipeline.respond(:ok)
-
-      {:ok, aggregate_version, events, reply} ->
-        pipeline
-        |> Pipeline.assign(:aggregate_version, aggregate_version)
-        |> Pipeline.assign(:events, events)
-        |> after_dispatch(payload)
-        |> Pipeline.respond({:ok, reply})
-
-      {:exit, {:normal, :aggregate_stopped}} ->
-        # Maybe retry command when aggregate process stopped by lifespan timeout
-        maybe_retry(pipeline, payload, context)
-
-      {:error, :remote_node_down} ->
-        # Maybe retry command when aggregate process not found on a remote node
-        maybe_retry(pipeline, payload, context)
-
-      {:error, error} ->
-        pipeline
-        |> Pipeline.respond({:error, error})
-        |> after_failure(payload)
-
-      {:error, error, reason} ->
-        pipeline
-        |> Pipeline.assign(:error_reason, reason)
-        |> Pipeline.respond({:error, error})
-        |> after_failure(payload)
+      nil ->
+        {:error, :aggregate_execution_timeout}
     end
+  end
+
+  defp handle_execution_result({:ok, aggregate_version, events}, pipeline, payload, _) do
+    pipeline
+    |> Pipeline.assign(:aggregate_version, aggregate_version)
+    |> Pipeline.assign(:events, events)
+    |> after_dispatch(payload)
+    |> Pipeline.respond(:ok)
+  end
+
+  defp handle_execution_result({:ok, aggregate_version, events, reply}, pipeline, payload, _) do
+    pipeline
+    |> Pipeline.assign(:aggregate_version, aggregate_version)
+    |> Pipeline.assign(:events, events)
+    |> after_dispatch(payload)
+    |> Pipeline.respond({:ok, reply})
+  end
+
+  # Maybe retry command when aggregate process stopped by lifespan timeout
+  defp handle_execution_result({:exit, {:normal, :aggregate_stopped}}, pipeline, payload, context) do
+    maybe_retry(pipeline, payload, context)
+  end
+
+  # Maybe retry command when aggregate process not found on a remote node
+  defp handle_execution_result({:error, :remote_node_down}, pipeline, payload, context) do
+    maybe_retry(pipeline, payload, context)
+  end
+
+  defp handle_execution_result({:error, reason}, pipeline, payload, _) do
+    pipeline
+    |> Pipeline.respond({:error, reason})
+    |> after_failure(payload)
+  end
+
+  defp handle_execution_result({:error, error, reason}, pipeline, payload, _) do
+    pipeline
+    |> Pipeline.assign(:error_reason, reason)
+    |> Pipeline.respond({:error, error})
+    |> after_failure(payload)
   end
 
   defp to_execution_context(%Pipeline{} = pipeline, %Payload{} = payload) do
