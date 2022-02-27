@@ -47,12 +47,10 @@ defmodule Commanded.Middleware.ExtractAggregateIdentity do
 
   # Attempt to convert the aggregate identity to a string via the `String.Chars` protocol.
   defp identity_to_string(aggregate_uuid) do
-    try do
-      to_string(aggregate_uuid)
-    rescue
-      Protocol.UndefinedError ->
-        {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
-    end
+    to_string(aggregate_uuid)
+  rescue
+    Protocol.UndefinedError ->
+      {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
   end
 
   # No aggregate identity prefix.

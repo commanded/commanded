@@ -103,39 +103,45 @@ defmodule Commanded.Aggregate.Multi do
   @spec run(Multi.t()) ::
           {aggregate :: struct(), list(event :: struct())} | {:error, reason :: any()}
   def run(%Multi{aggregate: aggregate, executions: executions}) do
-    try do
-      executions
-      |> Enum.reverse()
-      |> Enum.reduce({aggregate, []}, fn execute_fun, {aggregate, events} ->
-        case execute_fun.(aggregate) do
-          {:error, _reason} = error ->
-            throw(error)
+    executions
+    |> Enum.reverse()
+    |> Enum.reduce({aggregate, []}, fn execute_fun, {aggregate, events} ->
+      do_execute_fun(aggregate, events, execute_fun)
+    end)
+  catch
+    {:error, _error} = error -> error
+  end
 
-          %Multi{} = multi ->
-            case Multi.run(multi) do
-              {:error, _reason} = error ->
-                throw(error)
+  defp do_execute_fun(aggregate, events, execute_fun) when is_function(execute_fun, 1) do
+    case execute_fun.(aggregate) do
+      {:error, _reason} = error ->
+        throw(error)
 
-              {evolved_aggregate, pending_events} ->
-                {evolved_aggregate, events ++ pending_events}
-            end
+      %Multi{} = multi ->
+        do_run_multi(multi, events)
 
-          none when none in [:ok, nil, []] ->
-            {aggregate, events}
+      none when none in [:ok, nil, []] ->
+        {aggregate, events}
 
-          {:ok, pending_events} ->
-            pending_events = List.wrap(pending_events)
+      {:ok, pending_events} ->
+        pending_events = List.wrap(pending_events)
 
-            {apply_events(aggregate, pending_events), events ++ pending_events}
+        {apply_events(aggregate, pending_events), events ++ pending_events}
 
-          pending_events ->
-            pending_events = List.wrap(pending_events)
+      pending_events ->
+        pending_events = List.wrap(pending_events)
 
-            {apply_events(aggregate, pending_events), events ++ pending_events}
-        end
-      end)
-    catch
-      {:error, _error} = error -> error
+        {apply_events(aggregate, pending_events), events ++ pending_events}
+    end
+  end
+
+  defp do_run_multi(multi, events) do
+    case Multi.run(multi) do
+      {:error, _reason} = error ->
+        throw(error)
+
+      {evolved_aggregate, pending_events} ->
+        {evolved_aggregate, events ++ pending_events}
     end
   end
 
