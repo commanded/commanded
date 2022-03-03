@@ -70,7 +70,9 @@ defmodule Commanded.EventStore.Subscriber do
 
     state = %State{state | received_events: received_events ++ events}
 
-    event_store.ack_event(event_store_meta, subscription, List.last(events))
+    last_event = List.last(events)
+
+    event_store.ack_event(event_store_meta, subscription, last_event)
 
     {:noreply, state}
   end

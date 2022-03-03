@@ -4,11 +4,17 @@ defmodule Commanded.ProcessManagers.ResumeProcessManagerTest do
   import Commanded.Assertions.EventAssertions
 
   alias Commanded.Helpers.{ProcessHelper, Wait}
-  alias Commanded.ProcessManagers.ResumeApp
-  alias Commanded.ProcessManagers.{ProcessRouter, ProcessManagerInstance}
-  alias Commanded.ProcessManagers.{ResumeRouter, ResumeProcessManager}
-  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess, ResumeProcess}
-  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted, ProcessResumed}
+
+  alias Commanded.ProcessManagers.{
+    ProcessManagerInstance,
+    ProcessRouter,
+    ResumeApp,
+    ResumeProcessManager,
+    ResumeRouter
+  }
+
+  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{ResumeProcess, StartProcess}
+  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessResumed, ProcessStarted}
 
   setup do
     start_supervised!(ResumeApp)

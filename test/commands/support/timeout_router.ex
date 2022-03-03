@@ -2,7 +2,7 @@ defmodule Commanded.Commands.TimeoutRouter do
   @moduledoc false
   use Commanded.Commands.Router
 
-  alias Commanded.Commands.{TimeoutAggregateRoot, TimeoutCommandHandler, TimeoutCommand}
+  alias Commanded.Commands.{TimeoutAggregateRoot, TimeoutCommand, TimeoutCommandHandler}
 
   dispatch TimeoutCommand,
     to: TimeoutCommandHandler,

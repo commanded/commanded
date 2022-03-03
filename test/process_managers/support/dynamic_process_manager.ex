@@ -1,11 +1,10 @@
 defmodule Commanded.ProcessManagers.DynamicProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.DynamicProcessManager
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-  alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
   alias Commanded.ExampleDomain.BankApp
+  alias Commanded.ProcessManagers.DynamicProcessManager
 
   use Commanded.ProcessManagers.ProcessManager,
     application: BankApp,

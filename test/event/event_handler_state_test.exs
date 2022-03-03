@@ -1,8 +1,8 @@
 defmodule Commanded.Event.EventHandlerStateTest do
   use ExUnit.Case
 
-  alias Commanded.Event.StatefulEventHandler
   alias Commanded.DefaultApp
+  alias Commanded.Event.StatefulEventHandler
   alias Commanded.Helpers.EventFactory
 
   defmodule AnEvent do

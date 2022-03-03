@@ -23,8 +23,8 @@ defmodule Commanded.ExampleDomain.MoneyTransfer do
     end
   end
 
-  alias Commands.{TransferMoney}
-  alias Events.{MoneyTransferRequested}
+  alias Commands.TransferMoney
+  alias Events.MoneyTransferRequested
 
   def transfer_money(%MoneyTransfer{state: nil}, %TransferMoney{
         transfer_uuid: transfer_uuid,

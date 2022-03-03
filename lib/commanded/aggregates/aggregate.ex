@@ -99,10 +99,11 @@ defmodule Commanded.Aggregates.Aggregate do
 
   require Logger
 
-  alias Commanded.Application.Config
+  alias Commanded.Aggregate.Multi
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.AggregateStateBuilder
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Application.Config
   alias Commanded.Event.Mapper
   alias Commanded.Event.Upcast
   alias Commanded.EventStore
@@ -216,7 +217,7 @@ defmodule Commanded.Aggregates.Aggregate do
               aggregate_uuid: aggregate_uuid,
               snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
             }
-            |> Commanded.Aggregates.AggregateStateBuilder.populate()
+            |> AggregateStateBuilder.populate()
             |> Map.fetch!(:aggregate_state)
           end)
 
@@ -259,9 +260,11 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   @impl GenServer
   def handle_continue(:populate_aggregate_state, %Aggregate{} = state) do
+    state = AggregateStateBuilder.populate(state)
+
     # Subscribe to aggregate's events to catch any events appended to its stream
     # by another process, such as directly appended to the event store.
-    {:noreply, AggregateStateBuilder.populate(state), {:continue, :subscribe_to_events}}
+    {:noreply, state, {:continue, :subscribe_to_events}}
   end
 
   @doc false
@@ -491,8 +494,8 @@ defmodule Commanded.Aggregates.Aggregate do
         none when none in [:ok, nil, []] ->
           {{:ok, []}, state}
 
-        %Commanded.Aggregate.Multi{} = multi ->
-          case Commanded.Aggregate.Multi.run(multi) do
+        %Multi{} = multi ->
+          case Multi.run(multi) do
             {:error, _error} = reply ->
               {reply, state}
 

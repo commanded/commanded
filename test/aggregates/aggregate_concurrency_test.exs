@@ -4,8 +4,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
   alias Commanded.MockedApp
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.ExampleDomain.{BankAccount, OpenAccountHandler, DepositMoneyHandler}
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney}
+  alias Commanded.ExampleDomain.{BankAccount, DepositMoneyHandler, OpenAccountHandler}
+  alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney, OpenAccount}
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
 
   setup do

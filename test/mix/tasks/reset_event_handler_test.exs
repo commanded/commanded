@@ -1,11 +1,13 @@
 defmodule Commanded.Mix.Tasks.ResetEventHandlerTest do
   use ExUnit.Case
 
-  alias Commanded.EventStore
-  alias Commanded.ExampleDomain.BankApp
+  alias Commanded.Event.{Handler, Mapper}
+  alias Commanded.{EventStore, Registration}
   alias Commanded.ExampleDomain.BankAccount.BankAccountHandler
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.Wait
+  alias Mix.Tasks.Commanded.Reset
 
   setup do
     start_supervised!(BankApp)
@@ -28,13 +30,13 @@ defmodule Commanded.Mix.Tasks.ResetEventHandlerTest do
       :ok = BankAccountHandler.change_prefix("PREF_")
 
       handler_name = "Commanded.ExampleDomain.BankAccount.BankAccountHandler"
-      registry_name = Commanded.Event.Handler.name(BankApp, handler_name)
+      registry_name = Handler.name(BankApp, handler_name)
 
-      pid = Commanded.Registration.whereis_name(BankApp, registry_name)
+      pid = Registration.whereis_name(BankApp, registry_name)
 
       assert :undefined != pid
 
-      Mix.Tasks.Commanded.Reset.run([
+      Reset.run([
         "--app",
         "Commanded.ExampleDomain.BankApp",
         "--handler",
@@ -49,7 +51,7 @@ defmodule Commanded.Mix.Tasks.ResetEventHandlerTest do
   end
 
   defp to_event_data(events) do
-    Commanded.Event.Mapper.map_to_event_data(events,
+    Mapper.map_to_event_data(events,
       causation_id: UUID.uuid4(),
       correlation_id: UUID.uuid4(),
       metadata: %{}

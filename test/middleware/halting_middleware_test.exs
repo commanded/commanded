@@ -2,10 +2,9 @@ defmodule Commanded.Middleware.HaltingMiddlewareTest do
   use ExUnit.Case
 
   alias Commanded.DefaultApp
-  alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.HaltingRouter
-  alias Commanded.Middleware.Commands.IncrementCount
-  alias Commanded.Middleware.Commands.Validate
+  alias Commanded.Helpers.CommandAuditMiddleware
+  alias Commanded.Middleware.Commands.{IncrementCount, Validate}
   alias Commanded.ValidatingRouter
 
   setup do

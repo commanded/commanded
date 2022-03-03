@@ -5,15 +5,13 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
     application: Commanded.ExampleDomain.BankApp,
     name: __MODULE__
 
+  alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney, WithdrawMoney}
+  alias Commanded.ExampleDomain.BankAccount.Events.{MoneyDeposited, MoneyWithdrawn}
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
+  alias Commanded.ExampleDomain.TransferMoneyProcessManager
+
   @derive Jason.Encoder
   defstruct [:transfer_uuid, :debit_account, :credit_account, :amount, :status]
-
-  alias Commanded.ExampleDomain.TransferMoneyProcessManager
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
-  alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
-  alias Commanded.ExampleDomain.BankAccount.Events.MoneyWithdrawn
-  alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
-  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
 
   def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}),
     do: {:start, transfer_uuid}

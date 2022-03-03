@@ -3,19 +3,20 @@ defmodule Commanded.Middleware.MiddlewareTest do
 
   import Commanded.Enumerable
 
-  alias Commanded.DefaultApp
   alias Commanded.Commands.ExecutionResult
-  alias Commanded.Middleware.Pipeline
+  alias Commanded.DefaultApp
   alias Commanded.Helpers.CommandAuditMiddleware
 
   alias Commanded.Middleware.Commands.{
-    IncrementCount,
-    Fail,
-    RaiseError,
-    Timeout,
     CommandHandler,
-    CounterAggregateRoot
+    CounterAggregateRoot,
+    Fail,
+    IncrementCount,
+    RaiseError,
+    Timeout
   }
+
+  alias Commanded.Middleware.Pipeline
 
   defmodule FirstMiddleware do
     @behaviour Commanded.Middleware

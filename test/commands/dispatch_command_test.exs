@@ -1,9 +1,8 @@
 defmodule Commanded.Commands.DispatchCommandTest do
   use ExUnit.Case
 
-  alias Commanded.ExampleDomain.BankApp
-  alias Commanded.ExampleDomain.BankRouter
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.{BankApp, BankRouter}
   alias Commanded.Helpers.CommandAuditMiddleware
 
   setup do

@@ -1,11 +1,10 @@
 defmodule Commanded.Commands.CustomIdentityRoutingTest do
   use ExUnit.Case
 
-  alias Commanded.DefaultApp
-  alias Commanded.EventStore
+  alias Commanded.{DefaultApp, EventStore}
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.OpenAccountHandler
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.OpenAccountHandler
 
   defmodule AccountNumber do
     @derive Jason.Encoder

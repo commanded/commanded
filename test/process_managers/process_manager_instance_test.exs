@@ -5,13 +5,17 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
   alias Commanded.Application.Config
   alias Commanded.Application.Mock, as: MockApplication
+  alias Commanded.DefaultApp
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
+  # credo:disable-for-next-line
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.EventStore.Adapters.Mock, as: MockEventStore
-  alias Commanded.EventStore.SnapshotData
-  alias Commanded.ProcessManagers.ProcessManagerInstance
-  alias Commanded.ProcessManagers.ProcessRouter
+  alias Commanded.EventStore.{RecordedEvent, SnapshotData}
+  alias Commanded.ProcessManagers.{IdentityProcessManager, ProcessManagerInstance, ProcessRouter}
+  # credo:disable-for-next-line
+  alias Commanded.ProcessManagers.IdentityProcessManager.AnEvent
+  alias Commanded.Helpers.Wait
 
   setup :set_mox_global
   setup :verify_on_exit!
@@ -78,11 +82,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
     end
 
     test "get current process identity" do
-      alias Commanded.ProcessManagers.IdentityProcessManager
-      alias Commanded.ProcessManagers.IdentityProcessManager.AnEvent
-      alias Commanded.DefaultApp
-      alias Commanded.Helpers.Wait
-
       start_supervised!(DefaultApp)
 
       {:ok, process_router} = start_supervised(IdentityProcessManager)
@@ -184,8 +183,6 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   end
 
   defp to_recorded_event(event) do
-    alias Commanded.EventStore.RecordedEvent
-
     %RecordedEvent{event_number: 1, stream_id: "stream-id", stream_version: 1, data: event}
   end
 end

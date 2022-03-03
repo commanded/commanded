@@ -2,12 +2,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
   use ExUnit.Case
 
   alias Commanded.Helpers.Wait
-  alias Commanded.ProcessManagers.ProcessRouter
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.Pause
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.Start
-  alias Commanded.ProcessManagers.ExampleApp
-  alias Commanded.ProcessManagers.ExampleProcessManager
-  alias Commanded.ProcessManagers.ExampleRouter
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Pause, Start}
+
+  alias Commanded.ProcessManagers.{
+    ExampleApp,
+    ExampleProcessManager,
+    ExampleRouter,
+    ProcessRouter
+  }
 
   setup do
     start_supervised!(ExampleApp)

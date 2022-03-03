@@ -3,12 +3,10 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
 
   import Commanded.Enumerable, only: [pluck: 2]
 
-  alias Commanded.Aggregates.{Aggregate, AppendItemsHandler, ExampleAggregate}
+  alias Commanded.Aggregates.{Aggregate, AppendItemsHandler, ExampleAggregate, ExecutionContext}
   alias Commanded.Aggregates.ExampleAggregate.Commands.{AppendItems, NoOp}
-  alias Commanded.DefaultApp
-  alias Commanded.EventStore
+  alias Commanded.{DefaultApp, EventStore}
   alias Commanded.Helpers.ProcessHelper
-  alias Commanded.Aggregates.ExecutionContext
 
   setup do
     start_supervised!(DefaultApp)
@@ -62,7 +60,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
         function: :noop
       })
 
-    assert length(events) == 0
+    assert events == []
 
     recorded_events = EventStore.stream_forward(DefaultApp, aggregate_uuid, 0) |> Enum.to_list()
     assert length(recorded_events) == 1

@@ -2,9 +2,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
   import Commanded.SharedTestCase
 
   define_tests do
-    alias Commanded.EventStore.EventData
-    alias Commanded.EventStore.Subscriber
-    alias Commanded.EventStore.RecordedEvent
+    alias Commanded.EventStore.{EventData, RecordedEvent, Subscriber}
     alias Commanded.Helpers.ProcessHelper
 
     defmodule BankAccountOpened do
@@ -530,7 +528,9 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
           :ok
 
         subscription ->
-          event_store.ack_event(event_store_meta, subscription, List.last(received_events))
+          last_event = List.last(received_events)
+
+          event_store.ack_event(event_store_meta, subscription, last_event)
       end
 
       case expected_count - length(received_events) do

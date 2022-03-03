@@ -2,8 +2,7 @@ defmodule Commanded.Commands.DispatchReturnTest do
   use ExUnit.Case
 
   alias Commanded.Commands.ExecutionResult
-  alias Commanded.ExampleDomain.BankApp
-  alias Commanded.ExampleDomain.BankAccount
+  alias Commanded.ExampleDomain.{BankAccount, BankApp}
   alias Commanded.ExampleDomain.BankAccount.Commands.{CloseAccount, DepositMoney, OpenAccount}
 
   alias Commanded.ExampleDomain.BankAccount.Events.{

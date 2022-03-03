@@ -10,9 +10,9 @@ defmodule Commanded.ProcessManagers.TodoProcessManager do
   @derive Jason.Encoder
   defstruct [:todo_uuid]
 
+  alias Commanded.ProcessManagers.Todo.Commands.MarkDone
   alias Commanded.ProcessManagers.Todo.Events.TodoCreated
   alias Commanded.ProcessManagers.TodoList.Events.ListAllDone
-  alias Commanded.ProcessManagers.Todo.Commands.MarkDone
 
   def interested?(%TodoCreated{todo_uuid: todo_uuid}), do: {:start, todo_uuid}
   def interested?(%ListAllDone{todo_uuids: todo_uuids}), do: {:continue, todo_uuids}

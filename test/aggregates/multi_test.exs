@@ -3,13 +3,12 @@ defmodule Commanded.Aggregate.MultiTest do
 
   import Commanded.Enumerable
 
-  alias Commanded.DefaultApp
-  alias Commanded.EventStore
   alias Commanded.Aggregate.Multi
   alias Commanded.Aggregate.Multi.BankAccount
   alias Commanded.Aggregate.Multi.BankAccount.Commands.{OpenAccount, WithdrawMoney}
   alias Commanded.Aggregate.Multi.BankAccount.Events.{BankAccountOpened, MoneyWithdrawn}
   alias Commanded.Aggregate.MultiBankRouter
+  alias Commanded.{DefaultApp, EventStore}
 
   setup do
     start_supervised!(DefaultApp)
@@ -121,7 +120,7 @@ defmodule Commanded.Aggregate.MultiTest do
         %ExampleAggregate{}
         |> Multi.new()
         |> Multi.execute(fn %ExampleAggregate{events: events} ->
-          assert length(events) == 0
+          assert events == []
 
           %Event{data: 1}
         end)

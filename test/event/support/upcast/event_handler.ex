@@ -3,7 +3,7 @@ defmodule Commanded.Event.Upcast.EventHandler do
     application: Commanded.DefaultApp,
     name: __MODULE__
 
-  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, EventFive}
+  alias Commanded.Event.Upcast.Events.{EventFive, EventFour, EventOne, EventThree, EventTwo}
 
   def handle(%EventOne{} = e, _), do: send_reply(e)
   def handle(%EventTwo{} = e, _), do: send_reply(e)

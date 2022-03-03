@@ -2,11 +2,9 @@ defmodule Event.UpcasterTest do
   use ExUnit.Case
 
   alias Commanded.Aggregates.Aggregate
-  alias Commanded.DefaultApp
-  alias Commanded.EventStore
-  alias Commanded.EventStore.EventData
-  alias Commanded.EventStore.RecordedEvent
-  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, EventFive, Stop}
+  alias Commanded.{DefaultApp, EventStore}
+  alias Commanded.EventStore.{EventData, RecordedEvent}
+  alias Commanded.Event.Upcast.Events.{EventFive, EventFour, EventOne, EventThree, EventTwo, Stop}
   alias Commanded.Event.Upcast.UpcastAggregate
 
   setup do

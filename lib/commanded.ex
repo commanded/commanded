@@ -20,10 +20,13 @@ defmodule Commanded do
 
   use Application
 
+  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Application.Config
+
   @doc false
   def start(_type, _args) do
     children = [
-      Commanded.Application.Config
+      Config
     ]
 
     opts = [strategy: :one_for_one, name: Commanded.Supervisor]
@@ -38,7 +41,7 @@ defmodule Commanded do
   and then replaying the aggregate's event stream.
   """
   def aggregate_state(application, aggregate_module, aggregate_uuid, timeout \\ 5_000) do
-    Commanded.Aggregates.Aggregate.aggregate_state(
+    Aggregate.aggregate_state(
       application,
       aggregate_module,
       aggregate_uuid,

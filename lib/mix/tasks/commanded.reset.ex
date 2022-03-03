@@ -21,6 +21,9 @@ defmodule Mix.Tasks.Commanded.Reset do
 
   use Mix.Task
 
+  alias Commanded.Event.Handler
+  alias Commanded.Registration
+
   @shortdoc "Reset an event handler to its start_from"
 
   @switches [
@@ -66,9 +69,9 @@ defmodule Mix.Tasks.Commanded.Reset do
     end
 
     quiet = Keyword.get(opts, :quiet, false)
-    registry_name = Commanded.Event.Handler.name(app, handler_name)
+    registry_name = Handler.name(app, handler_name)
 
-    case Commanded.Registration.whereis_name(app, registry_name) do
+    case Registration.whereis_name(app, registry_name) do
       :undefined ->
         unless quiet, do: Mix.shell().info("No process found for #{inspect(handler_name)}")
 

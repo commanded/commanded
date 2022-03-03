@@ -3,8 +3,8 @@ defmodule Commanded.Helpers.ProcessHelper do
 
   import ExUnit.Assertions
 
-  alias Commanded.Registration
   alias Commanded.Helpers.Wait
+  alias Commanded.Registration
 
   @doc """
   Stop the given process with a non-normal exit reason.

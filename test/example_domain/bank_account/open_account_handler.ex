@@ -4,7 +4,7 @@ defmodule Commanded.ExampleDomain.OpenAccountHandler do
   @behaviour Commanded.Commands.Handler
 
   alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, CloseAccount}
+  alias Commanded.ExampleDomain.BankAccount.Commands.{CloseAccount, OpenAccount}
 
   def handle(%BankAccount{} = aggregate, %OpenAccount{} = open_account) do
     BankAccount.open_account(aggregate, open_account)

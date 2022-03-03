@@ -4,17 +4,12 @@ defmodule Commanded.Aggregates.BankRouter do
 
   alias Commanded.ExampleDomain.{
     BankAccount,
-    OpenAccountHandler,
     DepositMoneyHandler,
+    OpenAccountHandler,
     WithdrawMoneyHandler
   }
 
-  alias BankAccount.Commands.{
-    CloseAccount,
-    DepositMoney,
-    OpenAccount,
-    WithdrawMoney
-  }
+  alias BankAccount.Commands.{CloseAccount, DepositMoney, OpenAccount, WithdrawMoney}
 
   identify BankAccount, by: :account_number
 

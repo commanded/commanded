@@ -6,12 +6,11 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
   alias Commanded.Commands.OpenAccountBonusHandler
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankApp
-  alias Commanded.ExampleDomain.BankRouter
-  alias Commanded.ExampleDomain.TransferMoneyProcessManager
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
+  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, WithdrawMoney}
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Commanded.ExampleDomain.BankRouter
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
+  alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.Helpers.ProcessHelper
 

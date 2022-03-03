@@ -25,7 +25,7 @@ defmodule Commanded.Event.Upcast.ProcessManager do
   @derive Jason.Encoder
   defstruct []
 
-  alias Commanded.Event.Upcast.Events.{EventOne, EventTwo, EventThree, EventFour, Stop}
+  alias Commanded.Event.Upcast.Events.{EventFour, EventOne, EventThree, EventTwo, Stop}
 
   use Commanded.ProcessManagers.ProcessManager,
     application: Application,

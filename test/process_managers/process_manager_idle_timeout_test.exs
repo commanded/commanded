@@ -1,12 +1,15 @@
 defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
   use ExUnit.Case
 
-  alias Commanded.ProcessManagers.ExampleApp
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.Start
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.Stop
-  alias Commanded.ProcessManagers.ExampleRouter
-  alias Commanded.ProcessManagers.ProcessRouter
-  alias Commanded.ProcessManagers.TimeoutProcessManager
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Start, Stop}
+
+  alias Commanded.ProcessManagers.{
+    ExampleApp,
+    ExampleRouter,
+    ProcessRouter,
+    TimeoutProcessManager
+  }
+
   alias Commanded.Helpers.Wait
 
   setup do

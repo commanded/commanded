@@ -654,7 +654,7 @@ defmodule Commanded.Commands.Router do
   defp parse_opts([{param, _value} | _opts], _result) do
     raise """
     unexpected dispatch parameter "#{param}"
-    available params are: #{@register_params |> Enum.map(&to_string/1) |> Enum.join(", ")}
+    available params are: #{Enum.map_join(@register_params, ", ", &to_string/1)}
     """
   end
 

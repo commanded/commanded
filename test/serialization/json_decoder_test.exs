@@ -1,8 +1,7 @@
 defmodule Commanded.Serialization.JsonDecoderTest do
   use ExUnit.Case
 
-  alias Commanded.Serialization.JsonSerializer
-  alias Commanded.Serialization.JsonDecoder
+  alias Commanded.Serialization.{JsonDecoder, JsonSerializer}
 
   defmodule ExampleEvent do
     @derive Jason.Encoder
@@ -30,6 +29,7 @@ defmodule Commanded.Serialization.JsonDecoderTest do
 
   test "should allow decoding of deserialized value from JSON" do
     {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
+
     event = %ExampleEvent{name: "Ben", datetime: dt}
     type = Atom.to_string(event.__struct__)
 

@@ -1,5 +1,6 @@
 defmodule Commanded.Helpers.EventFactory do
   @moduledoc false
+  alias Commanded.Event.Mapper
   alias Commanded.EventStore.RecordedEvent
 
   def map_to_recorded_events(events, initial_event_number \\ 1, opts \\ []) do
@@ -11,7 +12,7 @@ defmodule Commanded.Helpers.EventFactory do
     fields = [causation_id: causation_id, correlation_id: correlation_id, metadata: metadata]
 
     events
-    |> Commanded.Event.Mapper.map_to_event_data(fields)
+    |> Mapper.map_to_event_data(fields)
     |> Enum.with_index(initial_event_number)
     |> Enum.map(fn {event, index} ->
       %RecordedEvent{

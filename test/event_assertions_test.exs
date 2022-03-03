@@ -3,8 +3,8 @@ defmodule Commanded.EventAssertionsTest do
 
   import Commanded.Assertions.EventAssertions
 
-  alias Commanded.EventStore
-  alias Commanded.DefaultApp
+  alias Commanded.{DefaultApp, EventStore}
+  alias Commanded.Event.Mapper
 
   defmodule Event do
     @derive Jason.Encoder
@@ -167,7 +167,7 @@ defmodule Commanded.EventAssertionsTest do
   end
 
   defp append_events(stream_uuid, events) do
-    event_data = Commanded.Event.Mapper.map_to_event_data(events)
+    event_data = Mapper.map_to_event_data(events)
 
     EventStore.append_to_stream(DefaultApp, stream_uuid, :any_version, event_data)
   end

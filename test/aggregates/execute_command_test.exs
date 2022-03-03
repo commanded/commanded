@@ -4,7 +4,7 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
   import Commanded.Helpers.ProcessHelper, only: [shutdown_aggregate: 3]
 
   alias Commanded.Aggregates.{Aggregate, ExecutionContext}
-  alias Commanded.ExampleDomain.{BankApp, BankAccount, OpenAccountHandler}
+  alias Commanded.ExampleDomain.{BankAccount, BankApp, OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.Helpers.Wait

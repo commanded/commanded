@@ -9,16 +9,16 @@ defmodule Commanded.ProcessManagers.ErrorHandlingProcessManager do
     RaiseException
   }
 
-  alias Commanded.ProcessManagers.ErrorApp
-
   alias Commanded.ProcessManagers.ErrorAggregate.Events.{
+    ProcessApplyException,
     ProcessContinued,
     ProcessDispatchException,
     ProcessError,
-    ProcessApplyException,
     ProcessException,
     ProcessStarted
   }
+
+  alias Commanded.ProcessManagers.ErrorApp
 
   use Commanded.ProcessManagers.ProcessManager,
     application: ErrorApp,

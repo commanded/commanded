@@ -2,9 +2,9 @@ defmodule Commanded.Event.EventHandlerMacroTest do
   use ExUnit.Case
 
   alias Commanded.Event.IgnoredEvent
-  alias Commanded.ExampleDomain.BankApp
-  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
   alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
+  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
+  alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.{EventFactory, Wait}
 
   describe "event handler" do

@@ -1,30 +1,32 @@
 defmodule Commanded.Event.EventHandlerNameTest do
   use ExUnit.Case
 
+  alias Commanded.Event.Handler
+
   describe "event handler name" do
     test "should parse string" do
-      assert Commanded.Event.Handler.parse_name("foo") == "foo"
+      assert Handler.parse_name("foo") == "foo"
     end
 
     test "should parse atom to string" do
-      assert Commanded.Event.Handler.parse_name(:foo) == ":foo"
+      assert Handler.parse_name(:foo) == ":foo"
     end
 
     test "should parse tuple to string" do
-      assert Commanded.Event.Handler.parse_name({:foo, :bar}) == "{:foo, :bar}"
+      assert Handler.parse_name({:foo, :bar}) == "{:foo, :bar}"
     end
 
     test "should parse empty string to `nil`" do
-      assert Commanded.Event.Handler.parse_name("") == nil
+      assert Handler.parse_name("") == nil
     end
 
     test "should parse `nil` to `nil`" do
-      assert Commanded.Event.Handler.parse_name(nil) == nil
+      assert Handler.parse_name(nil) == nil
     end
   end
 
   defmodule NoAppEventHandler do
-    use Commanded.Event.Handler, name: __MODULE__
+    use Handler, name: __MODULE__
   end
 
   test "should ensure an application is provided" do
@@ -37,7 +39,7 @@ defmodule Commanded.Event.EventHandlerNameTest do
   end
 
   defmodule UnnamedEventHandler do
-    use Commanded.Event.Handler, application: Commanded.DefaultApp
+    use Handler, application: Commanded.DefaultApp
   end
 
   test "should ensure an event handler name is provided" do
@@ -50,7 +52,7 @@ defmodule Commanded.Event.EventHandlerNameTest do
   end
 
   defmodule ModuleNamedEventHandler do
-    use Commanded.Event.Handler, application: Commanded.DefaultApp, name: __MODULE__
+    use Handler, application: Commanded.DefaultApp, name: __MODULE__
   end
 
   test "should allow using event handler module as name" do

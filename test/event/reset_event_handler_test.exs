@@ -3,11 +3,12 @@ defmodule Commanded.Event.ResetEventHandlerTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.Event.Mapper
   alias Commanded.EventStore
-  alias Commanded.Helpers.Wait
-  alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.BankAccountHandler
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.ExampleDomain.BankApp
+  alias Commanded.Helpers.Wait
 
   describe "reset event handler" do
     setup do
@@ -67,7 +68,7 @@ defmodule Commanded.Event.ResetEventHandlerTest do
   end
 
   defp to_event_data(events) do
-    Commanded.Event.Mapper.map_to_event_data(events,
+    Mapper.map_to_event_data(events,
       causation_id: UUID.uuid4(),
       correlation_id: UUID.uuid4(),
       metadata: %{}

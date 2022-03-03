@@ -1,8 +1,8 @@
 defmodule Commanded.Serialization.ModuleNameTypeProviderTest do
   use ExUnit.Case
 
-  alias Commanded.Serialization.ModuleNameTypeProvider
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
+  alias Commanded.Serialization.ModuleNameTypeProvider
 
   @account_opened_type "Elixir.Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened"
 

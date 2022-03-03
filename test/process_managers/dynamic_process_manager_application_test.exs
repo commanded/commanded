@@ -1,14 +1,11 @@
 defmodule Commanded.ProcessManager.DynamicProcessManagerApplicationTest do
   use ExUnit.Case
 
-  alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-  alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
-  alias Commanded.Helpers.CommandAuditMiddleware
-  alias Commanded.Helpers.Wait
-  alias Commanded.ProcessManagers.ProcessRouter
-  alias Commanded.ProcessManagers.DynamicProcessManager
+  alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
+  alias Commanded.ExampleDomain.BankApp
+  alias Commanded.Helpers.{CommandAuditMiddleware, Wait}
+  alias Commanded.ProcessManagers.{DynamicProcessManager, ProcessRouter}
 
   setup_all do
     start_supervised!(CommandAuditMiddleware)

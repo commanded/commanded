@@ -1,6 +1,5 @@
 defmodule Commanded.Aggregates.AggregateStateBuilder do
   alias Commanded.Aggregates.Aggregate
-
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.SnapshotData

@@ -1,6 +1,9 @@
 defmodule Commanded.Application do
   use TelemetryRegistry
 
+  alias Commanded.Aggregates.Aggregate
+  alias Commanded.Application.Config
+
   telemetry_event(%{
     event: [:commanded, :application, :dispatch, :start],
     description: "Emitted when an application starts dispatching a command",
@@ -203,7 +206,7 @@ defmodule Commanded.Application do
       end
 
       def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5000) do
-        Commanded.Aggregates.Aggregate.aggregate_state(
+        Aggregate.aggregate_state(
           __MODULE__,
           aggregate_module,
           aggregate_uuid,
@@ -267,7 +270,7 @@ defmodule Commanded.Application do
 
     - `command` is a command struct which must be registered with a
       `Commanded.Commands.Router` and included in the application.
-      
+
   """
   @callback dispatch(command :: struct()) ::
               :ok
@@ -355,8 +358,6 @@ defmodule Commanded.Application do
               | {:error, :unregistered_command}
               | {:error, :consistency_timeout}
               | {:error, reason :: term()}
-
-  alias Commanded.Application.Config
 
   @doc false
   def dispatch(application, command, opts \\ [])

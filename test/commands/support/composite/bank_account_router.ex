@@ -3,11 +3,14 @@ defmodule Commanded.Commands.Composite.BankAccountRouter do
 
   use Commanded.Commands.Router
 
-  alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney, WithdrawMoney}
-  alias Commanded.ExampleDomain.DepositMoneyHandler
-  alias Commanded.ExampleDomain.OpenAccountHandler
-  alias Commanded.ExampleDomain.WithdrawMoneyHandler
+  alias Commanded.ExampleDomain.{
+    BankAccount,
+    DepositMoneyHandler,
+    OpenAccountHandler,
+    WithdrawMoneyHandler
+  }
+
+  alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney, OpenAccount, WithdrawMoney}
 
   identify BankAccount, by: :account_number
 

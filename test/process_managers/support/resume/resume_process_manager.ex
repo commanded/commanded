@@ -7,7 +7,7 @@ defmodule Commanded.ProcessManagers.ResumeProcessManager do
   @derive Jason.Encoder
   defstruct status_history: []
 
-  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted, ProcessResumed}
+  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessResumed, ProcessStarted}
   alias Commanded.ProcessManagers.ResumeProcessManager
 
   def interested?(%ProcessStarted{process_uuid: process_uuid}), do: {:start, process_uuid}

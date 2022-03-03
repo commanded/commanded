@@ -8,6 +8,7 @@ defmodule Commanded.Event.HandleEventTest do
   alias Commanded.Event.AppendingEventHandler
   alias Commanded.Event.EchoHandler
   alias Commanded.Event.Handler
+  alias Commanded.Event.Mapper
   alias Commanded.Event.ReplyEvent
   alias Commanded.Event.UninterestingEvent
   alias Commanded.EventStore
@@ -253,7 +254,7 @@ defmodule Commanded.Event.HandleEventTest do
   end
 
   defp to_event_data(events) do
-    Commanded.Event.Mapper.map_to_event_data(events,
+    Mapper.map_to_event_data(events,
       causation_id: UUID.uuid4(),
       correlation_id: UUID.uuid4(),
       metadata: %{}

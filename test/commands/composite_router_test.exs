@@ -1,12 +1,15 @@
 defmodule Commanded.Commands.CompositeRouterTest do
   use ExUnit.Case
 
-  alias Commanded.Commands.Composite.CompositeCompositeRouter
-  alias Commanded.Commands.Composite.ExampleCompositeRouter
-  alias Commanded.Commands.Composite.UnregisteredCommand
+  alias Commanded.Commands.Composite.{
+    CompositeCompositeRouter,
+    ExampleCompositeRouter,
+    UnregisteredCommand
+  }
+
   alias Commanded.Commands.ExecutionResult
   alias Commanded.DefaultApp
-  alias Commanded.ExampleDomain.BankAccount.Commands.{OpenAccount, DepositMoney, WithdrawMoney}
+  alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney, OpenAccount, WithdrawMoney}
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
 
   describe "composite router" do

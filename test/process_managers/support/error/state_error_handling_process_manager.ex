@@ -1,11 +1,10 @@
 defmodule Commanded.ProcessManagers.StateErrorHandlingProcessManager do
   @moduledoc false
 
-  alias Commanded.ProcessManagers.ExampleApp
-  alias Commanded.ProcessManagers.StateErrorHandlingProcessManager
   alias Commanded.ProcessManagers.ErrorAggregate.Commands.AttemptProcess
   alias Commanded.ProcessManagers.ErrorAggregate.Events.ProcessStarted
-  alias Commanded.ProcessManagers.FailureContext
+  alias Commanded.ProcessManagers.{ExampleApp, FailureContext}
+  alias Commanded.ProcessManagers.StateErrorHandlingProcessManager
 
   use Commanded.ProcessManagers.ProcessManager,
     application: ExampleApp,

@@ -29,7 +29,7 @@ defmodule Commanded.ProcessManagers.TodoList do
 
   alias Commanded.ProcessManagers.TodoList
   alias Commanded.ProcessManagers.TodoList.Commands.{CreateList, MarkAllDone}
-  alias Commanded.ProcessManagers.TodoList.Events.{TodoListCreated, ListAllDone}
+  alias Commanded.ProcessManagers.TodoList.Events.{ListAllDone, TodoListCreated}
 
   def execute(%TodoList{}, %CreateList{list_uuid: list_uuid, todo_uuids: todo_uuids}) do
     %TodoListCreated{list_uuid: list_uuid, todo_uuids: todo_uuids}

@@ -21,8 +21,8 @@ defmodule Commanded.ProcessManagers.ResumeAggregate do
   end
 
   alias Commanded.ProcessManagers.ResumeAggregate
-  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess, ResumeProcess}
-  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessStarted, ProcessResumed}
+  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{ResumeProcess, StartProcess}
+  alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessResumed, ProcessStarted}
 
   def start_process(%ResumeAggregate{}, %StartProcess{process_uuid: process_uuid, status: status}) do
     %ProcessStarted{process_uuid: process_uuid, status: status}

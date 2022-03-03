@@ -4,7 +4,7 @@ defmodule Commanded.ProcessManagers.ResumeRouter do
   use Commanded.Commands.Router
 
   alias Commanded.ProcessManagers.{ResumeAggregate, ResumeCommandHandler}
-  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{StartProcess, ResumeProcess}
+  alias Commanded.ProcessManagers.ResumeAggregate.Commands.{ResumeProcess, StartProcess}
 
   dispatch StartProcess,
     to: ResumeCommandHandler,

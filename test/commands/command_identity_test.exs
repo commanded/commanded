@@ -1,8 +1,8 @@
 defmodule Commanded.Commands.CommandIdentityTest do
   use ExUnit.Case
 
-  alias Commanded.ExampleDomain.BankApp
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
+  alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.CommandAuditMiddleware
 
   setup do

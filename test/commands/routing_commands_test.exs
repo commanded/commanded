@@ -1,17 +1,33 @@
 defmodule Commanded.Commands.RoutingCommandsTest do
   use ExUnit.Case
 
-  alias Commanded.DefaultApp
-  alias Commanded.Commands.UnregisteredCommand
-  alias Commanded.EventStore
-  alias Commanded.ExampleDomain.BankAccount
-  alias Commanded.ExampleDomain.OpenAccountHandler
-  alias Commanded.ExampleDomain.DepositMoneyHandler
-  alias Commanded.ExampleDomain.WithdrawMoneyHandler
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
-  alias Commanded.ExampleDomain.BankAccount.Commands.CloseAccount
-  alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
-  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
+  alias Commanded.Commands.AggregateRoot.{Command, Command2}
+
+  alias Commanded.Commands.{
+    AggregateRouter,
+    IdentityAggregateRouter,
+    IdentityFunctionRouter,
+    UnregisteredCommand
+  }
+
+  alias Commanded.Commands.IdentityAggregate.IdentityCommand
+  alias Commanded.Commands.IdentityAggregatePrefixFunRouter
+  alias Commanded.Commands.IdentityFunctionAggregate.IdentityFunctionCommand
+  alias Commanded.{DefaultApp, EventStore}
+
+  alias Commanded.ExampleDomain.{
+    BankAccount,
+    DepositMoneyHandler,
+    OpenAccountHandler,
+    WithdrawMoneyHandler
+  }
+
+  alias Commanded.ExampleDomain.BankAccount.Commands.{
+    CloseAccount,
+    DepositMoney,
+    OpenAccount,
+    WithdrawMoney
+  }
 
   @dispatch_opts [application: DefaultApp]
 
@@ -65,9 +81,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "routing to aggregate" do
-    alias Commanded.Commands.AggregateRouter
-    alias Commanded.Commands.AggregateRoot.{Command, Command2}
-
     test "should dispatch command to registered handler" do
       assert :ok = AggregateRouter.dispatch(%Command{uuid: UUID.uuid4()}, @dispatch_opts)
     end
@@ -83,9 +96,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "identify aggregate prefix by string" do
-    alias Commanded.Commands.IdentityAggregateRouter
-    alias Commanded.Commands.IdentityAggregate.IdentityCommand
-
     test "should dispatch command to registered handler" do
       assert :ok =
                IdentityAggregateRouter.dispatch(
@@ -106,9 +116,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "identify aggregate prefix by function" do
-    alias Commanded.Commands.IdentityAggregatePrefixFunRouter
-    alias Commanded.Commands.IdentityAggregate.IdentityCommand
-
     test "should dispatch command to registered handler" do
       assert :ok =
                IdentityAggregatePrefixFunRouter.dispatch(
@@ -134,9 +141,6 @@ defmodule Commanded.Commands.RoutingCommandsTest do
   end
 
   describe "identify aggregate using function" do
-    alias Commanded.Commands.IdentityFunctionRouter
-    alias Commanded.Commands.IdentityFunctionAggregate.IdentityFunctionCommand
-
     test "should dispatch command to registered handler" do
       assert :ok =
                IdentityFunctionRouter.dispatch(
