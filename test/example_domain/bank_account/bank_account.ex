@@ -60,18 +60,18 @@ defmodule Commanded.ExampleDomain.BankAccount do
     end
   end
 
-  alias Commands.OpenAccount
-  alias Commands.LockAccount
-  alias Commands.DepositMoney
-  alias Commands.WithdrawMoney
   alias Commands.CloseAccount
+  alias Commands.DepositMoney
+  alias Commands.LockAccount
+  alias Commands.OpenAccount
+  alias Commands.WithdrawMoney
 
-  alias Events.BankAccountOpened
-  alias Events.BankAccountLocked
-  alias Events.MoneyDeposited
-  alias Events.MoneyWithdrawn
   alias Events.AccountOverdrawn
   alias Events.BankAccountClosed
+  alias Events.BankAccountLocked
+  alias Events.BankAccountOpened
+  alias Events.MoneyDeposited
+  alias Events.MoneyWithdrawn
 
   def open_account(
         %BankAccount{state: nil},

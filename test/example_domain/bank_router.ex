@@ -6,14 +6,14 @@ defmodule Commanded.ExampleDomain.BankRouter do
   alias Commanded.ExampleDomain.BankAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.CloseAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.DepositMoney
-  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.LockAccount
+  alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
   alias Commanded.ExampleDomain.DepositMoneyHandler
+  alias Commanded.ExampleDomain.LockAccountHandler
   alias Commanded.ExampleDomain.MoneyTransfer
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
   alias Commanded.ExampleDomain.OpenAccountHandler
-  alias Commanded.ExampleDomain.LockAccountHandler
   alias Commanded.ExampleDomain.TransferMoneyHandler
   alias Commanded.ExampleDomain.WithdrawMoneyHandler
   alias Commanded.Helpers.CommandAuditMiddleware
