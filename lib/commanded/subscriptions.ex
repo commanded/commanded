@@ -29,7 +29,7 @@ defmodule Commanded.Subscriptions do
   defdelegate all(application), to: Subscriptions.Registry
 
   @doc """
-  Acknowledge receipt and sucessful processing of the given event by the named
+  Acknowledge receipt and successful processing of the given event by the named
   handler.
   """
   def ack_event(application, name, consistency, event)

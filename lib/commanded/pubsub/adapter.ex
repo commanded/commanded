@@ -1,6 +1,6 @@
 defmodule Commanded.PubSub.Adapter do
   @moduledoc """
-  Pub/sub behaviour for use by Commanded to subcribe to and broadcast messages.
+  Pub/sub behaviour for use by Commanded to subscribe to and broadcast messages.
   """
 
   @type adapter_meta :: map

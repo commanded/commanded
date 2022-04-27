@@ -28,7 +28,7 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
           }
 
         {:error, _error} ->
-          # No snapshot present, or exists but for outdated state, so use intial empty state
+          # No snapshot present, or exists but for outdated state, so use initial empty state
           %Aggregate{state | aggregate_version: 0, aggregate_state: struct(aggregate_module)}
       end
 

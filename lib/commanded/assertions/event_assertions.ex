@@ -99,14 +99,14 @@ defmodule Commanded.Assertions.EventAssertions do
 
     refute_receive_event(ExampleApp, ExampleEvent, &some_func/0)
 
-  Refute that `ExampleEvent` matching given `event_matches?/1` predicate funtion
+  Refute that `ExampleEvent` matching given `event_matches?/1` predicate function
   is produced by `some_func/0` function:
 
       refute_receive_event(ExampleApp, ExampleEvent, &some_func/0,
         predicate: &event_matches?/1
       )
 
-  Refute that `ExampleEvent` matching given anonymous predicate funtion
+  Refute that `ExampleEvent` matching given anonymous predicate function
   is produced by `some_func/0` function:
 
       refute_receive_event(ExampleApp, ExampleEvent, &some_func/0,
