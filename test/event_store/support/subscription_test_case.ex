@@ -185,7 +185,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         refute_receive {:events, _events}
       end
 
-      test "should receive events already apended to stream", %{
+      test "should receive events already appended to stream", %{
         event_store: event_store,
         event_store_meta: event_store_meta
       } do

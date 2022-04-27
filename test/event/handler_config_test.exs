@@ -66,7 +66,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       )
     end
 
-    test "should use overriden config when provided" do
+    test "should use overridden config when provided" do
       {:ok, handler} =
         ExampleHandler.start_link(
           consistency: :eventual,
@@ -135,7 +135,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       )
     end
 
-    test "should use overriden config when provided" do
+    test "should use overridden config when provided" do
       start_supervised!({DefaultApp, name: :dynamic_app})
 
       handler =

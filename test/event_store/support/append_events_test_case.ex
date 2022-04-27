@@ -68,7 +68,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
                  )
       end
 
-      test "should fail when stream aleady exists with `:no_stream` parameter", %{
+      test "should fail when stream already exists with `:no_stream` parameter", %{
         event_store: event_store,
         event_store_meta: event_store_meta
       } do

@@ -21,7 +21,7 @@ defmodule Commanded.Aggregates.Supervisor do
   Open an aggregate instance process for the given aggregate module and unique
   identity.
 
-  Returns `{:ok, aggregate_uuid}` when a process is sucessfully started, or is
+  Returns `{:ok, aggregate_uuid}` when a process is successfully started, or is
   already running.
   """
   def open_aggregate(application, aggregate_module, aggregate_uuid)

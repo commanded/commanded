@@ -82,7 +82,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   @doc """
-  Attempt to fetch intial process state from snapshot storage.
+  Attempt to fetch initial process state from snapshot storage.
   """
   @impl GenServer
   def handle_continue(:fetch_state, %State{} = state) do

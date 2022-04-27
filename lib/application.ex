@@ -114,8 +114,8 @@ defmodule Commanded.Application do
   own separately configured and isolated event store. Each application must be
   started with a unique name.
 
-  Multipe instances of the same event handler or process manager can be
-  started by refering to a started application by its name. The event store
+  Multiple instances of the same event handler or process manager can be
+  started by referring to a started application by its name. The event store
   operations can also be scoped to an application by referring to its name.
 
   ### Example
@@ -251,7 +251,7 @@ defmodule Commanded.Application do
   @doc """
   Starts the application supervisor.
 
-  Returns `{:ok, pid}` on sucess, `{:error, {:already_started, pid}}` if the
+  Returns `{:ok, pid}` on success, `{:error, {:already_started, pid}}` if the
   application is already started, or `{:error, term}` in case anything else goes
   wrong.
   """
