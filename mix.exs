@@ -89,6 +89,7 @@ defmodule Commanded.Mixfile do
       canonical: "http://hexdocs.pm/commanded",
       source_ref: "v#{@version}",
       extra_section: "GUIDES",
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       extras: [
         "CHANGELOG.md",
         "guides/Getting Started.md",

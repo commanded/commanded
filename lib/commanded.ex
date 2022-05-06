@@ -40,6 +40,12 @@ defmodule Commanded do
   or querying the event store for an optional state snapshot
   and then replaying the aggregate's event stream.
   """
+  @spec aggregate_state(
+          application :: Commanded.Application.t(),
+          aggregate_module :: module(),
+          aggregate_uuid :: Aggregate.uuid(),
+          timeout :: integer
+        ) :: Aggregate.state()
   def aggregate_state(application, aggregate_module, aggregate_uuid, timeout \\ 5_000) do
     Aggregate.aggregate_state(
       application,

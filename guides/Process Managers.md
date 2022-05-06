@@ -2,11 +2,11 @@
 
 A process manager is responsible for coordinating one or more aggregates. It handles events and dispatches commands in response. You can think of a process manager as the opposite of an aggregate: aggregates handle commands and create events; process managers handle events and create commands. Process managers have state that can be used to track which aggregates are being orchestrated.
 
-Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the callback functions defined in the behaviour: `interested?/1`, `handle/2`, `apply/2`, and `error/3`.
+Use the `Commanded.ProcessManagers.ProcessManager` macro in your process manager module and implement the callback functions defined in the behaviour: `c:Commanded.ProcessManagers.ProcessManager.interested?/1`, `c:Commanded.ProcessManagers.ProcessManager.handle/2`, `c:Commanded.ProcessManagers.ProcessManager.apply/2`, and `c:Commanded.ProcessManagers.ProcessManager.error/3`.
 
 ## `interested?/1`
 
-The `interested?/1` function is used to indicate which events the process manager handles. The response is used to route the event to an existing instance or start a new process instance:
+The `c:Commanded.ProcessManagers.ProcessManager.interested?/1` function is used to indicate which events the process manager handles. The response is used to route the event to an existing instance or start a new process instance:
 
 - `{:start, process_uuid}` - create a new instance of the process manager.
 - `{:start!, process_uuid}` - create a new instance of the process manager (strict).
@@ -30,7 +30,7 @@ If the check fails an error will be passed to the `error/3` callback function:
 - `{:error, {:start!, :process_already_started}}`
 - `{:error, {:continue!, :process_not_started}}`
 
-The `error/3` function can choose to `:stop` the process or `:skip` the problematic event.
+The `c:Commanded.ProcessManagers.ProcessManager.error/3` function can choose to `:stop` the process or `:skip` the problematic event.
 
 ## `handle/2`
 
@@ -40,19 +40,19 @@ The `handle/2` function can be omitted if you do not need to dispatch a command 
 
 ## `apply/2`
 
-The `apply/2` function is used to mutate the process manager's state. It receives the current state and the domain event, and must return the modified state.
+The `c:Commanded.ProcessManagers.ProcessManager.apply/2` function is used to mutate the process manager's state. It receives the current state and the domain event, and must return the modified state.
 
 This callback function is optional, the default behaviour is to retain the process manager's current state.
 
 ## `error/3`
 
-You can define an `c:error/3` callback function to handle any errors or exceptions during event handling or returned by commands dispatched from your process manager. The function is passed the error (e.g. `{:error, :failure}`), the failed event or command, and a failure context. See `Commanded.ProcessManagers.FailureContext` for details.
+You can define an `c:Commanded.ProcessManagers.ProcessManager.error/3` callback function to handle any errors or exceptions during event handling or returned by commands dispatched from your process manager. The function is passed the error (e.g. `{:error, :failure}`), the failed event or command, and a failure context. See `Commanded.ProcessManagers.FailureContext` for details.
 
 Use pattern matching on the error and/or failed event/command to explicitly handle certain errors, events, or commands. You can choose to retry, skip, ignore, or stop the process manager after a command dispatch error.
 
-The default behaviour, if you don't provide an `c:error/3` callback, is to stop the process manager using the exact error reason returned from the event handler function or command dispatch.
+The default behaviour, if you don't provide an `c:Commanded.ProcessManagers.ProcessManager.error/3` callback, is to stop the process manager using the exact error reason returned from the event handler function or command dispatch.
 
-The `error/3` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
+The `c:Commanded.ProcessManagers.ProcessManager.error/3` callback function must return one of the following responses depending upon the severity of error and how you choose to handle it:
 
 - `{:retry, context}` - retry the failed command, provide a context map containing any state passed to subsequent failures. This could be used to count the number of retries, failing after too many attempts.
 

@@ -218,7 +218,7 @@ defmodule Commanded.Event.Handler do
 
   Note with concurrent processing events will likely by processed out of order.
   If you need to enforce an order, such as per stream or by using a field from
-  an event, you can define a `c:partition_by/1` callback function in the event
+  an event, you can define a `c:partition_by/2` callback function in the event
   handler module. The function will receive each event and its metadata and must
   return a consistent term indicating the event's partition. Events which return
   the same term are guaranteed to be processed in order by the same event
