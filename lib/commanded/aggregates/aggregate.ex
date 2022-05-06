@@ -112,6 +112,10 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Snapshotting
   alias Commanded.Telemetry
 
+  @type state :: struct()
+
+  @type uuid :: String.t()
+
   defstruct [
     :application,
     :aggregate_module,
