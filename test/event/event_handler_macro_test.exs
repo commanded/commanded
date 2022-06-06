@@ -1,16 +1,15 @@
 defmodule Commanded.Event.EventHandlerMacroTest do
-  use ExUnit.Case
+  use Commanded.MockEventStoreCase
 
   alias Commanded.Event.IgnoredEvent
   alias Commanded.ExampleDomain.BankAccount.AccountBalanceHandler
   alias Commanded.ExampleDomain.BankAccount.Events.{BankAccountOpened, MoneyDeposited}
-  alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.{EventFactory, Wait}
+  alias Commanded.MockedApp
 
   describe "event handler" do
     setup do
-      start_supervised!(BankApp)
-      handler = start_supervised!(AccountBalanceHandler)
+      handler = start_supervised!({AccountBalanceHandler, application: MockedApp})
 
       Wait.until(fn ->
         assert AccountBalanceHandler.subscribed?()

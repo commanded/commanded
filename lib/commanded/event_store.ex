@@ -112,7 +112,7 @@ defmodule Commanded.EventStore do
   `{:subscribed, subscription}` message to allow it to defer initialisation
   until the subscription has started.
 
-  The subscriber process will be sent all events persisted to any stream. It
+  The subscriber process will be sent all events persisted to the stream. It
   will receive a `{:events, events}` message for each batch of events persisted
   for a single aggregate.
 

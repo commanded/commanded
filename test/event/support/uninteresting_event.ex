@@ -1,4 +1,4 @@
 defmodule Commanded.Event.UninterestingEvent do
-  @moduledoc false
+  @derive Jason.Encoder
   defstruct field: nil
 end

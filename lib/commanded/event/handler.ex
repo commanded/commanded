@@ -162,7 +162,6 @@ defmodule Commanded.Event.Handler do
         {ExampleHandler, application: ExampleApp, name: "ExampleHandler"}
       ], strategy: :one_for_one)
 
-
   ## Event handler state
 
   An event handler can define and update state which is held in the `GenServer`
@@ -209,6 +208,52 @@ defmodule Commanded.Event.Handler do
           {:ok, new_state}
         end
       end
+
+  ## Concurrency
+
+  An event handler may be configured to start multiple processes to handle the
+  events concurrently. By default one process will be started, processing events
+  one at a time in order. The `:concurrency` option determines how many event
+  handler processes are started. It must be a positive integer.
+
+  Note with concurrent processing events will likely by processed out of order.
+  If you need to enforce an order, such as per stream or by using a field from
+  an event, you can define a `c:partition_by/1` callback function in the event
+  handler module. The function will receive each event and its metadata and must
+  return a consistent term indicating the event's partition. Events which return
+  the same term are guaranteed to be processed in order by the same event
+  handler instance. While events with different partitions may be processed
+  concurrently by another instance. An attempt will be made to distribute
+  events as evenly as possible to all running event handler instances.
+
+  ### Example
+
+    defmodule ConcurrentProcssingEventHandler do
+      alias Commanded.EventStore.RecordedEvent
+
+      use Commanded.Event.Handler,
+        application: ExampleApp,
+        name: __MODULE__,
+        concurrency: 10
+
+      def init(config) do
+        # Fetch the index of this event handler instance (0..9 in this example)
+        index = Keyword.fetch!(config, :index)
+
+        {:ok, config}
+      end
+
+      def handle(event, metadata) do
+        :ok
+      end
+
+      # Partition events by their stream
+      def partition_by(event, metadata) do
+        %{stream_id: stream_id} = metadata
+
+        stream_id
+      end
+    end
 
   ## Consistency
 
@@ -459,7 +504,15 @@ defmodule Commanded.Event.Handler do
               | :skip
               | {:stop, reason :: term()}
 
-  @optional_callbacks init: 0, init: 1, error: 3
+  @doc """
+  Determine which partition an event belongs to.
+
+  Only applicable when an event handler has been configured with more than one
+  instance via the `:concurrency` option.
+  """
+  @callback partition_by(domain_event, metadata) :: any()
+
+  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2
 
   defmacro __using__(opts) do
     quote location: :keep do
@@ -476,6 +529,9 @@ defmodule Commanded.Event.Handler do
 
         - `:name` - name of the event handler used to determine its unique event
           store subscription.
+
+        - `:concurrency` - determines how many processes are started to
+          concurrently process events. The default is one process.
 
         - `:consistency` - one of either `:eventual` (default) or `:strong`.
 
@@ -515,14 +571,30 @@ defmodule Commanded.Event.Handler do
 
       """
       def child_spec(opts) do
-        default = %{
-          id: {__MODULE__, opts},
-          start: {__MODULE__, :start_link, [opts]},
-          restart: :permanent,
-          type: :worker
-        }
+        opts = Keyword.merge(@opts, opts)
 
-        Supervisor.child_spec(default, [])
+        spec =
+          case Keyword.get(opts, :concurrency, 1) do
+            1 ->
+              %{
+                id: {__MODULE__, opts},
+                start: {__MODULE__, :start_link, [opts]},
+                restart: :permanent,
+                type: :worker
+              }
+
+            concurrency when is_integer(concurrency) and concurrency > 1 ->
+              opts = Keyword.put(opts, :module, __MODULE__)
+
+              Handler.Supervisor.child_spec(opts)
+
+            invalid ->
+              raise ArgumentError,
+                    "invalid `:concurrency` for event handler, expected a positive integer but got: " <>
+                      inspect(invalid)
+          end
+
+        Supervisor.child_spec(spec, [])
       end
 
       @doc false
@@ -545,7 +617,9 @@ defmodule Commanded.Event.Handler do
   @handler_opts [
     :application,
     :name,
+    :concurrency,
     :consistency,
+    :index,
     :start_from,
     :subscribe_to,
     :subscription_opts,
@@ -570,9 +644,8 @@ defmodule Commanded.Event.Handler do
     end
 
     {name, config} = Keyword.pop(config, :name)
-    name = parse_name(name)
 
-    unless name do
+    unless name = parse_name(name) do
       raise ArgumentError, inspect(module) <> " expects :name option"
     end
 
@@ -612,17 +685,10 @@ defmodule Commanded.Event.Handler do
   def start_link(application, handler_name, handler_module, opts \\ []) do
     {start_opts, handler_opts} = Keyword.split(opts, @start_opts)
 
-    name = name(application, handler_name)
+    index = Keyword.get(handler_opts, :index)
+    name = name(application, handler_name, index)
     consistency = consistency(handler_opts)
-
-    subscription =
-      Subscription.new(
-        application: application,
-        subscription_name: handler_name,
-        subscribe_from: Keyword.get(handler_opts, :start_from, :origin),
-        subscribe_to: Keyword.get(handler_opts, :subscribe_to, :all),
-        subscription_opts: Keyword.get(handler_opts, :subscription_opts, [])
-      )
+    subscription = new_subscription(application, handler_name, handler_module, handler_opts)
 
     handler = %Handler{
       application: application,
@@ -642,7 +708,9 @@ defmodule Commanded.Event.Handler do
   end
 
   @doc false
-  def name(application, handler_name), do: {application, __MODULE__, handler_name}
+  def name(application, handler_name, index \\ nil)
+  def name(application, handler_name, nil), do: {application, __MODULE__, handler_name}
+  def name(application, handler_name, index), do: {application, __MODULE__, handler_name, index}
 
   @doc false
   @impl GenServer
@@ -1009,6 +1077,37 @@ defmodule Commanded.Event.Handler do
     %Handler{state | last_seen_event: event_number}
   end
 
+  # Determine the partition key for an event to ensure ordered processing when
+  # necessary.
+  defp partition_event(
+         %RecordedEvent{} = event,
+         application,
+         handler_name,
+         handler_module
+       ) do
+    %RecordedEvent{data: data} =
+      event = Upcast.upcast_event(event, additional_metadata: %{application: application})
+
+    metadata =
+      RecordedEvent.enrich_metadata(event,
+        additional_metadata: %{
+          application: application,
+          handler_name: handler_name,
+          state: nil
+        }
+      )
+
+    try do
+      handler_module.partition_by(data, metadata)
+    rescue
+      error ->
+        stacktrace = __STACKTRACE__
+        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+
+        1
+    end
+  end
+
   defp telemetry_start(telemetry_metadata) do
     Telemetry.start([:commanded, :event, :handle], telemetry_metadata)
   end
@@ -1051,6 +1150,23 @@ defmodule Commanded.Event.Handler do
       consistency when consistency in [:eventual, :strong] -> consistency
       invalid -> raise "Invalid `consistency` option: #{inspect(invalid)}"
     end
+  end
+
+  defp new_subscription(application, handler_name, handler_module, handler_opts) do
+    partition_by =
+      if function_exported?(handler_module, :partition_by, 2) do
+        fn event -> partition_event(event, application, handler_name, handler_module) end
+      end
+
+    Subscription.new(
+      application: application,
+      concurrency: Keyword.get(handler_opts, :concurrency, 1),
+      partition_by: partition_by,
+      subscription_name: handler_name,
+      subscribe_from: Keyword.get(handler_opts, :start_from, :origin),
+      subscribe_to: Keyword.get(handler_opts, :subscribe_to, :all),
+      subscription_opts: Keyword.get(handler_opts, :subscription_opts, [])
+    )
   end
 
   defp describe(%Handler{handler_module: handler_module}),

@@ -5,6 +5,7 @@ defmodule Commanded.EventStore.Subscriber do
 
   defmodule State do
     defstruct [
+      :subscription_opts,
       :event_store,
       :event_store_meta,
       :owner,
@@ -16,26 +17,52 @@ defmodule Commanded.EventStore.Subscriber do
 
   alias Subscriber.State
 
-  def start_link(event_store, event_store_meta, owner) do
-    state = %State{event_store: event_store, event_store_meta: event_store_meta, owner: owner}
+  def start_link(event_store, event_store_meta, owner, subscription_opts \\ []) do
+    state = %State{
+      event_store: event_store,
+      event_store_meta: event_store_meta,
+      owner: owner,
+      subscription_opts: subscription_opts
+    }
 
     GenServer.start_link(__MODULE__, state)
   end
 
   def init(%State{} = state) do
-    %State{event_store: event_store, event_store_meta: event_store_meta} = state
+    %State{event_store: event_store, event_store_meta: event_store_meta, subscription_opts: opts} =
+      state
 
-    {:ok, subscription} =
-      event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, [])
+    case event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, opts) do
+      {:ok, subscription} ->
+        state = %State{state | subscription: subscription}
 
-    {:ok, %State{state | subscription: subscription}}
+        {:ok, state}
+
+      {:error, error} ->
+        {:stop, error}
+    end
   end
+
+  def ack(subscriber, events),
+    do: GenServer.call(subscriber, {:ack, events})
 
   def subscribed?(subscriber),
     do: GenServer.call(subscriber, :subscribed?)
 
   def received_events(subscriber),
     do: GenServer.call(subscriber, :received_events)
+
+  def handle_call({:ack, events}, _from, %State{} = state) do
+    %State{
+      event_store: event_store,
+      event_store_meta: event_store_meta,
+      subscription: subscription
+    } = state
+
+    :ok = event_store.ack_event(event_store_meta, subscription, List.last(events))
+
+    {:reply, :ok, state}
+  end
 
   def handle_call(:subscribed?, _from, %State{} = state) do
     %State{subscribed?: subscribed?} = state
@@ -58,21 +85,11 @@ defmodule Commanded.EventStore.Subscriber do
   end
 
   def handle_info({:events, events}, %State{} = state) do
-    %State{
-      event_store: event_store,
-      event_store_meta: event_store_meta,
-      owner: owner,
-      received_events: received_events,
-      subscription: subscription
-    } = state
+    %State{owner: owner, received_events: received_events} = state
 
-    send(owner, {:events, events})
+    send(owner, {:events, self(), events})
 
     state = %State{state | received_events: received_events ++ events}
-
-    last_event = List.last(events)
-
-    event_store.ack_event(event_store_meta, subscription, last_event)
 
     {:noreply, state}
   end

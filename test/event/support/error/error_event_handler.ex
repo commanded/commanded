@@ -2,7 +2,7 @@ defmodule Commanded.Event.ErrorEventHandler do
   @moduledoc false
 
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: Commanded.MockedApp,
     name: __MODULE__
 
   alias Commanded.Event.FailureContext

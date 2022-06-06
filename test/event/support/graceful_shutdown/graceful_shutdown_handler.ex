@@ -1,6 +1,6 @@
 defmodule Commanded.Event.GracefulShutdownHandler do
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: Commanded.MockedApp,
     name: __MODULE__
 
   def handle(event, metadata) do

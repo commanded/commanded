@@ -20,6 +20,7 @@ defmodule Commanded.Event.HandlerConfigTest do
     assert_config(handler,
       application: Commanded.DefaultApp,
       name: "Commanded.Event.HandlerConfigTest.DefaultConfigHandler",
+      concurrency: 1,
       consistency: :eventual,
       start_from: :origin,
       subscribe_to: :all
@@ -35,6 +36,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: Commanded.DefaultApp,
         name: "Commanded.Event.HandlerConfigTest.DefaultConfigHandler",
+        concurrency: 1,
         consistency: :strong,
         start_from: :origin,
         subscribe_to: :all
@@ -60,6 +62,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: Commanded.DefaultApp,
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
+        concurrency: 1,
         consistency: :strong,
         start_from: :current,
         subscribe_to: "stream1"
@@ -69,7 +72,9 @@ defmodule Commanded.Event.HandlerConfigTest do
     test "should use overridden config when provided" do
       {:ok, handler} =
         ExampleHandler.start_link(
+          concurrency: 10,
           consistency: :eventual,
+          index: 0,
           start_from: :origin,
           subscribe_to: "stream2"
         )
@@ -77,6 +82,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: Commanded.DefaultApp,
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
+        concurrency: 10,
         consistency: :eventual,
         start_from: :origin,
         subscribe_to: "stream2"
@@ -89,6 +95,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: Commanded.DefaultApp,
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
+        concurrency: 1,
         consistency: :strong,
         start_from: :origin,
         subscribe_to: "stream1"
@@ -101,6 +108,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: Commanded.DefaultApp,
         name: "handler_name",
+        concurrency: 1,
         consistency: :strong,
         start_from: :current,
         subscribe_to: "stream1"
@@ -115,6 +123,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: :dynamic_app,
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
+        concurrency: 1,
         consistency: :strong,
         start_from: :current,
         subscribe_to: "stream1"
@@ -129,6 +138,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: Commanded.DefaultApp,
         name: "Commanded.Event.HandlerConfigTest.ExampleHandler",
+        concurrency: 1,
         consistency: :strong,
         start_from: :current,
         subscribe_to: "stream1"
@@ -150,6 +160,7 @@ defmodule Commanded.Event.HandlerConfigTest do
       assert_config(handler,
         application: :dynamic_app,
         name: "handler_name",
+        concurrency: 1,
         consistency: :eventual,
         start_from: :origin,
         subscribe_to: "stream1"
@@ -218,12 +229,17 @@ defmodule Commanded.Event.HandlerConfigTest do
       application: application,
       handler_name: name,
       consistency: consistency,
-      subscription: %Subscription{subscribe_from: subscribe_from, subscribe_to: subscribe_to}
+      subscription: %Subscription{
+        concurrency: concurrency,
+        subscribe_from: subscribe_from,
+        subscribe_to: subscribe_to
+      }
     } = :sys.get_state(handler)
 
     actual_config = [
       application: application,
       name: name,
+      concurrency: concurrency,
       consistency: consistency,
       start_from: subscribe_from,
       subscribe_to: subscribe_to

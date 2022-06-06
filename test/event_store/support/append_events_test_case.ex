@@ -114,7 +114,7 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
         event_store: event_store,
         event_store_meta: event_store_meta
       } do
-        assert {:error, :stream_does_not_exist} ==
+        assert {:error, :stream_not_found} ==
                  event_store.append_to_stream(
                    event_store_meta,
                    "stream",
