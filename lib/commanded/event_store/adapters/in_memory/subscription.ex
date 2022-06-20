@@ -3,36 +3,28 @@ defmodule Commanded.EventStore.Adapters.InMemory.Subscription do
 
   use GenServer
 
-  alias Commanded.EventStore.Adapters.InMemory.Subscription
-
-  defstruct [:stream_uuid, :name, :subscriber, :ref, :start_from, last_seen: 0]
-
-  def start_link(%Subscription{} = state) do
-    GenServer.start_link(__MODULE__, state)
+  def start_link(subscriber) do
+    GenServer.start_link(__MODULE__, subscriber)
   end
 
   @impl GenServer
-  def init(%Subscription{} = state) do
-    %Subscription{subscriber: subscriber} = state
-
+  def init(subscriber) do
     send(subscriber, {:subscribed, self()})
 
-    state = %Subscription{state | ref: Process.monitor(subscriber)}
+    Process.monitor(subscriber)
 
-    {:ok, state}
+    {:ok, subscriber}
   end
 
   @impl GenServer
-  def handle_info({:events, events}, %Subscription{} = state) do
-    %Subscription{subscriber: subscriber} = state
-
+  def handle_info({:events, events}, subscriber) do
     send(subscriber, {:events, events})
 
-    {:noreply, state}
+    {:noreply, subscriber}
   end
 
   @impl GenServer
-  def handle_info({:DOWN, _ref, :process, _pid, reason}, %Subscription{} = state) do
-    {:stop, reason, state}
+  def handle_info({:DOWN, _ref, :process, subscriber, reason}, subscriber) do
+    {:stop, reason, subscriber}
   end
 end

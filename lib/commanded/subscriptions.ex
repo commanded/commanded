@@ -297,11 +297,13 @@ defmodule Commanded.Subscriptions do
     Enum.map(consistency, fn
       name when is_binary(name) -> name
       module when is_atom(module) -> module
-      invalid -> raise "Invalid consistency: #{inspect(invalid)}"
+      invalid -> raise ArgumentError, message: "invalid consistency: " <> inspect(invalid)
     end)
   end
 
-  defp parse_consistency(invalid), do: raise("Invalid consistency: #{inspect(invalid)}")
+  defp parse_consistency(invalid) do
+    raise ArgumentError, message: "invalid consistency: " <> inspect(invalid)
+  end
 
   defp parse_exclude(exclude), do: exclude |> List.wrap() |> MapSet.new()
 

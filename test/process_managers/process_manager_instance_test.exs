@@ -5,25 +5,29 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
   alias Commanded.Application.Config
   alias Commanded.Application.Mock, as: MockApplication
-  alias Commanded.DefaultApp
-  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
-  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
-  # credo:disable-for-next-line
-  alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.EventStore.Adapters.Mock, as: MockEventStore
   alias Commanded.EventStore.{RecordedEvent, SnapshotData}
-  alias Commanded.ProcessManagers.{IdentityProcessManager, ProcessManagerInstance, ProcessRouter}
-  # credo:disable-for-next-line
-  alias Commanded.ProcessManagers.IdentityProcessManager.AnEvent
+  alias Commanded.ExampleDomain.BankAccount.Commands.WithdrawMoney
+  alias Commanded.ExampleDomain.MoneyTransfer.Events.MoneyTransferRequested
+  alias Commanded.ExampleDomain.TransferMoneyProcessManager
   alias Commanded.Helpers.Wait
+  alias Commanded.ProcessManagers.IdentityProcessManager
+  alias Commanded.ProcessManagers.IdentityProcessManager.AnEvent
+  alias Commanded.ProcessManagers.{ProcessManagerInstance, ProcessRouter}
+  alias Commanded.Registration.LocalRegistry
 
   setup :set_mox_global
   setup :verify_on_exit!
 
   setup do
+    mock_event_store()
+
+    {:ok, registry_meta} = start_local_registry()
+
     Config.associate(self(), MockApplication,
       application: MockApplication,
-      event_store: {MockEventStore, %{}}
+      event_store: {MockEventStore, %{}},
+      registry: {LocalRegistry, registry_meta}
     )
   end
 
@@ -82,9 +86,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
     end
 
     test "get current process identity" do
-      start_supervised!(DefaultApp)
-
-      {:ok, process_router} = start_supervised(IdentityProcessManager)
+      {:ok, process_router} =
+        start_supervised({IdentityProcessManager, application: MockApplication})
 
       process_uuids = Enum.sort([UUID.uuid4(), UUID.uuid4(), UUID.uuid4()])
 
@@ -184,5 +187,32 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
   defp to_recorded_event(event) do
     %RecordedEvent{event_number: 1, stream_id: "stream-id", stream_version: 1, data: event}
+  end
+
+  defp mock_event_store do
+    stub(MockEventStore, :subscribe_to, fn
+      _event_store, :all, name, pid, :origin, _opts ->
+        assert is_binary(name)
+        assert is_pid(pid)
+
+        send(pid, {:subscribed, self()})
+
+        {:ok, self()}
+    end)
+
+    stub(MockEventStore, :read_snapshot, fn _event_store, _snapshot_uuid ->
+      {:error, :snapshot_not_found}
+    end)
+
+    stub(MockEventStore, :record_snapshot, fn _event_store, _snapshot -> :ok end)
+    stub(MockEventStore, :ack_event, fn _event_store, _pid, _event -> :ok end)
+  end
+
+  defp start_local_registry do
+    {:ok, registry_child_spec, registry_meta} = LocalRegistry.child_spec(MockApplication, [])
+
+    for child_spec <- registry_child_spec, do: start_supervised!(child_spec)
+
+    {:ok, registry_meta}
   end
 end

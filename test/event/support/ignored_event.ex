@@ -1,4 +1,4 @@
 defmodule Commanded.Event.IgnoredEvent do
-  @moduledoc false
-  defstruct name: nil
+  @derive Jason.Encoder
+  defstruct [:name]
 end

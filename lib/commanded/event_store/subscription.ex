@@ -2,12 +2,12 @@ defmodule Commanded.EventStore.Subscription do
   @moduledoc false
 
   alias Commanded.EventStore
-  alias Commanded.EventStore
-  alias Commanded.EventStore.RecordedEvent
-  alias Commanded.EventStore.Subscription
+  alias Commanded.EventStore.{RecordedEvent, Subscription}
 
   @enforce_keys [
     :application,
+    :backoff,
+    :concurrency,
     :subscribe_to,
     :subscribe_from,
     :subscription_name,
@@ -17,17 +17,21 @@ defmodule Commanded.EventStore.Subscription do
   @type t :: %Subscription{
           application: Commanded.Application.t(),
           backoff: any(),
+          concurrency: pos_integer(),
+          partition_by: (RecordedEvent -> any()) | nil,
           subscribe_to: EventStore.Adapter.stream_uuid() | :all,
           subscribe_from: EventStore.Adapter.start_from(),
           subscription_name: EventStore.Adapter.subscription_name(),
           subscription_opts: Keyword.t(),
-          subscription_pid: nil | pid(),
-          subscription_ref: nil | reference()
+          subscription_pid: pid() | nil,
+          subscription_ref: reference() | nil
         }
 
   defstruct [
     :application,
     :backoff,
+    :concurrency,
+    :partition_by,
     :subscribe_to,
     :subscribe_from,
     :subscription_name,
@@ -40,6 +44,8 @@ defmodule Commanded.EventStore.Subscription do
     %Subscription{
       application: Keyword.fetch!(opts, :application),
       backoff: init_backoff(),
+      concurrency: parse_concurrency(opts),
+      partition_by: parse_partition_by(opts),
       subscription_name: Keyword.fetch!(opts, :subscription_name),
       subscription_opts: Keyword.fetch!(opts, :subscription_opts),
       subscribe_to: parse_subscribe_to(opts),
@@ -106,11 +112,18 @@ defmodule Commanded.EventStore.Subscription do
   defp subscribe_to(%Subscription{} = subscription, pid) do
     %Subscription{
       application: application,
+      concurrency: concurrency,
+      partition_by: partition_by,
       subscribe_to: subscribe_to,
       subscription_name: subscription_name,
       subscription_opts: subscription_opts,
       subscribe_from: subscribe_from
     } = subscription
+
+    opts =
+      subscription_opts
+      |> Keyword.put(:concurrency_limit, concurrency)
+      |> Keyword.put(:partition_by, partition_by)
 
     EventStore.subscribe_to(
       application,
@@ -118,23 +131,56 @@ defmodule Commanded.EventStore.Subscription do
       subscription_name,
       pid,
       subscribe_from,
-      subscription_opts
+      opts
     )
+  end
+
+  defp parse_concurrency(opts) do
+    case opts[:concurrency] || 1 do
+      concurrency when is_integer(concurrency) and concurrency >= 1 ->
+        concurrency
+
+      invalid ->
+        raise ArgumentError, message: "invalid `concurrency` option: " <> inspect(invalid)
+    end
+  end
+
+  defp parse_partition_by(opts) do
+    case opts[:partition_by] do
+      partition_by when is_function(partition_by, 1) ->
+        partition_by
+
+      nil ->
+        nil
+
+      invalid ->
+        raise ArgumentError, message: "invalid `partition_by` option: " <> inspect(invalid)
+    end
   end
 
   defp parse_subscribe_to(opts) do
     case opts[:subscribe_to] || :all do
-      :all -> :all
-      stream when is_binary(stream) -> stream
-      invalid -> "Invalid `subscribe_to` option: #{inspect(invalid)}"
+      :all ->
+        :all
+
+      stream when is_binary(stream) ->
+        stream
+
+      invalid ->
+        raise ArgumentError, message: "invalid `subscribe_to` option: " <> inspect(invalid)
     end
   end
 
   defp parse_subscribe_from(opts) do
     case opts[:subscribe_from] || :origin do
-      start_from when start_from in [:origin, :current] -> start_from
-      start_from when is_integer(start_from) -> start_from
-      invalid -> "Invalid `start_from` option: #{inspect(invalid)}"
+      start_from when start_from in [:origin, :current] ->
+        start_from
+
+      start_from when is_integer(start_from) ->
+        start_from
+
+      invalid ->
+        raise ArgumentError, message: "invalid `start_from` option: " <> inspect(invalid)
     end
   end
 

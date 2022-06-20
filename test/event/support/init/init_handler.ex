@@ -4,12 +4,6 @@ defmodule Commanded.Event.InitHandler do
     name: __MODULE__
 
   def init do
-    send(reply_to(), {:init, self()})
-
-    :ok
-  end
-
-  defp reply_to do
-    Agent.get(__MODULE__, fn reply_to -> reply_to end)
+    Process.send(:test, {:init, self()}, [])
   end
 end

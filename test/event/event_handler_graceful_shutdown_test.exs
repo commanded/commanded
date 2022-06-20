@@ -1,7 +1,6 @@
 defmodule Commanded.Event.EventHandlerGracefulShutdownTest do
-  use ExUnit.Case
+  use Commanded.MockEventStoreCase
 
-  alias Commanded.DefaultApp
   alias Commanded.Event.GracefulShutdownHandler
   alias Commanded.Helpers.EventFactory
 
@@ -11,8 +10,6 @@ defmodule Commanded.Event.EventHandlerGracefulShutdownTest do
   end
 
   defmodule EventHandlersSupervisor do
-    @moduledoc false
-
     use Supervisor
 
     alias Commanded.Event.GracefulShutdownHandler
@@ -22,21 +19,11 @@ defmodule Commanded.Event.EventHandlerGracefulShutdownTest do
     end
 
     def init(_arg) do
-      Supervisor.init(
-        [
-          GracefulShutdownHandler
-        ],
-        strategy: :one_for_one
-      )
+      Supervisor.init([GracefulShutdownHandler], strategy: :one_for_one)
     end
   end
 
   describe "event handler state" do
-    setup do
-      start_supervised!(DefaultApp)
-      :ok
-    end
-
     test "stop the event handler while it is handling an event" do
       supervisor = start_supervised!(EventHandlersSupervisor, restart: :transient)
       [{_, handler, _, _}] = Supervisor.which_children(supervisor)

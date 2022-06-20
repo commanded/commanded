@@ -16,12 +16,29 @@ defmodule Commanded.MockEventStoreCase do
     end
   end
 
+  setup [:set_mox_global, :stub_event_store]
+
   setup do
-    set_mox_global()
-
-    expect(MockEventStore, :child_spec, fn _event_store, _config -> {:ok, [], %{}} end)
-
     start_supervised!(MockedApp)
+
+    :ok
+  end
+
+  def stub_event_store(_context) do
+    stub(MockEventStore, :ack_event, fn _event_store_meta, _subscription, _ack ->
+      :ok
+    end)
+
+    stub(MockEventStore, :child_spec, fn _application, _config ->
+      {:ok, [], %{}}
+    end)
+
+    stub(MockEventStore, :subscribe_to, fn
+      _event_store_meta, _stream, _handler_name, subscriber, _subscribe_from, _opts ->
+        send(subscriber, {:subscribed, self()})
+
+        {:ok, self()}
+    end)
 
     :ok
   end

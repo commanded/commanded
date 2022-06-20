@@ -1,6 +1,6 @@
 defmodule Commanded.Event.StatefulEventHandler do
   use Commanded.Event.Handler,
-    application: Commanded.DefaultApp,
+    application: Commanded.MockedApp,
     name: __MODULE__
 
   def init(config) do
@@ -13,6 +13,8 @@ defmodule Commanded.Event.StatefulEventHandler do
     %{reply_to: reply_to} = event
     %{state: state} = metadata
 
+    reply_to = :erlang.list_to_pid(reply_to)
+
     send(reply_to, {:event, event, metadata})
 
     {:ok, state + 1}
@@ -20,6 +22,8 @@ defmodule Commanded.Event.StatefulEventHandler do
 
   def handle(%{update_state?: false} = event, metadata) do
     %{reply_to: reply_to} = event
+
+    reply_to = :erlang.list_to_pid(reply_to)
 
     send(reply_to, {:event, event, metadata})
 

@@ -1,9 +1,7 @@
 defmodule Commanded.Event.EventHandlerErrorHandlingTest do
-  use ExUnit.Case
+  use Commanded.MockEventStoreCase
 
   import ExUnit.CaptureLog
-
-  alias Commanded.DefaultApp
 
   alias Commanded.Event.ErrorAggregate.Events.{
     ErrorEvent,
@@ -17,8 +15,6 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   alias Commanded.Helpers.EventFactory
 
   setup do
-    start_supervised!(DefaultApp)
-
     handler = start_supervised!(ErrorEventHandler)
 
     true = Process.unlink(handler)

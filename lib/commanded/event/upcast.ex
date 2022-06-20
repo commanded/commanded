@@ -12,7 +12,7 @@ defmodule Commanded.Event.Upcast do
   def upcast_event_stream(event_stream, opts),
     do: Enum.map(event_stream, &upcast_event(&1, opts))
 
-  defp upcast_event(%RecordedEvent{} = event, opts) do
+  def upcast_event(%RecordedEvent{} = event, opts) do
     %RecordedEvent{data: data} = event
 
     enriched_metadata = RecordedEvent.enrich_metadata(event, opts)

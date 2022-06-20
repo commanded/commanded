@@ -4,7 +4,7 @@ defmodule Commanded.Event.HandlerInitTest do
   import Mox
 
   alias Commanded.DefaultApp
-  alias Commanded.Event.{EchoHandler, Handler, InitHandler, RuntimeConfigHandler}
+  alias Commanded.Event.{EchoHandler, Handler, InitHandler, ReplyEvent, RuntimeConfigHandler}
   alias Commanded.EventStore.Adapters.Mock, as: MockEventStore
   alias Commanded.Helpers.{EventFactory, Wait}
 
@@ -48,16 +48,14 @@ defmodule Commanded.Event.HandlerInitTest do
 
   describe "event handler `init/0` callback" do
     setup do
-      reply_to = self()
+      true = Process.register(self(), :test)
 
       expect(MockEventStore, :subscribe_to, fn
-        _event_store, :all, handler_name, handler, _subscribe_from, [] ->
+        _event_store, :all, handler_name, handler, _subscribe_from, _opts ->
           assert is_binary(handler_name)
 
           {:ok, handler}
       end)
-
-      {:ok, _agent} = Agent.start_link(fn -> reply_to end, name: InitHandler)
 
       handler = start_supervised!(InitHandler)
 
@@ -74,11 +72,6 @@ defmodule Commanded.Event.HandlerInitTest do
   end
 
   describe "event handler start options" do
-    setup do
-      start_supervised!(DefaultApp)
-      :ok
-    end
-
     test "should be passed when starting handler via `start_link/1`" do
       {:ok, handler} = EchoHandler.start_link(hibernate_after: 1)
 
@@ -92,14 +85,13 @@ defmodule Commanded.Event.HandlerInitTest do
     end
 
     test "hibernated handler should resume after receiving event message" do
-      alias Commanded.Event.ReplyEvent
-
       handler = start_supervised!({EchoHandler, hibernate_after: 1})
 
       # Handler should hibernate
       Wait.until(fn -> assert_hibernated(handler) end)
 
-      event = %ReplyEvent{reply_to: self(), value: 1}
+      reply_to = :erlang.pid_to_list(self())
+      event = %ReplyEvent{reply_to: reply_to, value: 1}
 
       # Sending a message should wake the handler
       send_events(handler, [event])
