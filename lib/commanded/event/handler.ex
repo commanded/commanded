@@ -226,6 +226,9 @@ defmodule Commanded.Event.Handler do
   concurrently by another instance. An attempt will be made to distribute
   events as evenly as possible to all running event handler instances.
 
+  Only `:eventual` consistency is supported when multiple handler processes are
+  configured with a `:concurrency` of greater than one.
+
   ### Example
 
     defmodule ConcurrentProcssingEventHandler do
@@ -1147,8 +1150,19 @@ defmodule Commanded.Event.Handler do
 
   defp consistency(opts) do
     case opts[:consistency] || Application.get_env(:commanded, :default_consistency, :eventual) do
-      consistency when consistency in [:eventual, :strong] -> consistency
-      invalid -> raise "Invalid `consistency` option: #{inspect(invalid)}"
+      :eventual ->
+        :eventual
+
+      :strong ->
+        if Keyword.get(opts, :concurrency, 1) > 1 do
+          # Strong consistency is not supported for event handlers with concurrency
+          raise ArgumentError, message: "cannot use `:strong` consistency with concurrency"
+        else
+          :strong
+        end
+
+      invalid ->
+        raise ArgumentError, message: "invalid `consistency` option: #{inspect(invalid)}"
     end
   end
 

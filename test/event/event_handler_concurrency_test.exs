@@ -99,6 +99,12 @@ defmodule Commanded.Event.EventHandlerConcurrencyTest do
       unique_pids = Enum.uniq([pid1, pid2, pid3, pid4, pid5])
       assert length(unique_pids) == 5
     end
+
+    test "should error when handler started with `:strong` consistency" do
+      assert_raise ArgumentError,
+                   "cannot use `:strong` consistency with concurrency",
+                   fn -> ConcurrentEventHandler.start_link(consistency: :strong) end
+    end
   end
 
   describe "concurrent event handler with partitioning" do
