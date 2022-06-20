@@ -231,32 +231,32 @@ defmodule Commanded.Event.Handler do
 
   ### Example
 
-    defmodule ConcurrentProcssingEventHandler do
-      alias Commanded.EventStore.RecordedEvent
+      defmodule ConcurrentProcssingEventHandler do
+        alias Commanded.EventStore.RecordedEvent
 
-      use Commanded.Event.Handler,
-        application: ExampleApp,
-        name: __MODULE__,
-        concurrency: 10
+        use Commanded.Event.Handler,
+          application: ExampleApp,
+          name: __MODULE__,
+          concurrency: 10
 
-      def init(config) do
-        # Fetch the index of this event handler instance (0..9 in this example)
-        index = Keyword.fetch!(config, :index)
+        def init(config) do
+          # Fetch the index of this event handler instance (0..9 in this example)
+          index = Keyword.fetch!(config, :index)
 
-        {:ok, config}
+          {:ok, config}
+        end
+
+        def handle(event, metadata) do
+          :ok
+        end
+
+        # Partition events by their stream
+        def partition_by(event, metadata) do
+          %{stream_id: stream_id} = metadata
+
+          stream_id
+        end
       end
-
-      def handle(event, metadata) do
-        :ok
-      end
-
-      # Partition events by their stream
-      def partition_by(event, metadata) do
-        %{stream_id: stream_id} = metadata
-
-        stream_id
-      end
-    end
 
   ## Consistency
 
