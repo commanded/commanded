@@ -13,13 +13,13 @@ Commanded provides a solid technical foundation for you to build on. It allows y
 
 You can use Commanded with one of the following event stores for persistence:
 
-- [EventStore](https://github.com/commanded/eventstore) Elixir library using PostgreSQL for persistence
-- Greg Young's [Event Store](https://eventstore.org/).
-- [In-memory event store](https://github.com/commanded/commanded/wiki/In-memory-event-store) included for test use only.
+- [EventStore](https://github.com/commanded/eventstore) - Elixir library using Postgres for persistence.
+- [EventStoreDB](https://www.eventstore.com/) - a stream database built for Event Sourcing.
+- [In-memory event store](https://github.com/commanded/commanded/wiki/In-memory-event-store) - included for test use only.
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
-Requires Erlang/OTP v21.0 and Elixir v1.6 or later.
+Requires Erlang/OTP v21.0 and Elixir v1.9 or later.
 
 ---
 

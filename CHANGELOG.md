@@ -251,7 +251,7 @@ Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 - `eventstore` to [v0.16.0](https://hex.pm/packages/eventstore)
 - `commanded_eventstore_adapter` to [v0.5.0](https://hex.pm/packages/commanded_eventstore_adapter)
 
-Using Greg Young's [Event Store](https://eventstore.org/):
+Using [EventStoreDB](https://www.eventstore.com/):
 
 - `commanded_extreme_adapter` to [v0.6.0](https://hex.pm/packages/commanded_extreme_adapter)
 
@@ -344,7 +344,7 @@ Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 - `eventstore` to [v0.14.0](https://hex.pm/packages/eventstore)
 - `commanded_eventstore_adapter` to [v0.4.0](https://hex.pm/packages/commanded_eventstore_adapter)
 
-Using Greg Young's [Event Store](https://eventstore.org/):
+Using [EventStoreDB](https://www.eventstore.com/):
 
 - `commanded_extreme_adapter` to [v0.5.0](https://hex.pm/packages/commanded_extreme_adapter)
 
@@ -380,7 +380,7 @@ Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 - `eventstore` to [v0.13.0](https://hex.pm/packages/eventstore)
 - `commanded_eventstore_adapter` to [v0.3.0](https://hex.pm/packages/commanded_eventstore_adapter)
 
-Using Greg's [Event Store](https://eventstore.org/):
+Using [EventStoreDB](https://www.eventstore.com/):
 
 - `commanded_extreme_adapter` to [v0.4.0](https://hex.pm/packages/commanded_extreme_adapter)
 
@@ -404,7 +404,7 @@ Using the Elixir [EventStore](https://github.com/commanded/eventstore):
 - `eventstore` to [v0.11.0](https://hex.pm/packages/eventstore)
 - `commanded_eventstore_adapter` to [v0.2.0](https://hex.pm/packages/commanded_eventstore_adapter)
 
-Using Greg's [Event Store](https://eventstore.org/):
+Using [EventStoreDB](https://www.eventstore.com/):
 
 - `commanded_extreme_adapter` to [v0.3.0](https://hex.pm/packages/commanded_extreme_adapter)
 
