@@ -27,8 +27,12 @@ Requires Erlang/OTP v21.0 and Elixir v1.6 or later.
 
 You can help support Commanded by helping to fund its ongoing development, new features, and releases.
 
-- [Become a GitHub sponsor](https://github.com/sponsors/slashdotdash).
+- [Become a GitHub sponsor](https://github.com/sponsors/slashdotdash)
 - [View sponsors & backers](BACKERS.md)
+
+#### Sponsors
+
+[![Alembic](https://user-images.githubusercontent.com/3167/177830256-26a74e82-60ff-4c20-bd84-64ee7c12512c.svg "Alembic")](https://alembic.com.au/)
 
 ---
 
