@@ -62,7 +62,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:interested?/1`
   - `c:handle/2`
   - `c:apply/2`
-  - `c:after_command/2
+  - `c:after_command/2`
   - `c:error/3`
 
   Please read the [Process managers](process-managers.html) guide for more
