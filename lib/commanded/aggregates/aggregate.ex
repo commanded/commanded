@@ -189,6 +189,9 @@ defmodule Commanded.Aggregates.Aggregate do
     try do
       GenServer.call(name, {:execute_command, context}, timeout)
     catch
+      :exit, {:noproc, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
+        {:exit, {:normal, :aggregate_stopped}}
+
       :exit, {:normal, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
         {:exit, {:normal, :aggregate_stopped}}
     end
