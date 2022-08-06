@@ -109,8 +109,8 @@ defmodule Commanded.Commands.Router do
     - `:eventual` (default) - don't block command dispatch while waiting for
       event handlers
 
-        :ok = BankApp.dispatch(command)
-        :ok = BankApp.dispatch(command, consistency: :eventual)
+          :ok = BankApp.dispatch(command)
+          :ok = BankApp.dispatch(command, consistency: :eventual)
 
     - `:strong` - block command dispatch until all strongly
       consistent event handlers and process managers have successfully processed
@@ -119,7 +119,7 @@ defmodule Commanded.Commands.Router do
       Use this when you have event handlers that update read models you need to
       query immediately after dispatching the command.
 
-        :ok = BankApp.dispatch(command, consistency: :strong)
+          :ok = BankApp.dispatch(command, consistency: :strong)
 
     - Provide an explicit list of event handler and process manager modules (or
       their configured names), containing only those handlers you'd like to wait
