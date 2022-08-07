@@ -95,10 +95,10 @@ defmodule Commanded.Commands.Router do
   aggregates that  would otherwise share the same identity. As an example you
   might have a `User` and a `UserPreferences` aggregate that you wish
   to share the same identity. In this scenario you should specify a `prefix`
-  for each aggregate (e.g. "user-" and "user-preference-").
+  for each aggregate (e.g. `"user-"` and `"user-preference-"`).
 
   The prefix is used as the stream identity when appending and reading the
-  aggregate's events: "<identity_prefix><aggregate_uuid>". It can be a string or
+  aggregate's events: `"<identity_prefix><aggregate_uuid>"`. It can be a string or
   a zero arity function returning a string.
 
   ## Consistency
@@ -109,8 +109,8 @@ defmodule Commanded.Commands.Router do
     - `:eventual` (default) - don't block command dispatch while waiting for
       event handlers
 
-        :ok = BankApp.dispatch(command)
-        :ok = BankApp.dispatch(command, consistency: :eventual)
+          :ok = BankApp.dispatch(command)
+          :ok = BankApp.dispatch(command, consistency: :eventual)
 
     - `:strong` - block command dispatch until all strongly
       consistent event handlers and process managers have successfully processed
@@ -119,7 +119,7 @@ defmodule Commanded.Commands.Router do
       Use this when you have event handlers that update read models you need to
       query immediately after dispatching the command.
 
-        :ok = BankApp.dispatch(command, consistency: :strong)
+          :ok = BankApp.dispatch(command, consistency: :strong)
 
     - Provide an explicit list of event handler and process manager modules (or
       their configured names), containing only those handlers you'd like to wait
