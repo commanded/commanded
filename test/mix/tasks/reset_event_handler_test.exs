@@ -7,6 +7,7 @@ defmodule Commanded.Mix.Tasks.ResetEventHandlerTest do
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.Wait
+  alias Commanded.UUID
   alias Mix.Tasks.Commanded.Reset
 
   setup do

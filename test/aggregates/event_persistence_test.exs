@@ -7,6 +7,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
   alias Commanded.Aggregates.ExampleAggregate.Commands.{AppendItems, NoOp}
   alias Commanded.{DefaultApp, EventStore}
   alias Commanded.Helpers.ProcessHelper
+  alias Commanded.UUID
 
   setup do
     start_supervised!(DefaultApp)

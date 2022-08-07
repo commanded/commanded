@@ -3,6 +3,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceExceptionTest do
 
   alias Commanded.ProcessManagers.{ExampleApp, ExampleProcessManager, ExampleRouter}
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Error, Raise, Start}
+  alias Commanded.UUID
 
   setup do
     start_supervised!(ExampleApp)

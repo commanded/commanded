@@ -11,6 +11,7 @@ defmodule Commanded.Commands.CompositeRouterTest do
   alias Commanded.DefaultApp
   alias Commanded.ExampleDomain.BankAccount.Commands.{DepositMoney, OpenAccount, WithdrawMoney}
   alias Commanded.ExampleDomain.MoneyTransfer.Commands.TransferMoney
+  alias Commanded.UUID
 
   describe "composite router" do
     setup do

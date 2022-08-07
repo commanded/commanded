@@ -17,6 +17,7 @@ defmodule Commanded.Event.HandleEventTest do
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
   alias Commanded.Helpers.EventFactory
   alias Commanded.Helpers.Wait
+  alias Commanded.UUID
 
   describe "event handling" do
     setup do

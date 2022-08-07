@@ -3,6 +3,7 @@ defmodule Commanded.EventStore.EventStorePrefixTestCase do
 
   define_tests do
     alias Commanded.EventStore.EventData
+    alias Commanded.UUID
 
     defmodule BankAccountOpened do
       @derive Jason.Encoder

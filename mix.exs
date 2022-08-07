@@ -56,23 +56,22 @@ defmodule Commanded.Mixfile do
   defp deps do
     [
       {:backoff, "~> 1.1"},
-      {:elixir_uuid, "~> 1.2"},
 
       # Telemetry
-      {:telemetry, "~> 0.4 or ~> 1.0"},
-      {:telemetry_registry, "~> 0.2"},
+      {:telemetry, "~> 0.4 or ~> 1.0 or ~> 1.1"},
+      {:telemetry_registry, "~> 0.3"},
 
       # Optional dependencies
-      {:jason, "~> 1.2", optional: true},
-      {:phoenix_pubsub, "~> 2.0", optional: true},
+      {:jason, "~> 1.3", optional: true},
+      {:phoenix_pubsub, "~> 2.1", optional: true},
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.2", only: :dev, runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.2", only: :test, runtime: false},
-      {:mix_test_watch, "~> 1.0", only: :dev},
+      {:mix_test_watch, "~> 1.1", only: :dev},
       {:mox, "~> 1.0", only: [:bench, :test]}
     ]
   end

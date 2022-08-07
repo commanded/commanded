@@ -6,6 +6,7 @@ defmodule Event.UpcasterTest do
   alias Commanded.EventStore.{EventData, RecordedEvent}
   alias Commanded.Event.Upcast.Events.{EventFive, EventFour, EventOne, EventThree, EventTwo, Stop}
   alias Commanded.Event.Upcast.UpcastAggregate
+  alias Commanded.UUID
 
   setup do
     start_supervised!(DefaultApp)
@@ -113,7 +114,7 @@ defmodule Event.UpcasterTest do
     end
 
     test "will receive upcasted events" do
-      process_id = UUID.uuid4(:hex)
+      process_id = UUID.uuid4()
       reply_to = :erlang.pid_to_list(self())
 
       write_events(Application, [

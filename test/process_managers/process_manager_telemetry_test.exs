@@ -4,6 +4,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerTelemetryTest do
   import Mox
 
   alias Commanded.ProcessManagers.ProcessManagerInstance
+  alias Commanded.UUID
 
   setup :set_mox_global
   setup :verify_on_exit!

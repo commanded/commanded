@@ -4,6 +4,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
   define_tests do
     alias Commanded.EventStore.{EventData, RecordedEvent, Subscriber}
     alias Commanded.Helpers.ProcessHelper
+    alias Commanded.UUID
 
     defmodule BankAccountOpened do
       @derive Jason.Encoder

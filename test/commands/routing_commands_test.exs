@@ -29,6 +29,8 @@ defmodule Commanded.Commands.RoutingCommandsTest do
     WithdrawMoney
   }
 
+  alias Commanded.UUID
+
   @dispatch_opts [application: DefaultApp]
 
   setup do

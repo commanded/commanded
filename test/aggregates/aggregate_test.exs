@@ -5,7 +5,7 @@ defmodule Commanded.Aggregates.AggregateTest do
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
-  alias Commanded.DefaultApp
+  alias Commanded.{DefaultApp, UUID}
 
   defmodule RaiseException do
     defstruct [:message]

@@ -5,6 +5,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
   alias Commanded.ProcessManagers.ErrorRouter
   alias Commanded.ProcessManagers.ExampleApp
   alias Commanded.ProcessManagers.StateErrorHandlingProcessManager
+  alias Commanded.UUID
 
   setup do
     start_supervised!(ExampleApp)

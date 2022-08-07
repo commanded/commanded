@@ -5,6 +5,7 @@ defmodule Commanded.DynamicApplicationsTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.ReplyHandler
+  alias Commanded.UUID
 
   setup_all do
     start_supervised!(CommandAuditMiddleware)

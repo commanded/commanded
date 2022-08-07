@@ -24,6 +24,8 @@ defmodule Commanded.ProcessManagers.ProcessRouterProcessPendingEventsTest do
     Uninterested
   }
 
+  alias Commanded.UUID
+
   setup do
     start_supervised!(ExampleApp)
 

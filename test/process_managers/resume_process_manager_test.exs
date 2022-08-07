@@ -15,6 +15,7 @@ defmodule Commanded.ProcessManagers.ResumeProcessManagerTest do
 
   alias Commanded.ProcessManagers.ResumeAggregate.Commands.{ResumeProcess, StartProcess}
   alias Commanded.ProcessManagers.ResumeAggregate.Events.{ProcessResumed, ProcessStarted}
+  alias Commanded.UUID
 
   setup do
     start_supervised!(ResumeApp)

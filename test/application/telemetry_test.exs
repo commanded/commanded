@@ -4,6 +4,7 @@ defmodule Commanded.Application.TelemetryTest do
   alias Commanded.DefaultApp
   alias Commanded.Middleware.Commands.IncrementCount
   alias Commanded.Middleware.Commands.RaiseError
+  alias Commanded.UUID
 
   setup do
     start_supervised!(DefaultApp)

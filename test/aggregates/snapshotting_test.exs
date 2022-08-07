@@ -16,6 +16,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
   alias Commanded.Aggregates.SnapshotAggregate.Commands.Create
   alias Commanded.EventStore
   alias Commanded.EventStore.SnapshotData
+  alias Commanded.UUID
 
   describe "with snapshotting disabled" do
     setup do

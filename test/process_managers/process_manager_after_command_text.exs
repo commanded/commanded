@@ -16,6 +16,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerAfterCommandTest do
   alias Commanded.ProcessManagers.ExampleApp
   alias Commanded.ProcessManagers.ExampleRouter
   alias Commanded.ProcessManagers.ProcessRouter
+  alias Commanded.UUID
 
   setup do
     start_supervised!(ExampleApp)

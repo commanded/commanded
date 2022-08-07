@@ -73,5 +73,5 @@ end
 Once you have defined a router you can dispatch a command using the application module:
 
 ```elixir
-:ok = MyApp.Application.dispatch(%RegisterCustomer{id: UUID.uuid4(), name: "Ben"})
+:ok = MyApp.Application.dispatch(%RegisterCustomer{id: Commanded.UUID.uuid4(), name: "Ben"})
 ```

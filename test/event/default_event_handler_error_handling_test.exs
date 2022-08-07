@@ -6,6 +6,7 @@ defmodule Commanded.Event.DefaultEventHandlerErrorHandlingTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankRouter
   alias Commanded.Helpers.CommandAuditMiddleware
+  alias Commanded.UUID
 
   setup do
     start_supervised!(CommandAuditMiddleware)
