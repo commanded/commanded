@@ -11,6 +11,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerTimeoutTest do
     ProcessRouter
   }
 
+  alias Commanded.UUID
+
   setup do
     start_supervised!(ExampleApp)
 

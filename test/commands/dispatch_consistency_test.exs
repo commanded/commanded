@@ -13,6 +13,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
   alias Commanded.Commands.ConsistencyApp
   alias Commanded.EventStore
+  alias Commanded.UUID
   alias ConsistencyAggregateRoot.ConsistencyCommand
   alias ConsistencyAggregateRoot.NoOpCommand
   alias ConsistencyAggregateRoot.RequestDispatchCommand

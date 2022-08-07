@@ -3,6 +3,7 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
 
   alias Commanded.EventStore.Adapters.InMemory
   alias Commanded.EventStore.EventData
+  alias Commanded.UUID
 
   defmodule BankAccountOpened do
     @derive Jason.Encoder

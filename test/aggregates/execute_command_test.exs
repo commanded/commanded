@@ -8,7 +8,7 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.Helpers.Wait
-  alias Commanded.Registration
+  alias Commanded.{Registration, UUID}
 
   setup do
     start_supervised!(BankApp)

@@ -8,7 +8,7 @@ defmodule Commanded.Aggregate.MultiTest do
   alias Commanded.Aggregate.Multi.BankAccount.Commands.{OpenAccount, WithdrawMoney}
   alias Commanded.Aggregate.Multi.BankAccount.Events.{BankAccountOpened, MoneyWithdrawn}
   alias Commanded.Aggregate.MultiBankRouter
-  alias Commanded.{DefaultApp, EventStore}
+  alias Commanded.{DefaultApp, EventStore, UUID}
 
   setup do
     start_supervised!(DefaultApp)

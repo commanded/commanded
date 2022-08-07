@@ -8,6 +8,7 @@ defmodule Commanded.AggregateCaseTest do
   alias Commanded.Aggregate.Multi.BankAccount.Events.BankAccountOpened
   alias Commanded.Aggregate.Multi.BankAccount.Events.MoneyDeposited
   alias Commanded.Aggregate.Multi.BankAccount.Events.MoneyWithdrawn
+  alias Commanded.UUID
 
   describe "aggregate case" do
     test "`assert_events/2`" do

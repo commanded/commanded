@@ -5,6 +5,7 @@ defmodule Commanded.Middleware.HaltingMiddlewareTest do
   alias Commanded.HaltingRouter
   alias Commanded.Helpers.CommandAuditMiddleware
   alias Commanded.Middleware.Commands.{IncrementCount, Validate}
+  alias Commanded.UUID
   alias Commanded.ValidatingRouter
 
   setup do

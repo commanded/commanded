@@ -11,6 +11,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerIdleTimeoutTest do
   }
 
   alias Commanded.Helpers.Wait
+  alias Commanded.UUID
 
   setup do
     start_supervised!(ExampleApp)

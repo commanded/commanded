@@ -336,7 +336,7 @@ To assist with monitoring and debugging your deployed application it is useful t
 You can set causation and correlation ids when dispatching a command:
 
 ```elixir
-:ok = BankApp.dispatch(command, causation_id: UUID.uuid4(), correlation_id: UUID.uuid4())
+:ok = BankApp.dispatch(command, causation_id: Commanded.UUID.uuid4(), correlation_id: Commanded.UUID.uuid4())
 ```
 
 When dispatching a command in an event handler, you should copy these values from the metadata (second) argument associated with the event you are handling:

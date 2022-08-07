@@ -12,6 +12,7 @@ defmodule Commanded.Aggregates.AggregateStateTest do
   }
 
   alias Commanded.Aggregates.ExampleAggregate.Commands.AppendItems
+  alias Commanded.UUID
 
   @aggregate_module ExampleAggregate
 

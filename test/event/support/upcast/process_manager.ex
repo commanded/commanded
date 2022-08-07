@@ -26,6 +26,7 @@ defmodule Commanded.Event.Upcast.ProcessManager do
   defstruct []
 
   alias Commanded.Event.Upcast.Events.{EventFour, EventOne, EventThree, EventTwo, Stop}
+  alias Commanded.UUID
 
   use Commanded.ProcessManagers.ProcessManager,
     application: Application,

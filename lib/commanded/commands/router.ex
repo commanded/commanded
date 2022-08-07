@@ -207,6 +207,7 @@ defmodule Commanded.Commands.Router do
   """
 
   alias Commanded.Commands.Router
+  alias Commanded.UUID
 
   defmacro __using__(opts) do
     quote do
@@ -514,10 +515,10 @@ defmodule Commanded.Commands.Router do
 
           application = Keyword.fetch!(opts, :application)
           causation_id = Keyword.get(opts, :causation_id)
-          command_uuid = Keyword.get(opts, :command_uuid, UUID.uuid4())
+          command_uuid = Keyword.get_lazy(opts, :command_uuid, &UUID.uuid4/0)
           consistency = Keyword.fetch!(opts, :consistency)
-          correlation_id = Keyword.get(opts, :correlation_id, UUID.uuid4())
-          metadata = opts |> Keyword.fetch!(:metadata) |> validate_metadata()
+          correlation_id = Keyword.get_lazy(opts, :correlation_id, &UUID.uuid4/0)
+          metadata = Keyword.fetch!(opts, :metadata) |> validate_metadata()
 
           retry_attempts = Keyword.get(opts, :retry_attempts)
           timeout = Keyword.fetch!(opts, :timeout)

@@ -8,6 +8,7 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
   alias Commanded.ExampleDomain.{BankAccount, OpenAccountHandler}
   alias Commanded.ExampleDomain.BankAccount.Commands.OpenAccount
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Commanded.UUID
 
   setup do
     start_supervised!(DefaultApp)

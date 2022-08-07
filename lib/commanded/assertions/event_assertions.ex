@@ -15,7 +15,7 @@ defmodule Commanded.Assertions.EventAssertions do
 
   import ExUnit.Assertions
 
-  alias Commanded.EventStore
+  alias Commanded.{EventStore, UUID}
   alias Commanded.EventStore.RecordedEvent
 
   @doc """
