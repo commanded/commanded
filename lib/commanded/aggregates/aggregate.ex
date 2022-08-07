@@ -377,7 +377,7 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   @impl GenServer
   def handle_info({:events, events}, %Aggregate{} = state) do
-    %Aggregate{application: application, lifespan_timeout: lifespan_timeout} = state
+    %Aggregate{application: application} = state
 
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
@@ -389,7 +389,7 @@ defmodule Commanded.Aggregates.Aggregate do
 
       state = Enum.reduce(events, state, &handle_event/2)
 
-      {:noreply, state, lifespan_timeout}
+      {:noreply, state}
     catch
       {:error, error} ->
         Logger.debug(fn -> describe(state) <> " stopping due to: #{inspect(error)}" end)
