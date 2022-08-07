@@ -279,34 +279,11 @@ defmodule Commanded.Aggregates.Aggregate do
 
   @doc false
   @impl GenServer
-  def handle_cast(:take_snapshot, %Aggregate{} = state) do
-    %Aggregate{
-      aggregate_state: aggregate_state,
-      aggregate_version: aggregate_version,
-      lifespan_timeout: lifespan_timeout,
-      snapshotting: snapshotting
-    } = state
+  def handle_cast(:take_snapshot, %Aggregate{} = state), do: do_take_snapshot(state)
 
-    Logger.debug(fn -> describe(state) <> " recording snapshot" end)
-
-    state =
-      case Snapshotting.take_snapshot(snapshotting, aggregate_version, aggregate_state) do
-        {:ok, snapshotting} ->
-          %Aggregate{state | snapshotting: snapshotting}
-
-        {:error, error} ->
-          Logger.warn(fn -> describe(state) <> " snapshot failed due to: " <> inspect(error) end)
-
-          state
-      end
-
-    case lifespan_timeout do
-      {:stop, reason} ->
-        {:stop, reason, state}
-
-      lifespan_timeout ->
-        {:noreply, state, lifespan_timeout}
-    end
+  @impl GenServer
+  def handle_cast({:take_snapshot, lifespan_timeout}, %Aggregate{} = state) do
+    do_take_snapshot(%Aggregate{state | lifespan_timeout: lifespan_timeout})
   end
 
   @doc false
@@ -336,16 +313,16 @@ defmodule Commanded.Aggregates.Aggregate do
 
     formatted_reply = ExecutionContext.format_reply(result, context, state)
 
-    state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
-
     %Aggregate{aggregate_version: aggregate_version, snapshotting: snapshotting} = state
 
     response =
       if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
-        :ok = GenServer.cast(self(), :take_snapshot)
+        :ok = GenServer.cast(self(), {:take_snapshot, lifespan_timeout})
 
         {:reply, formatted_reply, state}
       else
+        state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
+
         case lifespan_timeout do
           {:stop, reason} -> {:stop, reason, formatted_reply, state}
           lifespan_timeout -> {:reply, formatted_reply, state, lifespan_timeout}
@@ -377,7 +354,7 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   @impl GenServer
   def handle_info({:events, events}, %Aggregate{} = state) do
-    %Aggregate{application: application} = state
+    %Aggregate{application: application, lifespan_timeout: lifespan_timeout} = state
 
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
@@ -389,7 +366,10 @@ defmodule Commanded.Aggregates.Aggregate do
 
       state = Enum.reduce(events, state, &handle_event/2)
 
-      {:noreply, state}
+      case lifespan_timeout do
+        {:stop, reason} -> {:stop, reason, state}
+        lifespan_timeout -> {:noreply, state, lifespan_timeout}
+      end
     catch
       {:error, error} ->
         Logger.debug(fn -> describe(state) <> " stopping due to: #{inspect(error)}" end)
@@ -595,6 +575,33 @@ defmodule Commanded.Aggregates.Aggregate do
       )
 
     EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
+  end
+
+  defp do_take_snapshot(%Aggregate{} = state) do
+    %Aggregate{
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version,
+      lifespan_timeout: lifespan_timeout,
+      snapshotting: snapshotting
+    } = state
+
+    Logger.debug(fn -> describe(state) <> " recording snapshot" end)
+
+    state =
+      case Snapshotting.take_snapshot(snapshotting, aggregate_version, aggregate_state) do
+        {:ok, snapshotting} ->
+          %Aggregate{state | snapshotting: snapshotting}
+
+        {:error, error} ->
+          Logger.warn(fn -> describe(state) <> " snapshot failed due to: " <> inspect(error) end)
+
+          state
+      end
+
+    case lifespan_timeout do
+      {:stop, reason} -> {:stop, reason, state}
+      lifespan_timeout -> {:noreply, state, lifespan_timeout}
+    end
   end
 
   defp telemetry_start(telemetry_metadata) do
