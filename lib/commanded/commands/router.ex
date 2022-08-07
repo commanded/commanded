@@ -95,10 +95,10 @@ defmodule Commanded.Commands.Router do
   aggregates that  would otherwise share the same identity. As an example you
   might have a `User` and a `UserPreferences` aggregate that you wish
   to share the same identity. In this scenario you should specify a `prefix`
-  for each aggregate (e.g. "user-" and "user-preference-").
+  for each aggregate (e.g. `"user-"` and `"user-preference-"`).
 
   The prefix is used as the stream identity when appending and reading the
-  aggregate's events: "<identity_prefix><aggregate_uuid>". It can be a string or
+  aggregate's events: `"<identity_prefix><aggregate_uuid>"`. It can be a string or
   a zero arity function returning a string.
 
   ## Consistency
