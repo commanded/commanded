@@ -78,6 +78,14 @@ defmodule Commanded.Aggregates.Aggregate do
       earlier recorded snapshots to be ignored when rebuilding aggregate
       state.
 
+  ## Population
+
+  On load, the most recent snapshot is loaded (if available) and then the aggregate
+  is populated by replaying events against it. You can tune the batch size by adding
+  the following option:
+
+    - `populate_batch_size` - the size of the batches requested from the event store.
+
   ### Example
 
   In `config/config.exs` enable snapshots for `MyApp.ExampleAggregate` after
@@ -118,8 +126,9 @@ defmodule Commanded.Aggregates.Aggregate do
     :aggregate_uuid,
     :aggregate_state,
     :snapshotting,
+    :populate_batch_size,
     aggregate_version: 0,
-    lifespan_timeout: :infinity
+    lifespan_timeout: :infinity,
   ]
 
   def start_link(config, opts) do
@@ -143,7 +152,8 @@ defmodule Commanded.Aggregates.Aggregate do
       application: application,
       aggregate_module: aggregate_module,
       aggregate_uuid: aggregate_uuid,
-      snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
+      snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options),
+      populate_batch_size: Keyword.get(aggregate_opts, :populate_batch_size, 1_000)
     }
 
     GenServer.start_link(__MODULE__, state, start_opts)

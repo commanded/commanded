@@ -5,8 +5,6 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
   alias Commanded.EventStore.SnapshotData
   alias Commanded.Snapshotting
 
-  @read_event_batch_size 100
-
   @doc """
   Populate the aggregate's state from a snapshot, if present, and it's events.
 
@@ -16,7 +14,7 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
   the aggregate from the event store to rebuild its state from those events.
   """
   def populate(%Aggregate{} = state) do
-    %Aggregate{aggregate_module: aggregate_module, snapshotting: snapshotting} = state
+    %Aggregate{aggregate_module: aggregate_module, snapshotting: snapshotting, populate_batch_size: populate_batch_size} = state
 
     aggregate =
       case Snapshotting.read_snapshot(snapshotting) do
@@ -32,13 +30,13 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
           %Aggregate{state | aggregate_version: 0, aggregate_state: struct(aggregate_module)}
       end
 
-    rebuild_from_events(aggregate)
+    rebuild_from_events(aggregate, populate_batch_size)
   end
 
   @doc """
   Load events from the event store, in batches, to rebuild the aggregate state
   """
-  def rebuild_from_events(%Aggregate{} = state) do
+  def rebuild_from_events(%Aggregate{} = state, populate_batch_size \\ 1_000) do
     %Aggregate{
       application: application,
       aggregate_uuid: aggregate_uuid,
@@ -49,7 +47,7 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
            application,
            aggregate_uuid,
            aggregate_version + 1,
-           @read_event_batch_size
+           populate_batch_size
          ) do
       {:error, :stream_not_found} ->
         # aggregate does not exist, return initial state
