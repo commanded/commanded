@@ -128,7 +128,7 @@ defmodule Commanded.Aggregates.Aggregate do
     :snapshotting,
     :populate_batch_size,
     aggregate_version: 0,
-    lifespan_timeout: :infinity,
+    lifespan_timeout: :infinity
   ]
 
   def start_link(config, opts) do

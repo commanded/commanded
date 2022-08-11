@@ -14,7 +14,11 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
   the aggregate from the event store to rebuild its state from those events.
   """
   def populate(%Aggregate{} = state) do
-    %Aggregate{aggregate_module: aggregate_module, snapshotting: snapshotting, populate_batch_size: populate_batch_size} = state
+    %Aggregate{
+      aggregate_module: aggregate_module,
+      snapshotting: snapshotting,
+      populate_batch_size: populate_batch_size
+    } = state
 
     aggregate =
       case Snapshotting.read_snapshot(snapshotting) do
