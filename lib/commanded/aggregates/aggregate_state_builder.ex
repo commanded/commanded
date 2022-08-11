@@ -5,7 +5,7 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
   alias Commanded.EventStore.SnapshotData
   alias Commanded.Snapshotting
 
-  @read_event_batch_size 100
+  @read_event_batch_size 1_000
 
   @doc """
   Populate the aggregate's state from a snapshot, if present, and it's events.
