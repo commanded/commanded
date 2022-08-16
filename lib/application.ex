@@ -165,6 +165,7 @@ defmodule Commanded.Application do
   """
 
   @type t :: module
+  @type options :: [name: nil | atom]
 
   @doc false
   defmacro __using__(opts) do
@@ -187,6 +188,7 @@ defmodule Commanded.Application do
         config
       end
 
+      @spec child_spec(opts :: Commanded.options()) :: Supervisor.child_spec()
       def child_spec(opts) do
         %{
           id: name(opts),
@@ -205,6 +207,18 @@ defmodule Commanded.Application do
         Supervisor.stop(pid, :normal, timeout)
       end
 
+      @doc """
+      Retrieve aggregate state of an aggregate.
+
+      Retrieving aggregate state is done by calling to the opened aggregate,
+      or querying the event store for an optional state snapshot
+      and then replaying the aggregate's event stream.
+      """
+      @spec aggregate_state(
+              aggregate_module :: module(),
+              aggregate_uuid :: Aggregate.uuid(),
+              timeout :: integer
+            ) :: Aggregate.state()
       def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5000) do
         Aggregate.aggregate_state(
           __MODULE__,
@@ -255,7 +269,7 @@ defmodule Commanded.Application do
   application is already started, or `{:error, term}` in case anything else goes
   wrong.
   """
-  @callback start_link(opts :: Keyword.t()) ::
+  @callback start_link(opts :: options) ::
               {:ok, pid}
               | {:error, {:already_started, pid}}
               | {:error, term}
