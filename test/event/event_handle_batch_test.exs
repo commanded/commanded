@@ -1,31 +1,17 @@
 defmodule Commanded.Event.HandleBatchTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
-  import Commanded.Enumerable, only: [pluck: 2]
-  import Commanded.Assertions.EventAssertions
-
-  alias Commanded.DefaultApp
-  alias Commanded.Event.AppendingEventHandler
-  alias Commanded.Event.BatchHandler
+  alias Commanded.Application.Config
   alias Commanded.Event.Handler
-  alias Commanded.Event.ReplyEvent
-  alias Commanded.Event.UninterestingEvent
-  alias Commanded.EventStore
-  alias Commanded.EventStore.RecordedEvent
-  alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
-  alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
+  alias Commanded.EventStore.Subscription
+
+  # Test support code
   alias Commanded.Helpers.EventFactory
-  alias Commanded.Helpers.Wait
+  alias Commanded.Event.BatchHandler
+  alias Commanded.Event.ReplyEvent
 
   describe "batch handling" do
-    setup do
-      start_supervised!(DefaultApp)
-      handler = start_supervised!(BatchHandler)
-
-      [handler: handler]
-    end
-
-    test "should receive events in batches", %{handler: handler} do
+    test "should receive events in batches" do
       event1 = %ReplyEvent{reply_to: self(), value: 1}
       event2 = %ReplyEvent{reply_to: self(), value: 2}
       events = [event1, event2]
@@ -34,9 +20,34 @@ defmodule Commanded.Event.HandleBatchTest do
 
       recorded_events = EventFactory.map_to_recorded_events(events, 1, metadata: metadata)
 
-      send(handler, {:events, recorded_events})
+      Config.associate(self(), __MODULE__, [
+            event_store: {MockAdapter, nil}
+          ])
 
-      assert_receive {:batch, ^handler, ^events, metadata1}
+      state = %Handler{
+        subscription: struct(Subscription,
+          application: __MODULE__,
+          subscription_pid: self()
+        ),
+        handler_callback: :batch,
+        handler_module: BatchHandler,
+        consistency: :eventual
+      }
+
+      {:noreply, state} = Handler.handle_info({:events, recorded_events}, state)
+      assert %Handler{
+
+      } = state
     end
   end
+end
+
+# TODO Batching: give this a nice home
+defmodule MockAdapter do
+
+  def ack_event(nil, subscription_pid, event) do
+    send subscription_pid, {:acked, event}
+    :ok
+  end
+
 end

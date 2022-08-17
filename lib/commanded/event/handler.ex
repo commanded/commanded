@@ -998,13 +998,13 @@ defmodule Commanded.Event.Handler do
     # TODO Batching: skip/confirm seen events
     %Handler{handler_module: handler_module} = state
 
-    events =
+    enriched_events =
       Enum.map(events, fn e = %RecordedEvent{data: data} ->
         {data, enrich_metadata(e, state)}
       end)
 
     try do
-      case handler_module.handle_batch(events) do
+      case handler_module.handle_batch(enriched_events) do
         :ok ->
           confirm_receipt(events, state)
 
@@ -1014,13 +1014,13 @@ defmodule Commanded.Event.Handler do
           log_batch_error(error, events, state)
           throw({:error, reason})
 
-        {:error, reason, _stacktrace} = error ->
-          log_batch_error(error, events, state)
+        {:error, reason, _stacktrace} ->
+          log_batch_error({:error, reason}, events, state)
           throw({:error, reason})
 
         invalid ->
           error = "invalid value: #{inspect(invalid, pretty: true)}, expected `:ok` or `{:error, term}`"
-          log_batch_error(error, events, state)
+          log_batch_error({:error, invalid}, events, state)
           throw({:error, error})
       end
     rescue
@@ -1180,17 +1180,21 @@ defmodule Commanded.Event.Handler do
       subscription: subscription
     } = state
 
-    # If we have a batch, we only confirm the last event received to the
-    # subscription.
     last = List.last(recorded_events)
     %RecordedEvent{event_number: event_number} = last
 
     Logger.debug(fn ->
       describe(state) <> " confirming receipt of events up to ##{inspect(event_number)}"
     end)
+    Logger.debug(fn ->
+      " events: #{inspect recorded_events}"
+    end)
 
-    :ok = Subscription.ack_event(subscription, last)
+    # TODO Batching: If we have a batch, we only confirm the last event received to the
+    # subscription. Or, if that won't fly, have `ack_events` as a callback on the adapter
+    # and implement that.
     Enum.map(recorded_events, fn event ->
+      :ok = Subscription.ack_event(subscription, event)
       :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
     end)
 
