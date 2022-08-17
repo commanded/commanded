@@ -184,6 +184,26 @@ defmodule Commanded.Event.HandlerConfigTest do
     end
   end
 
+  defmodule InvalidBatchConcurrencyHandler do
+    use Commanded.Event.Handler,
+      application: DefaultApp,
+      name: __MODULE__,
+      concurrency: 1,
+      batch_size: 5,
+      consistency: :strong,
+      start_from: :current,
+      subscribe_to: "stream1"
+  end
+
+  test "should validate only one of batch_size or concurrency can be set" do
+    expected_error =
+      "both `:concurrency` and `:batch_size` are specified, this is not yet supported. Please choose one or the other."
+
+    assert_raise ArgumentError, expected_error, fn ->
+      InvalidBatchConcurrencyHandler.start_link()
+    end
+  end
+
   defmodule RuntimeConfiguredHandler do
     use Commanded.Event.Handler
   end
