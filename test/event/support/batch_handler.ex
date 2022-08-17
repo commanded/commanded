@@ -7,7 +7,7 @@ defmodule Commanded.Event.BatchHandler do
   alias Commanded.Event.ReplyEvent
 
   @impl Commanded.Event.Handler
-  def handle_batch([first | _reset] = events, metadata) do
+  def handle_batch([{first, metadata} | _reset] = events) do
     %ReplyEvent{reply_to: reply_to} = first
 
     send(reply_to, {:batch, self(), events, metadata})

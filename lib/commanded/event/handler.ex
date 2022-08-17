@@ -284,6 +284,25 @@ defmodule Commanded.Event.Handler do
   have processed all events produced by the command: if event handling fails
   the events will have still been persisted.
 
+  ## Batching
+
+  Sometimes, it is more efficient to process a whole batch of events, write them
+  in a target system in one transaction, and move the stream pointer forward by
+  acknowledging just the last event processed. For this there is batching support
+  in the event handler, which you can use as follows:
+
+  * Specify the `batch_size` option in your configuration to indicate how large
+    you want batches to be. This triggers batching support;
+
+  * Implement the `handle_batch/1` instead of the `handle/2` callback. This callback
+    will receive a list of `{event, metadata}` tuples.
+
+  On returning `:ok` from the batch handler, all events will be acknowledged. Currently,
+  no mechanism exists for partial acknowledgement of a batch.
+
+  Batching and concurrency currently are not supported together; setting conflicting
+  options will trigger a compilation error.
+
   ### Example
 
   Define an event handler with `:strong` consistency:
@@ -426,13 +445,17 @@ defmodule Commanded.Event.Handler do
   @doc """
   Handle a batch of domain events and their metadata.
 
-  TODO describe API
+  Return `:ok` on success, or `{:error, reason}` on failure. Note that we don't
+  have a special error case for already seen events. This is because in batching
+  situations, this is actually expected to happen and therefore it is important that
+  batch handlers are idempotent.
   """
-  @callback handle_batch([domain_event], metadata) ::
+  @callback handle_batch([{domain_event, metadata}]) ::
               :ok
               | {:ok, new_state :: any()}
-              | {:error, :already_seen_event}
               | {:error, reason :: any()}
+
+  # TODO Batching: batch-specific error handling.
 
   @doc """
   Called when an event `handle/2` callback returns an error.
@@ -527,8 +550,8 @@ defmodule Commanded.Event.Handler do
   @callback partition_by(domain_event, metadata) :: any()
 
   # TODO Batching: compile-time verification that either handle or handle_batch have
-  #      been defined.
-  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2, handle: 2, handle_batch: 2
+  #      been defined and that no concurrency options have been defined.
+  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2, handle: 2, handle_batch: 1
 
   defmacro __using__(opts) do
     quote location: :keep do
@@ -823,8 +846,14 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   @impl GenServer
-  def handle_info({:events, events}, %Handler{handler_callback: :event} = state) do
-    %Handler{application: application} = state
+  def handle_info({:events, events}, state) do
+    %Handler{application: application, handler_callback: callback} = state
+
+    processor =
+      case callback do
+        :event -> fn events, state -> Enum.reduce(events, state, &handle_event/2) end
+        :batch -> &handle_batch/2
+      end
 
     Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
 
@@ -832,26 +861,7 @@ defmodule Commanded.Event.Handler do
       state =
         events
         |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
-        |> Enum.reduce(state, &handle_event/2)
-
-      {:noreply, state}
-    catch
-      {:error, reason} ->
-        # Stop after event handling returned an error
-        {:stop, reason, state}
-    end
-  end
-
-  def handle_info({:events, events}, %Handler{handler_callback: :batch} = state) do
-    %Handler{application: application} = state
-
-    Logger.debug(fn -> describe(state) <> " received batch: #{inspect(events)}" end)
-
-    try do
-      state =
-        events
-        |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
-        |> handle_batch(state)
+        |> processor.(state)
 
       {:noreply, state}
     catch
@@ -924,7 +934,7 @@ defmodule Commanded.Event.Handler do
        when not is_nil(last_seen_event) and event_number <= last_seen_event do
     Logger.debug(fn -> describe(state) <> " has already seen event ##{inspect(event_number)}" end)
 
-    confirm_receipt(event, state)
+    confirm_receipt([event], state)
   end
 
   # Delegate event to handler module.
@@ -936,17 +946,17 @@ defmodule Commanded.Event.Handler do
       :ok ->
         telemetry_stop(start_time, telemetry_metadata)
 
-        confirm_receipt(event, state)
+        confirm_receipt([event], state)
 
       {:ok, handler_state} ->
         telemetry_stop(start_time, Map.put(telemetry_metadata, :handler_state, handler_state))
 
-        confirm_receipt(event, %Handler{state | handler_state: handler_state})
+        confirm_receipt([event], %Handler{state | handler_state: handler_state})
 
       {:error, :already_seen_event} ->
         telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :already_seen_event))
 
-        confirm_receipt(event, state)
+        confirm_receipt([event], state)
 
       {:error, reason} = error ->
         log_event_error(error, event, state)
@@ -984,19 +994,35 @@ defmodule Commanded.Event.Handler do
   end
 
   defp handle_batch(events, %Handler{} = state) do
-    # 1. partition seen and unseen events
-    # 2. Confirm seen events
-    # 3. Dispatch to module.handle_batch
-    # 4. Confirm batch
+    # TODO Batching: telemetry
+    # TODO Batching: skip/confirm seen events
     %Handler{handler_module: handler_module} = state
-    events = Enum.map(events, fn %RecordedEvent{data: data} -> data end)
 
-    # TODO
-    metadata = %{}
+    events =
+      Enum.map(events, fn e = %RecordedEvent{data: data} ->
+        {data, enrich_metadata(e, state)}
+      end)
 
     try do
-      handler_module.handle_batch(events, metadata)
-      state
+      case handler_module.handle_batch(events) do
+        :ok ->
+          confirm_receipt(events, state)
+
+        # TODO Batching: implement some error handling callback for the following three clauses
+
+        {:error, reason} = error ->
+          log_batch_error(error, events, state)
+          throw({:error, reason})
+
+        {:error, reason, _stacktrace} = error ->
+          log_batch_error(error, events, state)
+          throw({:error, reason})
+
+        invalid ->
+          error = "invalid value: #{inspect(invalid, pretty: true)}, expected `:ok` or `{:error, term}`"
+          log_batch_error(error, events, state)
+          throw({:error, error})
+      end
     rescue
       error ->
         stacktrace = __STACKTRACE__
@@ -1105,7 +1131,7 @@ defmodule Commanded.Event.Handler do
         # Skip the failed event by confirming receipt
         Logger.info(fn -> describe(state) <> " is skipping event" end)
 
-        confirm_receipt(failed_event, state)
+        confirm_receipt([failed_event], state)
 
       {:stop, reason} ->
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
@@ -1133,8 +1159,20 @@ defmodule Commanded.Event.Handler do
     end)
   end
 
-  # Confirm receipt of event
-  defp confirm_receipt(%RecordedEvent{} = event, %Handler{} = state) do
+  defp log_batch_error({:error, reason}, events, state) do
+    Logger.error(fn ->
+      describe(state) <>
+        " failed to handle batch from " <>
+        inspect(List.first(events), pretty: true) <>
+        " to " <>
+        inspect(List.last(events), pretty: true) <>
+        " due to: " <>
+        inspect(reason, pretty: true)
+    end)
+  end
+
+  # Confirm receipt of one or more events.
+  defp confirm_receipt(recorded_events, %Handler{} = state) do
     %Handler{
       application: application,
       consistency: consistency,
@@ -1142,14 +1180,19 @@ defmodule Commanded.Event.Handler do
       subscription: subscription
     } = state
 
-    %RecordedEvent{event_number: event_number} = event
+    # If we have a batch, we only confirm the last event received to the
+    # subscription.
+    last = List.last(recorded_events)
+    %RecordedEvent{event_number: event_number} = last
 
     Logger.debug(fn ->
-      describe(state) <> " confirming receipt of event ##{inspect(event_number)}"
+      describe(state) <> " confirming receipt of events up to ##{inspect(event_number)}"
     end)
 
-    :ok = Subscription.ack_event(subscription, event)
-    :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
+    :ok = Subscription.ack_event(subscription, last)
+    Enum.map(recorded_events, fn event ->
+      :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
+    end)
 
     %Handler{state | last_seen_event: event_number}
   end
