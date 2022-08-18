@@ -80,13 +80,13 @@ defmodule Commanded.EventStore.Adapter do
   @doc """
   Acknowledge receipt and successful processing of the given event received from
   a subscription to an event stream. Note that if the event is part of a batch,
-  all events that preceed this event in the batch are considered to be acknowledged
+  all events that precede this event in the batch are considered to be acknowledged
   as well.
 
   TODO Batching: this holds true for the PostgreSQL implementation, needs to be added to in_memory and
        verified for EventStoreDB.
   """
-  @callback ack_event(adapter_meta, pid, RecordedEvent.t()) :: :ok
+  @callback ack_event(adapter_meta, pid, RecordedEvent.t() | list(RecordedEvent.t())) :: :ok
 
   @doc """
   Unsubscribe an existing subscriber from event notifications.
