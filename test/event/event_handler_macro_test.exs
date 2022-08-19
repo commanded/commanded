@@ -39,26 +39,26 @@ defmodule Commanded.Event.EventHandlerMacroTest do
         __MODULE__.ConflictingOptions.start_link()
       end
     end
+
+    # A bit of an odd duck test, but it works :)
+    assert_raise CompileError, fn ->
+      defmodule ConflictingHandlers do
+        use Commanded.Event.Handler,
+          application: Commanded.ExampleDomain.BankApp,
+          name: __MODULE__
+
+        @impl true
+        def handle(_event, _meta) do
+          :ok
+        end
+
+        @impl true
+        def handle_batch(_events) do
+          :ok
+        end
+      end
+    end
   end
-
-  # A bit of an odd duck test, but it works :)
-  assert_raise CompileError, fn ->
-    defmodule ConflictingHandlers do
-      use Commanded.Event.Handler,
-        application: Commanded.ExampleDomain.BankApp,
-        name: __MODULE__
-
-      @impl true
-      def handle(_event, _meta) do
-        :ok
-      end
-
-      @impl true
-      def handle_batch(_events) do
-        :ok
-      end
-    end
-    end
 end
 
 defmodule Commanded.Event.EventHandlerMacroTest.ConflictingOptions do
