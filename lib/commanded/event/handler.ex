@@ -580,6 +580,9 @@ defmodule Commanded.Event.Handler do
         - :subscribe_to - which stream to subscribe to can be either `:all` to
           subscribe to all events or a named stream (default: `:all`).
 
+        - :batch_size - the size of batches to deliver to `handle_batch` in batched
+          mode.
+
       The default options supported by `GenServer.start_link/3` are supported,
       including the `:hibernate_after` option which allows the process to go
       into hibernation after a period of inactivity.
@@ -677,6 +680,12 @@ defmodule Commanded.Event.Handler do
             inspect(module) <> " specifies invalid options: " <> inspect(Keyword.keys(invalid))
     end
 
+    if Keyword.has_key?(config, :concurrency) and Keyword.has_key?(config, :batch_size) do
+      raise ArgumentError,
+        "both `:concurrency` and `:batch_size` are specified, this is not yet supported. Please choose one or the other."
+    end
+
+
     {application, config} = Keyword.pop(config, :application)
 
     unless application do
@@ -715,14 +724,30 @@ defmodule Commanded.Event.Handler do
   def parse_name(name), do: inspect(name)
 
   @doc false
-  defmacro __before_compile__(_env) do
-    # Include default `handle/2` and `error/3` callback functions in module
-    quote generated: true do
-      @doc false
-      def handle(_event, _metadata), do: :ok
+  defmacro __before_compile__(env) do
+    defs = Module.definitions_in(env.module)
+    has_one = Keyword.get(defs, :handle) == 2
+    has_batch = Keyword.get(defs, :handle_batch) == 1
 
-      @doc false
-      def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
+    if has_one and has_batch do
+      raise CompileError,
+        file: nil,
+        line: nil,
+        description: "#{env.module} has both `handle/2` and `handle_batch/1` callbacks."
+    else
+      # Generate default handlers
+      quote generated: true do
+        @doc false
+        def handle(_event, _metadata), do: :ok
+
+        @doc false
+        def handle_batch(_event, _metadata), do: :ok
+
+        @doc false
+        def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
+
+        # TODO Batching: generate default error handler
+      end
     end
   end
 
