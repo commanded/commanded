@@ -365,6 +365,15 @@ defmodule Commanded.Commands.Router do
     end
   end
 
+  @type dispatch_resp ::
+          :ok
+          | {:ok, aggregate_state :: struct()}
+          | {:ok, aggregate_version :: non_neg_integer()}
+          | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+          | {:error, :unregistered_command}
+          | {:error, :consistency_timeout}
+          | {:error, reason :: term()}
+
   @doc """
   Dispatch the given command to the registered handler.
 
@@ -377,14 +386,7 @@ defmodule Commanded.Commands.Router do
       :ok = BankRouter.dispatch(command)
 
   """
-  @callback dispatch(command :: struct()) ::
-              :ok
-              | {:ok, aggregate_state :: struct()}
-              | {:ok, aggregate_version :: non_neg_integer()}
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:error, :unregistered_command}
-              | {:error, :consistency_timeout}
-              | {:error, reason :: term()}
+  @callback dispatch(command :: struct()) :: dispatch_resp
 
   @doc """
   Dispatch the given command to the registered handler providing a timeout.
@@ -460,14 +462,7 @@ defmodule Commanded.Commands.Router do
   @callback dispatch(
               command :: struct(),
               timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
-            ) ::
-              :ok
-              | {:ok, aggregate_state :: struct()}
-              | {:ok, aggregate_version :: non_neg_integer()}
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:error, :unregistered_command}
-              | {:error, :consistency_timeout}
-              | {:error, reason :: term()}
+            ) :: dispatch_resp
 
   defmacro __before_compile__(_env) do
     quote generated: true do
