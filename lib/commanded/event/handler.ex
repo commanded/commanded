@@ -468,8 +468,6 @@ defmodule Commanded.Event.Handler do
               | {:error, reason :: any()}
               | {:error, reason :: any(), domain_event}
 
-  # TODO Batching: batch-specific error handling.
-
   @doc """
   Called when an event `handle/2` callback returns an error.
 
@@ -495,7 +493,8 @@ defmodule Commanded.Event.Handler do
     `Commanded.Event.FailureContext` struct as described in `{:retry, context}`
     above.
 
-  - `:skip` - skip the failed event by acknowledging receipt.
+  - `:skip` - skip the failed event by acknowledging receipt. Note that this is not
+    a valid return value in batching mode.
 
   - `{:stop, reason}` - stop the event handler with the given reason.
 
@@ -546,7 +545,7 @@ defmodule Commanded.Event.Handler do
   """
   @callback error(
               error :: term(),
-              failed_event :: domain_event,
+              failed_event :: (domain_event | nil),
               failure_context :: FailureContext.t()
             ) ::
               {:retry, context :: map() | FailureContext.t()}
@@ -757,8 +756,6 @@ defmodule Commanded.Event.Handler do
 
         @doc false
         def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
-
-        # TODO Batching: generate default error handler
       end
     end
   end
@@ -935,7 +932,7 @@ defmodule Commanded.Event.Handler do
 
     subscription = Subscription.reset(subscription)
 
-    %Handler{state | last_seen_event: nil, subscription: subscription, subscribe_timer: nil}
+    %Handler{state | last_seen_event: -1, subscription: subscription, subscribe_timer: nil}
   end
 
   defp subscribe_to_events(%Handler{} = state) do
@@ -1035,12 +1032,14 @@ defmodule Commanded.Event.Handler do
 
   defp handle_batch(events, context, %Handler{} = state) do
     # Skip events we have already seen
-    {already_seen, events} = Enum.split_with(events, fn e -> e.event_number <= state.last_seen_event end)
+    {already_seen, events} =
+      Enum.split_with(events, fn e -> e.event_number <= state.last_seen_event end)
     state = confirm_receipt(already_seen, state)
     do_handle_batch(events, context, state)
   end
 
   defp do_handle_batch([], _context, state), do: state
+
   defp do_handle_batch(events, context, %Handler{} = state) do
     %Handler{handler_module: handler_module} = state
     # TODO Batching: telemetry
@@ -1049,7 +1048,6 @@ defmodule Commanded.Event.Handler do
       Enum.map(events, fn e = %RecordedEvent{data: data} ->
         {data, enrich_metadata(e, state)}
       end)
-
 
     try do
       case handler_module.handle_batch(enriched_events) do
@@ -1105,6 +1103,7 @@ defmodule Commanded.Event.Handler do
       error ->
         stacktrace = __STACKTRACE__
         Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+
         {:error, error, stacktrace}
     end
   end
@@ -1214,12 +1213,15 @@ defmodule Commanded.Event.Handler do
         retry_fun.(context, state)
 
       :skip ->
-
         # Skip the failed event by confirming receipt
-        Logger.info(fn -> describe(state) <> " is skipping event" end)
+        if state.handler_callback == :batch do
+          throw "Batching event handlers can currently not return :skip"
+        else
+          Logger.info(fn -> describe(state) <> " is skipping event" end)
 
-        state = confirm_receipt([maybe_failed_event], state)
-        retry_fun.(failure_context.context, state)
+          state = confirm_receipt([maybe_failed_event], state)
+          retry_fun.(failure_context.context, state)
+        end
 
       {:stop, reason} ->
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
@@ -1261,6 +1263,7 @@ defmodule Commanded.Event.Handler do
 
   # Confirm receipt of one or more events.
   defp confirm_receipt([], state), do: state
+
   defp confirm_receipt(recorded_events, %Handler{} = state) do
     %Handler{
       application: application,
