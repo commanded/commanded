@@ -63,7 +63,7 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
 
       self = self()
 
-      {:ok, 1, _events} = GenServer.call(pid, {:execute_command, context})
+      {:ok, 1, _events, _aggregate_state} = GenServer.call(pid, {:execute_command, context})
 
       assert_receive {[:commanded, :aggregate, :execute, :start], measurements, metadata}
 
@@ -96,7 +96,7 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
 
       self = self()
 
-      {:ok, 1, events} = GenServer.call(pid, {:execute_command, context})
+      {:ok, 1, events, _aggregate_state} = GenServer.call(pid, {:execute_command, context})
 
       assert_receive {[:commanded, :aggregate, :execute, :start], _measurements, _metadata}
       assert_receive {[:commanded, :aggregate, :execute, :stop], measurements, metadata}

@@ -80,13 +80,13 @@ defmodule Commanded.Aggregates.ExecutionContext do
 
     case returning do
       :aggregate_state ->
-        {:ok, aggregate_version, events, aggregate_state}
+        {:ok, aggregate_version, events, aggregate_state, aggregate_state}
 
       :aggregate_version ->
-        {:ok, aggregate_version, events, aggregate_version}
+        {:ok, aggregate_version, events, aggregate_state, aggregate_version}
 
       :events ->
-        {:ok, aggregate_version, events, events}
+        {:ok, aggregate_version, events, aggregate_state, events}
 
       :execution_result ->
         result = %ExecutionResult{
@@ -97,10 +97,10 @@ defmodule Commanded.Aggregates.ExecutionContext do
           metadata: metadata
         }
 
-        {:ok, aggregate_version, events, result}
+        {:ok, aggregate_version, events, aggregate_state, result}
 
       false ->
-        {:ok, aggregate_version, events}
+        {:ok, aggregate_version, events, aggregate_state}
     end
   end
 
