@@ -8,18 +8,25 @@ defmodule Commanded.Event.BatchHandler do
   require Logger
 
   @impl true
-  def handle_batch([{%ReplyEvent{value: :error}, _metadata}]) do
+  def handle_batch([{%ReplyEvent{value: :error}, _metadata} | _rest]) do
     Logger.info("Handle batch with error")
     {:error, :bad_value}
   end
 
   def handle_batch([{first, metadata} | _rest] = events) do
-    Logger.info("Handle regular batch")
-    %ReplyEvent{reply_to: reply_to} = first
+    maybe_error_event = Enum.find(events, fn {%ReplyEvent{value: value}, _metadata} -> value == :error end)
+    case maybe_error_event do
+      nil ->
+        Logger.info("Handle regular batch")
+        %ReplyEvent{reply_to: reply_to} = first
 
-    send(reply_to, {:batch, self(), events, metadata})
+        send(reply_to, {:batch, self(), events, metadata})
 
-    :ok
+        :ok
+      event ->
+        Logger.info("Handle specific bad event")
+        {:error, :bad_value, event}
+    end
   end
 
   def handle_batch(events) do
