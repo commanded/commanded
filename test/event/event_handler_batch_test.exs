@@ -1,4 +1,4 @@
-defmodule Commanded.Event.HandleBatchTest do
+defmodule Commanded.Event.EventHandlerBatchTest do
   use ExUnit.Case, async: true
 
   alias Commanded.Application.Config
@@ -9,6 +9,7 @@ defmodule Commanded.Event.HandleBatchTest do
   alias Commanded.Helpers.EventFactory
   alias Commanded.Event.{BatchHandler, ErrorHandlingBatchHandler}
   alias Commanded.Event.ReplyEvent
+  alias Commanded.Event.EventHandlerBatchTest.MockAdapter
 
   describe "batch handling" do
     test "should receive events in batches" do
@@ -97,13 +98,11 @@ defmodule Commanded.Event.HandleBatchTest do
       }
 
   end
-end
 
-defmodule MockAdapter do
-
-  def ack_event(nil, subscription_pid, event) do
-    send subscription_pid, {:acked, event}
-    :ok
+  defmodule MockAdapter do
+    def ack_event(nil, subscription_pid, event) do
+      send subscription_pid, {:acked, event}
+      :ok
+    end
   end
-
 end
