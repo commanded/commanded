@@ -806,7 +806,7 @@ defmodule Commanded.Event.Handler do
         def handle(_event, _metadata), do: :ok
 
         @doc false
-        def handle_batch(_event, _metadata), do: :ok
+        def handle_batch(_events), do: :ok
 
         @doc false
         def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
@@ -1123,22 +1123,23 @@ defmodule Commanded.Event.Handler do
           retry_fun = fn context, state -> handle_batch(events, context, state) end
           handle_event_error(error, nil, failure_context, state, retry_fun)
 
-        {:error, reason, event} ->
+        {:error, reason, {event, _metadata}} ->
           error = {:error, reason}
           # This is actually a sort of single-event-error, so handle it like that.
           # We acknowledge what came before, have the error handler tell us what to
           # do, and on retry, retry the rest of the batch.
-          {success, left} =
-            case Enum.chunk_by(events, fn e -> e == event end) do
-              [[^event], left] -> {[], left}
-              [success, [^event]] -> {success, []}
-              [success, [^event], left] -> {success, left}
+
+          {success, recorded_event, left} =
+            case Enum.chunk_by(events, fn e -> e.data == event end) do
+              [[recorded_event], left] -> {[], recorded_event, left}
+              [success, [recorded_event]] -> {success, recorded_event, []}
+              [success, [recorded_event], left] -> {success, recorded_event, left}
             end
 
           last_successful_event = List.last(success)
 
           telemetry_metadata = telemetry_metadata
-          |> Map.put(:recorded_event, event)
+          |> Map.put(:recorded_event, recorded_event)
           |> Map.put(:last_event_id, last_successful_event.event_id)
           |> Map.put(:event_count, length(success))
           |> Map.put(:error, reason)
