@@ -1,5 +1,5 @@
 defmodule Commanded.Event.EventHandlerBatchTelemetryTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   alias Commanded.Application.Config
   alias Commanded.Event.Handler

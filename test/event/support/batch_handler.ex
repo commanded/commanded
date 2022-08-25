@@ -23,7 +23,7 @@ defmodule Commanded.Event.BatchHandler do
         send(reply_to, {:batch, self(), events, metadata})
 
         :ok
-      event ->
+      {event, _metadata} ->
         Logger.info("Handle specific bad event")
         {:error, :bad_value, event}
     end

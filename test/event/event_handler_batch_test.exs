@@ -10,6 +10,7 @@ defmodule Commanded.Event.EventHandlerBatchTest do
   alias Commanded.Event.{BatchHandler, ErrorHandlingBatchHandler}
   alias Commanded.Event.ReplyEvent
   alias Commanded.Event.EventHandlerBatchTest.MockAdapter
+  alias Commanded.Event.ErrorAggregate.Events.ErrorEvent
 
   describe "batch handling" do
     test "should receive events in batches" do
@@ -43,7 +44,7 @@ defmodule Commanded.Event.EventHandlerBatchTest do
 
   describe "failure handling with error handler" do
     test "skip is not allowed" do
-      event1 = %ReplyEvent{reply_to: self(), value: {:error, :skip}}
+      event1 = %ErrorEvent{reply_to: self(), strategy: "skip"}
       event2 = %ReplyEvent{reply_to: self(), value: 2}
       events = [event1, event2]
 
@@ -55,7 +56,7 @@ defmodule Commanded.Event.EventHandlerBatchTest do
     end
 
     test "should stop" do
-      event1 = %ReplyEvent{reply_to: self(), value: {:error, :stop}}
+      event1 = %ErrorEvent{reply_to: self(), strategy: "default"}
       event2 = %ReplyEvent{reply_to: self(), value: 2}
       events = [event1, event2]
 
@@ -67,7 +68,7 @@ defmodule Commanded.Event.EventHandlerBatchTest do
     end
 
     test "should retry" do
-      event1 = %ReplyEvent{reply_to: self(), value: {:error, :retry}}
+      event1 = %ErrorEvent{reply_to: self(), strategy: "retry"}
       event2 = %ReplyEvent{reply_to: self(), value: 2}
       events = [event1, event2]
 
@@ -75,9 +76,10 @@ defmodule Commanded.Event.EventHandlerBatchTest do
       recorded_events = EventFactory.map_to_recorded_events(events, 1, metadata: metadata)
       state = setup_state(ErrorHandlingBatchHandler)
 
-      {:stop, :retry, _state} = Handler.handle_info({:events, recorded_events}, state)
-      assert_received :seen_retry
-      assert_received :seen_retry_call
+      {:stop, :too_many_failures, _state} = Handler.handle_info({:events, recorded_events}, state)
+      assert_received {:error, :retry, %{failures: 1}}
+      assert_received {:error, :retry, %{failures: 2}}
+      assert_received {:error, :too_many_failures, %{failures: 3}}
     end
    end
 
