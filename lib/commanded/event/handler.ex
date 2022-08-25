@@ -1123,7 +1123,7 @@ defmodule Commanded.Event.Handler do
           retry_fun = fn context, state -> handle_batch(events, context, state) end
           handle_event_error(error, nil, failure_context, state, retry_fun)
 
-        {:error, reason, {event, _metadata}} ->
+        {:error, reason, event} ->
           error = {:error, reason}
           # This is actually a sort of single-event-error, so handle it like that.
           # We acknowledge what came before, have the error handler tell us what to
@@ -1136,11 +1136,14 @@ defmodule Commanded.Event.Handler do
               [success, [recorded_event], left] -> {success, recorded_event, left}
             end
 
-          last_successful_event = List.last(success)
+          last_successful_event_id = case List.last(success) do
+            %{event_id: id} -> id
+            _ -> nil
+          end
 
           telemetry_metadata = telemetry_metadata
           |> Map.put(:recorded_event, recorded_event)
-          |> Map.put(:last_event_id, last_successful_event.event_id)
+          |> Map.put(:last_event_id, last_successful_event_id)
           |> Map.put(:event_count, length(success))
           |> Map.put(:error, reason)
 
@@ -1148,15 +1151,16 @@ defmodule Commanded.Event.Handler do
 
           confirm_receipt(success, state)
 
-          log_event_error(error, event, state)
+          log_event_error(error, recorded_event, state)
 
-          failure_context = build_failure_context(event, context, state)
+          failure_context = build_failure_context(recorded_event, context, state)
           # A tricky bit here: if the error action is :skip, then we will confirm
           # receipt, which updates the state, and then retry the whole batch including
           # the just-acknowledged event but above, we will see that we've done that one before
           # and skip it.
-          retry_fun = fn context, state -> handle_batch([event | left], context, state) end
-          handle_event_error(error, event, failure_context, state, retry_fun)
+          retry_fun = fn context, state -> handle_batch([recorded_event | left], context, state) end
+
+          handle_event_error(error, recorded_event, failure_context, state, retry_fun)
 
         invalid ->
           error =
