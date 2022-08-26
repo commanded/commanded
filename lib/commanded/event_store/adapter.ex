@@ -86,7 +86,7 @@ defmodule Commanded.EventStore.Adapter do
   TODO Batching: this holds true for the PostgreSQL implementation, needs to be added to in_memory and
        verified for EventStoreDB.
   """
-  @callback ack_event(adapter_meta, pid, RecordedEvent.t() | list(RecordedEvent.t())) :: :ok
+  @callback ack_event(adapter_meta, pid, RecordedEvent.t()) :: :ok
 
   @doc """
   Unsubscribe an existing subscriber from event notifications.

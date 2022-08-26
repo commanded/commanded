@@ -29,21 +29,6 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
   end
 
   describe "ack_event/3" do
-    test "acknowledges list of events", %{event_store_meta: event_store_meta} do
-      pid = Process.whereis(InMemory.EventStore)
-      initial = :sys.get_state(pid)
-      assert initial.next_event_number == 1
-
-      {:ok, subscription} =
-        InMemory.subscribe_to(event_store_meta, "stream", "subscriber", self(), :origin, [])
-
-      :ok = InMemory.append_to_stream(event_store_meta, "stream", 0, build_events(2))
-      final = :sys.get_state(pid)
-      assert_receive {:events, received_events}
-      assert :ok == InMemory.ack_event(event_store_meta, subscription, received_events)
-      assert final.next_event_number == 3
-    end
-
     test "acknowledges one event", %{event_store_meta: event_store_meta} do
       pid = Process.whereis(InMemory.EventStore)
       initial = :sys.get_state(pid)
@@ -55,7 +40,7 @@ defmodule Commanded.EventStore.Adapters.InMemoryTest do
       :ok = InMemory.append_to_stream(event_store_meta, "stream", 0, build_events(1))
       final = :sys.get_state(pid)
       assert_receive {:events, received_events}
-      assert :ok == InMemory.ack_event(event_store_meta, subscription, received_events)
+      assert :ok == InMemory.ack_event(event_store_meta, subscription, List.last(received_events))
       assert final.next_event_number == 2
     end
   end

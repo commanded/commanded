@@ -103,13 +103,6 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore.Adapter
-  def ack_event(adapter_meta, subscription, [%RecordedEvent{} | _rest] = events) when is_pid(subscription) do
-    event_store = event_store_name(adapter_meta)
-
-    GenServer.call(event_store, {:ack_event, List.last(events), subscription})
-  end
-
-  @impl Commanded.EventStore.Adapter
   def ack_event(adapter_meta, subscription, %RecordedEvent{} = event) when is_pid(subscription) do
     event_store = event_store_name(adapter_meta)
 
