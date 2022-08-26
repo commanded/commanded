@@ -219,7 +219,7 @@ defmodule Commanded.Event.Handler do
   ## Event handler state
 
   An event handler can define and update state which is held in the `GenServer`
-  process memory. It is passed to the `handle/2` function as part of the
+  process memory. It is passed to the `handle/2` (or handle_batch/1) function as part of the
   metadata using the `:state` key. The state is transient and will be lost
   whenever the process restarts.
 
@@ -352,8 +352,7 @@ defmodule Commanded.Event.Handler do
     will receive a list of `{event, metadata}` tuples.
 
   On returning `:ok` from the batch handler, all events will be acknowledged. Currently,
-  no mechanism exists for partial acknowledgement of a batch. Telemetry is sent
-  only for the last event in a batch.
+  no mechanism exists for partial acknowledgement of a batch.
 
   Batching and concurrency currently are not supported together; setting conflicting
   options will trigger a compilation error.
@@ -1088,7 +1087,7 @@ defmodule Commanded.Event.Handler do
   defp handle_batch(events, context, %Handler{} = state) do
     # Skip events we have already seen
     {already_seen, events} =
-      Enum.split_with(events, fn e -> less_than?(e.event_number, state.last_seen_event) end)
+      Enum.split_with(events, fn e -> less_than_or_equal?(e.event_number, state.last_seen_event) end)
     state = confirm_receipt(already_seen, state)
     do_handle_batch(events, context, state)
   end
@@ -1500,6 +1499,6 @@ defmodule Commanded.Event.Handler do
   defp describe(%Handler{handler_module: handler_module}),
     do: inspect(handler_module)
 
-  defp less_than?(evt_num, nil), do: false
-  defp less_than?(evt_num1, evt_num2), do: evt_num1 < evt_num2
+  defp less_than_or_equal?(evt_num, nil) when is_integer(evt_num), do: false
+  defp less_than_or_equal?(evt_num1, evt_num2), do: evt_num1 <= evt_num2
 end
