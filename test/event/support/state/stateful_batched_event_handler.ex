@@ -24,14 +24,14 @@ defmodule Commanded.Event.StatefulBatchedEventHandler do
 
   def do_handle_batch([], acc), do: acc
 
-  def do_handle_batch([{%{reply_to: reply_to, increment_by: inc}, metadata} | rest], acc) when is_integer(inc) and inc > 0 do
+  def do_handle_batch([{%{reply_to: reply_to, increment: true}, metadata} | rest], acc) do
     %{state: state} = metadata
     acc_state = Map.get(acc, :state, 0)
     reply_to = :erlang.list_to_pid(reply_to)
-    do_handle_batch(rest, Map.merge(acc, %{state: state + acc_state + inc, reply_to: reply_to, incremented: true}))
+    do_handle_batch(rest, Map.merge(acc, %{state: state + acc_state + 1, reply_to: reply_to, incremented: true}))
   end
 
-  def do_handle_batch([{%{increment_by: _}, _metadata} | rest], acc),
+  def do_handle_batch([{%{increment: false}, _metadata} | rest], acc),
     do: do_handle_batch(rest, acc)
 
   defp reply_to(to), do: :erlang.list_to_pid(to)

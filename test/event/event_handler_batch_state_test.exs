@@ -6,14 +6,14 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
 
   defmodule AnEvent do
     @derive Jason.Encoder
-    defstruct [:reply_to, :increment_by]
+    defstruct [:reply_to, :increment]
   end
 
   describe "batched event handler state" do
     test "initially set in `init/1` function" do
       handler = start_supervised!(StatefulBatchedEventHandler)
 
-      event = %AnEvent{reply_to: reply_to(), increment_by: true}
+      event = %AnEvent{reply_to: reply_to(), increment: true}
       send_events_to_handler(handler, [event])
 
       assert_receive {:batch, [{^event, metadata}]}
@@ -23,7 +23,7 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
     test "initially set as runtime option" do
       handler = start_supervised!({StatefulBatchedEventHandler, state: 1})
 
-      event = %AnEvent{reply_to: reply_to(), increment_by: true}
+      event = %AnEvent{reply_to: reply_to(), increment: true}
       send_events_to_handler(handler, [event])
 
       assert_receive {:batch, [{^event, metadata}]}
@@ -33,9 +33,9 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
     test "updated by returning `{:ok, new_state}` from `handle_batch/2` function" do
       handler = start_supervised!(StatefulBatchedEventHandler)
 
-      event1 = %AnEvent{reply_to: reply_to(), increment_by: 1}
-      event2 = %AnEvent{reply_to: reply_to(), increment_by: 1}
-      event3 = %AnEvent{reply_to: reply_to(), increment_by: 1}
+      event1 = %AnEvent{reply_to: reply_to(), increment: true}
+      event2 = %AnEvent{reply_to: reply_to(), increment: true}
+      event3 = %AnEvent{reply_to: reply_to(), increment: true}
 
       send_events_to_handler(handler, [event1, event2])
       assert_receive {:batch, [{^event1, metadata1}, {^event2, metadata2}]}
@@ -50,8 +50,8 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
     test "not updated when returning `:ok` from `handle_batch/2` function" do
       handler = start_supervised!(StatefulBatchedEventHandler)
 
-      event1 = %AnEvent{reply_to: reply_to(), increment_by: 0}
-      event2 = %AnEvent{reply_to: reply_to(), increment_by: 0}
+      event1 = %AnEvent{reply_to: reply_to(), increment: false}
+      event2 = %AnEvent{reply_to: reply_to(), increment: false}
 
       send_events_to_handler(handler, [event1])
       assert_receive {:batch, [{^event1, metadata}]}
@@ -66,8 +66,8 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
       opts = [state: 10]
       handler = start_supervised!({StatefulBatchedEventHandler, opts})
 
-      event1 = %AnEvent{reply_to: reply_to(), increment_by: 1}
-      event2 = %AnEvent{reply_to: reply_to(), increment_by: 1}
+      event1 = %AnEvent{reply_to: reply_to(), increment: true}
+      event2 = %AnEvent{reply_to: reply_to(), increment: true}
 
       send_events_to_handler(handler, [event1])
       assert_receive {:batch, [{^event1, metadata}]}
@@ -83,7 +83,7 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
 
       handler = start_supervised!({StatefulBatchedEventHandler, opts})
 
-      event3 = %AnEvent{reply_to: reply_to(), increment_by: 1}
+      event3 = %AnEvent{reply_to: reply_to(), increment: true}
       send_events_to_handler(handler, [event3], 3)
 
       assert_receive {:batch, [{^event3, metadata}]}
