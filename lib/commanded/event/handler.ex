@@ -352,7 +352,8 @@ defmodule Commanded.Event.Handler do
     will receive a list of `{event, metadata}` tuples.
 
   On returning `:ok` from the batch handler, all events will be acknowledged. Currently,
-  no mechanism exists for partial acknowledgement of a batch.
+  no mechanism exists for partial acknowledgement of a batch. Telemetry is sent
+  only for the last event in a batch.
 
   Batching and concurrency currently are not supported together; setting conflicting
   options will trigger a compilation error.
@@ -1087,7 +1088,7 @@ defmodule Commanded.Event.Handler do
   defp handle_batch(events, context, %Handler{} = state) do
     # Skip events we have already seen
     {already_seen, events} =
-      Enum.split_with(events, fn e -> e.event_number <= state.last_seen_event end)
+      Enum.split_with(events, fn e -> less_than?(e.event_number, state.last_seen_event) end)
     state = confirm_receipt(already_seen, state)
     do_handle_batch(events, context, state)
   end
@@ -1349,8 +1350,8 @@ defmodule Commanded.Event.Handler do
       subscription: subscription
     } = state
 
-    last = List.last(recorded_events)
-    %RecordedEvent{event_number: event_number} = last
+    last_event = List.last(recorded_events)
+    %RecordedEvent{event_number: event_number} = last_event
 
     Logger.debug(fn ->
       describe(state) <> " confirming receipt of events up to ##{inspect(event_number)}"
@@ -1363,10 +1364,8 @@ defmodule Commanded.Event.Handler do
     # TODO Batching: If we have a batch, we only confirm the last event received to the
     # subscription. Or, if that won't fly, have `ack_events` as a callback on the adapter
     # and implement that.
-    Enum.each(recorded_events, fn event ->
-      :ok = Subscription.ack_event(subscription, event)
-      :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
-    end)
+    :ok = Subscription.ack_event(subscription, last_event)
+    :ok = Subscriptions.ack_event(application, handler_name, consistency, last_event)
 
     %Handler{state | last_seen_event: event_number}
   end
@@ -1500,4 +1499,7 @@ defmodule Commanded.Event.Handler do
 
   defp describe(%Handler{handler_module: handler_module}),
     do: inspect(handler_module)
+
+  defp less_than?(evt_num, nil), do: false
+  defp less_than?(evt_num1, evt_num2), do: evt_num1 < evt_num2
 end
