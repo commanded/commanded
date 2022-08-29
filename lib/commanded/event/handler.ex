@@ -236,7 +236,7 @@ defmodule Commanded.Event.Handler do
       ], strategy: :one_for_one)
 
   State can be updated by returning `{:ok, new_state}` from any `handle/2`
-  function. Returning an `:ok` reply will keep the state unchanged.
+  (or `handle_batch/2`) function. Returning an `:ok` reply will keep the state unchanged.
 
   Handler state is also included in the `Commanded.Event.FailureContext` struct
   passed to the `error/3` callback function.
