@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+- Retry command execution when the aggregate process is down ([#494](https://github.com/commanded/commanded/pull/494)).
+
 ## v1.4.0
 
 ### Enhancements
