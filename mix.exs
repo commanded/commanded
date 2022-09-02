@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "1.4.0-rc.0"
+  @version "1.4.0"
 
   def project do
     [
@@ -58,8 +58,8 @@ defmodule Commanded.Mixfile do
       {:backoff, "~> 1.1"},
 
       # Telemetry
-      {:telemetry, "~> 0.4 or ~> 1.0 or ~> 1.1"},
-      {:telemetry_registry, "~> 0.3"},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
+      {:telemetry_registry, "~> 0.2 or ~> 0.3"},
 
       # Optional dependencies
       {:jason, "~> 1.3", optional: true},
