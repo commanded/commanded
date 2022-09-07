@@ -2,6 +2,9 @@ name: Test
 
 on: [push, pull_request]
 
+env:
+  MIX_ENV: test
+  
 jobs:
   build:
     name: Build and test
