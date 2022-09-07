@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v1.4.1
 
 ### Enhancements
 
@@ -9,6 +9,7 @@
 ### Bug fixes
 
 -  Remove duplicate apply function call when receiving missed events published to an aggregate's event stream ([364c877](https://github.com/commanded/commanded/commit/364c877e8f30a18d90544676fb58b94132d50720)).
+- Fix typespec typo in Commanded.Application ([#503](https://github.com/commanded/commanded/pull/503)).
 
 ## v1.4.0
 
