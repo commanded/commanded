@@ -22,6 +22,19 @@ defmodule Commanded.Aggregates.AggregateStateTest do
     :ok
   end
 
+  test "query a non-existing aggregate_state" do
+    aggregate_uuid = UUID.uuid4()
+
+    assert match?(
+             {:noproc, {GenServer, :call, _request}},
+             catch_exit(
+               Aggregate.aggregate_version(DefaultApp, @aggregate_module, aggregate_uuid)
+             )
+           )
+
+    assert Aggregate.aggregate_state(DefaultApp, @aggregate_module, aggregate_uuid) == nil
+  end
+
   test "query aggregate_state from the running aggregate gen_server" do
     aggregate_uuid = UUID.uuid4()
     append_items(aggregate_uuid, 9)

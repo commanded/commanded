@@ -208,7 +208,8 @@ defmodule Commanded.Application do
       end
 
       @doc """
-      Retrieve aggregate state of an aggregate.
+      Retrieve aggregate state of an aggregate,
+      return `nil` if the aggregate does not exist.
 
       Retrieving aggregate state is done by calling to the opened aggregate,
       or querying the event store for an optional state snapshot
@@ -218,7 +219,7 @@ defmodule Commanded.Application do
               aggregate_module :: module(),
               aggregate_uuid :: Aggregate.uuid(),
               timeout :: integer
-            ) :: Aggregate.state()
+            ) :: Aggregate.state() | nil
       def aggregate_state(aggregate_module, aggregate_uuid, timeout \\ 5000) do
         Aggregate.aggregate_state(
           __MODULE__,
