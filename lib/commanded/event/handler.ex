@@ -986,7 +986,7 @@ defmodule Commanded.Event.Handler do
 
     subscription = Subscription.reset(subscription)
 
-    %Handler{state | last_seen_event: -1, subscription: subscription, subscribe_timer: nil}
+    %Handler{state | last_seen_event: nil, subscription: subscription, subscribe_timer: nil}
   end
 
   defp subscribe_to_events(%Handler{} = state) do
@@ -1084,12 +1084,14 @@ defmodule Commanded.Event.Handler do
 
   defp handle_batch(events, context \\ %{}, handler)
 
-  defp handle_batch(events, context, %Handler{} = state) do
-    # Skip events we have already seen
-    {already_seen, events} =
-      Enum.split_with(events, fn e -> less_than_or_equal?(e.event_number, state.last_seen_event) end)
-    state = confirm_receipt(already_seen, state)
-    do_handle_batch(events, context, state)
+  defp handle_batch(events, context, %Handler{last_seen_event: last_seen_event} = state) do
+    %{event_number: last_event_number} = last_event = List.last(events)
+    if not is_nil(last_seen_event) and last_event_number <= last_seen_event do
+      Logger.debug(fn -> describe(state) <> " has already seen event ##{inspect(last_event_number)}" end)
+      confirm_receipt([last_event], state)
+    else
+      do_handle_batch(events, context, state)
+    end
   end
 
   defp do_handle_batch([], _context, state), do: state
@@ -1295,9 +1297,7 @@ defmodule Commanded.Event.Handler do
           throw "Batching event handlers can currently not return :skip"
         else
           Logger.info(fn -> describe(state) <> " is skipping event" end)
-
-          state = confirm_receipt([maybe_failed_event], state)
-          retry_fun.(failure_context.context, state)
+          confirm_receipt([maybe_failed_event], state)
         end
 
       {:stop, reason} ->
@@ -1498,7 +1498,4 @@ defmodule Commanded.Event.Handler do
 
   defp describe(%Handler{handler_module: handler_module}),
     do: inspect(handler_module)
-
-  defp less_than_or_equal?(evt_num, nil) when is_integer(evt_num), do: false
-  defp less_than_or_equal?(evt_num1, evt_num2), do: evt_num1 <= evt_num2
 end
