@@ -1121,9 +1121,13 @@ defmodule Commanded.Event.Handler do
           log_batch_error(error, events, state)
           telemetry_stop(start_time, Map.put(telemetry_metadata, :error, reason), :batch)
 
+          # TODO: Figure out what to show as the failure context now that we have multipe events
           failure_context = build_failure_context(nil, context, state)
           retry_fun = fn context, state -> handle_batch(events, context, state) end
-          handle_event_error(error, nil, failure_context, state, retry_fun)
+          # For now, we pass the last event so that we can acknowledge it if the error callback
+          # returns :skip. In the future, we should make handle_event_error/5 be able to accept
+          # a list events so that the error/3 callback can get the list of events
+          handle_event_error(error, List.last(events), failure_context, state, retry_fun)
 
         {:error, reason, event} ->
           error = {:error, reason}
@@ -1293,12 +1297,8 @@ defmodule Commanded.Event.Handler do
 
       :skip ->
         # Skip the failed event by confirming receipt
-        if state.handler_callback == :batch do
-          throw "Batching event handlers can currently not return :skip"
-        else
-          Logger.info(fn -> describe(state) <> " is skipping event" end)
-          confirm_receipt([maybe_failed_event], state)
-        end
+        Logger.info(fn -> describe(state) <> " is skipping event" end)
+        confirm_receipt([maybe_failed_event], state)
 
       {:stop, reason} ->
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)

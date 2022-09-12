@@ -14,6 +14,10 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
     {:error, :bad_value, event}
   end
 
+  def handle_batch([{%ErrorEvent{strategy: "skip"}, _metadata} | _rest]) do
+    {:error, :skipping}
+  end
+
   def handle_batch([{event, _metadata} | _rest]) do
     Logger.info("Returning bad value error")
     {:error, :bad_value, event}
@@ -25,8 +29,7 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
   end
 
   @impl true
-  def error({:error, _reason}, %ErrorEvent{strategy: "skip"} = event, _failure_context) do
-    %ErrorEvent{reply_to: reply_to} = event
+  def error({:error, :skipping}, %ErrorEvent{reply_to: reply_to}, _failure_context) do
     send(reply_to, {:error, :skipping})
 
     :skip

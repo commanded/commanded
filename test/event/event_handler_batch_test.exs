@@ -43,16 +43,19 @@ defmodule Commanded.Event.EventHandlerBatchTest do
   end
 
   describe "failure handling with error handler" do
-    test "skip is not allowed" do
+    test "skip acknowledges the last event" do
       event1 = %ErrorEvent{reply_to: self(), strategy: "skip"}
-      event2 = %ReplyEvent{reply_to: self(), value: 2}
+      event2 = %ErrorEvent{reply_to: self(), strategy: "skip"}
       events = [event1, event2]
 
       metadata = %{}
       recorded_events = EventFactory.map_to_recorded_events(events, 1, metadata: metadata)
+      last_recorded_event = List.last(recorded_events)
       state = setup_state(ErrorHandlingBatchHandler)
 
-      catch_throw Handler.handle_info({:events, recorded_events}, state)
+      Handler.handle_info({:events, recorded_events}, state)
+      assert_received {:error, :skipping}
+      assert_received {:acked, ^last_recorded_event}
     end
 
     test "should stop" do
