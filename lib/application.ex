@@ -188,7 +188,7 @@ defmodule Commanded.Application do
         config
       end
 
-      @spec child_spec(opts :: Commanded.options()) :: Supervisor.child_spec()
+      @spec child_spec(opts :: Commanded.Application.options()) :: Supervisor.child_spec()
       def child_spec(opts) do
         %{
           id: name(opts),
