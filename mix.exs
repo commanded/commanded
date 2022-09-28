@@ -1,13 +1,13 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "1.4.0-rc.0"
+  @version "1.4.1"
 
   def project do
     [
       app: :commanded,
       version: @version,
-      elixir: "~> 1.9",
+      elixir: "~> 1.10",
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       description: description(),
@@ -58,8 +58,8 @@ defmodule Commanded.Mixfile do
       {:backoff, "~> 1.1"},
 
       # Telemetry
-      {:telemetry, "~> 0.4 or ~> 1.0 or ~> 1.1"},
-      {:telemetry_registry, "~> 0.3"},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
+      {:telemetry_registry, "~> 0.2 or ~> 0.3"},
 
       # Optional dependencies
       {:jason, "~> 1.3", optional: true},
@@ -68,7 +68,7 @@ defmodule Commanded.Mixfile do
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.2", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.2", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.2", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.1", only: :dev},

@@ -134,6 +134,7 @@ Commanded exists thanks to the following people who have contributed.
 <a href="https://github.com/commanded/commanded/graphs/contributors"><img src="https://opencollective.com/commanded/contributors.svg?width=890&button=false" width="890" /></a>
 
 - [Adil Yarulin](https://github.com/ayarulin)
+- [Alexandre de Souza](https://github.com/aleDsz)
 - [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Ben Smith](https://github.com/slashdotdash)
@@ -146,6 +147,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Danilo Silva](https://github.com/silvadanilo)
 - [Dave Lucia](https://github.com/davydog187)
 - [David Carlin](https://github.com/davich)
+- [Damir Vandic](https://github.com/dvic)
 - [Danni Friedland](https://github.com/BlueHotDog)
 - [Ernesto](https://github.com/lex-mala)
 - [Fernando Mendes](https://github.com/justmendes)
@@ -156,11 +158,13 @@ Commanded exists thanks to the following people who have contributed.
 - [João Thallis](https://github.com/joaothallis)
 - [John Wilger](https://github.com/jwilger)
 - [Joseph Lozano](https://github.com/joseph-lozano)
+- [Kian-Meng Ang](https://github.com/kianmeng)
 - [Kok J Sam](https://github.com/sammkj)
 - [Leif Gensert](https://github.com/leifg)
 - [Luís Ferreira](https://github.com/zamith)
 - [Marcelo Dominguez](https://github.com/marpo60)
 - [Matt Doughty](https://github.com/m-doughty)
+- [Matthew Boehlig](https://github.com/thetamind)
 - [Michael Herold](https://github.com/michaelherold)
 - [Miguel Palhas](https://github.com/naps62)
 - [Nigel Thorne](https://github.com/nigelthorne)
@@ -172,6 +176,7 @@ Commanded exists thanks to the following people who have contributed.
 - [Štefan Ľupták](https://github.com/EskiMag)
 - [Tobiasz Małecki](https://github.com/amatalai)
 - [Willy Wombat](https://github.com/octowombat)
+- [Yordis Prieto](https://github.com/yordis)
 - [Yuri de Figueiredo](https://github.com/y86)
 - [Zven](https://github.com/zven21)
 

@@ -6,7 +6,7 @@ Commanded can be installed from the package manager hex as follows.
 
     ```elixir
     def deps do
-      [{:commanded, "~> 1.3"}]
+      [{:commanded, "~> 1.4"}]
     end
     ```
 
@@ -14,7 +14,7 @@ Commanded can be installed from the package manager hex as follows.
 
     ```elixir
     def deps do
-      [{:jason, "~> 1.2"}]
+      [{:jason, "~> 1.3"}]
     end
     ```
 

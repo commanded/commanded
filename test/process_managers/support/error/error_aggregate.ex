@@ -64,7 +64,7 @@ defmodule Commanded.ProcessManagers.ErrorAggregate do
 
   alias Commanded.ProcessManagers.ErrorAggregate
   alias Commands.{AttemptProcess, ContinueProcess, RaiseError, RaiseException, StartProcess}
-  alias Events.{ProcessContinued, ProcessError, ProcessException, ProcessStarted}
+  alias Events.{ProcessContinued, ProcessStarted}
 
   def execute(%ErrorAggregate{}, %StartProcess{} = command) do
     %StartProcess{

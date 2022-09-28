@@ -193,6 +193,9 @@ defmodule Commanded.Aggregates.Aggregate do
     try do
       GenServer.call(name, {:execute_command, context}, timeout)
     catch
+      :exit, {:noproc, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
+        {:exit, {:normal, :aggregate_stopped}}
+
       :exit, {:normal, {GenServer, :call, [^name, {:execute_command, ^context}, ^timeout]}} ->
         {:exit, {:normal, :aggregate_stopped}}
     end
@@ -360,15 +363,14 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_info({:events, events}, %Aggregate{} = state) do
     %Aggregate{application: application, lifespan_timeout: lifespan_timeout} = state
 
-    Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
+    Logger.debug(describe(state) <> " received events: " <> inspect(events))
 
     try do
       state =
         events
+        |> Enum.reject(&event_already_seen?(&1, state))
         |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
         |> Enum.reduce(state, &handle_event/2)
-
-      state = Enum.reduce(events, state, &handle_event/2)
 
       case lifespan_timeout do
         {:stop, reason} -> {:stop, reason, state}
@@ -376,7 +378,7 @@ defmodule Commanded.Aggregates.Aggregate do
       end
     catch
       {:error, error} ->
-        Logger.debug(fn -> describe(state) <> " stopping due to: #{inspect(error)}" end)
+        Logger.debug(describe(state) <> " stopping due to: " <> inspect(error))
 
         # Stop after event handling returned an error
         {:stop, error, state}
@@ -386,9 +388,16 @@ defmodule Commanded.Aggregates.Aggregate do
   @doc false
   @impl GenServer
   def handle_info(:timeout, %Aggregate{} = state) do
-    Logger.debug(fn -> describe(state) <> " stopping due to inactivity timeout" end)
+    Logger.debug(describe(state) <> " stopping due to inactivity timeout")
 
     {:stop, :normal, state}
+  end
+
+  defp event_already_seen?(%RecordedEvent{} = event, %Aggregate{} = state) do
+    %RecordedEvent{stream_version: stream_version} = event
+    %Aggregate{aggregate_version: aggregate_version} = state
+
+    stream_version <= aggregate_version
   end
 
   # Handle events appended to the aggregate's stream, received by its
@@ -402,28 +411,18 @@ defmodule Commanded.Aggregates.Aggregate do
       aggregate_version: aggregate_version
     } = state
 
-    expected_version = aggregate_version + 1
-
-    case stream_version do
-      ^expected_version ->
-        # apply event to aggregate's state
-        %Aggregate{
-          state
-          | aggregate_version: stream_version,
-            aggregate_state: aggregate_module.apply(aggregate_state, data)
-        }
-
-      already_seen_version when already_seen_version <= aggregate_version ->
-        # ignore events already applied to aggregate state
+    if stream_version == aggregate_version + 1 do
+      # Apply event to aggregate's state
+      %Aggregate{
         state
+        | aggregate_version: stream_version,
+          aggregate_state: aggregate_module.apply(aggregate_state, data)
+      }
+    else
+      Logger.debug(describe(state) <> " received an unexpected event: " <> inspect(event))
 
-      _unexpected_version ->
-        Logger.debug(fn ->
-          describe(state) <> " received an unexpected event: #{inspect(event)}"
-        end)
-
-        # throw an error when an unexpected event is received
-        throw({:error, :unexpected_event_received})
+      # Throw an error when an unexpected event is received
+      throw({:error, :unexpected_event_received})
     end
   end
 
@@ -445,12 +444,12 @@ defmodule Commanded.Aggregates.Aggregate do
         timeout
 
       invalid ->
-        Logger.warn(fn ->
+        Logger.warn(
           "Invalid timeout for aggregate lifespan " <>
             inspect(lifespan) <>
             ", expected a non-negative integer, `:infinity`, `:hibernate`, `:stop`, or `{:stop, reason}` but got: " <>
             inspect(invalid)
-        end)
+        )
 
         :infinity
     end
@@ -468,7 +467,7 @@ defmodule Commanded.Aggregates.Aggregate do
     %ExecutionContext{command: command, handler: handler, function: function} = context
     %Aggregate{aggregate_state: aggregate_state} = state
 
-    Logger.debug(fn -> describe(state) <> " executing command: " <> inspect(command) end)
+    Logger.debug(describe(state) <> " executing command: " <> inspect(command))
 
     with :ok <- before_execute_command(aggregate_state, context) do
       case Kernel.apply(handler, function, [aggregate_state, command]) do
@@ -539,14 +538,12 @@ defmodule Commanded.Aggregates.Aggregate do
         # Retry command if there are any attempts left
         case ExecutionContext.retry(context) do
           {:ok, context} ->
-            Logger.debug(fn -> describe(state) <> " wrong expected version, retrying command" end)
+            Logger.debug(describe(state) <> " wrong expected version, retrying command")
 
             execute_command(context, state)
 
           reply ->
-            Logger.debug(fn ->
-              describe(state) <> " wrong expected version, but not retrying command"
-            end)
+            Logger.debug(describe(state) <> " wrong expected version, but not retrying command")
 
             {reply, state}
         end
@@ -589,7 +586,7 @@ defmodule Commanded.Aggregates.Aggregate do
       snapshotting: snapshotting
     } = state
 
-    Logger.debug(fn -> describe(state) <> " recording snapshot" end)
+    Logger.debug(describe(state) <> " recording snapshot")
 
     state =
       case Snapshotting.take_snapshot(snapshotting, aggregate_version, aggregate_state) do
@@ -597,7 +594,7 @@ defmodule Commanded.Aggregates.Aggregate do
           %Aggregate{state | snapshotting: snapshotting}
 
         {:error, error} ->
-          Logger.warn(fn -> describe(state) <> " snapshot failed due to: " <> inspect(error) end)
+          Logger.warn(describe(state) <> " snapshot failed due to: " <> inspect(error))
 
           state
       end

@@ -286,14 +286,7 @@ defmodule Commanded.Application do
       `Commanded.Commands.Router` and included in the application.
 
   """
-  @callback dispatch(command :: struct()) ::
-              :ok
-              | {:ok, aggregate_state :: struct()}
-              | {:ok, aggregate_version :: non_neg_integer()}
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:error, :unregistered_command}
-              | {:error, :consistency_timeout}
-              | {:error, reason :: term()}
+  @callback dispatch(command :: struct()) :: Commanded.Commands.Router.dispatch_resp()
 
   @doc """
   Dispatch a registered command.
@@ -364,14 +357,7 @@ defmodule Commanded.Application do
   @callback dispatch(
               command :: struct(),
               timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
-            ) ::
-              :ok
-              | {:ok, aggregate_state :: struct()}
-              | {:ok, aggregate_version :: non_neg_integer()}
-              | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
-              | {:error, :unregistered_command}
-              | {:error, :consistency_timeout}
-              | {:error, reason :: term()}
+            ) :: Commanded.Commands.Router.dispatch_resp()
 
   @doc false
   def dispatch(application, command, opts \\ [])
