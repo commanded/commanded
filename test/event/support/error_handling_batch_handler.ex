@@ -6,6 +6,7 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
 
   alias Commanded.Event.FailureContext
   alias Commanded.Event.ErrorAggregate.Events.ErrorEvent
+  alias Commanded.Event.ReplyEvent
 
   require Logger
 
@@ -14,8 +15,14 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
     {:error, :bad_value, event}
   end
 
-  def handle_batch([{%ErrorEvent{strategy: "skip"}, _metadata} | _rest]) do
-    {:error, :skipping}
+  def handle_batch([{%ErrorEvent{strategy: "skip"} = event, _metadata} | _rest]) do
+    {:error, :skipping, event}
+  end
+
+  def handle_batch([{%ReplyEvent{reply_to: reply_to, value: value}, _metadata} | _rest]) when value != :error do
+    send(reply_to, {:batch, self(), value})
+
+    :ok
   end
 
   def handle_batch([{event, _metadata} | _rest]) do

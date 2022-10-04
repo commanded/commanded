@@ -1164,7 +1164,15 @@ defmodule Commanded.Event.Handler do
           # receipt, which updates the state, and then retry the whole batch including
           # the just-acknowledged event but above, we will see that we've done that one before
           # and skip it.
-          retry_fun = fn context, state -> handle_batch([recorded_event | left], context, state) end
+          retry_fun = fn context, state ->
+            events = case Map.get(context, :failure_action) do
+              :skip -> left
+              _ -> [recorded_event | left]
+            end
+
+            context = Map.delete(context, :failure_action)
+            handle_batch(events, context, state)
+          end
 
           handle_event_error(error, recorded_event, failure_context, state, retry_fun)
 
@@ -1299,6 +1307,11 @@ defmodule Commanded.Event.Handler do
         # Skip the failed event by confirming receipt
         Logger.info(fn -> describe(state) <> " is skipping event" end)
         confirm_receipt([maybe_failed_event], state)
+
+        %FailureContext{context: context} = failure_context
+        context = Map.put(context, :failure_action, :skip)
+
+        retry_fun.(context, state)
 
       {:stop, reason} ->
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)

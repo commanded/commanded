@@ -45,7 +45,8 @@ defmodule Commanded.Event.EventHandlerBatchTest do
   describe "failure handling with error handler" do
     test "skip acknowledges the last event" do
       event1 = %ErrorEvent{reply_to: self(), strategy: "skip"}
-      event2 = %ErrorEvent{reply_to: self(), strategy: "skip"}
+      event2 = %ReplyEvent{reply_to: self(), value: 2}
+
       events = [event1, event2]
 
       metadata = %{}
@@ -55,6 +56,7 @@ defmodule Commanded.Event.EventHandlerBatchTest do
 
       Handler.handle_info({:events, recorded_events}, state)
       assert_received {:error, :skipping}
+      assert_received {:batch, _, 2}
       assert_received {:acked, ^last_recorded_event}
     end
 
