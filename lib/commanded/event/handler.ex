@@ -1306,12 +1306,15 @@ defmodule Commanded.Event.Handler do
       :skip ->
         # Skip the failed event by confirming receipt
         Logger.info(fn -> describe(state) <> " is skipping event" end)
-        confirm_receipt([maybe_failed_event], state)
+        state = confirm_receipt([maybe_failed_event], state)
 
-        %FailureContext{context: context} = failure_context
-        context = Map.put(context, :failure_action, :skip)
-
-        retry_fun.(context, state)
+        if state.handler_callback == :batch do
+          %FailureContext{context: context} = failure_context
+          context = Map.put(context, :failure_action, :skip)
+          retry_fun.(context, state)
+        else
+          state
+        end
 
       {:stop, reason} ->
         Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
