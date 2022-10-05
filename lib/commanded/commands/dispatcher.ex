@@ -103,8 +103,8 @@ defmodule Commanded.Commands.Dispatcher do
         {:exit, {{:nodedown, _node_name}, {GenServer, :call, _}}} ->
           {:error, :remote_node_down}
 
-        {:exit, _reason} ->
-          {:error, :aggregate_execution_failed}
+        {:exit, reason} ->
+          {:error, {:aggregate_execution_failed, reason}}
 
         nil ->
           {:error, :aggregate_execution_timeout}
