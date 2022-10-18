@@ -482,7 +482,7 @@ defmodule Commanded.Aggregates.Aggregate do
             {:error, _error} = reply ->
               {reply, state}
 
-            {aggregate_state, pending_events} ->
+            {aggregate_state, _steps, pending_events} ->
               persist_events(pending_events, aggregate_state, context, state)
           end
 

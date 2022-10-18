@@ -67,7 +67,7 @@ defmodule Commanded.AggregateCase do
                     {:error, _reason} = error ->
                       throw(error)
 
-                    {state, new_events} ->
+                    {state, _steps, new_events} ->
                       {state, events ++ new_events}
                   end
 
