@@ -74,13 +74,18 @@ defmodule Commanded.Application.Supervisor do
     snapshotting = Keyword.get(config, :snapshotting, %{})
     hibernate_after = Keyword.get(config, :hibernate_after, :infinity)
 
+    aggregate_supervisor_options =
+      Keyword.get(config, :aggregate_supervisor_options, [])
+      |> Keyword.merge(
+        name: aggregates_supervisor_name,
+        application: name,
+        snapshotting: snapshotting,
+        hibernate_after: hibernate_after
+      )
+
     [
       {Task.Supervisor, name: task_dispatcher_name, hibernate_after: hibernate_after},
-      {Commanded.Aggregates.Supervisor,
-       name: aggregates_supervisor_name,
-       application: name,
-       snapshotting: snapshotting,
-       hibernate_after: hibernate_after},
+      {Commanded.Aggregates.Supervisor, aggregate_supervisor_options},
       {Commanded.Subscriptions.Registry,
        application: name, name: registry_name, hibernate_after: hibernate_after},
       {Commanded.Subscriptions,

@@ -58,7 +58,24 @@ defmodule Commanded.Aggregates.Supervisor do
   def open_aggregate(_application, _aggregate_module, aggregate_uuid),
     do: {:error, {:unsupported_aggregate_identity_type, aggregate_uuid}}
 
-  def init(args) do
-    DynamicSupervisor.init(strategy: :one_for_one, extra_arguments: [args])
+  def init(init_opts) do
+    init_opts
+    |> supervisor_init_args()
+    |> DynamicSupervisor.init()
+  end
+
+  defp supervisor_init_args(init_opts) do
+    {supervisor_init_args, extra_args} =
+      Keyword.split(init_opts, [
+        :max_restarts,
+        :max_children,
+        :max_seconds
+      ])
+
+    supervisor_init_args
+    |> Keyword.merge(
+      strategy: :one_for_one,
+      extra_arguments: [extra_args]
+    )
   end
 end
