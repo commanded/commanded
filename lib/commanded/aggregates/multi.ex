@@ -158,55 +158,57 @@ defmodule Commanded.Aggregate.Multi do
   aggregate state, the aggregate state for each named step and all created events.
   """
   @spec run(Multi.t()) ::
-          {aggregate :: struct(), steps :: %{atom() => struct()}, list(event :: struct())}
-          | {:error, reason :: any()}
+          {aggregate :: struct(), list(event :: struct())} | {:error, reason :: any()}
   def run(%Multi{aggregate: aggregate, executions: executions}) do
     try do
-      executions
-      |> Enum.reverse()
-      |> Enum.reduce({aggregate, %{}, []}, fn
-        {step_name, execute_fun}, {aggregate, steps, events}
-        when is_function(execute_fun, 1) or is_function(execute_fun, 2) ->
-          case execute_function(execute_fun, aggregate, steps) do
-            {:error, _reason} = error ->
-              throw(error)
+      {evolved_aggregate, _steps, pending_events} =
+        executions
+        |> Enum.reverse()
+        |> Enum.reduce({aggregate, %{}, []}, fn
+          {step_name, execute_fun}, {aggregate, steps, events}
+          when is_function(execute_fun, 1) or is_function(execute_fun, 2) ->
+            case execute_function(execute_fun, aggregate, steps) do
+              {:error, _reason} = error ->
+                throw(error)
 
-            %Multi{} = multi ->
-              case Multi.run(multi) do
-                {:error, _reason} = error ->
-                  throw(error)
+              %Multi{} = multi ->
+                case Multi.run(multi) do
+                  {:error, _reason} = error ->
+                    throw(error)
 
-                # do not leak nested multi steps to outer multis
-                {evolved_aggregate, _nested_multi_steps, pending_events} ->
-                  updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+                  # do not leak nested multi steps to outer multis
+                  {evolved_aggregate, pending_events} ->
+                    updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
 
-                  {evolved_aggregate, updated_steps, events ++ pending_events}
-              end
+                    {evolved_aggregate, updated_steps, events ++ pending_events}
+                end
 
-            none when none in [:ok, nil, []] ->
-              updated_steps = maybe_update_steps(step_name, steps, aggregate)
+              none when none in [:ok, nil, []] ->
+                updated_steps = maybe_update_steps(step_name, steps, aggregate)
 
-              {aggregate, updated_steps, events}
+                {aggregate, updated_steps, events}
 
-            {:ok, pending_events} ->
-              pending_events = List.wrap(pending_events)
+              {:ok, pending_events} ->
+                pending_events = List.wrap(pending_events)
 
-              evolved_aggregate = apply_events(aggregate, pending_events)
+                evolved_aggregate = apply_events(aggregate, pending_events)
 
-              updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+                updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
 
-              {evolved_aggregate, updated_steps, events ++ pending_events}
+                {evolved_aggregate, updated_steps, events ++ pending_events}
 
-            pending_events ->
-              pending_events = List.wrap(pending_events)
+              pending_events ->
+                pending_events = List.wrap(pending_events)
 
-              evolved_aggregate = apply_events(aggregate, pending_events)
+                evolved_aggregate = apply_events(aggregate, pending_events)
 
-              updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+                updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
 
-              {evolved_aggregate, updated_steps, events ++ pending_events}
-          end
-      end)
+                {evolved_aggregate, updated_steps, events ++ pending_events}
+            end
+        end)
+
+      {evolved_aggregate, pending_events}
     catch
       {:error, _error} = error -> error
     end
