@@ -4,8 +4,6 @@ defmodule Commanded.Event.Upcast.BatchEventHandler do
     name: __MODULE__,
     batch_size: 5
 
-  alias Commanded.Event.Upcast.Events.{EventFive, EventFour, EventOne, EventThree, EventTwo}
-
   def handle_batch([{_first, _metadata} | _rest] = events), do: send_reply(events)
 
   defp send_reply([{%{reply_to: reply_to}, _metadata} | _rest] = events) do
