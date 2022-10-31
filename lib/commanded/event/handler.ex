@@ -615,8 +615,6 @@ defmodule Commanded.Event.Handler do
   """
   @callback partition_by(domain_event, metadata) :: any()
 
-  # TODO Batching: compile-time verification that either handle or handle_batch have
-  #      been defined and that no concurrency options have been defined.
   @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2, handle: 2, handle_batch: 1
 
   defmacro __using__(using_opts) do
@@ -1136,7 +1134,6 @@ defmodule Commanded.Event.Handler do
           log_batch_error(error, events, state)
           telemetry_stop(start_time, Map.put(telemetry_metadata, :error, reason), :batch)
 
-          # TODO: Figure out what to show as the failure context now that we have multipe events
           failure_context = build_failure_context(nil, context, state)
           retry_fun = fn context, state -> handle_batch(events, context, state) end
           # For now, we pass the last event so that we can acknowledge it if the error callback
@@ -1398,9 +1395,8 @@ defmodule Commanded.Event.Handler do
       " events: #{inspect(recorded_events)}"
     end)
 
-    # TODO Batching: If we have a batch, we only confirm the last event received to the
-    # subscription. Or, if that won't fly, have `ack_events` as a callback on the adapter
-    # and implement that.
+    # If we have a batch, we only confirm the last event received to the
+    # subscription.
     :ok = Subscription.ack_event(subscription, last_event)
     :ok = Subscriptions.ack_event(application, handler_name, consistency, last_event)
 
