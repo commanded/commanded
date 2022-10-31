@@ -86,29 +86,27 @@ defmodule Commanded.Event.EventHandlerBatchTest do
       assert_received {:error, :retry, %{failures: 2}}
       assert_received {:error, :too_many_failures, %{failures: 3}}
     end
-   end
+  end
 
   defp setup_state(handler_module) do
-      Config.associate(self(), __MODULE__, [
-            event_store: {MockAdapter, nil}
-          ])
+    Config.associate(self(), __MODULE__, event_store: {MockAdapter, nil})
 
-      %Handler{
-        subscription: struct(Subscription,
+    %Handler{
+      subscription:
+        struct(Subscription,
           application: __MODULE__,
           subscription_pid: self()
         ),
-        handler_callback: :batch,
-        handler_module: handler_module,
-        consistency: :eventual,
-        last_seen_event: 0
-      }
-
+      handler_callback: :batch,
+      handler_module: handler_module,
+      consistency: :eventual,
+      last_seen_event: 0
+    }
   end
 
   defmodule MockAdapter do
     def ack_event(nil, subscription_pid, event) do
-      send subscription_pid, {:acked, event}
+      send(subscription_pid, {:acked, event})
       :ok
     end
   end

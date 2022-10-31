@@ -14,7 +14,9 @@ defmodule Commanded.Event.BatchHandler do
   end
 
   def handle_batch([{first, metadata} | _rest] = events) do
-    maybe_error_event = Enum.find(events, fn {%ReplyEvent{value: value}, _metadata} -> value == :error end)
+    maybe_error_event =
+      Enum.find(events, fn {%ReplyEvent{value: value}, _metadata} -> value == :error end)
+
     case maybe_error_event do
       nil ->
         Logger.info("Handle regular batch")
@@ -23,6 +25,7 @@ defmodule Commanded.Event.BatchHandler do
         send(reply_to, {:batch, self(), events, metadata})
 
         :ok
+
       {event, _metadata} ->
         Logger.info("Handle specific bad event")
         {:error, :bad_value, event}
@@ -30,7 +33,7 @@ defmodule Commanded.Event.BatchHandler do
   end
 
   def handle_batch(events) do
-    Logger.error("Unexpected fall-through with #{inspect events}")
+    Logger.error("Unexpected fall-through with #{inspect(events)}")
     raise ArgumentError, "Bad events"
   end
- end
+end

@@ -19,7 +19,8 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
     {:error, :skipping, event}
   end
 
-  def handle_batch([{%ReplyEvent{reply_to: reply_to, value: value}, _metadata} | _rest]) when value != :error do
+  def handle_batch([{%ReplyEvent{reply_to: reply_to, value: value}, _metadata} | _rest])
+      when value != :error do
     send(reply_to, {:batch, self(), value})
 
     :ok
@@ -31,7 +32,7 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
   end
 
   def handle_batch(events) do
-    Logger.error("Unexpected fall-through with #{inspect events}")
+    Logger.error("Unexpected fall-through with #{inspect(events)}")
     raise ArgumentError, "Bad events"
   end
 

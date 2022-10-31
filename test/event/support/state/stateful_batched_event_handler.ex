@@ -28,7 +28,11 @@ defmodule Commanded.Event.StatefulBatchedEventHandler do
     %{state: state} = metadata
     acc_state = Map.get(acc, :state, 0)
     reply_to = :erlang.list_to_pid(reply_to)
-    do_handle_batch(rest, Map.merge(acc, %{state: state + acc_state + 1, reply_to: reply_to, incremented: true}))
+
+    do_handle_batch(
+      rest,
+      Map.merge(acc, %{state: state + acc_state + 1, reply_to: reply_to, incremented: true})
+    )
   end
 
   def do_handle_batch([{%{increment: false}, _metadata} | rest], acc),

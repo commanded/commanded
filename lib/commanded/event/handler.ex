@@ -599,7 +599,7 @@ defmodule Commanded.Event.Handler do
   """
   @callback error(
               error :: term(),
-              failed_event :: (domain_event | nil),
+              failed_event :: domain_event | nil,
               failure_context :: FailureContext.t()
             ) ::
               {:retry, context :: map() | FailureContext.t()}
@@ -1036,12 +1036,20 @@ defmodule Commanded.Event.Handler do
         confirm_receipt([event], state)
 
       {:ok, handler_state} ->
-        telemetry_stop(start_time, Map.put(telemetry_metadata, :handler_state, handler_state), :handle)
+        telemetry_stop(
+          start_time,
+          Map.put(telemetry_metadata, :handler_state, handler_state),
+          :handle
+        )
 
         confirm_receipt([event], %Handler{state | handler_state: handler_state})
 
       {:error, :already_seen_event} ->
-        telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :already_seen_event), :handle)
+        telemetry_stop(
+          start_time,
+          Map.put(telemetry_metadata, :error, :already_seen_event),
+          :handle
+        )
 
         confirm_receipt([event], state)
 
@@ -1071,7 +1079,11 @@ defmodule Commanded.Event.Handler do
             ", expected `:ok` or `{:error, term}`"
         end)
 
-        telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :invalid_return_value), :handle)
+        telemetry_stop(
+          start_time,
+          Map.put(telemetry_metadata, :error, :invalid_return_value),
+          :handle
+        )
 
         error = {:error, :invalid_return_value}
         failure_context = build_failure_context(event, context, state)
@@ -1085,8 +1097,12 @@ defmodule Commanded.Event.Handler do
 
   defp handle_batch(events, context, %Handler{last_seen_event: last_seen_event} = state) do
     %{event_number: last_event_number} = last_event = List.last(events)
+
     if not is_nil(last_seen_event) and last_event_number <= last_seen_event do
-      Logger.debug(fn -> describe(state) <> " has already seen event ##{inspect(last_event_number)}" end)
+      Logger.debug(fn ->
+        describe(state) <> " has already seen event ##{inspect(last_event_number)}"
+      end)
+
       confirm_receipt([last_event], state)
     else
       do_handle_batch(events, context, state)
@@ -1141,16 +1157,18 @@ defmodule Commanded.Event.Handler do
               [success, [recorded_event], left] -> {success, recorded_event, left}
             end
 
-          last_successful_event_id = case List.last(success) do
-            %{event_id: id} -> id
-            _ -> nil
-          end
+          last_successful_event_id =
+            case List.last(success) do
+              %{event_id: id} -> id
+              _ -> nil
+            end
 
-          telemetry_metadata = telemetry_metadata
-          |> Map.put(:recorded_event, recorded_event)
-          |> Map.put(:last_event_id, last_successful_event_id)
-          |> Map.put(:event_count, length(success))
-          |> Map.put(:error, reason)
+          telemetry_metadata =
+            telemetry_metadata
+            |> Map.put(:recorded_event, recorded_event)
+            |> Map.put(:last_event_id, last_successful_event_id)
+            |> Map.put(:event_count, length(success))
+            |> Map.put(:error, reason)
 
           telemetry_stop(start_time, telemetry_metadata, :batch)
 
@@ -1164,10 +1182,11 @@ defmodule Commanded.Event.Handler do
           # the just-acknowledged event but above, we will see that we've done that one before
           # and skip it.
           retry_fun = fn context, state ->
-            events = case Map.get(context, :failure_action) do
-              :skip -> left
-              _ -> [recorded_event | left]
-            end
+            events =
+              case Map.get(context, :failure_action) do
+                :skip -> left
+                _ -> [recorded_event | left]
+              end
 
             context = Map.delete(context, :failure_action)
             handle_batch(events, context, state)
@@ -1182,7 +1201,11 @@ defmodule Commanded.Event.Handler do
 
           log_batch_error(error, events, state)
 
-          telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :invalid_return_value), :batch)
+          telemetry_stop(
+            start_time,
+            Map.put(telemetry_metadata, :error, :invalid_return_value),
+            :batch
+          )
 
           failure_context = build_failure_context(nil, context, state)
           retry_fun = fn context, state -> handle_batch(events, context, state) end
@@ -1423,7 +1446,14 @@ defmodule Commanded.Event.Handler do
     Telemetry.stop([:commanded, :event, telemetry_type], start_time, telemetry_metadata)
   end
 
-  defp telemetry_exception(start_time, kind, reason, stacktrace, telemetry_metadata, telemetry_type) do
+  defp telemetry_exception(
+         start_time,
+         kind,
+         reason,
+         stacktrace,
+         telemetry_metadata,
+         telemetry_type
+       ) do
     Telemetry.exception(
       [:commanded, :event, telemetry_type],
       start_time,
@@ -1434,7 +1464,8 @@ defmodule Commanded.Event.Handler do
     )
   end
 
-  defp batch_telemetry_metadata(recorded_events, context, %Handler{} = state) when is_list(recorded_events) do
+  defp batch_telemetry_metadata(recorded_events, context, %Handler{} = state)
+       when is_list(recorded_events) do
     first_event = List.first(recorded_events)
     last_event = List.last(recorded_events)
 
@@ -1472,7 +1503,7 @@ defmodule Commanded.Event.Handler do
       handler_module: handler_module,
       handler_state: handler_state,
       context: context,
-      recorded_event: recorded_event,
+      recorded_event: recorded_event
     }
   end
 

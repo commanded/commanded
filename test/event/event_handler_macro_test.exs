@@ -67,5 +67,4 @@ defmodule Commanded.Event.EventHandlerMacroTest.ConflictingOptions do
     name: __MODULE__,
     concurrency: 2,
     batch_size: 10
-
 end

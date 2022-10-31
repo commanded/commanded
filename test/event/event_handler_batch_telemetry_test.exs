@@ -59,7 +59,7 @@ defmodule Commanded.Event.EventHandlerBatchTelemetryTest do
         %ReplyEvent{reply_to: self(), value: 1},
         %ReplyEvent{reply_to: self(), value: 2},
         %ReplyEvent{reply_to: self(), value: :error},
-        %ReplyEvent{reply_to: self(), value: 4},
+        %ReplyEvent{reply_to: self(), value: 4}
       ]
 
       metadata = %{"key" => "value"}
@@ -85,7 +85,8 @@ defmodule Commanded.Event.EventHandlerBatchTelemetryTest do
       recorded_events = EventFactory.map_to_recorded_events(events, 1, metadata: metadata)
       state = setup_state(ErrorHandlingBatchHandler)
 
-      {:noreply, {:error, _reason, _stacktrace}} = Handler.handle_info({:events, recorded_events}, state)
+      {:noreply, {:error, _reason, _stacktrace}} =
+        Handler.handle_info({:events, recorded_events}, state)
 
       assert_receive {[:commanded, :event, :batch, :start], _measurements, _metadata}
       refute_received {[:commanded, :event, :batch, :stop], _measurements, _metadata}
