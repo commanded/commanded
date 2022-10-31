@@ -4,8 +4,8 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
     name: __MODULE__,
     batch_size: 5
 
-  alias Commanded.Event.FailureContext
   alias Commanded.Event.ErrorAggregate.Events.ErrorEvent
+  alias Commanded.Event.FailureContext
   alias Commanded.Event.ReplyEvent
 
   require Logger

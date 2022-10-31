@@ -8,8 +8,8 @@ defmodule Commanded.Event.EventHandlerBatchTelemetryTest do
   # Test support code
   alias Commanded.Helpers.EventFactory
   alias Commanded.Event.{BatchHandler, ErrorHandlingBatchHandler}
-  alias Commanded.Event.ReplyEvent
   alias Commanded.Event.EventHandlerBatchTelemetryTest.MockAdapter
+  alias Commanded.Event.ReplyEvent
 
   setup do
     attach_telemetry()
