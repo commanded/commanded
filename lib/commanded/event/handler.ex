@@ -619,11 +619,10 @@ defmodule Commanded.Event.Handler do
   #      been defined and that no concurrency options have been defined.
   @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2, handle: 2, handle_batch: 1
 
-  defmacro __using__(opts) do
+  defmacro __using__(using_opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
       @behaviour Handler
-      @opts unquote(opts)
 
       @doc """
       Start an event handler `GenServer` process linked to the current process.
@@ -654,7 +653,7 @@ defmodule Commanded.Event.Handler do
       into hibernation after a period of inactivity.
       """
       def start_link(opts \\ []) do
-        opts = Keyword.merge(@opts, opts)
+        opts = Keyword.merge(unquote(using_opts), opts)
 
         {application, name, config} = Handler.parse_config!(__MODULE__, opts)
 
@@ -679,7 +678,7 @@ defmodule Commanded.Event.Handler do
 
       """
       def child_spec(opts) do
-        opts = Keyword.merge(@opts, opts)
+        opts = Keyword.merge(unquote(using_opts), opts)
 
         spec =
           case Keyword.get(opts, :concurrency, 1) do

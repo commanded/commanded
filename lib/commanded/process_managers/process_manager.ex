@@ -444,14 +444,13 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   alias Commanded.ProcessManagers.ProcessRouter
 
   @doc false
-  defmacro __using__(opts) do
+  defmacro __using__(using_opts) do
     quote location: :keep do
       @before_compile unquote(__MODULE__)
       @behaviour ProcessManager
-      @opts unquote(opts)
 
       def start_link(opts \\ []) do
-        opts = Keyword.merge(@opts, opts)
+        opts = Keyword.merge(unquote(using_opts), opts)
 
         {application, name, config} = ProcessManager.parse_config!(__MODULE__, opts)
 
