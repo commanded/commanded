@@ -219,7 +219,7 @@ defmodule Commanded.Commands.Router do
       @behaviour Commanded.Commands.Router
 
       Module.register_attribute(__MODULE__, :registered_command_refs, accumulate: true)
-      Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
+      Module.register_attribute(__MODULE__, :registered_middleware_refs, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_identity_refs, accumulate: false)
 
       @default_dispatch_opts [
@@ -277,8 +277,11 @@ defmodule Commanded.Commands.Router do
 
   """
   defmacro middleware(middleware_module) do
+    middleware_module = :elixir_aliases.expand_or_concat(middleware_module, __CALLER__)
+    middleware_module_ref = Module.split(middleware_module)
+
     quote do
-      @registered_middleware unquote(middleware_module)
+      @registered_middleware_refs unquote(middleware_module_ref)
     end
   end
 
@@ -575,9 +578,14 @@ defmodule Commanded.Commands.Router do
         Enum.map(@registered_command_refs, fn ref -> Module.concat(ref) end)
       end
 
-      @middleware Enum.reduce(@registered_middleware, @default_middleware, fn middleware, acc ->
-                    [middleware | acc]
-                  end)
+      @middleware Enum.reduce(
+                    @registered_middleware_refs,
+                    @default_middleware,
+                    fn middleware_ref, acc ->
+                      middleware = Module.concat(middleware_ref)
+                      [middleware | acc]
+                    end
+                  )
 
       defp __registered_middleware__ do
         @middleware
