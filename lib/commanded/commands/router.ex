@@ -220,7 +220,7 @@ defmodule Commanded.Commands.Router do
 
       Module.register_attribute(__MODULE__, :registered_command_refs, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
-      Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
+      Module.register_attribute(__MODULE__, :registered_identity_refs, accumulate: false)
 
       @default_dispatch_opts [
         application: Keyword.get(unquote(opts), :application),
@@ -237,7 +237,7 @@ defmodule Commanded.Commands.Router do
         Commanded.Middleware.ConsistencyGuarantee
       ]
 
-      @registered_identities %{}
+      @registered_identity_refs %{}
 
       @doc false
       def dispatch(command, opts \\ [])
@@ -301,13 +301,22 @@ defmodule Commanded.Commands.Router do
 
   """
   defmacro identify(aggregate_module, opts) do
-    quote location: :keep, bind_quoted: [aggregate_module: aggregate_module, opts: opts] do
-      case Map.get(@registered_identities, aggregate_module) do
+    aggregate_module = :elixir_aliases.expand_or_concat(aggregate_module, __CALLER__)
+    aggregate_module_ref = Module.split(aggregate_module)
+    aggregate_module_name = inspect(aggregate_module)
+
+    quote location: :keep,
+          bind_quoted: [
+            aggregate_module_name: aggregate_module_name,
+            aggregate_module_ref: aggregate_module_ref,
+            opts: opts
+          ] do
+      case Map.get(@registered_identity_refs, aggregate_module_ref) do
         nil ->
           by =
             case Keyword.get(opts, :by) do
               nil ->
-                raise "#{inspect(aggregate_module)} aggregate identity is missing the `by` option"
+                raise "#{aggregate_module_name} aggregate identity is missing the `by` option"
 
               by when is_atom(by) ->
                 by
@@ -316,7 +325,7 @@ defmodule Commanded.Commands.Router do
                 by
 
               invalid ->
-                raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
+                raise "#{aggregate_module_name} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
             end
 
           prefix =
@@ -331,16 +340,16 @@ defmodule Commanded.Commands.Router do
                 prefix
 
               invalid ->
-                raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{inspect(invalid)}"
+                raise "#{aggregate_module_name} aggregate has an invalid identity prefix: #{inspect(invalid)}"
             end
 
-          @registered_identities Map.put(@registered_identities, aggregate_module,
-                                   by: by,
-                                   prefix: prefix
-                                 )
+          @registered_identity_refs Map.put(@registered_identity_refs, aggregate_module_ref,
+                                      by: by,
+                                      prefix: prefix
+                                    )
 
         config ->
-          raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
+          raise "#{aggregate_module_name} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
       end
     end
   end
@@ -416,7 +425,7 @@ defmodule Commanded.Commands.Router do
             end
 
           {identity, identity_prefix} =
-            case Map.get(__registered_identities__(), aggregate) do
+            case __get_registered_identity__(aggregate) do
               nil ->
                 {identity, identity_prefix}
 
@@ -574,8 +583,9 @@ defmodule Commanded.Commands.Router do
         @middleware
       end
 
-      defp __registered_identities__ do
-        @registered_identities
+      defp __get_registered_identity__(aggregate_module) do
+        aggregate_module_ref = Module.split(aggregate_module)
+        Map.get(@registered_identity_refs, aggregate_module_ref)
       end
 
       # Catch unregistered commands, log and return an error.
