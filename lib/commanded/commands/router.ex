@@ -591,9 +591,13 @@ defmodule Commanded.Commands.Router do
         @middleware
       end
 
+      @registered_identities Map.new(
+                               @registered_identity_refs,
+                               fn {ref, opts} -> {Module.concat(ref), opts} end
+                             )
+
       defp __get_registered_identity__(aggregate_module) do
-        aggregate_module_ref = Module.split(aggregate_module)
-        Map.get(@registered_identity_refs, aggregate_module_ref)
+        Map.get(@registered_identities, aggregate_module)
       end
 
       # Catch unregistered commands, log and return an error.
