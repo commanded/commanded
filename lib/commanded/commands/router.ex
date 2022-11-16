@@ -218,7 +218,7 @@ defmodule Commanded.Commands.Router do
       @before_compile unquote(__MODULE__)
       @behaviour Commanded.Commands.Router
 
-      Module.register_attribute(__MODULE__, :registered_commands, accumulate: true)
+      Module.register_attribute(__MODULE__, :registered_command_refs, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
 
@@ -238,6 +238,20 @@ defmodule Commanded.Commands.Router do
       ]
 
       @registered_identities %{}
+
+      @doc false
+      def dispatch(command, opts \\ [])
+
+      @doc false
+      def dispatch(command, :infinity),
+        do: do_dispatch(command, timeout: :infinity)
+
+      @doc false
+      def dispatch(command, timeout) when is_integer(timeout),
+        do: do_dispatch(command, timeout: timeout)
+
+      @doc false
+      def dispatch(command, opts), do: do_dispatch(command, opts)
     end
   end
 
@@ -348,19 +362,94 @@ defmodule Commanded.Commands.Router do
     opts = parse_opts(opts, [])
 
     for command_module <- List.wrap(command_module_or_modules) do
-      quote do
-        if Enum.any?(@registered_commands, fn {command_module, _command_opts} ->
-             command_module == unquote(command_module)
-           end) do
-          raise ArgumentError,
-            message:
-              "Command `#{inspect(unquote(command_module))}` has already been registered in router `#{inspect(__MODULE__)}`"
-        end
+      command_module = :elixir_aliases.expand_or_concat(command_module, __CALLER__)
+      command_module_ref = Module.split(command_module)
 
-        @registered_commands {
-          unquote(command_module),
-          Keyword.merge(@default_dispatch_opts, unquote(opts))
-        }
+      quote do
+        @registered_command_refs unquote(command_module_ref)
+
+        defp do_dispatch(%unquote(command_module){} = command, opts) do
+          command_opts = Keyword.merge(@default_dispatch_opts, unquote(opts))
+
+          aggregate = Keyword.fetch!(command_opts, :aggregate)
+          handler = Keyword.fetch!(command_opts, :to)
+          function = Keyword.fetch!(command_opts, :function)
+          before_execute = Keyword.get(command_opts, :before_execute)
+          lifespan = Keyword.get(command_opts, :lifespan)
+          identity = Keyword.get(command_opts, :identity)
+          identity_prefix = Keyword.get(command_opts, :identity_prefix)
+
+          alias Commanded.Commands.Dispatcher
+          alias Commanded.Commands.Dispatcher.Payload
+
+          opts = Keyword.merge(command_opts, opts)
+
+          application = Keyword.fetch!(opts, :application)
+          causation_id = Keyword.get(opts, :causation_id)
+          command_uuid = Keyword.get_lazy(opts, :command_uuid, &UUID.uuid4/0)
+          consistency = Keyword.fetch!(opts, :consistency)
+          correlation_id = Keyword.get_lazy(opts, :correlation_id, &UUID.uuid4/0)
+          metadata = Keyword.fetch!(opts, :metadata) |> validate_metadata()
+
+          retry_attempts = Keyword.get(opts, :retry_attempts)
+          timeout = Keyword.fetch!(opts, :timeout)
+
+          returning =
+            cond do
+              Keyword.get(opts, :include_execution_result) == true ->
+                :execution_result
+
+              Keyword.get(opts, :include_aggregate_version) == true ->
+                :aggregate_version
+
+              (returning = Keyword.get(opts, :returning)) in [
+                :aggregate_state,
+                :aggregate_version,
+                :events,
+                :execution_result,
+                false
+              ] ->
+                returning
+
+              true ->
+                false
+            end
+
+          {identity, identity_prefix} =
+            case Map.get(__registered_identities__(), aggregate) do
+              nil ->
+                {identity, identity_prefix}
+
+              config ->
+                identity = Keyword.get(config, :by, identity)
+                prefix = Keyword.get(config, :prefix, identity_prefix)
+
+                {identity, prefix}
+            end
+
+          payload = %Payload{
+            application: application,
+            command: command,
+            command_uuid: command_uuid,
+            causation_id: causation_id,
+            correlation_id: correlation_id,
+            consistency: consistency,
+            handler_module: handler,
+            handler_function: function,
+            handler_before_execute: before_execute,
+            aggregate_module: aggregate,
+            identity: identity,
+            identity_prefix: identity_prefix,
+            returning: returning,
+            timeout: timeout,
+            lifespan: lifespan,
+            metadata: metadata,
+            middleware: __registered_middleware__(),
+            retry_attempts: retry_attempts
+          }
+
+          Dispatcher.dispatch(payload)
+        end
       end
     end
   end
@@ -464,116 +553,29 @@ defmodule Commanded.Commands.Router do
               timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
             ) :: dispatch_resp
 
-  defmacro __before_compile__(_env) do
+  defmacro __before_compile__(env) do
     quote generated: true do
-      @doc false
-      def __registered_commands__ do
-        Enum.map(@registered_commands, fn {command_module, _command_opts} -> command_module end)
+      if command = unquote(__MODULE__).__duplicate_command__(@registered_command_refs) do
+        raise ArgumentError,
+          message:
+            "Command `#{command}` has already been registered in router `#{inspect(unquote(env.module))}`"
       end
 
       @doc false
-      def dispatch(command, opts \\ [])
-
-      @doc false
-      def dispatch(command, :infinity),
-        do: do_dispatch(command, timeout: :infinity)
-
-      @doc false
-      def dispatch(command, timeout) when is_integer(timeout),
-        do: do_dispatch(command, timeout: timeout)
-
-      @doc false
-      def dispatch(command, opts),
-        do: do_dispatch(command, opts)
+      def __registered_commands__ do
+        Enum.map(@registered_command_refs, fn ref -> Module.concat(ref) end)
+      end
 
       @middleware Enum.reduce(@registered_middleware, @default_middleware, fn middleware, acc ->
                     [middleware | acc]
                   end)
 
-      for {command_module, command_opts} <- @registered_commands do
-        @aggregate Keyword.fetch!(command_opts, :aggregate)
-        @handler Keyword.fetch!(command_opts, :to)
-        @function Keyword.fetch!(command_opts, :function)
-        @before_execute Keyword.get(command_opts, :before_execute)
-        @lifespan Keyword.get(command_opts, :lifespan)
-        @identity Keyword.get(command_opts, :identity)
-        @identity_prefix Keyword.get(command_opts, :identity_prefix)
+      defp __registered_middleware__ do
+        @middleware
+      end
 
-        @command_module command_module
-        @command_opts command_opts
-
-        defp do_dispatch(%@command_module{} = command, opts) do
-          alias Commanded.Commands.Dispatcher
-          alias Commanded.Commands.Dispatcher.Payload
-
-          opts = Keyword.merge(@command_opts, opts)
-
-          application = Keyword.fetch!(opts, :application)
-          causation_id = Keyword.get(opts, :causation_id)
-          command_uuid = Keyword.get_lazy(opts, :command_uuid, &UUID.uuid4/0)
-          consistency = Keyword.fetch!(opts, :consistency)
-          correlation_id = Keyword.get_lazy(opts, :correlation_id, &UUID.uuid4/0)
-          metadata = Keyword.fetch!(opts, :metadata) |> validate_metadata()
-
-          retry_attempts = Keyword.get(opts, :retry_attempts)
-          timeout = Keyword.fetch!(opts, :timeout)
-
-          returning =
-            cond do
-              Keyword.get(opts, :include_execution_result) == true ->
-                :execution_result
-
-              Keyword.get(opts, :include_aggregate_version) == true ->
-                :aggregate_version
-
-              (returning = Keyword.get(opts, :returning)) in [
-                :aggregate_state,
-                :aggregate_version,
-                :events,
-                :execution_result,
-                false
-              ] ->
-                returning
-
-              true ->
-                false
-            end
-
-          {identity, identity_prefix} =
-            case Map.get(@registered_identities, @aggregate) do
-              nil ->
-                {@identity, @identity_prefix}
-
-              config ->
-                identity = Keyword.get(config, :by, @identity)
-                prefix = Keyword.get(config, :prefix, @identity_prefix)
-
-                {identity, prefix}
-            end
-
-          payload = %Payload{
-            application: application,
-            command: command,
-            command_uuid: command_uuid,
-            causation_id: causation_id,
-            correlation_id: correlation_id,
-            consistency: consistency,
-            handler_module: @handler,
-            handler_function: @function,
-            handler_before_execute: @before_execute,
-            aggregate_module: @aggregate,
-            identity: identity,
-            identity_prefix: identity_prefix,
-            returning: returning,
-            timeout: timeout,
-            lifespan: @lifespan,
-            metadata: metadata,
-            middleware: @middleware,
-            retry_attempts: retry_attempts
-          }
-
-          Dispatcher.dispatch(payload)
-        end
+      defp __registered_identities__ do
+        @registered_identities
       end
 
       # Catch unregistered commands, log and return an error.
@@ -655,4 +657,11 @@ defmodule Commanded.Commands.Router do
   end
 
   defp parse_opts([], result), do: result
+
+  def __duplicate_command__(refs) do
+    for {ref, count} <- Enum.frequencies(refs), count > 1 do
+      Enum.join(ref, ".")
+    end
+    |> List.first()
+  end
 end
