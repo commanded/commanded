@@ -822,6 +822,12 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   @impl GenServer
+  def handle_info({:EXIT, _pid, reason}, state) do
+    {:stop, reason, state}
+  end
+
+  @doc false
+  @impl GenServer
   def handle_info(message, state) do
     Logger.error(fn ->
       describe(state) <> " received unexpected message: " <> inspect(message, pretty: true)
