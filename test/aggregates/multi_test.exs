@@ -138,8 +138,83 @@ defmodule Commanded.Aggregate.MultiTest do
 
           %Event{data: 3}
         end)
-        |> Multi.execute(fn %ExampleAggregate{events: events} ->
+        |> Multi.execute(fn %ExampleAggregate{events: events}, steps ->
           assert length(events) == 3
+          assert steps == %{}
+
+          []
+        end)
+        |> Multi.run()
+
+      assert events == [%Event{data: 1}, %Event{data: 2}, %Event{data: 3}]
+    end
+
+    test "should store aggregate state under step_name if step name is passed on multi step nested multis" do
+      {%ExampleAggregate{}, events} =
+        %ExampleAggregate{}
+        |> Multi.new()
+        |> Multi.execute(:event_1, fn %ExampleAggregate{events: events} ->
+          assert events == []
+
+          %Event{data: 1}
+        end)
+        |> Multi.execute(:event_2, fn %ExampleAggregate{} = aggregate, steps ->
+          assert steps == %{event_1: %ExampleAggregate{events: [%Event{data: 1}]}}
+
+          aggregate
+          |> Multi.new()
+          # ensure :event_2_2 won't leak into outer multi
+          |> Multi.execute(:event_2_2, fn %ExampleAggregate{events: events} ->
+            assert length(events) == 1
+
+            %Event{data: 2}
+          end)
+        end)
+        |> Multi.execute(:event_3, fn %ExampleAggregate{events: events}, steps ->
+          assert length(events) == 2
+
+          assert steps == %{
+                   event_1: %ExampleAggregate{events: [%Event{data: 1}]},
+                   event_2: %ExampleAggregate{events: [%Event{data: 1}, %Event{data: 2}]}
+                 }
+
+          %Event{data: 3}
+        end)
+        |> Multi.execute(:event_4, fn %ExampleAggregate{events: events} ->
+          # if steps won't be used, we can pass function with arity 1
+          assert length(events) == 3
+
+          []
+        end)
+        |> Multi.execute(fn %ExampleAggregate{events: events}, steps ->
+          # you can also not name the step even if you names previous ones
+          assert length(events) == 3
+
+          assert steps == %{
+                   event_1: %Commanded.Aggregate.MultiTest.ExampleAggregate{
+                     events: [%Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 1}]
+                   },
+                   event_2: %Commanded.Aggregate.MultiTest.ExampleAggregate{
+                     events: [
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 1},
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 2}
+                     ]
+                   },
+                   event_3: %Commanded.Aggregate.MultiTest.ExampleAggregate{
+                     events: [
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 1},
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 2},
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 3}
+                     ]
+                   },
+                   event_4: %Commanded.Aggregate.MultiTest.ExampleAggregate{
+                     events: [
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 1},
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 2},
+                       %Commanded.Aggregate.MultiTest.ExampleAggregate.Event{data: 3}
+                     ]
+                   }
+                 }
 
           []
         end)
@@ -160,6 +235,66 @@ defmodule Commanded.Aggregate.MultiTest do
         |> Multi.run()
 
       assert events == [%Event{data: 1}, %Event{data: 2}, %Event{data: 3}]
+    end
+
+    test "should store aggregate state under step_name on reduce" do
+      {%ExampleAggregate{}, events} =
+        %ExampleAggregate{}
+        |> Multi.new()
+        |> Multi.reduce(:reduce_step, [1, 2, 3], fn %ExampleAggregate{events: events}, index ->
+          assert length(events) == index - 1
+
+          %Event{data: index}
+        end)
+        |> Multi.reduce(:reduce_step_2, [4, 5, 6], fn %ExampleAggregate{events: events},
+                                                      index,
+                                                      %{reduce_step: reduce_step} ->
+          assert reduce_step ==
+                   %ExampleAggregate{
+                     events: [
+                       %ExampleAggregate.Event{data: 1},
+                       %ExampleAggregate.Event{data: 2},
+                       %ExampleAggregate.Event{data: 3}
+                     ]
+                   }
+
+          assert length(events) == index - 1
+
+          %Event{data: index}
+        end)
+        |> Multi.execute(fn %ExampleAggregate{events: _events}, steps ->
+          assert steps == %{
+                   reduce_step: %ExampleAggregate{
+                     events: [
+                       %ExampleAggregate.Event{data: 1},
+                       %ExampleAggregate.Event{data: 2},
+                       %ExampleAggregate.Event{data: 3}
+                     ]
+                   },
+                   reduce_step_2: %ExampleAggregate{
+                     events: [
+                       %ExampleAggregate.Event{data: 1},
+                       %ExampleAggregate.Event{data: 2},
+                       %ExampleAggregate.Event{data: 3},
+                       %ExampleAggregate.Event{data: 4},
+                       %ExampleAggregate.Event{data: 5},
+                       %ExampleAggregate.Event{data: 6}
+                     ]
+                   }
+                 }
+
+          []
+        end)
+        |> Multi.run()
+
+      assert events == [
+               %Event{data: 1},
+               %Event{data: 2},
+               %Event{data: 3},
+               %Event{data: 4},
+               %Event{data: 5},
+               %Event{data: 6}
+             ]
     end
   end
 end

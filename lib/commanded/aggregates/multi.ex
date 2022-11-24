@@ -49,7 +49,7 @@ defmodule Commanded.Aggregate.Multi do
 
   @type t :: %__MODULE__{
           aggregate: struct(),
-          executions: list(function())
+          executions: list({step_name :: atom(), function()})
         }
 
   defstruct [:aggregate, executions: []]
@@ -62,12 +62,32 @@ defmodule Commanded.Aggregate.Multi do
 
   @doc """
   Adds a command execute function to the multi.
+
+  If `step_name` is provided, the aggregate state after that step is
+  stored under that name. That can be useful in a long multi step multi
+  in which one needs to know what was the agg state while procesisng
+  the multi. It's possible, then, to pattern match the step name in the
+  second parameter of the anonymous function to be executed.
+
+  ## Example
+
+      alias Commanded.Aggregate.Multi
+
+      aggregate
+      |> Multi.new()
+      |> Multi.execute(:interesting_event, fn aggregate ->
+        %Event{data: 1}
+      end)
+      |> Multi.execute(fn aggregate, %{interesting_event: _aggregate_after_interesting_event} ->
+        %Event{data: 2}
+      end)
   """
-  @spec execute(Multi.t(), function()) :: Multi.t()
-  def execute(%Multi{} = multi, execute_fun) when is_function(execute_fun, 1) do
+  @spec execute(Multi.t(), atom(), function()) :: Multi.t()
+  def execute(%Multi{} = multi, step_name \\ false, execute_fun)
+      when is_function(execute_fun, 1) or is_function(execute_fun, 2) do
     %Multi{executions: executions} = multi
 
-    %Multi{multi | executions: [execute_fun | executions]}
+    %Multi{multi | executions: [{step_name, execute_fun} | executions]}
   end
 
   @doc """
@@ -77,6 +97,12 @@ defmodule Commanded.Aggregate.Multi do
   the execute function. This allows you to calculate values from the aggregate
   state based upon events produced by previous items in the enumerable, such as
   running totals.
+
+  If `step_name` is provided, the aggregate state after that step will be
+  stored under that name. That can be useful in a long multi step multi
+  in which one needs to know what was the agg state while procesisng
+  the multi. It's possible, then, to pattern match the step name in the
+  third parameter of the anonymous function to be executed.
 
   ## Example
 
@@ -88,55 +114,122 @@ defmodule Commanded.Aggregate.Multi do
         %AnEvent{item: item, total: aggregate.total + item}
       end)
 
+  ## Example with named steps
+
+      alias Commanded.Aggregate.Multi
+
+      aggregate
+      |> Multi.new()
+      |> Multi.execute(:start, fn aggregate ->
+        %AnEvent{item: nil, total: 0}
+      end)
+      |> Multi.reduce(:interesting_event, [1, 2, 3], fn aggregate, item ->
+        %AnEvent{item: item, total: aggregate.total + item}
+      end)
+      |> Multi.reduce([4, 5, 6], fn aggregate,
+                                    item,
+                                    %{
+                                      start: aggregate_state_after_start,
+                                      interesting_event: aggregate_state_after_interesting_event
+                                    } ->
+        %AnEvent{item: item, total: aggregate.total + item}
+      end)
+
   """
-  @spec reduce(Multi.t(), Enum.t(), function()) :: Multi.t()
-  def reduce(%Multi{} = multi, enumerable, execute_fun) when is_function(execute_fun, 2) do
+  @spec reduce(Multi.t(), atom(), Enum.t(), function()) :: Multi.t()
+  def reduce(multi, step_name \\ false, enumerable, execute_fun)
+
+  def reduce(%Multi{} = multi, step_name, enumerable, execute_fun)
+      when is_function(execute_fun, 2) do
     Enum.reduce(enumerable, multi, fn item, %Multi{} = multi ->
-      execute(multi, &execute_fun.(&1, item))
+      execute(multi, step_name, &execute_fun.(&1, item))
+    end)
+  end
+
+  def reduce(%Multi{} = multi, step_name, enumerable, execute_fun)
+      when is_function(execute_fun, 3) do
+    Enum.reduce(enumerable, multi, fn item, %Multi{} = multi ->
+      execute(multi, step_name, &execute_fun.(&1, item, &2))
     end)
   end
 
   @doc """
   Run the execute functions contained within the multi, returning the updated
-  aggregate state and all created events.
+  aggregate state, the aggregate state for each named step and all created events.
   """
   @spec run(Multi.t()) ::
           {aggregate :: struct(), list(event :: struct())} | {:error, reason :: any()}
   def run(%Multi{aggregate: aggregate, executions: executions}) do
     try do
-      executions
-      |> Enum.reverse()
-      |> Enum.reduce({aggregate, []}, fn execute_fun, {aggregate, events} ->
-        case execute_fun.(aggregate) do
-          {:error, _reason} = error ->
-            throw(error)
-
-          %Multi{} = multi ->
-            case Multi.run(multi) do
+      {evolved_aggregate, _steps, pending_events} =
+        executions
+        |> Enum.reverse()
+        |> Enum.reduce({aggregate, %{}, []}, fn
+          {step_name, execute_fun}, {aggregate, steps, events}
+          when is_function(execute_fun, 1) or is_function(execute_fun, 2) ->
+            case execute_function(execute_fun, aggregate, steps) do
               {:error, _reason} = error ->
                 throw(error)
 
-              {evolved_aggregate, pending_events} ->
-                {evolved_aggregate, events ++ pending_events}
+              %Multi{} = multi ->
+                case Multi.run(multi) do
+                  {:error, _reason} = error ->
+                    throw(error)
+
+                  # do not leak nested multi steps to outer multis
+                  {evolved_aggregate, pending_events} ->
+                    updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+
+                    {evolved_aggregate, updated_steps, events ++ pending_events}
+                end
+
+              none when none in [:ok, nil, []] ->
+                updated_steps = maybe_update_steps(step_name, steps, aggregate)
+
+                {aggregate, updated_steps, events}
+
+              {:ok, pending_events} ->
+                pending_events = List.wrap(pending_events)
+
+                evolved_aggregate = apply_events(aggregate, pending_events)
+
+                updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+
+                {evolved_aggregate, updated_steps, events ++ pending_events}
+
+              pending_events ->
+                pending_events = List.wrap(pending_events)
+
+                evolved_aggregate = apply_events(aggregate, pending_events)
+
+                updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+
+                {evolved_aggregate, updated_steps, events ++ pending_events}
             end
+        end)
 
-          none when none in [:ok, nil, []] ->
-            {aggregate, events}
-
-          {:ok, pending_events} ->
-            pending_events = List.wrap(pending_events)
-
-            {apply_events(aggregate, pending_events), events ++ pending_events}
-
-          pending_events ->
-            pending_events = List.wrap(pending_events)
-
-            {apply_events(aggregate, pending_events), events ++ pending_events}
-        end
-      end)
+      {evolved_aggregate, pending_events}
     catch
       {:error, _error} = error -> error
     end
+  end
+
+  defp maybe_update_steps(step_name, actual_steps, aggregate_state_after_step)
+
+  defp maybe_update_steps(false, actual_steps, _aggregate_state_after_step), do: actual_steps
+
+  defp maybe_update_steps(step_name, actual_steps, aggregate_state_after_step) do
+    Map.put(actual_steps, step_name, aggregate_state_after_step)
+  end
+
+  defp execute_function(execute_fun, aggregate, _steps)
+       when is_function(execute_fun, 1) do
+    execute_fun.(aggregate)
+  end
+
+  defp execute_function(execute_fun, aggregate, steps)
+       when is_function(execute_fun, 2) do
+    execute_fun.(aggregate, steps)
   end
 
   defp apply_events(aggregate, events) do
