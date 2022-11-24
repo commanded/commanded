@@ -85,6 +85,23 @@ defmodule Commanded.Event.HandleEventTest do
       refute_receive {:event, _handler, _event, _metadata}
     end
 
+    test "should handle exit signals", %{handler: handler} do
+      import ExUnit.CaptureLog
+
+      ref = Process.monitor(handler)
+
+      Process.exit(handler, :shutdown)
+
+      send_unexpected_mesage = fn ->
+        send(handler, :unexpected_message)
+
+        assert_receive {:DOWN, ^ref, :process, ^handler, :shutdown}
+      end
+
+      assert capture_log(send_unexpected_mesage) =~
+               "Commanded.Event.EchoHandler is shutting down due to :shutdown"
+    end
+
     test "should ignore unexpected messages", %{handler: handler} do
       import ExUnit.CaptureLog
 
