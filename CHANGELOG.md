@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.4.2 (unreleased)
+## Next release
 - Properly handle EXIT signal in event handler ([#512](https://github.com/commanded/commanded/pull/512)).
 
 ## v1.4.1
