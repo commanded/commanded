@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+-  Record aggregate state while processing `Commanded.Aggregate.Multi` ([#507](https://github.com/commanded/commanded/pull/507)).
+
 ## v1.4.1
 
 ### Enhancements

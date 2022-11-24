@@ -78,7 +78,7 @@ defmodule Commanded.Aggregate.Multi do
       |> Multi.execute(:interesting_event, fn aggregate ->
         %Event{data: 1}
       end)
-      |> Multi.execute(fn aggregate, %{interesting_event: _aggregate_after_interesting_event} ->
+      |> Multi.execute(fn aggregate, %{interesting_event: aggregate_state_after_interesting_event} ->
         %Event{data: 2}
       end)
   """
@@ -104,7 +104,7 @@ defmodule Commanded.Aggregate.Multi do
   the multi. It's possible, then, to pattern match the step name in the
   third parameter of the anonymous function to be executed.
 
-  ## Example
+  ## Examples
 
       alias Commanded.Aggregate.Multi
 
@@ -114,25 +114,25 @@ defmodule Commanded.Aggregate.Multi do
         %AnEvent{item: item, total: aggregate.total + item}
       end)
 
-  ## Example with named steps
+  ### Example with named steps
 
       alias Commanded.Aggregate.Multi
 
       aggregate
       |> Multi.new()
-      |> Multi.execute(:start, fn aggregate ->
+      |> Multi.execute(:first, fn aggregate ->
         %AnEvent{item: nil, total: 0}
       end)
-      |> Multi.reduce(:interesting_event, [1, 2, 3], fn aggregate, item ->
+      |> Multi.reduce(:second, [1, 2, 3], fn aggregate, item ->
         %AnEvent{item: item, total: aggregate.total + item}
       end)
-      |> Multi.reduce([4, 5, 6], fn aggregate,
-                                    item,
-                                    %{
-                                      start: aggregate_state_after_start,
-                                      interesting_event: aggregate_state_after_interesting_event
-                                    } ->
-        %AnEvent{item: item, total: aggregate.total + item}
+      |> Multi.reduce([4, 5, 6], fn aggregate, item, steps ->
+         %{
+           first: aggregate_state_after_first_event,
+           second: aggregate_state_after_second_event
+         } = steps
+
+          %AnEvent{item: item, total: aggregate.total + item}
       end)
 
   """
