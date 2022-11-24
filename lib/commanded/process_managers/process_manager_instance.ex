@@ -280,13 +280,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %RecordedEvent{data: data} = failed_event
     %State{idle_timeout: idle_timeout, process_manager_module: process_manager_module} = state
 
-    Logger.error(fn ->
-      describe(state) <>
-        " failed to handle event " <>
-        inspect(failed_event, pretty: true) <>
-        " due to: " <>
-        inspect(reason, pretty: true)
-    end)
+    log_event_error(error, failed_event, state)
 
     case process_manager_module.error(error, data, failure_context) do
       {:retry, %FailureContext{context: context}} when is_map(context) ->
@@ -344,6 +338,16 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         # Stop process manager with original error
         {:stop, error, state}
     end
+  end
+
+  defp log_event_error({:error, reason}, %RecordedEvent{} = failed_event, %State{} = state) do
+    Logger.error(fn ->
+      describe(state) <>
+        " failed to handle event " <>
+        inspect(failed_event, pretty: true) <>
+        " due to: " <>
+        inspect(reason, pretty: true)
+    end)
   end
 
   defp handle_after_command([], %State{} = state) do
