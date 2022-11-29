@@ -179,8 +179,17 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp process_unseen_event(%RecordedEvent{} = event, %State{} = state, context \\ %{}) do
-    %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
-      event
+    %RecordedEvent{
+      correlation_id: correlation_id,
+      event_id: event_id,
+      event_number: event_number,
+      metadata: metadata
+    } = event
+
+    additional_metadata = Map.take(state, [:application])
+
+    enriched_metadata =
+      RecordedEvent.enrich_metadata(event, additional_metadata: additional_metadata)
 
     telemetry_metadata = telemetry_metadata(event, state)
     start_time = telemetry_start(telemetry_metadata)
@@ -213,7 +222,16 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         commands = List.wrap(commands)
 
         # Copy event id, as causation id, and correlation id from handled event.
-        opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
+        opts =
+          [
+            causation_id: event_id,
+            correlation_id: correlation_id,
+            returning: false
+          ]
+          |> case do
+            opts when is_map(metadata) -> Keyword.put(opts, :metadata, metadata)
+            opts -> opts
+          end
 
         with :ok <- dispatch_commands(commands, opts, state, event) do
           telemetry_stop(start_time, telemetry_metadata, {:ok, commands})
@@ -239,7 +257,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
               :ok = persist_state(event_number, state)
               :ok = ack_event(event, state)
 
-              handle_after_command(commands, state)
+              handle_after_command(commands, enriched_metadata, state)
           end
         else
           {:stop, reason} ->
@@ -350,19 +368,19 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end)
   end
 
-  defp handle_after_command([], %State{} = state) do
+  defp handle_after_command([], _metadata, %State{} = state) do
     %State{idle_timeout: idle_timeout} = state
 
     {:noreply, state, idle_timeout}
   end
 
-  defp handle_after_command([command | commands], %State{} = state) do
+  defp handle_after_command([command | commands], metadata, %State{} = state) do
     %State{
       process_manager_module: process_manager_module,
       process_state: process_state
     } = state
 
-    case process_manager_module.after_command(process_state, command) do
+    case process_manager_module.after_command(process_state, command, metadata) do
       :stop ->
         Logger.debug(fn ->
           describe(state) <> " has been stopped by command " <> inspect(command)
@@ -373,7 +391,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         {:stop, :normal, state}
 
       _ ->
-        handle_after_command(commands, state)
+        handle_after_command(commands, metadata, state)
     end
   end
 

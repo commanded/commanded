@@ -11,10 +11,11 @@ defmodule Commanded.ProcessManagers.ExampleRouter do
     Publish,
     Raise,
     Start,
-    Stop
+    Stop,
+    Continue
   }
 
-  dispatch [Error, Pause, Publish, Raise, Start, Stop],
+  dispatch [Error, Pause, Publish, Raise, Start, Stop, Continue],
     to: ExampleCommandHandler,
     aggregate: ExampleAggregate,
     identity: :aggregate_uuid

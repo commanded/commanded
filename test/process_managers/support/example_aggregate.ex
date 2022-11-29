@@ -10,6 +10,7 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
     defmodule(Start, do: defstruct([:aggregate_uuid]))
     defmodule(Publish, do: defstruct([:aggregate_uuid, :interesting, :uninteresting]))
     defmodule(Pause, do: defstruct([:aggregate_uuid]))
+    defmodule(Continue, do: defstruct([:aggregate_uuid]))
     defmodule(Stop, do: defstruct([:aggregate_uuid]))
     defmodule(Error, do: defstruct([:aggregate_uuid]))
     defmodule(Raise, do: defstruct([:aggregate_uuid]))
@@ -69,6 +70,10 @@ defmodule Commanded.ProcessManagers.ExampleAggregate do
 
   def stop(%ExampleAggregate{uuid: aggregate_uuid}) do
     %Events.Stopped{aggregate_uuid: aggregate_uuid}
+  end
+
+  def continue(%ExampleAggregate{}) do
+    []
   end
 
   def error(%ExampleAggregate{uuid: aggregate_uuid}) do

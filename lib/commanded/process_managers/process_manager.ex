@@ -64,6 +64,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:handle/2`
   - `c:apply/2`
   - `c:after_command/2`
+  - `c:after_command/3`
   - `c:error/3`
 
   Please read the [Process managers](process-managers.html) guide for more
@@ -89,6 +90,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
         def after_command(%ExampleProcessManager{}, %ExampleCommand{}) do
           :stop
+        end
+
+        def after_command(%ExampleProcessManager{}, %AnotherExampleCommand{}, _metadata) do
+          :continue
         end
 
         def error({:error, failure}, %ExampleEvent{}, _failure_context) do
@@ -361,11 +366,21 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   Stop the process manager instance after a command is successfully
   dispatched.
 
-  The `c:after_command/2` function can be omitted if you do not need to stop
-  after a specific command or if you would instead use the `c:interested?/1`
-  stop mechanism.
+  version without metadata access
+
+  See `c:after_command/3` for details.
   """
   @callback after_command(process_manager, domain_event) :: :continue | :stop
+
+  @doc """
+  Stop the process manager instance after a command is successfully
+  dispatched.
+
+  The `c:after_command/3` function can be omitted if you do not need to stop
+  after a specific command or if you would instead use the `c:interested?/2`
+  stop mechanism.
+  """
+  @callback after_command(process_manager, domain_event, metadata) :: :continue | :stop
 
   @doc """
   Process manager instance handles a domain event, returning any commands to
@@ -462,7 +477,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
                       error: 3,
                       interested?: 1,
                       interested?: 2,
-                      after_command: 2
+                      after_command: 2,
+                      after_command: 3
 
   alias Commanded.ProcessManagers.ProcessManager
   alias Commanded.ProcessManagers.ProcessRouter
@@ -514,6 +530,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   defmacro __before_compile__(_env) do
     # Include default fallback functions at end, with lowest precedence
     quote generated: true do
+      @doc false
+      def after_command(process_manager, event, _metadata),
+        do: after_command(process_manager, event)
+
       @doc false
       def after_command(_process_manager, _event), do: :continue
 

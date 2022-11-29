@@ -10,7 +10,8 @@ defmodule Commanded.ProcessManagers.ExampleCommandHandler do
     Publish,
     Raise,
     Start,
-    Stop
+    Stop,
+    Continue
   }
 
   def handle(%ExampleAggregate{} = aggregate, %Start{aggregate_uuid: aggregate_uuid}),
@@ -27,6 +28,9 @@ defmodule Commanded.ProcessManagers.ExampleCommandHandler do
 
   def handle(%ExampleAggregate{} = aggregate, %Stop{}),
     do: ExampleAggregate.stop(aggregate)
+
+  def handle(%ExampleAggregate{} = aggregate, %Continue{}),
+    do: ExampleAggregate.continue(aggregate)
 
   def handle(%ExampleAggregate{} = aggregate, %Error{}),
     do: ExampleAggregate.error(aggregate)

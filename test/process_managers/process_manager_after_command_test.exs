@@ -24,9 +24,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerAfterCommandTest do
     :ok
   end
 
-  test "should stop process manager instance after specified command" do
+  test "should stop process manager instance after specified command and work with both after_command/2 and after_command/3 callbacks" do
     aggregate_uuid = UUID.uuid4()
     source_uuid = "\"AfterCommandProcessManager\"-\"#{aggregate_uuid}\""
+
+    self_pid_as_base64 = self() |> :erlang.term_to_binary() |> Base.encode64()
+
+    metadata = %{"notify_to" => self_pid_as_base64}
 
     {:ok, process_router} = AfterCommandProcessManager.start_link()
 
@@ -40,7 +44,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerAfterCommandTest do
           interesting: 10,
           uninteresting: 1
         },
-        application: ExampleApp
+        application: ExampleApp,
+        metadata: metadata
       )
 
     # Process state snapshot should be created
@@ -67,6 +72,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerAfterCommandTest do
              %Uninterested{aggregate_uuid: aggregate_uuid, index: 1},
              %Stopped{aggregate_uuid: aggregate_uuid}
            ]
+
+    assert_receive :metadata_available
 
     Wait.until(fn ->
       # Process instance should be stopped
