@@ -33,11 +33,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   end
 
   describe "process manager instance" do
-    test "handles an event and dispatches a command" do
+    test "handles an event and dispatches a command copying existing metadata" do
       transfer_uuid = UUID.uuid4()
       debit_account = UUID.uuid4()
       credit_account = UUID.uuid4()
       expected_source_uuid = "\"TransferMoneyProcessManager\"-\"#{transfer_uuid}\""
+      user_uuid = UUID.uuid4()
+
+      metadata = %{"user_uuid" => user_uuid}
 
       expect(MockEventStore, :read_snapshot, fn _adapter_meta, ^expected_source_uuid ->
         {:error, :snapshot_not_found}
@@ -60,12 +63,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
         :ok
       end)
 
-      expect(MockApplication, :dispatch, fn command, _opts ->
+      expect(MockApplication, :dispatch, fn command, opts ->
         assert %WithdrawMoney{
                  account_number: ^debit_account,
                  transfer_uuid: ^transfer_uuid,
-                 amount: 100
+                 amount: 100,
+                 by_user: ^user_uuid
                } = command
+
+        assert metadata == Keyword.get(opts, :metadata)
 
         :ok
       end)
@@ -73,12 +79,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
       {:ok, instance} = start_process_manager_instance(transfer_uuid)
 
       event =
-        to_recorded_event(%MoneyTransferRequested{
-          transfer_uuid: transfer_uuid,
-          debit_account: debit_account,
-          credit_account: credit_account,
-          amount: 100
-        })
+        to_recorded_event(
+          %MoneyTransferRequested{
+            transfer_uuid: transfer_uuid,
+            debit_account: debit_account,
+            credit_account: credit_account,
+            amount: 100
+          },
+          metadata
+        )
 
       :ok = ProcessManagerInstance.process_event(instance, event)
 
@@ -188,6 +197,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
   defp to_recorded_event(event) do
     %RecordedEvent{event_number: 1, stream_id: "stream-id", stream_version: 1, data: event}
+  end
+
+  defp to_recorded_event(event, metadata) do
+    %{to_recorded_event(event) | metadata: metadata}
   end
 
   defp mock_event_store do

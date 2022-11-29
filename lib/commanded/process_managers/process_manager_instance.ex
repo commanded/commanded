@@ -186,10 +186,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       metadata: metadata
     } = event
 
-    additional_metadata = Map.take(state, [:application])
-
-    enriched_metadata =
-      RecordedEvent.enrich_metadata(event, additional_metadata: additional_metadata)
+    enriched_metadata = enrich_metadata(event, state)
 
     telemetry_metadata = telemetry_metadata(event, state)
     start_time = telemetry_start(telemetry_metadata)
@@ -278,8 +275,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_state: process_state
     } = state
 
+    enriched_metadata = enrich_metadata(event, state)
+
     try do
-      process_manager_module.handle(process_state, data)
+      process_manager_module.handle(process_state, data, enriched_metadata)
     rescue
       error ->
         stacktrace = __STACKTRACE__
@@ -576,6 +575,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %State{process_manager_name: process_manager_name, process_uuid: process_uuid} = state
 
     inspect(process_manager_name) <> "-" <> inspect(process_uuid)
+  end
+
+  defp enrich_metadata(%RecordedEvent{} = event, %State{} = state) do
+    additional_metadata = Map.take(state, [:application])
+
+    RecordedEvent.enrich_metadata(event, additional_metadata: additional_metadata)
   end
 
   defp telemetry_start(telemetry_metadata) do

@@ -62,6 +62,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   - `c:interested?/1`
   - `c:interested?/2`
   - `c:handle/2`
+  - `c:handle/3`
   - `c:apply/2`
   - `c:after_command/2`
   - `c:after_command/3`
@@ -85,6 +86,12 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         def handle(%ExampleProcessManager{}, %ExampleEvent{}) do
           [
             %ExampleCommand{}
+          ]
+        end
+
+        def handle(%ExampleProcessManager{}, %AnotherExampleEvent{}, _metadata) do
+          [
+            %AnotherExampleCommand{}
           ]
         end
 
@@ -386,15 +393,26 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   Process manager instance handles a domain event, returning any commands to
   dispatch.
 
-  A `c:handle/2` function can be defined for each `:start` and `:continue`
+  Version without metadata access.
+
+  Check `c:handle/3` function for details.
+  """
+  @callback handle(process_manager, domain_event) :: command | list(command) | {:error, term}
+
+  @doc """
+  Process manager instance handles a domain event, returning any commands to
+  dispatch.
+
+  A `c:handle/3` function can be defined for each `:start` and `:continue`
   tagged event previously specified. It receives the process manager's state and
   the event to be handled. It must return the commands to be dispatched. This
   may be none, a single command, or many commands.
 
-  The `c:handle/2` function can be omitted if you do not need to dispatch a
+  The `c:handle/3` function can be omitted if you do not need to dispatch a
   command and are only mutating the process manager's state.
   """
-  @callback handle(process_manager, domain_event) :: command | list(command) | {:error, term}
+  @callback handle(process_manager, domain_event, metadata) ::
+              command | list(command) | {:error, term}
 
   @doc """
   Mutate the process manager's state by applying the domain event.
@@ -543,6 +561,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       @doc false
       def interested?(_event), do: false
+
+      @doc false
+      def handle(process_manager, event, _metadata),
+        do: handle(process_manager, event)
 
       @doc false
       def handle(_process_manager, _event), do: []
