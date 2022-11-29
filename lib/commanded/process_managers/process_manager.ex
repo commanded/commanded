@@ -60,6 +60,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   manager module and implement the callback functions defined in the behaviour:
 
   - `c:interested?/1`
+  - `c:interested?/2`
   - `c:handle/2`
   - `c:apply/2`
   - `c:after_command/2`
@@ -78,6 +79,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         defstruct []
 
         def interested?(%AnEvent{uuid: uuid}), do: {:start, uuid}
+        def interested?(%AnAnotherEvent{uuid: uuid}, _metadata), do: {:start, uuid}
 
         def handle(%ExampleProcessManager{}, %ExampleEvent{}) do
           [
@@ -282,6 +284,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   alias Commanded.ProcessManagers.FailureContext
 
   @type domain_event :: struct
+  @type metadata :: map()
   @type command :: struct
   @type process_manager :: struct
   @type process_uuid :: String.t() | [String.t()]
@@ -299,8 +302,23 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Is the process manager interested in the given command?
 
-  The `c:interested?/1` function is used to indicate which events the process
-  manager receives. The response is used to route the event to an existing
+  Version without metadata access.
+
+  See `c:interested?/2` for details.
+  """
+  @callback interested?(domain_event) ::
+              {:start, process_uuid}
+              | {:start!, process_uuid}
+              | {:continue, process_uuid}
+              | {:continue!, process_uuid}
+              | {:stop, process_uuid}
+              | false
+
+  @doc """
+  Is the process manager interested in the given command?
+
+  The `c:interested?/2` function is used to indicate which events
+  the process manager receives. The response is used to route the event to an existing
   instance or start a new process instance:
 
   - `{:start, process_uuid}` - create a new instance of the process manager.
@@ -331,7 +349,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   problematic event.
 
   """
-  @callback interested?(domain_event) ::
+  @callback interested?(domain_event, metadata) ::
               {:start, process_uuid}
               | {:start!, process_uuid}
               | {:continue, process_uuid}
@@ -438,7 +456,13 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | {:skip, :continue_pending}
               | {:stop, reason :: term()}
 
-  @optional_callbacks init: 1, handle: 2, apply: 2, error: 3, interested?: 1, after_command: 2
+  @optional_callbacks init: 1,
+                      handle: 2,
+                      apply: 2,
+                      error: 3,
+                      interested?: 1,
+                      interested?: 2,
+                      after_command: 2
 
   alias Commanded.ProcessManagers.ProcessManager
   alias Commanded.ProcessManagers.ProcessRouter
@@ -493,6 +517,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       @doc false
       def after_command(_process_manager, _event), do: :continue
 
+      # @doc false
+      def interested?(event, _metadata),
+        do: interested?(event)
+
       @doc false
       def interested?(_event), do: false
 
@@ -520,7 +548,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           application: MyApp.Application,
           name: __MODULE__
 
-        def interested?(%ProcessStarted{uuids: uuids}), do: {:start, uuids}
+        def interested?(%ProcessStarted{uuids: uuids}, _metadata), do: {:start, uuids}
 
         def handle(%IdentityProcessManager{}, %ProcessStarted{} = event) do
           # Identify which uuid is associated with the current instance from the

@@ -8,6 +8,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   alias Commanded.ProcessManagers.RoutingProcessManager.Continued
   alias Commanded.ProcessManagers.RoutingProcessManager.Errored
   alias Commanded.ProcessManagers.RoutingProcessManager.Started
+  alias Commanded.ProcessManagers.RoutingProcessManager.StartedFromMetadata
   alias Commanded.ProcessManagers.RoutingProcessManager.Stopped
   alias Commanded.UUID
 
@@ -22,6 +23,19 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
   describe "process manager routing" do
     test "should start instance on `:start`", %{pid: pid, process_uuid: process_uuid} do
       send_events(pid, [%Started{process_uuid: process_uuid, reply_to: self()}])
+
+      instance = wait_for_instance(pid, process_uuid)
+
+      assert_receive {:started, ^instance}
+    end
+
+    test "should start instance on `:start` and be able to access metadata",
+         %{
+           pid: pid,
+           process_uuid: process_uuid
+         } do
+      metadata = %{"process_uuid" => process_uuid}
+      send_events(pid, [%StartedFromMetadata{reply_to: self()}], 1, metadata: metadata)
 
       instance = wait_for_instance(pid, process_uuid)
 
@@ -199,8 +213,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerRoutingTest do
     stub(MockEventStore, :ack_event, fn _event_store, _pid, _event -> :ok end)
   end
 
-  defp send_events(pid, events, initial_event_number \\ 1) do
-    recorded_events = EventFactory.map_to_recorded_events(events, initial_event_number)
+  defp send_events(pid, events, initial_event_number \\ 1, opts \\ []) do
+    recorded_events = EventFactory.map_to_recorded_events(events, initial_event_number, opts)
 
     send(pid, {:events, recorded_events})
   end
