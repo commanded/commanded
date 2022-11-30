@@ -28,9 +28,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerAfterCommandTest do
     aggregate_uuid = UUID.uuid4()
     source_uuid = "\"AfterCommandProcessManager\"-\"#{aggregate_uuid}\""
 
-    self_pid_as_base64 = self() |> :erlang.term_to_binary() |> Base.encode64()
+    notify_to = self() |> :erlang.pid_to_list()
 
-    metadata = %{"notify_to" => self_pid_as_base64}
+    metadata = %{"notify_to" => notify_to}
 
     {:ok, process_router} = AfterCommandProcessManager.start_link()
 

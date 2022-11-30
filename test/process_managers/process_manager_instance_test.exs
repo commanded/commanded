@@ -53,7 +53,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
                    credit_account: ^credit_account,
                    debit_account: ^debit_account,
                    status: :withdraw_money_from_debit_account,
-                   transfer_uuid: ^transfer_uuid
+                   transfer_uuid: ^transfer_uuid,
+                   user_uuid: ^user_uuid
                  },
                  source_type: "Elixir.Commanded.ExampleDomain.TransferMoneyProcessManager",
                  source_uuid: ^expected_source_uuid,

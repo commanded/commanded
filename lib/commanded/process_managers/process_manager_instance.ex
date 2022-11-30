@@ -403,8 +403,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_state: process_state
     } = state
 
+    enriched_metadata = enrich_metadata(event, state)
+
     try do
-      process_manager_module.apply(process_state, data)
+      process_manager_module.apply(process_state, data, enriched_metadata)
     rescue
       error ->
         stacktrace = __STACKTRACE__

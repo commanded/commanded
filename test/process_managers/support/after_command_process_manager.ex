@@ -44,14 +44,11 @@ defmodule Commanded.ProcessManagers.AfterCommandProcessManager do
 
   # after_command/3 callback
   def after_command(%AfterCommandProcessManager{}, %Continue{}, metadata) do
-    %{"notify_to" => notify_to_pid_as_bse64} = metadata
+    %{"notify_to" => notify_to} = metadata
 
-    pid =
-      notify_to_pid_as_bse64
-      |> Base.decode64!()
-      |> :erlang.binary_to_term()
-
-    Process.send(pid, :metadata_available, [])
+    notify_to
+    |> :erlang.list_to_pid()
+    |> Process.send(:metadata_available, [])
 
     :continue
   end

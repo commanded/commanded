@@ -294,9 +294,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   """
 
   alias Commanded.ProcessManagers.FailureContext
+  alias Commanded.EventStore.RecordedEvent
 
   @type domain_event :: struct
-  @type metadata :: map()
+  @type enriched_metadata :: RecordedEvent.enriched_metadata()
   @type command :: struct
   @type process_manager :: struct
   @type process_uuid :: String.t() | [String.t()]
@@ -361,7 +362,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   problematic event.
 
   """
-  @callback interested?(domain_event, metadata) ::
+  @callback interested?(domain_event, enriched_metadata) ::
               {:start, process_uuid}
               | {:start!, process_uuid}
               | {:continue, process_uuid}
@@ -387,7 +388,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   after a specific command or if you would instead use the `c:interested?/2`
   stop mechanism.
   """
-  @callback after_command(process_manager, domain_event, metadata) :: :continue | :stop
+  @callback after_command(process_manager, domain_event, enriched_metadata) :: :continue | :stop
 
   @doc """
   Process manager instance handles a domain event, returning any commands to
@@ -411,20 +412,29 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   The `c:handle/3` function can be omitted if you do not need to dispatch a
   command and are only mutating the process manager's state.
   """
-  @callback handle(process_manager, domain_event, metadata) ::
+  @callback handle(process_manager, domain_event, enriched_metadata) ::
               command | list(command) | {:error, term}
 
   @doc """
   Mutate the process manager's state by applying the domain event.
 
-  The `c:apply/2` function is used to mutate the process manager's state. It
-  receives the current state and the domain event, and must return the modified
-  state.
+  Version without metadata access.
+
+  Check `c:apply/3` function for details.
+  """
+  @callback apply(process_manager, domain_event) :: process_manager
+
+  @doc """
+  Mutate the process manager's state by applying the domain event.
+
+  The `c:apply/3` function is used to mutate the process manager's state. It
+  receives the current state, the domain event and the event metadata, and must
+  return the modified state.
 
   This callback function is optional, the default behaviour is to retain the
   process manager's current state.
   """
-  @callback apply(process_manager, domain_event) :: process_manager
+  @callback apply(process_manager, domain_event, enriched_metadata) :: process_manager
 
   @doc """
   Called when a command dispatch or event handling returns an error.
@@ -491,7 +501,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   @optional_callbacks init: 1,
                       handle: 2,
+                      handle: 3,
                       apply: 2,
+                      apply: 3,
                       error: 3,
                       interested?: 1,
                       interested?: 2,
@@ -568,6 +580,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
       @doc false
       def handle(_process_manager, _event), do: []
+
+      @doc false
+      def apply(process_manager, event, _metadata),
+        do: __MODULE__.apply(process_manager, event)
 
       @doc false
       def apply(process_manager, _event), do: process_manager
