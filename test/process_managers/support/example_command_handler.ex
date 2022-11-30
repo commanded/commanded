@@ -5,13 +5,13 @@ defmodule Commanded.ProcessManagers.ExampleCommandHandler do
   alias Commanded.ProcessManagers.ExampleAggregate
 
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{
+    Continue,
     Error,
     Pause,
     Publish,
     Raise,
     Start,
-    Stop,
-    Continue
+    Stop
   }
 
   def handle(%ExampleAggregate{} = aggregate, %Start{aggregate_uuid: aggregate_uuid}),

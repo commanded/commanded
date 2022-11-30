@@ -293,8 +293,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   """
 
-  alias Commanded.ProcessManagers.FailureContext
   alias Commanded.EventStore.RecordedEvent
+  alias Commanded.ProcessManagers.FailureContext
 
   @type domain_event :: struct
   @type enriched_metadata :: RecordedEvent.enriched_metadata()

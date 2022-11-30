@@ -1,8 +1,8 @@
 defmodule Commanded.EventStore.RecordedEventTest do
   use ExUnit.Case
 
-  alias Commanded.Helpers.EventFactory
   alias Commanded.EventStore.RecordedEvent
+  alias Commanded.Helpers.EventFactory
 
   defmodule BankAccountOpened do
     @derive Jason.Encoder

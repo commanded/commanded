@@ -2,7 +2,7 @@ defmodule Commanded.ProcessManagers.AfterCommandProcessManager do
   @moduledoc false
 
   alias Commanded.ProcessManagers.AfterCommandProcessManager
-  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Stop, Continue}
+  alias Commanded.ProcessManagers.ExampleAggregate.Commands.{Continue, Stop}
   alias Commanded.ProcessManagers.ExampleAggregate.Events.{Interested, Started}
   alias Commanded.ProcessManagers.ExampleApp
 

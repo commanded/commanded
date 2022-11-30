@@ -6,13 +6,13 @@ defmodule Commanded.ProcessManagers.ExampleRouter do
   alias Commanded.ProcessManagers.{ExampleAggregate, ExampleCommandHandler}
 
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{
+    Continue,
     Error,
     Pause,
     Publish,
     Raise,
     Start,
-    Stop,
-    Continue
+    Stop
   }
 
   dispatch [Error, Pause, Publish, Raise, Start, Stop, Continue],
