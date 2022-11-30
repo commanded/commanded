@@ -34,18 +34,55 @@ defmodule Commanded.EventStore.RecordedEvent do
 
   @type uuid :: String.t()
 
+  @type domain_event :: struct()
+
+  @type event_id :: uuid()
+  @type event_number :: non_neg_integer()
+  @type stream_id :: String.t()
+  @type stream_version :: non_neg_integer()
+  @type causation_id :: uuid() | nil
+  @type correlation_id :: uuid() | nil
+  @type event_type :: String.t()
+  @type data :: domain_event()
+  @type metadata :: map()
+  @type created_at :: DateTime.t()
+
   @type t :: %RecordedEvent{
-          event_id: uuid(),
-          event_number: non_neg_integer(),
-          stream_id: String.t(),
-          stream_version: non_neg_integer(),
-          causation_id: uuid() | nil,
-          correlation_id: uuid() | nil,
-          event_type: String.t(),
-          data: struct(),
-          metadata: map(),
-          created_at: DateTime.t()
+          event_id: event_id(),
+          event_number: event_number(),
+          stream_id: stream_id(),
+          stream_version: stream_version(),
+          causation_id: causation_id(),
+          correlation_id: correlation_id(),
+          event_type: event_type(),
+          data: data(),
+          metadata: metadata(),
+          created_at: created_at()
         }
+
+  @type enriched_metadata :: %{
+          :event_id => event_id(),
+          :event_number => event_number(),
+          :stream_id => stream_id(),
+          :stream_version => stream_version(),
+          :correlation_id => correlation_id(),
+          :causation_id => causation_id(),
+          :created_at => created_at(),
+          optional(atom()) => term(),
+          optional(String.t()) => term()
+        }
+
+  @type additional_fields_to_deplete :: [atom()]
+
+  @enriched_metadata_fields ~w(
+    event_id
+    event_number
+    stream_id
+    stream_version
+    correlation_id
+    causation_id
+    created_at
+  )a
 
   defstruct [
     :event_id,
@@ -64,29 +101,22 @@ defmodule Commanded.EventStore.RecordedEvent do
   Enrich the event's metadata with fields from the `RecordedEvent` struct and
   any additional metadata passed as an option.
   """
-  @spec enrich_metadata(t(), [{:additional_metadata, map()}]) :: map()
-  def enrich_metadata(%RecordedEvent{} = event, opts) do
-    %RecordedEvent{
-      event_id: event_id,
-      event_number: event_number,
-      stream_id: stream_id,
-      stream_version: stream_version,
-      correlation_id: correlation_id,
-      causation_id: causation_id,
-      created_at: created_at,
-      metadata: metadata
-    } = event
-
-    %{
-      event_id: event_id,
-      event_number: event_number,
-      stream_id: stream_id,
-      stream_version: stream_version,
-      correlation_id: correlation_id,
-      causation_id: causation_id,
-      created_at: created_at
-    }
+  @spec enrich_metadata(t(), [{:additional_metadata, map()}]) :: enriched_metadata()
+  def enrich_metadata(%RecordedEvent{metadata: metadata} = event, opts) do
+    event
+    |> Map.take(@enriched_metadata_fields)
     |> Map.merge(Keyword.get(opts, :additional_metadata, %{}))
     |> Map.merge(metadata || %{})
+  end
+
+  @doc """
+  Deplete the enriched part of the event's metadata added by `c:enrhich_metadata/2`
+  and all additional fields in the list passed as the last parameter.
+  """
+  @spec deplete_metadata(enriched_metadata(), additional_fields_to_deplete()) :: map()
+  def deplete_metadata(enriched_metadata, additional_fields_to_deplete \\ []) do
+    enriched_metadata
+    |> Map.drop(@enriched_metadata_fields)
+    |> Map.drop(additional_fields_to_deplete)
   end
 end
