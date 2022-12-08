@@ -547,8 +547,9 @@ defmodule Commanded.Event.Handler do
     `Commanded.Event.FailureContext` struct as described in `{:retry, context}`
     above.
 
-  - `:skip` - skip the failed event by acknowledging receipt. Note that this is not
-    a valid return value in batching mode.
+  - `:skip` - skip the failed event by acknowledging receipt. In batching mode,
+    this will acknowledge and skip _all_ events up to and including the failed
+    event
 
   - `{:stop, reason}` - stop the event handler with the given reason.
 
