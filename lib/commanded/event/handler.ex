@@ -1094,18 +1094,24 @@ defmodule Commanded.Event.Handler do
 
   defp handle_batch(events, context \\ %{}, handler)
 
-  defp handle_batch(events, context, %Handler{last_seen_event: last_seen_event} = state) do
+  defp handle_batch(events, context, %Handler{last_seen_event: last_seen_event} = state) when is_number(last_seen_event) do
     %{event_number: last_event_number} = last_event = List.last(events)
 
-    if not is_nil(last_seen_event) and last_event_number <= last_seen_event do
+    if last_event_number <= last_seen_event do
       Logger.debug(fn ->
         describe(state) <> " has already seen event ##{inspect(last_event_number)}"
       end)
 
       confirm_receipt([last_event], state)
     else
-      do_handle_batch(events, context, state)
+      events
+      |> Enum.reject(& &1.event_number <= last_seen_event)
+      |> do_handle_batch(context, state)
     end
+  end
+
+  defp handle_batch(events, context, %Handler{} = state) do
+    do_handle_batch(events, context, state)
   end
 
   defp do_handle_batch([], _context, state), do: state
