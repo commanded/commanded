@@ -508,10 +508,11 @@ defmodule Commanded.Event.Handler do
 
   In both cases, the error handler will be called. When just a reason is
   returned, the assumption is that a system issue is preventing the process
-  from continuing and the error handler will be called with a `nil` event
-  argument. When an event and a reason are returned, the assumption is that
-  something is wrong with the event itself and therefore, it is passed in
-  as the first argument for the error handler.
+  from continuing or the entire batch is invalid. In this case, the error
+  handler will be called with the last event of the batch as the event argument.
+  When an event and a reason are returned, the assumption is that something is
+  wrong with the event itself and therefore, it is passed in as the first
+  argument for the error handler.
 
   Note that this interface may change as more experience with use cases
   for batching is gained.
