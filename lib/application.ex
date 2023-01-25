@@ -312,10 +312,19 @@ defmodule Commanded.Application do
         - `correlation_id` - an optional UUID used to correlate related
           commands/events together.
 
-        - `consistency` - one of `:eventual` (default) or `:strong`. By
-          setting the consistency to `:strong` a successful command dispatch
-          will block until all strongly consistent event handlers and process
-          managers have handled all events created by the command.
+        - `consistency` - to choose the consistency guarantee of the command dispatch.
+
+          The available options are:
+
+          - `:eventual` (default) - a successful command dispatch will return immediately.
+
+          - `:strong` - a successful command dispatch will block until all strongly
+            consistent event handlers and process managers have handled all events created by the command.
+
+          - An explicit list of event handler and process manager modules (or their configured names),
+            containing only those handlers you'd like to wait for. No other handlers will be awaited on,
+            regardless of their own configured consistency setting.
+            e.g. `[ExampleHandler, AnotherHandler]` or `["ExampleHandler", "AnotherHandler"]`
 
         - `metadata` - an optional map containing key/value pairs comprising
           the metadata to be associated with all events created by the
