@@ -344,6 +344,9 @@ defmodule Commanded.Event.Handler do
   @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
 
+  @doc deprecated: "Use the initialize/1 callback instead."
+  @callback init() :: :ok | {:stop, reason :: any()}
+
   @doc """
   Optional initialisation callback function called when the handler starts.
 
@@ -361,7 +364,7 @@ defmodule Commanded.Event.Handler do
           name: "ExampleHandler"
 
         # Optional initialisation
-        def init do
+        def initialize(_handler_state) do
           :ok
         end
 
@@ -372,7 +375,7 @@ defmodule Commanded.Event.Handler do
       end
 
   """
-  @callback init() :: :ok | {:stop, reason :: any()}
+  @callback initialize(handler_state :: term()) :: :ok | {:stop, reason :: any()}
 
   @doc """
   Optional callback function called to configure the handler before it starts.
@@ -603,6 +606,9 @@ defmodule Commanded.Event.Handler do
       def init, do: :ok
 
       @doc false
+      def initialize(_state), do: init()
+
+      @doc false
       def init(config), do: {:ok, config}
 
       @doc false
@@ -776,7 +782,7 @@ defmodule Commanded.Event.Handler do
 
     %Handler{handler_module: handler_module} = state
 
-    case handler_module.init() do
+    case handler_module.initialize(state.handler_state) do
       :ok ->
         {:noreply, state}
 
