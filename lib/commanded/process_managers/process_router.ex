@@ -229,6 +229,8 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
             "ms to process event #" <> inspect(event_number) <> " and is now stopping"
         end)
 
+        Logger.error(Exception.format_stacktrace())
+
         {:stop, :event_timeout, state}
     end
   end

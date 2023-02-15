@@ -827,6 +827,8 @@ defmodule Commanded.Event.Handler do
       describe(state) <> " received unexpected message: " <> inspect(message, pretty: true)
     end)
 
+    Logger.error(Exception.format_stacktrace())
+
     {:noreply, state}
   end
 
@@ -920,6 +922,8 @@ defmodule Commanded.Event.Handler do
             inspect(invalid, pretty: true) <>
             ", expected `:ok` or `{:error, term}`"
         end)
+
+        Exception.format_stacktrace()
 
         telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :invalid_return_value))
 

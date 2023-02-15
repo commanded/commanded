@@ -156,6 +156,8 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   def handle_info(message, state) do
     Logger.error(fn -> describe(state) <> " received unexpected message: " <> inspect(message) end)
 
+    Logger.error(Exception.format_stacktrace())
+
     {:noreply, state}
   end
 
