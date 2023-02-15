@@ -614,7 +614,7 @@ defmodule Commanded.Event.Handler do
       @doc false
       def before_reset, do: :ok
 
-      defoverridable init: 0, init: 1, before_reset: 0
+      defoverridable init: 0, init: 1, initialize: 1, before_reset: 0
     end
   end
 
