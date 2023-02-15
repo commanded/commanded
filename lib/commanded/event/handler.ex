@@ -824,10 +824,10 @@ defmodule Commanded.Event.Handler do
   @impl GenServer
   def handle_info(message, state) do
     Logger.error(fn ->
-      describe(state) <> " received unexpected message: " <> inspect(message, pretty: true)
+      describe(state) <>
+        " received unexpected message: " <>
+        inspect(message, pretty: true) <> "\n" <> Exception.format_stacktrace()
     end)
-
-    Logger.error(Exception.format_stacktrace())
 
     {:noreply, state}
   end
@@ -920,10 +920,9 @@ defmodule Commanded.Event.Handler do
             inspect(event, pretty: true) <>
             ", `handle/2` function returned an invalid value: " <>
             inspect(invalid, pretty: true) <>
-            ", expected `:ok` or `{:error, term}`"
+            ", expected `:ok` or `{:error, term}`\n" <>
+            Exception.format_stacktrace()
         end)
-
-        Exception.format_stacktrace()
 
         telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :invalid_return_value))
 

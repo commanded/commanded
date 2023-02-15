@@ -154,9 +154,11 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   @doc false
   @impl GenServer
   def handle_info(message, state) do
-    Logger.error(fn -> describe(state) <> " received unexpected message: " <> inspect(message) end)
-
-    Logger.error(Exception.format_stacktrace())
+    Logger.error(fn ->
+      describe(state) <>
+        " received unexpected message: " <>
+        inspect(message) <> "\n" <> Exception.format_stacktrace()
+    end)
 
     {:noreply, state}
   end

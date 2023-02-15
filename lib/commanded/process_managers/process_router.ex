@@ -226,10 +226,9 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
           describe(state) <>
             " has taken longer than " <>
             inspect(event_timeout) <>
-            "ms to process event #" <> inspect(event_number) <> " and is now stopping"
+            "ms to process event #" <>
+            inspect(event_number) <> " and is now stopping \n" <> Exception.format_stacktrace()
         end)
-
-        Logger.error(Exception.format_stacktrace())
 
         {:stop, :event_timeout, state}
     end
