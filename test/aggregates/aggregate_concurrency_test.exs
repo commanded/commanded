@@ -50,7 +50,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       expect(MockEventStore, :append_to_stream, fn _event_store_meta,
                                                    ^account_number,
                                                    1,
-                                                   _event_data ->
+                                                   _event_data,
+                                                   _opts ->
         {:error, :wrong_expected_version}
       end)
 
@@ -81,7 +82,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       expect(MockEventStore, :append_to_stream, fn _event_store_meta,
                                                    ^account_number,
                                                    2,
-                                                   _event_data ->
+                                                   _event_data,
+                                                   _opts ->
         :ok
       end)
 
@@ -102,7 +104,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       expect(MockEventStore, :append_to_stream, 6, fn _event_store_meta,
                                                       ^account_number,
                                                       1,
-                                                      _event_data ->
+                                                      _event_data,
+                                                      _opts ->
         {:error, :wrong_expected_version}
       end)
 
@@ -143,7 +146,8 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       expect(MockEventStore, :append_to_stream, fn _event_store_meta,
                                                    ^account_number,
                                                    0,
-                                                   _event_data ->
+                                                   _event_data,
+                                                   _opts ->
         :ok
       end)
 

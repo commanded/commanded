@@ -64,7 +64,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore.Adapter
-  def append_to_stream(adapter_meta, stream_uuid, expected_version, events) do
+  def append_to_stream(adapter_meta, stream_uuid, expected_version, events, _opts \\ []) do
     event_store = event_store_name(adapter_meta)
 
     GenServer.call(event_store, {:append, stream_uuid, expected_version, events})
