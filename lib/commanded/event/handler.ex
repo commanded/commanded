@@ -822,13 +822,14 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   @impl GenServer
+  def handle_info({:EXIT, _pid, :normal}, state) do
+    # linked process exited normally, don't shutdown
+    {:noreply, state}
+  end
+  
+  @impl GenServer
   def handle_info({:EXIT, _pid, reason}, state) do
-    if reason == :normal do
-      # linked process exited normally, don't shutdown
-      {:noreply, state}
-    else
-      {:stop, reason, state}
-    end
+    {:stop, reason, state}
   end
 
   @doc false
