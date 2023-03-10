@@ -1,14 +1,5 @@
 # Sponsors & Backers
 
-Commanded and EventStore are MIT-licensed open source projects. Ongoing development is only made possible thanks to the following awesome sponsors and backers.
-
-You can join them and contribute to Commanded's future development.
-
-* [Become a sponsor on GitHub](https://github.com/sponsors/slashdotdash)
-* [Become a backer or sponsor on OpenCollective](https://opencollective.com/commanded).
-
----
-
 ## Sponsors via GitHub
 
 Thank you to all our sponsors! 🙏

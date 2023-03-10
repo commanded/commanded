@@ -23,14 +23,9 @@ Requires Erlang/OTP v21.0 and Elixir v1.9 or later.
 
 ---
 
-### Supporting Commanded
-
-You can help support Commanded by helping to fund its ongoing development, new features, and releases.
-
-- [Become a GitHub sponsor](https://github.com/sponsors/slashdotdash)
-- [View sponsors & backers](BACKERS.md)
-
 #### Sponsors
+
+- [View sponsors & backers](BACKERS.md)
 
 [![Alembic](https://user-images.githubusercontent.com/3167/177830256-26a74e82-60ff-4c20-bd84-64ee7c12512c.svg "Alembic")](https://alembic.com.au/)
 
@@ -183,6 +178,4 @@ Commanded exists thanks to the following people who have contributed.
 
 ## Need help?
 
-Please [open an issue](https://github.com/commanded/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the [Gitter chat room](https://gitter.im/commanded/Lobby) for Commanded.
-
-For commercial support, and consultancy, please contact [Ben Smith](mailto:ben@10consulting.com).
+Please [open an issue](https://github.com/commanded/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the #commanded channel in the [official Elixir Slack](https://elixir-slackin.herokuapp.com/).
