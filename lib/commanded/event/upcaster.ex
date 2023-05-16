@@ -6,6 +6,8 @@ defprotocol Commanded.Event.Upcaster do
   You can use an upcaster to change the shape of an event (e.g. add a new field
   with a default, rename a field) or rename an event.
 
+  Upcaster will run for new events and for historical events.
+
   Because the upcaster changes any historical event to the latest version,
   consumers (aggregates, event handlers, and process managers) only need
   to support the latest version.
