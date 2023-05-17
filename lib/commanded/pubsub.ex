@@ -46,20 +46,24 @@ defmodule Commanded.PubSub do
 
       config ->
         if Keyword.keyword?(config) do
-          case Keyword.get(config, :phoenix_pubsub) do
-            nil ->
-              raise ArgumentError,
-                    "invalid Phoenix pubsub configuration #{inspect(config)} for application " <>
-                      inspect(application)
-
-            phoenix_pubsub_config ->
-              {Commanded.PubSub.PhoenixPubSub, phoenix_pubsub_config}
-          end
+          phoenix_pubsub_config(application, config)
         else
           raise ArgumentError,
                 "invalid pubsub configured for application " <>
                   inspect(application) <> " as: " <> inspect(config)
         end
+    end
+  end
+
+  defp phoenix_pubsub_config(application, config) do
+    case Keyword.get(config, :phoenix_pubsub) do
+      nil ->
+        raise ArgumentError,
+              "invalid Phoenix pubsub configuration #{inspect(config)} for application " <>
+                inspect(application)
+
+      phoenix_pubsub_config ->
+        {Commanded.PubSub.PhoenixPubSub, phoenix_pubsub_config}
     end
   end
 end
