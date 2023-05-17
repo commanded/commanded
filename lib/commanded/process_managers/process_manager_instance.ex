@@ -272,7 +272,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp handle_event_error(
-         {:error, reason} = error,
+         {:error, _error} = error,
          %RecordedEvent{} = failed_event,
          %FailureContext{} = failure_context,
          %State{} = state
