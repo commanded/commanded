@@ -62,13 +62,13 @@ defmodule Commanded.Mixfile do
       {:telemetry_registry, "~> 0.2 or ~> 0.3"},
 
       # Optional dependencies
-      {:jason, "~> 1.3", optional: true},
+      {:jason, "~> 1.4", optional: true},
       {:phoenix_pubsub, "~> 2.1", optional: true},
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.2", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.2", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.1", only: :dev},
