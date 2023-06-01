@@ -347,7 +347,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   after a specific command or if you would instead use the `c:interested?/1`
   stop mechanism.
   """
-  @callback after_command(process_manager, domain_event) :: :continue | :stop
+  @callback after_command(process_manager, command) :: :continue | :stop
 
   @doc """
   Process manager instance handles a domain event, returning any commands to
