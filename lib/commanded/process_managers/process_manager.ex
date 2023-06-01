@@ -378,7 +378,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   See `c:after_command/3` for details.
   """
-  @callback after_command(process_manager, domain_event) :: :continue | :stop
+  @callback after_command(process_manager, command) :: :continue | :stop
 
   @doc """
   Stop the process manager instance after a command is successfully
