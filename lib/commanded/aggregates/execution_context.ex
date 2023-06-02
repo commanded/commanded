@@ -33,7 +33,9 @@ defmodule Commanded.Aggregates.ExecutionContext do
     - `lifespan` - a module implementing the `Commanded.Aggregates.AggregateLifespan`
       behaviour to control the aggregate instance process lifespan. The default
       value, `Commanded.Aggregates.DefaultLifespan`, keeps the process running
-      indefinitely.
+      indefinitely.  The default can be overridden by setting the
+      `:aggregate_default_lifespan` configuration for the `:commanded` application
+      at compile-time.  Cannot be reconfigured at run-time.
 
   """
 
@@ -41,6 +43,12 @@ defmodule Commanded.Aggregates.ExecutionContext do
   alias Commanded.Aggregates.DefaultLifespan
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Commands.ExecutionResult
+
+  @default_lifespan Application.compile_env(
+                      :commanded,
+                      :aggregate_default_lifespan,
+                      DefaultLifespan
+                    )
 
   defstruct [
     :command,
@@ -51,7 +59,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     before_execute: nil,
     retry_attempts: 0,
     returning: false,
-    lifespan: DefaultLifespan,
+    lifespan: @default_lifespan,
     metadata: %{}
   ]
 

@@ -31,3 +31,5 @@ config :commanded, Commanded.ProcessManagers.ExampleApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ResumeApp, default_app_config
 config :commanded, Commanded.ProcessManagers.TodoApp, default_app_config
 config :commanded, Commanded.TestApplication, default_app_config
+
+config :commanded, :aggregate_default_lifespan, Commanded.Aggregates.DefaultLifespan

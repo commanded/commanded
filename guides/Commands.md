@@ -415,6 +415,8 @@ Return `:stop` or `{:stop, reason}` to immediately shutdown the aggregate proces
 
 You can also return `:hibernate` and the process is hibernated, it will continue its loop once a message is in its message queue. Hibernating an aggregate causes garbage collection and minimises the memory used by the process. Hibernating should not be used aggressively as too much time could be spent garbage collecting.
 
+If you wish to change the default, set the `:aggregate_default_lifespan` option for the `:commanded` application.  This must be done at compile-time.  It cannot be changed at runtime.
+
 ## Middleware
 
 Allows a command router to define middleware modules that are executed before and after success or failure of each command dispatch.
