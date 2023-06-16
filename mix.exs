@@ -68,7 +68,7 @@ defmodule Commanded.Mixfile do
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.3", only: [:dev], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.2", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.1", only: :dev},
