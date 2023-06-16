@@ -91,18 +91,21 @@ defmodule Commanded.Commands.CompositeRouter do
         Enum.map(@registered_commands, fn {command_module, _router} -> command_module end)
       end
 
-      @doc false
+      @doc """
+      Dispatch a registered command.
+      """
+      @spec dispatch(
+              command :: struct(),
+              timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
+            ) :: Commanded.Commands.Router.dispatch_resp()
       def dispatch(command, opts \\ [])
 
-      @doc false
       def dispatch(command, :infinity),
         do: do_dispatch(command, timeout: :infinity)
 
-      @doc false
       def dispatch(command, timeout) when is_integer(timeout),
         do: do_dispatch(command, timeout: timeout)
 
-      @doc false
       def dispatch(command, opts),
         do: do_dispatch(command, opts)
 
