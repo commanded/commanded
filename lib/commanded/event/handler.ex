@@ -481,7 +481,7 @@ defmodule Commanded.Event.Handler do
           case Map.get(context, :failures) do
             too_many when too_many >= 3 ->
               # skip bad event after third failure
-              Logger.warn(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
+              Logger.warning(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
 
               :skip
 
@@ -1045,13 +1045,13 @@ defmodule Commanded.Event.Handler do
         confirm_receipt(failed_event, state)
 
       {:stop, reason} ->
-        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
+        Logger.warning(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
 
         # Stop event handler with given reason
         throw({:error, reason})
 
       invalid ->
-        Logger.warn(fn ->
+        Logger.warning(fn ->
           describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 

@@ -326,12 +326,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
       {:stop, error} ->
         # Stop the process manager instance
-        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(error)}" end)
+        Logger.warning(fn -> describe(state) <> " has requested to stop: #{inspect(error)}" end)
 
         {:stop, error, state}
 
       invalid ->
-        Logger.warn(fn ->
+        Logger.warning(fn ->
           describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 
@@ -412,7 +412,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         dispatch_commands(pending_commands, opts, state, last_event)
 
       {:error, _error} = error ->
-        Logger.warn(fn ->
+        Logger.warning(fn ->
           describe(state) <>
             " failed to dispatch command " <> inspect(command) <> " due to: " <> inspect(error)
         end)
@@ -508,12 +508,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
       {:stop, reason} = reply ->
         # Stop process manager
-        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
+        Logger.warning(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
 
         reply
 
       invalid ->
-        Logger.warn(fn ->
+        Logger.warning(fn ->
           describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 

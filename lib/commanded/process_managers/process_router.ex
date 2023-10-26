@@ -257,7 +257,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   # Stop process router when a process manager instance terminates abnormally.
   @impl GenServer
   def handle_info({:DOWN, _ref, :process, _pid, reason}, %State{} = state) do
-    Logger.warn(fn -> describe(state) <> " is stopping due to: #{inspect(reason)}" end)
+    Logger.warning(fn -> describe(state) <> " is stopping due to: #{inspect(reason)}" end)
 
     {:stop, reason, state}
   end
@@ -417,12 +417,12 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
         ack_and_continue(failed_event, state)
 
       {:stop, reason} ->
-        Logger.warn(fn -> describe(state) <> " has requested to stop: #{inspect(error)}" end)
+        Logger.warning(fn -> describe(state) <> " has requested to stop: #{inspect(error)}" end)
 
         {:stop, reason, state}
 
       invalid ->
-        Logger.warn(fn ->
+        Logger.warning(fn ->
           describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
         end)
 
