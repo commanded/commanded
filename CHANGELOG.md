@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add configuration option `:aggregate_default_lifespan` to change the default lifespan module globally at compile-time (link-forthcoming).
+
 ## v1.4.2
 
 -  Record aggregate state while processing `Commanded.Aggregate.Multi` ([#507](https://github.com/commanded/commanded/pull/507)).
