@@ -444,7 +444,7 @@ defmodule Commanded.Aggregates.Aggregate do
         timeout
 
       invalid ->
-        Logger.warn(
+        Logger.warning(
           "Invalid timeout for aggregate lifespan " <>
             inspect(lifespan) <>
             ", expected a non-negative integer, `:infinity`, `:hibernate`, `:stop`, or `{:stop, reason}` but got: " <>
@@ -594,7 +594,7 @@ defmodule Commanded.Aggregates.Aggregate do
           %Aggregate{state | snapshotting: snapshotting}
 
         {:error, error} ->
-          Logger.warn(describe(state) <> " snapshot failed due to: " <> inspect(error))
+          Logger.warning(describe(state) <> " snapshot failed due to: " <> inspect(error))
 
           state
       end

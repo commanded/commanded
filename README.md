@@ -19,7 +19,7 @@ You can use Commanded with one of the following event stores for persistence:
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
-Requires Erlang/OTP v21.0 and Elixir v1.9 or later.
+Requires Erlang/OTP v21.0 and Elixir v1.11 or later.
 
 ---
 
