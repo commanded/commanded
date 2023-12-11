@@ -4,15 +4,15 @@ on: [push, pull_request]
 
 env:
   MIX_ENV: test
-  
+
 jobs:
   build:
     name: Build and test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        otp: ['24.3', '25.3']
-        elixir: ['1.14.4']
+        otp: ['25.3']
+        elixir: ['1.14.5']
 
     steps:
     - uses: actions/checkout@v2
