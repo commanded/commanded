@@ -1,5 +1,9 @@
 # Changelog
 
+## Next release
+
+-  Use `Logger.warning` to fix deprecation warnings ([#542](https://github.com/commanded/commanded/pull/542)).
+
 ## v1.4.2
 
 -  Record aggregate state while processing `Commanded.Aggregate.Multi` ([#507](https://github.com/commanded/commanded/pull/507)).
