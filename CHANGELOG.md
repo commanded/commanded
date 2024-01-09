@@ -2,8 +2,14 @@
 
 ## Next release
 
+### Enhancements
+
 -  Use `Logger.warning` to fix deprecation warnings ([#542](https://github.com/commanded/commanded/pull/542)).
 -  Add typespec to `CompositeRouter.dispatch/2` function ([#536](https://github.com/commanded/commanded/pull/536)).
+
+### Bug fixes
+
+-  Correct parameter type in `ProcessManager.after_command/1` callback function ([#533](https://github.com/commanded/commanded/pull/533)).
 
 ## v1.4.2
 

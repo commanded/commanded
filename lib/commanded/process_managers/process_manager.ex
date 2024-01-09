@@ -561,11 +561,11 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     # Include default fallback functions at end, with lowest precedence
     quote generated: true do
       @doc false
-      def after_command(process_manager, event, _metadata),
-        do: after_command(process_manager, event)
+      def after_command(process_manager, command, _metadata),
+        do: after_command(process_manager, command)
 
       @doc false
-      def after_command(_process_manager, _event), do: :continue
+      def after_command(_process_manager, _command), do: :continue
 
       # @doc false
       def interested?(event, _metadata),
