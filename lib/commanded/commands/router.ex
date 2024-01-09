@@ -206,7 +206,8 @@ defmodule Commanded.Commands.Router do
 
   """
 
-  alias Commanded.Commands.Router
+  alias Commanded.Aggregates.DefaultLifespan
+  alias Commanded.Commands.{ExecutionResult, Router}
   alias Commanded.UUID
 
   defmacro __using__(opts) do
@@ -216,7 +217,7 @@ defmodule Commanded.Commands.Router do
       import unquote(__MODULE__)
 
       @before_compile unquote(__MODULE__)
-      @behaviour Commanded.Commands.Router
+      @behaviour Router
 
       Module.register_attribute(__MODULE__, :registered_commands, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
@@ -227,7 +228,7 @@ defmodule Commanded.Commands.Router do
         consistency: Router.get_opt(unquote(opts), :default_consistency, :eventual),
         returning: Router.get_default_dispatch_return(unquote(opts)),
         timeout: 5_000,
-        lifespan: Commanded.Aggregates.DefaultLifespan,
+        lifespan: DefaultLifespan,
         metadata: %{},
         retry_attempts: 10
       ]
@@ -369,7 +370,7 @@ defmodule Commanded.Commands.Router do
           :ok
           | {:ok, aggregate_state :: struct()}
           | {:ok, aggregate_version :: non_neg_integer()}
-          | {:ok, execution_result :: Commanded.Commands.ExecutionResult.t()}
+          | {:ok, execution_result :: ExecutionResult.t()}
           | {:error, :unregistered_command}
           | {:error, :consistency_timeout}
           | {:error, reason :: term()}
@@ -386,7 +387,7 @@ defmodule Commanded.Commands.Router do
       :ok = BankRouter.dispatch(command)
 
   """
-  @callback dispatch(command :: struct()) :: dispatch_resp
+  @callback dispatch(command :: struct()) :: dispatch_resp()
 
   @doc """
   Dispatch the given command to the registered handler providing a timeout.
@@ -462,7 +463,7 @@ defmodule Commanded.Commands.Router do
   @callback dispatch(
               command :: struct(),
               timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
-            ) :: dispatch_resp
+            ) :: dispatch_resp()
 
   defmacro __before_compile__(_env) do
     quote generated: true do
