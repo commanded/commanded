@@ -47,44 +47,36 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
       }
 
       # Fail to append once
-      expect(MockEventStore, :append_to_stream, fn _event_store_meta,
-                                                   ^account_number,
-                                                   1,
-                                                   _event_data,
-                                                   _opts ->
-        {:error, :wrong_expected_version}
+      expect(MockEventStore, :append_to_stream, fn
+        _event_store_meta, ^account_number, 1, _event_data, _opts ->
+          {:error, :wrong_expected_version}
       end)
 
       # Return "missing" event
-      expect(MockEventStore, :stream_forward, fn _event_store_meta,
-                                                 ^account_number,
-                                                 2,
-                                                 _batch_size ->
-        [
-          %RecordedEvent{
-            event_id: UUID.uuid4(),
-            event_number: 2,
-            stream_id: account_number,
-            stream_version: 2,
-            event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited",
-            data: %MoneyDeposited{
-              account_number: account_number,
-              transfer_uuid: UUID.uuid4(),
-              amount: 500,
-              balance: 1_500
-            },
-            metadata: %{}
-          }
-        ]
+      expect(MockEventStore, :stream_forward, fn
+        _event_store_meta, ^account_number, 2, _batch_size ->
+          [
+            %RecordedEvent{
+              event_id: UUID.uuid4(),
+              event_number: 2,
+              stream_id: account_number,
+              stream_version: 2,
+              event_type: "Elixir.Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited",
+              data: %MoneyDeposited{
+                account_number: account_number,
+                transfer_uuid: UUID.uuid4(),
+                amount: 500,
+                balance: 1_500
+              },
+              metadata: %{}
+            }
+          ]
       end)
 
       # Succeed on second attempt
-      expect(MockEventStore, :append_to_stream, fn _event_store_meta,
-                                                   ^account_number,
-                                                   2,
-                                                   _event_data,
-                                                   _opts ->
-        :ok
+      expect(MockEventStore, :append_to_stream, fn
+        _event_store_meta, ^account_number, 2, _event_data, _opts ->
+          :ok
       end)
 
       assert {:ok, 3, _events} =
@@ -101,19 +93,14 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
 
     test "should error after too many attempts", %{account_number: account_number} do
       # Fail to append to stream
-      expect(MockEventStore, :append_to_stream, 6, fn _event_store_meta,
-                                                      ^account_number,
-                                                      1,
-                                                      _event_data,
-                                                      _opts ->
-        {:error, :wrong_expected_version}
+      expect(MockEventStore, :append_to_stream, 6, fn
+        _event_store_meta, ^account_number, 1, _event_data, _opts ->
+          {:error, :wrong_expected_version}
       end)
 
-      expect(MockEventStore, :stream_forward, 6, fn _event_store_meta,
-                                                    ^account_number,
-                                                    2,
-                                                    _batch_size ->
-        []
+      expect(MockEventStore, :stream_forward, 6, fn
+        _event_store_meta, ^account_number, 2, _batch_size ->
+          []
       end)
 
       command = %DepositMoney{
@@ -136,19 +123,14 @@ defmodule Commanded.Aggregates.AggregateConcurrencyTest do
     defp open_account(_context) do
       account_number = UUID.uuid4()
 
-      expect(MockEventStore, :stream_forward, fn _event_store_meta,
-                                                 ^account_number,
-                                                 1,
-                                                 _batch_size ->
-        []
+      expect(MockEventStore, :stream_forward, fn
+        _event_store_meta, ^account_number, 1, _batch_size ->
+          []
       end)
 
-      expect(MockEventStore, :append_to_stream, fn _event_store_meta,
-                                                   ^account_number,
-                                                   0,
-                                                   _event_data,
-                                                   _opts ->
-        :ok
+      expect(MockEventStore, :append_to_stream, fn
+        _event_store_meta, ^account_number, 0, _event_data, _opts ->
+          :ok
       end)
 
       {:ok, ^account_number} =
