@@ -3,6 +3,7 @@ defmodule Commanded.Application do
 
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Application.Config
+  alias Commanded.Commands.Router
 
   telemetry_event(%{
     event: [:commanded, :application, :dispatch, :start],
@@ -286,7 +287,7 @@ defmodule Commanded.Application do
       `Commanded.Commands.Router` and included in the application.
 
   """
-  @callback dispatch(command :: struct()) :: Commanded.Commands.Router.dispatch_resp()
+  @callback dispatch(command :: struct()) :: Router.dispatch_resp()
 
   @doc """
   Dispatch a registered command.
@@ -366,7 +367,7 @@ defmodule Commanded.Application do
   @callback dispatch(
               command :: struct(),
               timeout_or_opts :: non_neg_integer() | :infinity | Keyword.t()
-            ) :: Commanded.Commands.Router.dispatch_resp()
+            ) :: Router.dispatch_resp()
 
   @doc false
   def dispatch(application, command, opts \\ [])

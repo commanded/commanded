@@ -1,15 +1,17 @@
 defmodule Commanded.Commands.Dispatcher do
   @moduledoc false
-
-  require Logger
-
   alias Commanded.Aggregates.Aggregate
   alias Commanded.Aggregates.ExecutionContext
+  alias Commanded.Commands.Router
   alias Commanded.Middleware.Pipeline
   alias Commanded.Telemetry
 
+  require Logger
+
   defmodule Payload do
     @moduledoc false
+
+    @type t :: %Payload{}
 
     defstruct [
       :application,
@@ -35,13 +37,8 @@ defmodule Commanded.Commands.Dispatcher do
 
   # Dispatch the given command to the handler module for the aggregate as
   # identified.
-  @spec dispatch(payload :: struct) ::
-          :ok
-          | {:ok, aggregate_state :: struct}
-          | {:ok, aggregate_version :: non_neg_integer()}
-          | {:ok, events :: list(struct)}
-          | {:ok, Commanded.Commands.ExecutionResult.t()}
-          | {:error, error :: term}
+  @spec dispatch(payload :: Payload.t()) ::
+          Router.dispatch_resp() | {:ok, events :: list(struct())}
   def dispatch(%Payload{} = payload) do
     pipeline = to_pipeline(payload)
     telemetry_metadata = telemetry_metadata(pipeline, payload)
