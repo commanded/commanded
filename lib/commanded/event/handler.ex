@@ -481,7 +481,7 @@ defmodule Commanded.Event.Handler do
           case Map.get(context, :failures) do
             too_many when too_many >= 3 ->
               # skip bad event after third failure
-              Logger.warning(fn -> "Skipping bad event, too many failures: " <> inspect(event) end)
+              Logger.warning("Skipping bad event, too many failures: " <> inspect(event))
 
               :skip
 
@@ -724,7 +724,7 @@ defmodule Commanded.Event.Handler do
 
   @impl GenServer
   def terminate(reason, state) do
-    Logger.debug(fn -> describe(state) <> " is shutting down due to #{inspect(reason)}" end)
+    Logger.debug(describe(state) <> " is shutting down due to #{inspect(reason)}")
   end
 
   @doc false
@@ -750,10 +750,10 @@ defmodule Commanded.Event.Handler do
         end
 
       {:stop, reason} ->
-        Logger.debug(fn ->
+        Logger.debug(
           describe(state) <>
             " `before_reset/0` callback has requested to stop. (reason: #{inspect(reason)})"
-        end)
+        )
 
         {:stop, reason, state}
     end
@@ -772,7 +772,7 @@ defmodule Commanded.Event.Handler do
         {:subscribed, subscription},
         %Handler{subscription: %Subscription{subscription_pid: subscription}} = state
       ) do
-    Logger.debug(fn -> describe(state) <> " has successfully subscribed to event store" end)
+    Logger.debug(describe(state) <> " has successfully subscribed to event store")
 
     %Handler{handler_module: handler_module} = state
 
@@ -781,7 +781,7 @@ defmodule Commanded.Event.Handler do
         {:noreply, state}
 
       {:stop, reason} ->
-        Logger.debug(fn -> describe(state) <> " `init/0` callback has requested to stop" end)
+        Logger.debug(describe(state) <> " `init/0` callback has requested to stop")
 
         {:stop, reason, state}
     end
@@ -792,7 +792,7 @@ defmodule Commanded.Event.Handler do
   def handle_info({:events, events}, %Handler{} = state) do
     %Handler{application: application} = state
 
-    Logger.debug(fn -> describe(state) <> " received events: #{inspect(events)}" end)
+    Logger.debug(describe(state) <> " received events: #{inspect(events)}")
 
     try do
       state =
@@ -814,7 +814,7 @@ defmodule Commanded.Event.Handler do
         {:DOWN, ref, :process, _pid, reason},
         %Handler{subscription: %Subscription{subscription_ref: ref}} = state
       ) do
-    Logger.debug(fn -> describe(state) <> " subscription DOWN due to: #{inspect(reason)}" end)
+    Logger.debug(describe(state) <> " subscription DOWN due to: #{inspect(reason)}")
 
     # Stop event handler when event store subscription process terminates.
     {:stop, reason, state}
@@ -835,9 +835,9 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def handle_info(message, state) do
-    Logger.error(fn ->
+    Logger.error(
       describe(state) <> " received unexpected message: " <> inspect(message, pretty: true)
-    end)
+    )
 
     {:noreply, state}
   end
@@ -860,11 +860,11 @@ defmodule Commanded.Event.Handler do
       {:error, error} ->
         {backoff, subscription} = Subscription.backoff(subscription)
 
-        Logger.info(fn ->
+        Logger.info(
           describe(state) <>
             " failed to subscribe to event store due to: " <>
             inspect(error) <> ", retrying in " <> inspect(backoff) <> "ms"
-        end)
+        )
 
         subscribe_timer = Process.send_after(self(), :subscribe_to_events, backoff)
 
@@ -881,7 +881,7 @@ defmodule Commanded.Event.Handler do
          %Handler{last_seen_event: last_seen_event} = state
        )
        when not is_nil(last_seen_event) and event_number <= last_seen_event do
-    Logger.debug(fn -> describe(state) <> " has already seen event ##{inspect(event_number)}" end)
+    Logger.debug(describe(state) <> " has already seen event ##{inspect(event_number)}")
 
     confirm_receipt(event, state)
   end
@@ -924,14 +924,14 @@ defmodule Commanded.Event.Handler do
         handle_event_error({:error, reason}, event, failure_context, state)
 
       invalid ->
-        Logger.error(fn ->
+        Logger.error(
           describe(state) <>
             " failed to handle event " <>
             inspect(event, pretty: true) <>
             ", `handle/2` function returned an invalid value: " <>
             inspect(invalid, pretty: true) <>
             ", expected `:ok` or `{:error, term}`"
-        end)
+        )
 
         telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :invalid_return_value))
 
@@ -1005,22 +1005,20 @@ defmodule Commanded.Event.Handler do
     case handler_module.error(error, data, failure_context) do
       {:retry, %FailureContext{context: context}} when is_map(context) ->
         # Retry the failed event
-        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+        Logger.info(describe(state) <> " is retrying failed event")
 
         handle_event(failed_event, context, state)
 
       {:retry, context} when is_map(context) ->
         # Retry the failed event
-        Logger.info(fn -> describe(state) <> " is retrying failed event" end)
+        Logger.info(describe(state) <> " is retrying failed event")
 
         handle_event(failed_event, context, state)
 
       {:retry, delay, %FailureContext{context: context}}
       when is_map(context) and is_integer(delay) and delay >= 0 ->
         # Retry the failed event after waiting for the given delay, in milliseconds
-        Logger.info(fn ->
-          describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
-        end)
+        Logger.info(describe(state) <> " is retrying failed event after #{inspect(delay)}ms")
 
         :timer.sleep(delay)
 
@@ -1028,9 +1026,7 @@ defmodule Commanded.Event.Handler do
 
       {:retry, delay, context} when is_map(context) and is_integer(delay) and delay >= 0 ->
         # Retry the failed event after waiting for the given delay, in milliseconds
-        Logger.info(fn ->
-          describe(state) <> " is retrying failed event after #{inspect(delay)}ms"
-        end)
+        Logger.info(describe(state) <> " is retrying failed event after #{inspect(delay)}ms")
 
         :timer.sleep(delay)
 
@@ -1038,20 +1034,20 @@ defmodule Commanded.Event.Handler do
 
       :skip ->
         # Skip the failed event by confirming receipt
-        Logger.info(fn -> describe(state) <> " is skipping event" end)
+        Logger.info(describe(state) <> " is skipping event")
 
         confirm_receipt(failed_event, state)
 
       {:stop, reason} ->
-        Logger.warning(fn -> describe(state) <> " has requested to stop: #{inspect(reason)}" end)
+        Logger.warning(describe(state) <> " has requested to stop: #{inspect(reason)}")
 
         # Stop event handler with given reason
         throw({:error, reason})
 
       invalid ->
-        Logger.warning(fn ->
+        Logger.warning(
           describe(state) <> " returned an invalid error response: #{inspect(invalid)}"
-        end)
+        )
 
         # Stop event handler with original error
         throw(error)
@@ -1083,9 +1079,7 @@ defmodule Commanded.Event.Handler do
 
     %RecordedEvent{event_number: event_number} = event
 
-    Logger.debug(fn ->
-      describe(state) <> " confirming receipt of event ##{inspect(event_number)}"
-    end)
+    Logger.debug(describe(state) <> " confirming receipt of event ##{inspect(event_number)}")
 
     :ok = Subscription.ack_event(subscription, event)
     :ok = Subscriptions.ack_event(application, handler_name, consistency, event)
@@ -1118,7 +1112,7 @@ defmodule Commanded.Event.Handler do
     rescue
       error ->
         stacktrace = __STACKTRACE__
-        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
+        Logger.error(Exception.format(:error, error, stacktrace))
 
         1
     end
