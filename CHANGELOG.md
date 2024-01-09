@@ -3,6 +3,7 @@
 ## Next release
 
 -  Use `Logger.warning` to fix deprecation warnings ([#542](https://github.com/commanded/commanded/pull/542)).
+-  Add typespec to `CompositeRouter.dispatch/2` function ([#536](https://github.com/commanded/commanded/pull/536)).
 
 ## v1.4.2
 
