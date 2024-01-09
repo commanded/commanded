@@ -33,7 +33,7 @@ defmodule Commanded.EventStore do
   @doc """
   Append one or more events to a stream atomically.
   """
-  def append_to_stream(application, stream_uuid, expected_version, events) do
+  def append_to_stream(application, stream_uuid, expected_version, events, options \\ []) do
     meta = %{
       application: application,
       stream_uuid: stream_uuid,
@@ -43,12 +43,22 @@ defmodule Commanded.EventStore do
     span(:append_to_stream, meta, fn ->
       {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-      adapter.append_to_stream(
-        adapter_meta,
-        stream_uuid,
-        expected_version,
-        events
-      )
+      if function_exported?(adapter, :append_to_stream, 5) do
+        adapter.append_to_stream(
+          adapter_meta,
+          stream_uuid,
+          expected_version,
+          events,
+          options
+        )
+      else
+        adapter.append_to_stream(
+          adapter_meta,
+          stream_uuid,
+          expected_version,
+          events
+        )
+      end
     end)
   end
 

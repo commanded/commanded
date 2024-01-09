@@ -31,7 +31,8 @@ defmodule Commanded.EventStore.Adapter do
               adapter_meta,
               stream_uuid,
               expected_version,
-              events :: list(EventData.t())
+              events :: list(EventData.t()),
+              options
             ) ::
               :ok
               | {:error, :wrong_expected_version}
