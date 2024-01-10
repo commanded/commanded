@@ -324,8 +324,6 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Is the process manager interested in the given command?
 
-  Version without metadata access.
-
   See `c:interested?/2` for details.
   """
   @callback interested?(domain_event) ::
@@ -410,9 +408,10 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   dispatch.
 
   A `c:handle/3` function can be defined for each `:start` and `:continue`
-  tagged event previously specified. It receives the process manager's state and
-  the event to be handled. It must return the commands to be dispatched. This
-  may be none, a single command, or many commands.
+  tagged event previously specified. It receives the process manager's state,
+  event to be handled, and the event's enriched metadata. It must return the
+  commands to be dispatched. This may be none, a single command, or many
+  commands.
 
   The `c:handle/3` function can be omitted if you do not need to dispatch a
   command and are only mutating the process manager's state.
