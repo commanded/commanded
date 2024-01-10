@@ -10,65 +10,52 @@ defmodule Commanded.EventStore.RecordedEventTest do
   end
 
   setup do
-    metadata = %{"key" => "value"}
-
     [event] =
       EventFactory.map_to_recorded_events(
-        [%BankAccountOpened{account_number: "123", initial_balance: 1_000}],
+        [
+          %BankAccountOpened{account_number: "123", initial_balance: 1_000}
+        ],
         1,
-        metadata: metadata
+        metadata: %{"key1" => "value1", "key2" => "value2"}
       )
 
-    enriched_metadata =
-      RecordedEvent.enrich_metadata(event,
-        additional_metadata: %{application: ExampleApplication}
-      )
-
-    [event: event, enriched_metadata: enriched_metadata]
+    [event: event]
   end
 
-  test "enrich_metadata/2 should add a number of fields to the metadata",
-       %{
-         event: event,
-         enriched_metadata: enriched_metadata
-       } do
-    %RecordedEvent{
-      event_id: event_id,
-      event_number: event_number,
-      stream_id: stream_id,
-      stream_version: stream_version,
-      correlation_id: correlation_id,
-      causation_id: causation_id,
-      created_at: created_at,
-      metadata: metadata
-    } = event
+  describe "RecordedEvent struct" do
+    test "enrich_metadata/2 should add a number of fields to the metadata", %{event: event} do
+      %RecordedEvent{
+        event_id: event_id,
+        event_number: event_number,
+        stream_id: stream_id,
+        stream_version: stream_version,
+        correlation_id: correlation_id,
+        causation_id: causation_id,
+        created_at: created_at
+      } = event
 
-    expected_enriched_metadata =
-      Map.merge(
-        metadata,
-        %{
-          # standard fields
-          event_id: event_id,
-          event_number: event_number,
-          stream_id: stream_id,
-          stream_version: stream_version,
-          correlation_id: correlation_id,
-          causation_id: causation_id,
-          created_at: created_at,
-          #
-          # additional field
-          application: ExampleApplication
-        }
-      )
+      enriched_metadata =
+        RecordedEvent.enrich_metadata(event,
+          additional_metadata: %{
+            application: ExampleApplication
+          }
+        )
 
-    assert expected_enriched_metadata == enriched_metadata
-  end
-
-  test "deplete_metadata/2 should stip additional fields out of enriched_metadata map",
-       %{
-         event: %{metadata: metadata} = _event,
-         enriched_metadata: enriched_metadata
-       } do
-    assert metadata == RecordedEvent.deplete_metadata(enriched_metadata, [:application])
+      assert enriched_metadata == %{
+               # Event string-keyed metadata
+               "key1" => "value1",
+               "key2" => "value2",
+               # Standard event fields
+               event_id: event_id,
+               event_number: event_number,
+               stream_id: stream_id,
+               stream_version: stream_version,
+               correlation_id: correlation_id,
+               causation_id: causation_id,
+               created_at: created_at,
+               # Additional field
+               application: ExampleApplication
+             }
+    end
   end
 end

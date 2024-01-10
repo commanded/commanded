@@ -1,10 +1,9 @@
 defmodule Commanded.ProcessManagers.ExampleAggregate do
   @moduledoc false
   alias Commanded.ProcessManagers.ExampleAggregate
+
   @derive Jason.Encoder
-  defstruct uuid: nil,
-            state: nil,
-            items: []
+  defstruct [:uuid, state: nil, items: []]
 
   defmodule Commands do
     defmodule(Start, do: defstruct([:aggregate_uuid]))

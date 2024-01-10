@@ -81,7 +81,9 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         defstruct []
 
         def interested?(%AnEvent{uuid: uuid}), do: {:start, uuid}
-        def interested?(%AnAnotherEvent{uuid: uuid}, _metadata), do: {:start, uuid}
+
+        def interested?(%AnotherEvent{}, metadata),
+          do: {:continue, Map.fetch!(metadata, :correlation_id)}
 
         def handle(%ExampleProcessManager{}, %ExampleEvent{}) do
           [
@@ -89,31 +91,32 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           ]
         end
 
-        def handle(%ExampleProcessManager{}, %AnotherExampleEvent{}, _metadata) do
+        def handle(%ExampleProcessManager{}, %AnotherEvent{}, _metadata) do
           [
-            %AnotherExampleCommand{}
+            %AnotherCommand{}
           ]
         end
 
         def after_command(%ExampleProcessManager{}, %ExampleCommand{}) do
-          :stop
+          :continue
         end
 
-        def after_command(%ExampleProcessManager{}, %AnotherExampleCommand{}, _metadata) do
-          :continue
+        def after_command(%ExampleProcessManager{}, %AnotherCommand{}, _metadata) do
+          :stop
         end
 
         def error({:error, failure}, %ExampleEvent{}, _failure_context) do
           # Retry, skip, ignore, or stop process manager on error handling event
+          :skip
         end
 
         def error({:error, failure}, %ExampleCommand{}, _failure_context) do
           # Retry, skip, ignore, or stop process manager on error dispatching command
+          :skip
         end
       end
 
-  Start the process manager (or configure as a worker inside a
-  [Supervisor](supervision.html))
+  Start the process manager (or configure as a worker inside a [Supervisor](supervision.html))
 
       {:ok, process_manager} = ExampleProcessManager.start_link()
 
@@ -294,12 +297,18 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   """
 
   alias Commanded.EventStore.RecordedEvent
-  alias Commanded.ProcessManagers.FailureContext
 
-  @type domain_event :: struct
+  alias Commanded.ProcessManagers.{
+    FailureContext,
+    ProcessManager,
+    ProcessManagerInstance,
+    ProcessRouter
+  }
+
+  @type domain_event :: struct()
   @type enriched_metadata :: RecordedEvent.enriched_metadata()
-  @type command :: struct
-  @type process_manager :: struct
+  @type command :: struct()
+  @type process_manager :: struct()
   @type process_uuid :: String.t() | [String.t()]
   @type consistency :: :eventual | :strong
 
@@ -374,8 +383,6 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   Stop the process manager instance after a command is successfully
   dispatched.
 
-  version without metadata access
-
   See `c:after_command/3` for details.
   """
   @callback after_command(process_manager, command) :: :continue | :stop
@@ -388,15 +395,13 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   after a specific command or if you would instead use the `c:interested?/2`
   stop mechanism.
   """
-  @callback after_command(process_manager, domain_event, enriched_metadata) :: :continue | :stop
+  @callback after_command(process_manager, command, enriched_metadata) :: :continue | :stop
 
   @doc """
   Process manager instance handles a domain event, returning any commands to
   dispatch.
 
-  Version without metadata access.
-
-  Check `c:handle/3` function for details.
+  See `c:handle/3` function for details.
   """
   @callback handle(process_manager, domain_event) :: command | list(command) | {:error, term}
 
@@ -418,9 +423,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Mutate the process manager's state by applying the domain event.
 
-  Version without metadata access.
-
-  Check `c:apply/3` function for details.
+  See `c:apply/3` function for details.
   """
   @callback apply(process_manager, domain_event) :: process_manager
 
@@ -510,9 +513,6 @@ defmodule Commanded.ProcessManagers.ProcessManager do
                       after_command: 2,
                       after_command: 3
 
-  alias Commanded.ProcessManagers.ProcessManager
-  alias Commanded.ProcessManagers.ProcessRouter
-
   @doc false
   defmacro __using__(using_opts) do
     quote location: :keep do
@@ -596,8 +596,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @doc """
   Get the identity of the current process instance.
 
-  This must only be called within a process manager's `handle/2` or `apply/2`
-  callback function.
+  This must only be called within a process manager's `handle/2`, `handle/3`, `apply/2`, or
+  `apply/3` callback functions.
 
   ## Example
 
@@ -606,7 +606,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
           application: MyApp.Application,
           name: __MODULE__
 
-        def interested?(%ProcessStarted{uuids: uuids}, _metadata), do: {:start, uuids}
+        def interested?(%ProcessStarted{uuids: uuids}), do: {:start, uuids}
 
         def handle(%IdentityProcessManager{}, %ProcessStarted{} = event) do
           # Identify which uuid is associated with the current instance from the
@@ -618,7 +618,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
       end
 
   """
-  defdelegate identity(), to: Commanded.ProcessManagers.ProcessManagerInstance
+  defdelegate identity, to: ProcessManagerInstance
 
   # GenServer start options
   @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after]
@@ -652,6 +652,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     end
 
     {name, config} = Keyword.pop(config, :name)
+
     name = parse_name(name)
 
     unless name do

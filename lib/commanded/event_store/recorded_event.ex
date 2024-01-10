@@ -32,20 +32,18 @@ defmodule Commanded.EventStore.RecordedEvent do
 
   alias Commanded.EventStore.RecordedEvent
 
-  @type uuid :: String.t()
-
-  @type domain_event :: struct()
-
-  @type event_id :: uuid()
-  @type event_number :: non_neg_integer()
-  @type stream_id :: String.t()
-  @type stream_version :: non_neg_integer()
   @type causation_id :: uuid() | nil
   @type correlation_id :: uuid() | nil
-  @type event_type :: String.t()
-  @type data :: domain_event()
-  @type metadata :: map()
   @type created_at :: DateTime.t()
+  @type data :: domain_event()
+  @type domain_event :: struct()
+  @type event_id :: uuid()
+  @type event_number :: non_neg_integer()
+  @type event_type :: String.t()
+  @type metadata :: map()
+  @type stream_id :: String.t()
+  @type stream_version :: non_neg_integer()
+  @type uuid :: String.t()
 
   @type t :: %RecordedEvent{
           event_id: event_id(),
@@ -72,18 +70,6 @@ defmodule Commanded.EventStore.RecordedEvent do
           optional(String.t()) => term()
         }
 
-  @type additional_fields_to_deplete :: [atom()]
-
-  @enriched_metadata_fields ~w(
-    event_id
-    event_number
-    stream_id
-    stream_version
-    correlation_id
-    causation_id
-    created_at
-  )a
-
   defstruct [
     :event_id,
     :event_number,
@@ -93,8 +79,8 @@ defmodule Commanded.EventStore.RecordedEvent do
     :correlation_id,
     :event_type,
     :data,
-    :metadata,
-    :created_at
+    :created_at,
+    metadata: %{}
   ]
 
   @doc """
@@ -102,21 +88,30 @@ defmodule Commanded.EventStore.RecordedEvent do
   any additional metadata passed as an option.
   """
   @spec enrich_metadata(t(), [{:additional_metadata, map()}]) :: enriched_metadata()
-  def enrich_metadata(%RecordedEvent{metadata: metadata} = event, opts) do
-    event
-    |> Map.take(@enriched_metadata_fields)
-    |> Map.merge(Keyword.get(opts, :additional_metadata, %{}))
-    |> Map.merge(metadata || %{})
-  end
+  def enrich_metadata(%RecordedEvent{} = event, opts) do
+    %RecordedEvent{
+      event_id: event_id,
+      event_number: event_number,
+      stream_id: stream_id,
+      stream_version: stream_version,
+      correlation_id: correlation_id,
+      causation_id: causation_id,
+      created_at: created_at,
+      metadata: metadata
+    } = event
 
-  @doc """
-  Deplete the enriched part of the event's metadata added by `c:enrhich_metadata/2`
-  and all additional fields in the list passed as the last parameter.
-  """
-  @spec deplete_metadata(enriched_metadata(), additional_fields_to_deplete()) :: map()
-  def deplete_metadata(enriched_metadata, additional_fields_to_deplete \\ []) do
-    enriched_metadata
-    |> Map.drop(@enriched_metadata_fields)
-    |> Map.drop(additional_fields_to_deplete)
+    additional_metadata = Keyword.get(opts, :additional_metadata, %{})
+
+    %{
+      event_id: event_id,
+      event_number: event_number,
+      stream_id: stream_id,
+      stream_version: stream_version,
+      correlation_id: correlation_id,
+      causation_id: causation_id,
+      created_at: created_at
+    }
+    |> Map.merge(metadata || %{})
+    |> Map.merge(additional_metadata)
   end
 end
