@@ -211,6 +211,22 @@ defmodule Commanded.Commands.Router do
   alias Commanded.UUID
 
   defmacro __using__(opts) do
+    Module.register_attribute(__CALLER__.module, :registered_identities, accumulate: false)
+    Module.register_attribute(__CALLER__.module, :default_dispatch_opts, accumulate: false)
+    Module.register_attribute(__CALLER__.module, :registered_commands, accumulate: true)
+
+    Module.put_attribute(__CALLER__.module, :registered_identities, %{})
+
+    Module.put_attribute(__CALLER__.module, :default_dispatch_opts,
+      application: Keyword.get(opts, :application),
+      consistency: Router.get_opt(opts, :default_consistency, :eventual),
+      returning: Router.get_default_dispatch_return(opts),
+      timeout: 5_000,
+      lifespan: DefaultLifespan,
+      metadata: %{},
+      retry_attempts: 10
+    )
+
     quote do
       require Logger
 
@@ -219,26 +235,12 @@ defmodule Commanded.Commands.Router do
       @before_compile unquote(__MODULE__)
       @behaviour Router
 
-      Module.register_attribute(__MODULE__, :registered_commands, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
-      Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
-
-      @default_dispatch_opts [
-        application: Keyword.get(unquote(opts), :application),
-        consistency: Router.get_opt(unquote(opts), :default_consistency, :eventual),
-        returning: Router.get_default_dispatch_return(unquote(opts)),
-        timeout: 5_000,
-        lifespan: DefaultLifespan,
-        metadata: %{},
-        retry_attempts: 10
-      ]
 
       @default_middleware [
         Commanded.Middleware.ExtractAggregateIdentity,
         Commanded.Middleware.ConsistencyGuarantee
       ]
-
-      @registered_identities %{}
     end
   end
 
@@ -288,48 +290,19 @@ defmodule Commanded.Commands.Router do
 
   """
   defmacro identify(aggregate_module, opts) do
-    quote location: :keep, bind_quoted: [aggregate_module: aggregate_module, opts: opts] do
-      case Map.get(@registered_identities, aggregate_module) do
-        nil ->
-          by =
-            case Keyword.get(opts, :by) do
-              nil ->
-                raise "#{inspect(aggregate_module)} aggregate identity is missing the `by` option"
+    aggregate_module =
+      Macro.expand_literals(aggregate_module, %{__CALLER__ | function: {:dummy, 1}})
 
-              by when is_atom(by) ->
-                by
+    {opts, _bindings} = Code.eval_quoted(opts, [], __CALLER__)
 
-              by when is_function(by, 1) ->
-                by
+    Commanded.Commands.Router.register_identity(
+      __CALLER__,
+      __CALLER__.module,
+      aggregate_module,
+      opts
+    )
 
-              invalid ->
-                raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
-            end
-
-          prefix =
-            case Keyword.get(opts, :prefix) do
-              nil ->
-                nil
-
-              prefix when is_function(prefix, 0) ->
-                prefix
-
-              prefix when is_binary(prefix) ->
-                prefix
-
-              invalid ->
-                raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{inspect(invalid)}"
-            end
-
-          @registered_identities Map.put(@registered_identities, aggregate_module,
-                                   by: by,
-                                   prefix: prefix
-                                 )
-
-        config ->
-          raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
-      end
-    end
+    []
   end
 
   @doc """
@@ -346,24 +319,32 @@ defmodule Commanded.Commands.Router do
 
   """
   defmacro dispatch(command_module_or_modules, opts) do
-    opts = parse_opts(opts, [])
+    opts =
+      parse_opts(opts, [])
+      |> Macro.expand_literals(%{__CALLER__ | function: {:dummy, 1}})
+
+    registered_commands = Module.get_attribute(__CALLER__.module, :registered_commands)
+    default_dispatch_opts = Module.get_attribute(__CALLER__.module, :default_dispatch_opts)
 
     for command_module <- List.wrap(command_module_or_modules) do
-      quote do
-        if Enum.any?(@registered_commands, fn {command_module, _command_opts} ->
-             command_module == unquote(command_module)
-           end) do
-          raise ArgumentError,
-            message:
-              "Command `#{inspect(unquote(command_module))}` has already been registered in router `#{inspect(__MODULE__)}`"
-        end
+      command_module =
+        Macro.expand_literals(command_module, %{__CALLER__ | function: {:dummy, 1}})
 
-        @registered_commands {
-          unquote(command_module),
-          Keyword.merge(@default_dispatch_opts, unquote(opts))
-        }
+      if Enum.any?(registered_commands, fn {cm, _command_opts} ->
+           cm == command_module
+         end) do
+        raise ArgumentError,
+          message:
+            "Command `#{inspect(command_module)}` has already been registered in router `#{inspect(__CALLER__.module)}`"
       end
+
+      Module.put_attribute(__CALLER__.module, :registered_commands, {
+        command_module,
+        Keyword.merge(default_dispatch_opts, opts)
+      })
     end
+
+    []
   end
 
   @type dispatch_resp ::
@@ -656,4 +637,53 @@ defmodule Commanded.Commands.Router do
   end
 
   defp parse_opts([], result), do: result
+
+  def register_identity(_env, module, aggregate_module, opts) do
+    registered_identities = Module.get_attribute(module, :registered_identities)
+
+    case Map.get(registered_identities, aggregate_module) do
+      nil ->
+        by =
+          case Keyword.get(opts, :by) do
+            nil ->
+              raise "#{inspect(aggregate_module)} aggregate identity is missing the `by` option"
+
+            by when is_atom(by) ->
+              by
+
+            by when is_function(by, 1) ->
+              by
+
+            invalid ->
+              raise "#{inspect(aggregate_module)} aggregate identity has an invalid `by` option: #{inspect(invalid)}"
+          end
+
+        prefix =
+          case Keyword.get(opts, :prefix) do
+            nil ->
+              nil
+
+            prefix when is_function(prefix, 0) ->
+              prefix
+
+            prefix when is_binary(prefix) ->
+              prefix
+
+            invalid ->
+              raise "#{inspect(aggregate_module)} aggregate has an invalid identity prefix: #{inspect(invalid)}"
+          end
+
+        Module.put_attribute(
+          module,
+          :registered_identities,
+          Map.put(registered_identities, aggregate_module,
+            by: by,
+            prefix: prefix
+          )
+        )
+
+      config ->
+        raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
+    end
+  end
 end
