@@ -5,6 +5,7 @@ defmodule Commanded.ProcessManagers.ExampleCommandHandler do
   alias Commanded.ProcessManagers.ExampleAggregate
 
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{
+    Continue,
     Error,
     Pause,
     Publish,
@@ -27,6 +28,9 @@ defmodule Commanded.ProcessManagers.ExampleCommandHandler do
 
   def handle(%ExampleAggregate{} = aggregate, %Stop{}),
     do: ExampleAggregate.stop(aggregate)
+
+  def handle(%ExampleAggregate{} = aggregate, %Continue{}),
+    do: ExampleAggregate.continue(aggregate)
 
   def handle(%ExampleAggregate{} = aggregate, %Error{}),
     do: ExampleAggregate.error(aggregate)

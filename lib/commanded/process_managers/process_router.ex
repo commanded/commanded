@@ -295,8 +295,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     %RecordedEvent{data: data} = event
     %State{process_manager_module: process_manager_module} = state
 
+    additional_metadata = Map.take(state, [:application])
+
+    enriched_metadata =
+      RecordedEvent.enrich_metadata(event, additional_metadata: additional_metadata)
+
     try do
-      case process_manager_module.interested?(data) do
+      case process_manager_module.interested?(data, enriched_metadata) do
         {:start, []} ->
           ack_and_continue(event, state)
 

@@ -6,6 +6,7 @@ defmodule Commanded.ProcessManagers.ExampleRouter do
   alias Commanded.ProcessManagers.{ExampleAggregate, ExampleCommandHandler}
 
   alias Commanded.ProcessManagers.ExampleAggregate.Commands.{
+    Continue,
     Error,
     Pause,
     Publish,
@@ -14,7 +15,7 @@ defmodule Commanded.ProcessManagers.ExampleRouter do
     Stop
   }
 
-  dispatch [Error, Pause, Publish, Raise, Start, Stop],
+  dispatch [Error, Pause, Publish, Raise, Start, Stop, Continue],
     to: ExampleCommandHandler,
     aggregate: ExampleAggregate,
     identity: :aggregate_uuid

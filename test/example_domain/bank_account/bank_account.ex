@@ -16,7 +16,7 @@ defmodule Commanded.ExampleDomain.BankAccount do
     end
 
     defmodule WithdrawMoney do
-      defstruct [:account_number, :transfer_uuid, :amount]
+      defstruct [:account_number, :transfer_uuid, :amount, :by_user]
     end
 
     defmodule CloseAccount do

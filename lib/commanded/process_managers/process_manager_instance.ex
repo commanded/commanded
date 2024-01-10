@@ -91,10 +91,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     state =
       case EventStore.read_snapshot(application, snapshot_uuid(state)) do
         {:ok, snapshot} ->
+          %SnapshotData{data: data, source_version: source_version} = snapshot
+
           %State{
             state
-            | process_state: snapshot.data,
-              last_seen_event: snapshot.source_version
+            | process_state: data,
+              last_seen_event: source_version
           }
 
         {:error, :snapshot_not_found} ->
@@ -179,8 +181,14 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   end
 
   defp process_unseen_event(%RecordedEvent{} = event, %State{} = state, context \\ %{}) do
-    %RecordedEvent{correlation_id: correlation_id, event_id: event_id, event_number: event_number} =
-      event
+    %RecordedEvent{
+      correlation_id: correlation_id,
+      event_id: event_id,
+      event_number: event_number,
+      metadata: metadata
+    } = event
+
+    %State{process_state: process_state} = state
 
     telemetry_metadata = telemetry_metadata(event, state)
     start_time = telemetry_start(telemetry_metadata)
@@ -189,8 +197,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       {:error, error} ->
         failure_context = %FailureContext{
           context: context,
+          enriched_metadata: enrich_metadata(event, state),
           last_event: event,
-          process_manager_state: state
+          process_manager_state: process_state
         }
 
         telemetry_stop(start_time, telemetry_metadata, {:error, error})
@@ -200,8 +209,9 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       {:error, error, stacktrace} ->
         failure_context = %FailureContext{
           context: context,
+          enriched_metadata: enrich_metadata(event, state),
           last_event: event,
-          process_manager_state: state,
+          process_manager_state: process_state,
           stacktrace: stacktrace
         }
 
@@ -213,7 +223,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         commands = List.wrap(commands)
 
         # Copy event id, as causation id, and correlation id from handled event.
-        opts = [causation_id: event_id, correlation_id: correlation_id, returning: false]
+        opts = [
+          causation_id: event_id,
+          correlation_id: correlation_id,
+          metadata: metadata || %{},
+          returning: false
+        ]
 
         with :ok <- dispatch_commands(commands, opts, state, event) do
           telemetry_stop(start_time, telemetry_metadata, {:ok, commands})
@@ -222,24 +237,27 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
             {:error, error, stacktrace} ->
               failure_context = %FailureContext{
                 context: context,
+                enriched_metadata: enrich_metadata(event, state),
                 last_event: event,
-                process_manager_state: state,
+                process_manager_state: process_state,
                 stacktrace: stacktrace
               }
 
               handle_event_error({:error, error}, event, failure_context, state)
 
-            process_state ->
+            updated_process_state ->
               state = %State{
                 state
-                | process_state: process_state,
+                | process_state: updated_process_state,
                   last_seen_event: event_number
               }
 
               :ok = persist_state(event_number, state)
               :ok = ack_event(event, state)
 
-              handle_after_command(commands, state)
+              enriched_metadata = enrich_metadata(event, state)
+
+              handle_after_command(commands, enriched_metadata, state)
           end
         else
           {:stop, reason} ->
@@ -260,8 +278,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_state: process_state
     } = state
 
+    enriched_metadata = enrich_metadata(event, state)
+
     try do
-      process_manager_module.handle(process_state, data)
+      process_manager_module.handle(process_state, data, enriched_metadata)
     rescue
       error ->
         stacktrace = __STACKTRACE__
@@ -350,19 +370,19 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     end)
   end
 
-  defp handle_after_command([], %State{} = state) do
+  defp handle_after_command([], _metadata, %State{} = state) do
     %State{idle_timeout: idle_timeout} = state
 
     {:noreply, state, idle_timeout}
   end
 
-  defp handle_after_command([command | commands], %State{} = state) do
+  defp handle_after_command([command | commands], metadata, %State{} = state) do
     %State{
       process_manager_module: process_manager_module,
       process_state: process_state
     } = state
 
-    case process_manager_module.after_command(process_state, command) do
+    case process_manager_module.after_command(process_state, command, metadata) do
       :stop ->
         Logger.debug(fn ->
           describe(state) <> " has been stopped by command " <> inspect(command)
@@ -373,7 +393,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         {:stop, :normal, state}
 
       _ ->
-        handle_after_command(commands, state)
+        handle_after_command(commands, metadata, state)
     end
   end
 
@@ -386,8 +406,10 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
       process_state: process_state
     } = state
 
+    enriched_metadata = enrich_metadata(event, state)
+
     try do
-      process_manager_module.apply(process_state, data)
+      process_manager_module.apply(process_state, data, enriched_metadata)
     rescue
       error ->
         stacktrace = __STACKTRACE__
@@ -401,33 +423,34 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp dispatch_commands([], _opts, _state, _last_event, _context), do: :ok
 
   defp dispatch_commands([command | pending_commands], opts, state, last_event, context) do
-    %State{application: application} = state
+    %State{application: application, process_state: initial_process_state} = state
 
-    Logger.debug(fn ->
-      describe(state) <> " attempting to dispatch command: " <> inspect(command)
-    end)
+    Logger.debug(describe(state) <> " attempting to dispatch command: " <> inspect(command))
 
     case Application.dispatch(application, command, opts) do
       :ok ->
         dispatch_commands(pending_commands, opts, state, last_event)
 
       {:error, _error} = error ->
-        Logger.warning(fn ->
+        Logger.warning(
           describe(state) <>
             " failed to dispatch command " <> inspect(command) <> " due to: " <> inspect(error)
-        end)
+        )
 
         process_manager_state =
           case mutate_state(last_event, state) do
-            {:error, _, _} -> state
-            process_manager_state -> process_manager_state
+            {:error, _, _} -> initial_process_state
+            updated_manager_state -> updated_manager_state
           end
 
+        enriched_metadata = enrich_metadata(last_event, state)
+
         failure_context = %FailureContext{
-          pending_commands: pending_commands,
-          process_manager_state: process_manager_state,
+          context: context,
+          enriched_metadata: enriched_metadata,
           last_event: last_event,
-          context: context
+          pending_commands: pending_commands,
+          process_manager_state: process_manager_state
         }
 
         dispatch_failure(error, command, opts, failure_context, state)
@@ -558,6 +581,16 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
     %State{process_manager_name: process_manager_name, process_uuid: process_uuid} = state
 
     inspect(process_manager_name) <> "-" <> inspect(process_uuid)
+  end
+
+  defp enrich_metadata(%RecordedEvent{} = event, %State{} = state) do
+    %State{application: application} = state
+
+    RecordedEvent.enrich_metadata(event,
+      additional_metadata: %{
+        application: application
+      }
+    )
   end
 
   defp telemetry_start(telemetry_metadata) do
