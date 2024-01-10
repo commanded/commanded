@@ -23,7 +23,7 @@ defmodule Commanded.ProcessManagers.FailureContext do
 
   @type t :: %__MODULE__{
           context: map(),
-          enriched_metadata: map(),
+          enriched_metadata: RecordedEvent.enriched_metadata(),
           last_event: RecordedEvent.t(),
           pending_commands: [struct()],
           process_manager_state: struct(),

@@ -27,7 +27,11 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
 
     command = %StartProcess{process_uuid: process_uuid, reply_to: reply_to}
 
-    assert :ok = ErrorRouter.dispatch(command, application: ErrorApp)
+    assert :ok =
+             ErrorRouter.dispatch(command,
+               application: ErrorApp,
+               metadata: %{"user_id" => 1234}
+             )
 
     assert_receive {:error, :failed, failed_command, failure_context}
 
@@ -36,6 +40,7 @@ defmodule Commanded.ProcessManager.ProcessManagerErrorHandlingStateTest do
     assert match?(
              %FailureContext{
                enriched_metadata: %{
+                 "user_id" => 1234,
                  application: ErrorApp,
                  causation_id: _causation_id,
                  correlation_id: _correlation_id,
