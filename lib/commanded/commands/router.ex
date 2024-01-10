@@ -293,16 +293,13 @@ defmodule Commanded.Commands.Router do
     aggregate_module =
       Macro.expand_literals(aggregate_module, %{__CALLER__ | function: {:dummy, 1}})
 
-    {opts, _bindings} = Code.eval_quoted(opts, [], __CALLER__)
-
-    Commanded.Commands.Router.register_identity(
-      __CALLER__,
-      __CALLER__.module,
-      aggregate_module,
-      opts
-    )
-
-    []
+    quote bind_quoted: [opts: opts, aggregate_module: aggregate_module] do
+      Commanded.Commands.Router.register_identity(
+        __MODULE__,
+        aggregate_module,
+        opts
+      )
+    end
   end
 
   @doc """
@@ -638,7 +635,7 @@ defmodule Commanded.Commands.Router do
 
   defp parse_opts([], result), do: result
 
-  def register_identity(_env, module, aggregate_module, opts) do
+  def register_identity(module, aggregate_module, opts) do
     registered_identities = Module.get_attribute(module, :registered_identities)
 
     case Map.get(registered_identities, aggregate_module) do
