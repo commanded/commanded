@@ -4,9 +4,10 @@
 
 ### Enhancements
 
--  Use `Logger.warning` to fix deprecation warnings ([#542](https://github.com/commanded/commanded/pull/542)).
--  Add typespec to `CompositeRouter.dispatch/2` function ([#536](https://github.com/commanded/commanded/pull/536)).
--  Support `opts` in `Commanded.EventStore.append_to_stream` function ([#528](https://github.com/commanded/commanded/pull/528)).
+- Use `Logger.warning` to fix deprecation warnings ([#542](https://github.com/commanded/commanded/pull/542)).
+- Add typespec to `CompositeRouter.dispatch/2` function ([#536](https://github.com/commanded/commanded/pull/536)).
+- Support `opts` in `Commanded.EventStore.append_to_stream` function ([#528](https://github.com/commanded/commanded/pull/528)).
+- Process manager metadata access ([#514](https://github.com/commanded/commanded/pull/514)).
 
 ### Bug fixes
 
@@ -14,7 +15,7 @@
 
 ## v1.4.2
 
--  Record aggregate state while processing `Commanded.Aggregate.Multi` ([#507](https://github.com/commanded/commanded/pull/507)).
+- Record aggregate state while processing `Commanded.Aggregate.Multi` ([#507](https://github.com/commanded/commanded/pull/507)).
 - Properly handle EXIT signal in event handler ([#512](https://github.com/commanded/commanded/pull/512)).
 - Separate logging a process managers error ([#513](https://github.com/commanded/commanded/pull/513)).
 
@@ -26,7 +27,7 @@
 
 ### Bug fixes
 
--  Remove duplicate apply function call when receiving missed events published to an aggregate's event stream ([364c877](https://github.com/commanded/commanded/commit/364c877e8f30a18d90544676fb58b94132d50720)).
+- Remove duplicate apply function call when receiving missed events published to an aggregate's event stream ([364c877](https://github.com/commanded/commanded/commit/364c877e8f30a18d90544676fb58b94132d50720)).
 - Fix typespec typo in Commanded.Application ([#503](https://github.com/commanded/commanded/pull/503)).
 
 ## v1.4.0
