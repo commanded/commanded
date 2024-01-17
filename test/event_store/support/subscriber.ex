@@ -29,8 +29,12 @@ defmodule Commanded.EventStore.Subscriber do
   end
 
   def init(%State{} = state) do
-    %State{event_store: event_store, event_store_meta: event_store_meta, subscription_opts: opts} =
-      state
+    %State{
+      event_store: event_store,
+      event_store_meta: event_store_meta,
+      owner: owner,
+      subscription_opts: opts
+    } = state
 
     case event_store.subscribe_to(event_store_meta, :all, "subscriber", self(), :origin, opts) do
       {:ok, subscription} ->
@@ -39,7 +43,9 @@ defmodule Commanded.EventStore.Subscriber do
         {:ok, state}
 
       {:error, error} ->
-        {:stop, error}
+        send(owner, {:subscribe_error, error, self()})
+
+        {:ok, state}
     end
   end
 
@@ -79,7 +85,7 @@ defmodule Commanded.EventStore.Subscriber do
   def handle_info({:subscribed, subscription}, %State{subscription: subscription} = state) do
     %State{owner: owner} = state
 
-    send(owner, {:subscribed, subscription})
+    send(owner, {:subscribed, self(), subscription})
 
     {:noreply, %State{state | subscribed?: true}}
   end
