@@ -1,6 +1,6 @@
 # Changelog
 
-## Next release
+## v1.4.3
 
 ### Enhancements
 
