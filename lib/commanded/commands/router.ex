@@ -211,6 +211,8 @@ defmodule Commanded.Commands.Router do
   alias Commanded.UUID
 
   defmacro __using__(opts) do
+    otp_app = Keyword.get(opts, :otp_app, :commanded)
+
     quote do
       require Logger
 
@@ -223,12 +225,18 @@ defmodule Commanded.Commands.Router do
       Module.register_attribute(__MODULE__, :registered_middleware, accumulate: true)
       Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
 
+      @router_lifespan Application.compile_env(
+        unquote(otp_app),
+        [unquote(__MODULE__), :aggregate_lifespan],
+        DefaultLifespan
+      )
+
       @default_dispatch_opts [
         application: Keyword.get(unquote(opts), :application),
         consistency: Router.get_opt(unquote(opts), :default_consistency, :eventual),
         returning: Router.get_default_dispatch_return(unquote(opts)),
         timeout: 5_000,
-        lifespan: DefaultLifespan,
+        lifespan: @router_lifespan,
         metadata: %{},
         retry_attempts: 10
       ]

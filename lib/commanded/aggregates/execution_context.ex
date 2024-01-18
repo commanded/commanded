@@ -42,6 +42,8 @@ defmodule Commanded.Aggregates.ExecutionContext do
   alias Commanded.Aggregates.ExecutionContext
   alias Commanded.Commands.ExecutionResult
 
+  @global_lifespan Application.compile_env(:commanded,:aggregate_lifespan, DefaultLifespan)
+
   defstruct [
     :command,
     :causation_id,
@@ -51,7 +53,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     before_execute: nil,
     retry_attempts: 0,
     returning: false,
-    lifespan: DefaultLifespan,
+    lifespan: @global_lifespan,
     metadata: %{}
   ]
 
