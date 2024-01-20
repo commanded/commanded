@@ -7,8 +7,8 @@ defmodule Commanded.EventStore.EventData do
   @type uuid :: String.t()
 
   @type t :: %Commanded.EventStore.EventData{
-          causation_id: uuid(),
-          correlation_id: uuid(),
+          causation_id: uuid() | nil,
+          correlation_id: uuid() | nil,
           event_type: String.t(),
           data: struct(),
           metadata: map()
