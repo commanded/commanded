@@ -408,6 +408,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         assert length(subscribers) == 3
       end
 
+      @tag :partition
       test "should distribute events to subscribers using optional partition by function", %{
         event_store: event_store,
         event_store_meta: event_store_meta
