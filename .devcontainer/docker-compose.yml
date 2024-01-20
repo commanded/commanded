@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  elixir:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Elixir Version: 1.9, 1.10, 1.10.4, ...
+        VARIANT: "1.14.3"
+
+    volumes:
+      - ..:/workspace:cached
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
