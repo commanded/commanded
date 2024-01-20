@@ -89,7 +89,7 @@ defmodule Commanded.Aggregates.AggregateStateTest do
     {:ok, ^aggregate_uuid} =
       Supervisor.open_aggregate(DefaultApp, @aggregate_module, aggregate_uuid)
 
-    {:ok, _count, _events} =
+    {:ok, _count, _events, _aggregate_state} =
       Aggregate.execute(DefaultApp, @aggregate_module, aggregate_uuid, execution_context)
   end
 end

@@ -280,7 +280,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
       {:ok, ^aggregate_uuid} =
         Supervisor.open_aggregate(DefaultApp, SnapshotAggregate, aggregate_uuid)
 
-      {:ok, _count, _events} =
+      {:ok, _count, _events, _aggregate_state} =
         Aggregate.execute(DefaultApp, SnapshotAggregate, aggregate_uuid, execution_context)
     end
   end
@@ -315,7 +315,7 @@ defmodule Commanded.Aggregates.SnapshottingTest do
     {:ok, ^aggregate_uuid} =
       Supervisor.open_aggregate(DefaultApp, ExampleAggregate, aggregate_uuid)
 
-    {:ok, _count, _events} =
+    {:ok, _count, _events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, execution_context)
   end
 

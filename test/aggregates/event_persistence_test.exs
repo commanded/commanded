@@ -20,7 +20,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
     {:ok, ^aggregate_uuid} =
       Commanded.Aggregates.Supervisor.open_aggregate(DefaultApp, ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10, events} =
+    {:ok, 10, events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %AppendItems{count: 10},
         handler: AppendItemsHandler,
@@ -45,7 +45,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
     {:ok, ^aggregate_uuid} =
       Commanded.Aggregates.Supervisor.open_aggregate(DefaultApp, ExampleAggregate, aggregate_uuid)
 
-    {:ok, 1, events} =
+    {:ok, 1, events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %AppendItems{count: 1},
         handler: AppendItemsHandler,
@@ -54,7 +54,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
 
     assert length(events) == 1
 
-    {:ok, 1, events} =
+    {:ok, 1, events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %NoOp{},
         handler: ExampleAggregate,
@@ -82,7 +82,9 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
       function: :handle
     }
 
-    {:ok, 10, events} = Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, context)
+    {:ok, 10, events, _aggregate_state} =
+      Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, context)
+
     assert length(events) == 10
 
     recorded_events = EventStore.stream_forward(DefaultApp, aggregate_uuid, 0) |> Enum.to_list()
@@ -98,7 +100,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
     {:ok, ^aggregate_uuid} =
       Commanded.Aggregates.Supervisor.open_aggregate(DefaultApp, ExampleAggregate, aggregate_uuid)
 
-    {:ok, 10, events} =
+    {:ok, 10, events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %AppendItems{count: 10},
         handler: AppendItemsHandler,
@@ -127,21 +129,21 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
     {:ok, ^aggregate_uuid} =
       Commanded.Aggregates.Supervisor.open_aggregate(DefaultApp, ExampleAggregate, aggregate_uuid)
 
-    {:ok, 100, _events} =
+    {:ok, 100, _events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %AppendItems{count: 100},
         handler: AppendItemsHandler,
         function: :handle
       })
 
-    {:ok, 200, _events} =
+    {:ok, 200, _events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %AppendItems{count: 100},
         handler: AppendItemsHandler,
         function: :handle
       })
 
-    {:ok, 201, _events} =
+    {:ok, 201, _events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, aggregate_uuid, %ExecutionContext{
         command: %AppendItems{count: 1},
         handler: AppendItemsHandler,
@@ -180,7 +182,7 @@ defmodule Commanded.Aggregates.EventPersistenceTest do
       function: :handle
     }
 
-    {:ok, 1, events} =
+    {:ok, 1, events, _aggregate_state} =
       Aggregate.execute(DefaultApp, ExampleAggregate, prefixed_aggregate_uuid, context)
 
     assert length(events) == 1
