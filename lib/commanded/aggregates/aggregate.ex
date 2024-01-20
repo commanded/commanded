@@ -225,7 +225,10 @@ defmodule Commanded.Aggregates.Aggregate do
               snapshotting: Snapshotting.new(application, aggregate_uuid, snapshot_options)
             }
             |> AggregateStateBuilder.populate()
-            |> Map.fetch!(:aggregate_state)
+            |> case do
+              %Aggregate{aggregate_version: 0} -> nil
+              %Aggregate{} = state -> Map.fetch!(state, :aggregate_state)
+            end
           end)
 
         case Task.yield(task, timeout) || Task.shutdown(task) do
