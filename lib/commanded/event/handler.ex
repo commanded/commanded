@@ -515,7 +515,13 @@ defmodule Commanded.Event.Handler do
   """
   @callback partition_by(domain_event, metadata) :: any()
 
-  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2
+  @doc """
+  Called before an event handler gets reset
+  """
+
+  @callback before_reset() :: :ok
+
+  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2, before_reset: 0
 
   defmacro __using__(using_opts) do
     quote location: :keep do
