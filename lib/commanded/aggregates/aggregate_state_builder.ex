@@ -1,9 +1,35 @@
 defmodule Commanded.Aggregates.AggregateStateBuilder do
+  use TelemetryRegistry
   alias Commanded.Aggregates.Aggregate
   alias Commanded.EventStore
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.SnapshotData
   alias Commanded.Snapshotting
+  alias Commanded.Telemetry
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :state_builder, :start],
+    description: "Emitted when an aggregate begins loading from the event store",
+    measurements: "%{system_time: integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      aggregate_uuid: String.t(),
+      aggregate_state: struct(),
+      aggregate_version: non_neg_integer()}
+    """
+  })
+
+  telemetry_event(%{
+    event: [:commanded, :aggregate, :state_builder, :stop],
+    description: "Emitted when an aggregate completes loading from the event store",
+    measurements: "%{duration: non_neg_integer(), count: non_neg_integer()}",
+    metadata: """
+    %{application: Commanded.Application.t(),
+      aggregate_uuid: String.t(),
+      aggregate_state: struct(),
+      aggregate_version: non_neg_integer()}
+    """
+  })
 
   @read_event_batch_size 1_000
 
@@ -62,15 +88,41 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
 
   # Rebuild aggregate state from a `Stream` of its events.
   defp rebuild_from_event_stream(event_stream, %Aggregate{} = state) do
-    Enum.reduce(event_stream, state, fn event, state ->
+    telemetry_metadata = telemetry_metadata(state)
+    telemetry_prefix = [:commanded, :aggregate, :state_builder]
+    start_time = Telemetry.start(telemetry_prefix, telemetry_metadata)
+
+    {state, count} = Enum.reduce(event_stream, {state, 0}, fn event, {state, count} ->
       %RecordedEvent{data: data, stream_version: stream_version} = event
       %Aggregate{aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state
 
-      %Aggregate{
+      state = %Aggregate{
         state
         | aggregate_version: stream_version,
           aggregate_state: aggregate_module.apply(aggregate_state, data)
       }
+      {state, count + 1}
     end)
+
+    Telemetry.stop(telemetry_prefix, start_time, telemetry_metadata, %{count: count})
+
+    state
   end
+
+  defp telemetry_metadata(%Aggregate{} = state) do
+    %Aggregate{
+      application: application,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version
+    } = state
+
+    %{
+      application: application,
+      aggregate_uuid: aggregate_uuid,
+      aggregate_state: aggregate_state,
+      aggregate_version: aggregate_version,
+    }
+  end
+
 end
