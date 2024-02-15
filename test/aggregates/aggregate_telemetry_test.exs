@@ -192,6 +192,41 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
 
       refute_received {[:commanded, :aggregate, :execute, :stop], _measurements, _metadata}
     end
+
+    test "emit `[:commanded, :aggregate, :populate]` events",
+         %{aggregate_uuid: aggregate_uuid, pid: pid} do
+
+      context = %ExecutionContext{
+        command: %Ok{message: "ok"},
+        function: :execute,
+        handler: ExampleAggregate
+      }
+
+      # Send some commands, then kill the process to force a reload.
+      count = 3
+      for _i <- 1..count do
+        {:ok, _version, _events} = GenServer.call(pid, {:execute_command, context})
+      end
+      Process.exit(pid, :normal)
+
+      # Do the reload, we should now have telemetry
+      start_aggregate(aggregate_uuid)
+
+      assert_receive {[:commanded, :aggregate, :populate, :start], _measurements, _metadata}
+      assert_receive {[:commanded, :aggregate, :populate, :stop], measurements, metadata}
+
+      assert match?(%{count: ^count}, measurements)
+
+      assert match?(
+               %{
+                 aggregate_state: %ExampleAggregate{},
+                 aggregate_uuid: ^aggregate_uuid,
+                 aggregate_version: ^count,
+                 application: DefaultApp
+               },
+               metadata
+             )
+    end
   end
 
   def start_aggregate(aggregate_uuid) do
@@ -207,7 +242,9 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
       [
         [:commanded, :aggregate, :execute, :start],
         [:commanded, :aggregate, :execute, :stop],
-        [:commanded, :aggregate, :execute, :exception]
+        [:commanded, :aggregate, :execute, :exception],
+        [:commanded, :aggregate, :populate, :start],
+        [:commanded, :aggregate, :populate, :stop]
       ],
       fn event_name, measurements, metadata, reply_to ->
         send(reply_to, {event_name, measurements, metadata})
