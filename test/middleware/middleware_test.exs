@@ -136,7 +136,7 @@ defmodule Commanded.Middleware.MiddlewareTest do
     # Force command handling to timeout so the aggregate process is terminated
     :ok =
       case Router.dispatch(command, application: DefaultApp, timeout: 50) do
-        {:error, :aggregate_execution_timeout} -> :ok
+        {:error, :too_many_attempts} -> :ok
         {:error, :aggregate_execution_failed} -> :ok
       end
 
