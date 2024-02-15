@@ -195,7 +195,6 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
 
     test "emit `[:commanded, :aggregate, :populate]` events",
          %{aggregate_uuid: aggregate_uuid, pid: pid} do
-
       context = %ExecutionContext{
         command: %Ok{message: "ok"},
         function: :execute,
@@ -204,9 +203,11 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
 
       # Send some commands, then kill the process to force a reload.
       count = 3
+
       for _i <- 1..count do
         {:ok, _version, _events} = GenServer.call(pid, {:execute_command, context})
       end
+
       Process.exit(pid, :normal)
 
       # Do the reload, we should now have telemetry
