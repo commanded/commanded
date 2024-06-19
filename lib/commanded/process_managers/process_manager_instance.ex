@@ -6,7 +6,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   require Logger
 
   alias Commanded.{Application, EventStore, Telemetry}
-  alias Commanded.EventStore.{RecordedEvent, SnapshotData}
+  alias Commanded.EventStore.{RecordedEvent, SnapshotData, TypeProvider}
   alias Commanded.ProcessManagers.{FailureContext, ProcessRouter}
 
   defmodule State do
@@ -551,14 +551,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
   defp persist_state(source_version, %State{} = state) do
     %State{
       application: application,
-      process_manager_module: process_manager_module,
       process_state: process_state
     } = state
 
     snapshot = %SnapshotData{
       source_uuid: snapshot_uuid(state),
       source_version: source_version,
-      source_type: Atom.to_string(process_manager_module),
+      source_type: TypeProvider.to_string(process_state),
       data: process_state
     }
 
