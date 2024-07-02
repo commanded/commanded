@@ -475,10 +475,10 @@ defmodule Commanded.Event.Handler do
           {:error, :failed}
         end
 
-        def error({:error, :failed}, %AnEvent{} = event, %FailureContext{context: context}) do
-          context = record_failure(context)
+        def error({:error, :failed}, %AnEvent{} = event, %FailureContext{} = failure_context) do
+          failure_context = record_failure(failure_context)
 
-          case Map.get(context, :failures) do
+          case Map.get(failure_context.context, :failures) do
             too_many when too_many >= 3 ->
               # skip bad event after third failure
               Logger.warning("Skipping bad event, too many failures: " <> inspect(event))
@@ -487,12 +487,13 @@ defmodule Commanded.Event.Handler do
 
             _ ->
               # retry event, failure count is included in context map
-              {:retry, context}
+              {:retry, failure_context}
           end
         end
 
-        defp record_failure(context) do
-          Map.update(context, :failures, 1, fn failures -> failures + 1 end)
+        defp record_failure(failure_context) do
+          context = Map.update(failure_context.context, :failures, 1, fn failures -> failures + 1 end)
+          %FailureContext{failure_context | context: context}
         end
       end
 
