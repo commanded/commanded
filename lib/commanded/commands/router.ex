@@ -209,6 +209,7 @@ defmodule Commanded.Commands.Router do
   alias Commanded.Aggregates.DefaultLifespan
   alias Commanded.Commands.{ExecutionResult, Router}
   alias Commanded.UUID
+  alias Commanded.Telemetry
 
   defmacro __using__(opts) do
     quote do
@@ -578,10 +579,31 @@ defmodule Commanded.Commands.Router do
       end
 
       # Catch unregistered commands, log and return an error.
-      defp do_dispatch(command, _opts) do
+      defp do_dispatch(command, opts) do
+        event_prefix = [:commanded, :application, :dispatch]
+        application = Keyword.fetch!(opts, :application)
+
+        context = %Commanded.Aggregates.ExecutionContext{
+          command: command
+        }
+
+        telemetry_metadata = %{
+          application: application,
+          error: nil,
+          execution_context: context
+        }
+
+        start_time = Telemetry.start(event_prefix, telemetry_metadata)
+
         Logger.error(fn ->
           "attempted to dispatch an unregistered command: " <> inspect(command)
         end)
+
+        Telemetry.stop(
+          event_prefix,
+          start_time,
+          Map.put(telemetry_metadata, :error, :unregistered_command)
+        )
 
         {:error, :unregistered_command}
       end
