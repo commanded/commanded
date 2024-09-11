@@ -166,8 +166,8 @@ defmodule Commanded.Event.Handler do
 
   An event handler can define and update state which is held in the `GenServer`
   process memory. It is passed to the `handle/2` function as part of the
-  metadata using the `:state` key. The state is transient and will be lost
-  whenever the process restarts.
+  metadata using the `:state` key. By default the state is transient and will be lost
+  whenever the process restarts but it can be persisted with the `persistence: :permanent` option.
 
   Initial state can be set in the `init/1` callback function by adding a
   `:state` key to the config. It can also be provided when starting the handler
@@ -542,8 +542,11 @@ defmodule Commanded.Event.Handler do
         - `:start_from` - where to start the event store subscription from when
           first created (default: `:origin`).
 
-        - :subscribe_to - which stream to subscribe to can be either `:all` to
+        - `:subscribe_to` - which stream to subscribe to can be either `:all` to
           subscribe to all events or a named stream (default: `:all`).
+
+        - `persistence` - whether to persist handler state between restarts, one
+        of either `:ephemeral` (default) or `:permanent`.
 
       The default options supported by `GenServer.start_link/3` are supported,
       including the `:hibernate_after` option which allows the process to go
