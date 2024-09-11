@@ -334,6 +334,8 @@ defmodule Commanded.Event.Handler do
   alias Commanded.Event.FailureContext
   alias Commanded.Event.Handler
   alias Commanded.Event.Upcast
+  alias Commanded.EventStore
+  alias Commanded.EventStore.SnapshotData
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.Subscription
   alias Commanded.Subscriptions
@@ -625,7 +627,8 @@ defmodule Commanded.Event.Handler do
     :start_from,
     :subscribe_to,
     :subscription_opts,
-    :state
+    :state,
+    :persistence
   ]
 
   @doc false
@@ -680,7 +683,8 @@ defmodule Commanded.Event.Handler do
     :handler_state,
     :last_seen_event,
     :subscription,
-    :subscribe_timer
+    :subscribe_timer,
+    :persistence
   ]
 
   @doc false
@@ -690,6 +694,7 @@ defmodule Commanded.Event.Handler do
     index = Keyword.get(handler_opts, :index)
     name = name(application, handler_name, index)
     consistency = consistency(handler_opts)
+    persistence = persistence(handler_opts)
     subscription = new_subscription(application, handler_name, handler_module, handler_opts)
 
     handler = %Handler{
@@ -698,7 +703,8 @@ defmodule Commanded.Event.Handler do
       handler_module: handler_module,
       handler_state: Keyword.get(handler_opts, :state),
       consistency: consistency,
-      subscription: subscription
+      subscription: subscription,
+      persistence: persistence
     }
 
     with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, handler, start_opts) do
@@ -719,12 +725,20 @@ defmodule Commanded.Event.Handler do
   def init(%Handler{} = state) do
     Process.flag(:trap_exit, true)
 
-    {:ok, state, {:continue, :subscribe_to_events}}
+    {:ok, state, {:continue, :fetch_state}}
   end
 
   @impl GenServer
   def terminate(reason, state) do
     Logger.debug(describe(state) <> " is shutting down due to #{inspect(reason)}")
+  end
+
+  @doc false
+  @impl GenServer
+  def handle_continue(:fetch_state, %Handler{} = state) do
+    state = read_state(state)
+
+    {:noreply, state, {:continue, :subscribe_to_events}}
   end
 
   @doc false
@@ -741,6 +755,7 @@ defmodule Commanded.Event.Handler do
     case handler_module.before_reset() do
       :ok ->
         try do
+          :ok = delete_state(state)
           state = state |> reset_subscription() |> subscribe_to_events()
 
           {:noreply, state}
@@ -900,7 +915,10 @@ defmodule Commanded.Event.Handler do
       {:ok, handler_state} ->
         telemetry_stop(start_time, Map.put(telemetry_metadata, :handler_state, handler_state))
 
-        confirm_receipt(event, %Handler{state | handler_state: handler_state})
+        handler = confirm_receipt(event, %Handler{state | handler_state: handler_state})
+        :ok = persist_state(handler)
+
+        handler
 
       {:error, :already_seen_event} ->
         telemetry_stop(start_time, Map.put(telemetry_metadata, :error, :already_seen_event))
@@ -1087,6 +1105,60 @@ defmodule Commanded.Event.Handler do
     %Handler{state | last_seen_event: event_number}
   end
 
+  defp snapshot_uuid(%Handler{} = state) do
+    %Handler{handler_module: handler_module, handler_name: handler_name} = state
+
+    inspect(handler_module) <> "-" <> inspect(handler_name)
+  end
+
+  defp read_state(%Handler{persistence: :permanent} = state) do
+    %Handler{application: application} = state
+
+    case EventStore.read_snapshot(application, snapshot_uuid(state)) do
+      {:ok, snapshot} ->
+        %SnapshotData{data: data, source_version: source_version} = snapshot
+
+        %Handler{
+          state
+          | handler_state: data,
+            last_seen_event: source_version
+        }
+
+      {:error, :snapshot_not_found} ->
+        state
+    end
+  end
+
+  defp read_state(state), do: state
+
+  defp persist_state(%Handler{persistence: :permanent} = state) do
+    %Handler{
+      application: application,
+      handler_module: handler_module,
+      handler_state: handler_state,
+      last_seen_event: last_seen_event
+    } = state
+
+    snapshot = %SnapshotData{
+      source_uuid: snapshot_uuid(state),
+      source_version: last_seen_event,
+      source_type: Atom.to_string(handler_module),
+      data: handler_state
+    }
+
+    EventStore.record_snapshot(application, snapshot)
+  end
+
+  defp persist_state(_), do: :ok
+
+  defp delete_state(%Handler{persistence: :permanent} = state) do
+    %Handler{application: application} = state
+
+    EventStore.delete_snapshot(application, snapshot_uuid(state))
+  end
+
+  defp delete_state(_), do: :ok
+
   # Determine the partition key for an event to ensure ordered processing when
   # necessary.
   defp partition_event(
@@ -1188,6 +1260,10 @@ defmodule Commanded.Event.Handler do
       subscribe_to: Keyword.get(handler_opts, :subscribe_to, :all),
       subscription_opts: Keyword.get(handler_opts, :subscription_opts, [])
     )
+  end
+
+  defp persistence(opts) do
+    opts[:persistence] || :ephemeral
   end
 
   defp describe(%Handler{handler_module: handler_module}),
