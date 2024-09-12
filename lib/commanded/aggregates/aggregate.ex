@@ -482,13 +482,20 @@ defmodule Commanded.Aggregates.Aggregate do
           {{:ok, []}, state}
 
         %Multi{} = multi ->
+          raise "Don't forget to add a test for this branch!"
           case Multi.run(multi) do
             {:error, _error} = reply ->
               {reply, state}
 
+            {aggregate_state, {:trim_stream, pending_events}} ->
+              persist_events(pending_events, aggregate_state, context, state, trim_stream: true)
+
             {aggregate_state, pending_events} ->
               persist_events(pending_events, aggregate_state, context, state)
           end
+
+        {:trim_stream, pending_events} ->
+          apply_and_persist_events(pending_events, context, state, trim_stream: true)
 
         {:ok, pending_events} ->
           apply_and_persist_events(pending_events, context, state)
@@ -508,23 +515,23 @@ defmodule Commanded.Aggregates.Aggregate do
       {{:error, error, stacktrace}, state}
   end
 
-  defp apply_and_persist_events(pending_events, context, %Aggregate{} = state) do
+  defp apply_and_persist_events(pending_events, context, %Aggregate{} = state, opts \\ []) do
     %Aggregate{aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state
 
     pending_events = List.wrap(pending_events)
     aggregate_state = apply_events(aggregate_module, aggregate_state, pending_events)
 
-    persist_events(pending_events, aggregate_state, context, state)
+    persist_events(pending_events, aggregate_state, context, state, opts)
   end
 
   defp apply_events(aggregate_module, aggregate_state, events) do
     Enum.reduce(events, aggregate_state, &aggregate_module.apply(&2, &1))
   end
 
-  defp persist_events(pending_events, aggregate_state, context, %Aggregate{} = state) do
+  defp persist_events(pending_events, aggregate_state, context, %Aggregate{} = state, opts \\ []) do
     %Aggregate{aggregate_version: expected_version} = state
 
-    with :ok <- append_to_stream(pending_events, context, state) do
+    with :ok <- append_to_stream(pending_events, context, state, opts) do
       aggregate_version = expected_version + length(pending_events)
 
       state = %Aggregate{
@@ -557,9 +564,9 @@ defmodule Commanded.Aggregates.Aggregate do
     end
   end
 
-  defp append_to_stream([], _context, _state), do: :ok
+  defp append_to_stream([], _context, _state, _opts), do: :ok
 
-  defp append_to_stream(pending_events, %ExecutionContext{} = context, %Aggregate{} = state) do
+  defp append_to_stream(pending_events, %ExecutionContext{} = context, %Aggregate{} = state, opts) do
     %Aggregate{
       application: application,
       aggregate_uuid: aggregate_uuid,
@@ -579,7 +586,15 @@ defmodule Commanded.Aggregates.Aggregate do
         metadata: metadata
       )
 
-    EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data)
+    opts = case Keyword.pop(opts, :trim_stream) do
+      {true, opts} ->
+        trim_stream_to_version = expected_version + length(pending_events)
+        Keyword.put(opts, :trim_stream_to_version, trim_stream_to_version)
+      {_, opts} ->
+        opts
+    end
+
+    EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data, opts)
   end
 
   defp do_take_snapshot(%Aggregate{} = state) do
