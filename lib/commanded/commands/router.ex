@@ -338,7 +338,6 @@ defmodule Commanded.Commands.Router do
                                    by: by,
                                    prefix: prefix
                                  )
-
         config ->
           raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
       end
@@ -480,6 +479,30 @@ defmodule Commanded.Commands.Router do
 
   defmacro __before_compile__(_env) do
     quote generated: true do
+      def stream_uuid(aggregate) when is_struct(aggregate)  do
+        case Map.fetch(@registered_identities, aggregate.__struct__) do
+          {:ok, opts} ->
+            field = Keyword.fetch!(opts, :by)
+            prefix = Keyword.fetch!(opts, :prefix)
+            id = Map.fetch!(aggregate, field)
+            "#{prefix}#{id}"
+
+          :error ->
+            {:error, "#{aggregate.__struct__} does not have a registered identity"}
+        end
+      end
+
+      def stream_uuid(aggregate_module, unprefixed_aggregate_id) do
+        case Map.fetch(@registered_identities, aggregate_module) do
+          {:ok, opts} ->
+            prefix = Keyword.get(opts, :prefix, "")
+            "#{prefix}#{unprefixed_aggregate_id}"
+
+          :error ->
+            unprefixed_aggregate_id
+        end
+      end
+
       @doc false
       def __registered_commands__ do
         Enum.map(@registered_commands, fn {command_module, _command_opts} -> command_module end)
