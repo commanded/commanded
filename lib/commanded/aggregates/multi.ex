@@ -188,23 +188,14 @@ defmodule Commanded.Aggregate.Multi do
 
                 {aggregate, updated_steps, events}
 
+              {:trim_stream, pending_events} ->
+                evolve(aggregate, events, pending_events, step_name, steps)
+
               {:ok, pending_events} ->
-                pending_events = List.wrap(pending_events)
-
-                evolved_aggregate = apply_events(aggregate, pending_events)
-
-                updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
-
-                {evolved_aggregate, updated_steps, events ++ pending_events}
+                evolve(aggregate, events, pending_events, step_name, steps)
 
               pending_events ->
-                pending_events = List.wrap(pending_events)
-
-                evolved_aggregate = apply_events(aggregate, pending_events)
-
-                updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
-
-                {evolved_aggregate, updated_steps, events ++ pending_events}
+                evolve(aggregate, events, pending_events, step_name, steps)
             end
         end)
 
@@ -212,6 +203,13 @@ defmodule Commanded.Aggregate.Multi do
     catch
       {:error, _error} = error -> error
     end
+  end
+
+  defp evolve(aggregate, events, pending_events, step_name, steps) do
+    pending_events = List.wrap(pending_events)
+    evolved_aggregate = apply_events(aggregate, pending_events)
+    updated_steps = maybe_update_steps(step_name, steps, evolved_aggregate)
+    {evolved_aggregate, updated_steps, events ++ pending_events}
   end
 
   defp maybe_update_steps(step_name, actual_steps, aggregate_state_after_step)

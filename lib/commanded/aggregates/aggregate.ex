@@ -482,7 +482,6 @@ defmodule Commanded.Aggregates.Aggregate do
           {{:ok, []}, state}
 
         %Multi{} = multi ->
-          raise "Don't forget to add a test for this branch!"
           case Multi.run(multi) do
             {:error, _error} = reply ->
               {reply, state}
