@@ -56,8 +56,7 @@ defmodule Commanded.Event.EventHandlerBatchTest do
 
       Handler.handle_info({:events, recorded_events}, state)
       assert_received {:error, :skipping}
-      assert_received {:batch, _, 2}
-      assert_received {:acked, ^last_recorded_event}
+      refute_receive {:acked, ^last_recorded_event}
     end
 
     test "should stop" do

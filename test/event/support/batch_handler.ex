@@ -26,9 +26,9 @@ defmodule Commanded.Event.BatchHandler do
 
         :ok
 
-      {event, _metadata} ->
-        Logger.info("Handle specific bad event")
-        {:error, :bad_value, event}
+      {_event, _metadata} ->
+        Logger.info("Make the entire batch fail if an error is encountered")
+        {:error, :bad_value}
     end
   end
 

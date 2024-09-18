@@ -11,12 +11,16 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
   require Logger
 
   @impl true
-  def handle_batch([{%ErrorEvent{strategy: "retry"} = event, _metadata} | _rest]) do
-    {:error, :bad_value, event}
+  def handle_batch([{%ErrorEvent{strategy: "retry"}, _metadata} | _rest]) do
+    {:error, :bad_value}
   end
 
-  def handle_batch([{%ErrorEvent{strategy: "skip"} = event, _metadata} | _rest]) do
-    {:error, :skipping, event}
+  def handle_batch([{%ErrorEvent{strategy: "skip"}, _metadata} | _rest]) do
+    {:error, :skipping}
+  end
+
+  def handle_batch([{%ReplyEvent{value: :raise}, _metadata} | _rest]) do
+    raise ArgumentError, "Raise"
   end
 
   def handle_batch([{%ReplyEvent{reply_to: reply_to, value: value}, _metadata} | _rest])
@@ -26,9 +30,9 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
     :ok
   end
 
-  def handle_batch([{event, _metadata} | _rest]) do
+  def handle_batch([{_event, _metadata} | _rest]) do
     Logger.info("Returning bad value error")
-    {:error, :bad_value, event}
+    {:error, :bad_value}
   end
 
   def handle_batch(events) do
@@ -37,20 +41,26 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
   end
 
   @impl true
-  def error({:error, :skipping}, %ErrorEvent{reply_to: reply_to}, _failure_context) do
+  def error({:error, :skipping}, [%ErrorEvent{reply_to: reply_to} | _], _failure_context) do
     send(reply_to, {:error, :skipping})
 
     :skip
   end
 
-  def error({:error, reason}, %ErrorEvent{strategy: "default"} = event, _failure_context) do
-    %ErrorEvent{reply_to: reply_to} = event
+  def error(
+        {:error, reason},
+        [%ErrorEvent{strategy: "default", reply_to: reply_to} | _],
+        _failure_context
+      ) do
     send(reply_to, {:error, :stopping})
     {:stop, reason}
   end
 
-  def error({:error, _reason}, %ErrorEvent{strategy: "retry"} = event, failure_context) do
-    %ErrorEvent{reply_to: reply_to} = event
+  def error(
+        {:error, _reason},
+        [%ErrorEvent{strategy: "retry", reply_to: reply_to} | _],
+        failure_context
+      ) do
     %FailureContext{context: context} = failure_context
 
     context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)

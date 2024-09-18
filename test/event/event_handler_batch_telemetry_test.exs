@@ -72,13 +72,13 @@ defmodule Commanded.Event.EventHandlerBatchTelemetryTest do
       assert metadata.event_count == 4
 
       assert_receive {[:commanded, :event, :batch, :stop], _measurements, metadata}
-      assert metadata.event_count == 2
+      assert metadata.event_count == 4
     end
 
     test "should emit `[:commanded, :event, :batch, :exception]` telemetry from thrown exception" do
       events = [
-        %ReplyEvent{reply_to: self(), value: :error},
-        %ReplyEvent{reply_to: self(), value: :error}
+        %ReplyEvent{reply_to: self(), value: :raise},
+        %ReplyEvent{reply_to: self(), value: :raise}
       ]
 
       metadata = %{"key" => "value"}

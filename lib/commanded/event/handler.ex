@@ -521,7 +521,6 @@ defmodule Commanded.Event.Handler do
               :ok
               | {:ok, new_state :: any()}
               | {:error, reason :: any()}
-              | {:error, reason :: any(), domain_event}
 
   @doc """
   Called when an event `handle/2` callback returns an error.
@@ -601,7 +600,7 @@ defmodule Commanded.Event.Handler do
   """
   @callback error(
               error :: term(),
-              failed_event :: domain_event | nil,
+              failed_event :: domain_event | [domain_event] | nil,
               failure_context :: FailureContext.t()
             ) ::
               {:retry, context :: map() | FailureContext.t()}
@@ -1107,7 +1106,8 @@ defmodule Commanded.Event.Handler do
 
   defp handle_batch(events, context \\ %{}, handler)
 
-  defp handle_batch(events, context, %Handler{last_seen_event: last_seen_event} = state) when is_number(last_seen_event) do
+  defp handle_batch(events, context, %Handler{last_seen_event: last_seen_event} = state)
+       when is_number(last_seen_event) do
     %{event_number: last_event_number} = last_event = List.last(events)
 
     if last_event_number <= last_seen_event do
@@ -1118,7 +1118,7 @@ defmodule Commanded.Event.Handler do
       confirm_receipt([last_event], state)
     else
       events
-      |> Enum.reject(& &1.event_number <= last_seen_event)
+      |> Enum.reject(&(&1.event_number <= last_seen_event))
       |> do_handle_batch(context, state)
     end
   end
@@ -1156,60 +1156,7 @@ defmodule Commanded.Event.Handler do
 
           failure_context = build_failure_context(nil, context, state)
           retry_fun = fn context, state -> handle_batch(events, context, state) end
-          # For now, we pass the last event so that we can acknowledge it if the error callback
-          # returns :skip. In the future, we should make handle_event_error/5 be able to accept
-          # a list events so that the error/3 callback can get the list of events
-          handle_event_error(error, List.last(events), failure_context, state, retry_fun)
-
-        {:error, reason, event} ->
-          error = {:error, reason}
-          # This is actually a sort of single-event-error, so handle it like that.
-          # We acknowledge what came before, have the error handler tell us what to
-          # do, and on retry, retry the rest of the batch.
-
-          {success, recorded_event, left} =
-            case Enum.chunk_by(events, fn e -> e.data == event end) do
-              [[recorded_event], left] -> {[], recorded_event, left}
-              [success, [recorded_event]] -> {success, recorded_event, []}
-              [success, [recorded_event], left] -> {success, recorded_event, left}
-            end
-
-          last_successful_event_id =
-            case List.last(success) do
-              %{event_id: id} -> id
-              _ -> nil
-            end
-
-          telemetry_metadata =
-            telemetry_metadata
-            |> Map.put(:recorded_event, recorded_event)
-            |> Map.put(:last_event_id, last_successful_event_id)
-            |> Map.put(:event_count, length(success))
-            |> Map.put(:error, reason)
-
-          telemetry_stop(start_time, telemetry_metadata, :batch)
-
-          confirm_receipt(success, state)
-
-          log_event_error(error, recorded_event, state)
-
-          failure_context = build_failure_context(recorded_event, context, state)
-          # A tricky bit here: if the error action is :skip, then we will confirm
-          # receipt, which updates the state, and then retry the whole batch including
-          # the just-acknowledged event but above, we will see that we've done that one before
-          # and skip it.
-          retry_fun = fn context, state ->
-            events =
-              case Map.get(context, :failure_action) do
-                :skip -> left
-                _ -> [recorded_event | left]
-              end
-
-            context = Map.delete(context, :failure_action)
-            handle_batch(events, context, state)
-          end
-
-          handle_event_error(error, recorded_event, failure_context, state, retry_fun)
+          handle_event_error(error, events, failure_context, state, retry_fun)
 
         invalid ->
           error =
@@ -1300,8 +1247,9 @@ defmodule Commanded.Event.Handler do
        ) do
     data =
       case maybe_failed_event do
-        nil -> nil
+        events when is_list(events) -> Enum.map(events, fn %RecordedEvent{data: data} -> data end)
         %RecordedEvent{data: data} -> data
+        nil -> nil
       end
 
     %Handler{handler_module: handler_module} = state
@@ -1392,8 +1340,6 @@ defmodule Commanded.Event.Handler do
   end
 
   # Confirm receipt of one or more events.
-  defp confirm_receipt([], state), do: state
-
   defp confirm_receipt(recorded_events, %Handler{} = state) do
     %Handler{
       application: application,
