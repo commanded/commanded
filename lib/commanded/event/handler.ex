@@ -502,17 +502,7 @@ defmodule Commanded.Event.Handler do
   Return `:ok` on success. All events in the batch will be acknowledged.
 
   On error, you can either return `{:error, reason}` to indicate something
-  with the whole batch went wrong, or `{:error, reason, event}` to indicate
-  that all events prior to this event were processed successfully but this
-  particular event went wrong.
-
-  In both cases, the error handler will be called. When just a reason is
-  returned, the assumption is that a system issue is preventing the process
-  from continuing or the entire batch is invalid. In this case, the error
-  handler will be called with the last event of the batch as the event argument.
-  When an event and a reason are returned, the assumption is that something is
-  wrong with the event itself and therefore, it is passed in as the first
-  argument for the error handler.
+  with the whole batch went wrong
 
   Note that this interface may change as more experience with use cases
   for batching is gained.
