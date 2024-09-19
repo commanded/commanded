@@ -2,38 +2,38 @@ defmodule Commanded.EventStore do
   @moduledoc """
   Use the event store configured for a Commanded application.
 
-
   ### Telemetry Events
+
   Adds telemetry events for the following functions. Events are emitted in the form
 
   `[:commanded, :event_store, event]` with their spannable postfixes (`start`, `stop`, `exception`)
 
-  * ack_event/3
-  * adapter/2
-  * append_to_stream/4
-  * delete_snapshot/2
-  * delete_subscription/3
-  * read_snapshot/2
-  * record_snapshot/2
-  * stream_forward/2
-  * stream_forward/3
-  * stream_forward/4
-  * subscribe/2
-  * subscribe_to/5
-  * subscribe_to/6
-  * unsubscribe/2
-  """
+    * ack_event/3
+    * adapter/2
+    * append_to_stream/4
+    * delete_snapshot/2
+    * delete_subscription/3
+    * read_snapshot/2
+    * record_snapshot/2
+    * stream_forward/2
+    * stream_forward/3
+    * stream_forward/4
+    * subscribe/2
+    * subscribe_to/5
+    * subscribe_to/6
+    * unsubscribe/2
 
+  """
   alias Commanded.Application
   alias Commanded.Event.Upcast
 
-  @type application :: Commanded.Application.t()
+  @type application :: Application.t()
   @type config :: Keyword.t()
 
   @doc """
   Append one or more events to a stream atomically.
   """
-  def append_to_stream(application, stream_uuid, expected_version, events) do
+  def append_to_stream(application, stream_uuid, expected_version, events, opts \\ []) do
     meta = %{
       application: application,
       stream_uuid: stream_uuid,
@@ -43,18 +43,21 @@ defmodule Commanded.EventStore do
     span(:append_to_stream, meta, fn ->
       {adapter, adapter_meta} = Application.event_store_adapter(application)
 
-      adapter.append_to_stream(
-        adapter_meta,
-        stream_uuid,
-        expected_version,
-        events
-      )
+      if function_exported?(adapter, :append_to_stream, 5) do
+        adapter.append_to_stream(adapter_meta, stream_uuid, expected_version, events, opts)
+      else
+        adapter.append_to_stream(
+          adapter_meta,
+          stream_uuid,
+          expected_version,
+          events
+        )
+      end
     end)
   end
 
   @doc """
-  Streams events from the given stream, in the order in which they were
-  originally written.
+  Streams events from the given stream, in the order in which they were originally written.
   """
   def stream_forward(application, stream_uuid, start_version \\ 0, read_batch_size \\ 1_000) do
     meta = %{
@@ -138,7 +141,7 @@ defmodule Commanded.EventStore do
         subscription_name,
         subscriber,
         start_from,
-        options \\ []
+        opts \\ []
       ) do
     meta = %{
       application: application,
@@ -158,7 +161,7 @@ defmodule Commanded.EventStore do
           subscription_name,
           subscriber,
           start_from,
-          options
+          opts
         )
       else
         adapter.subscribe_to(

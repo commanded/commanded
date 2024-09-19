@@ -11,7 +11,7 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   alias Commanded.ExampleDomain.TransferMoneyProcessManager
 
   @derive Jason.Encoder
-  defstruct [:transfer_uuid, :debit_account, :credit_account, :amount, :status]
+  defstruct [:transfer_uuid, :debit_account, :credit_account, :amount, :status, :user_uuid]
 
   def interested?(%MoneyTransferRequested{transfer_uuid: transfer_uuid}),
     do: {:start, transfer_uuid}
@@ -22,6 +22,25 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   def interested?(%MoneyDeposited{transfer_uuid: transfer_uuid}),
     do: {:continue, transfer_uuid}
 
+  def handle(
+        %TransferMoneyProcessManager{},
+        %MoneyTransferRequested{} = event,
+        %{"user_uuid" => by_user} = _metadata
+      ) do
+    %MoneyTransferRequested{
+      transfer_uuid: transfer_uuid,
+      debit_account: debit_account,
+      amount: amount
+    } = event
+
+    %WithdrawMoney{
+      account_number: debit_account,
+      transfer_uuid: transfer_uuid,
+      amount: amount,
+      by_user: by_user
+    }
+  end
+
   def handle(%TransferMoneyProcessManager{}, %MoneyTransferRequested{} = event) do
     %MoneyTransferRequested{
       transfer_uuid: transfer_uuid,
@@ -29,7 +48,11 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
       amount: amount
     } = event
 
-    %WithdrawMoney{account_number: debit_account, transfer_uuid: transfer_uuid, amount: amount}
+    %WithdrawMoney{
+      account_number: debit_account,
+      transfer_uuid: transfer_uuid,
+      amount: amount
+    }
   end
 
   def handle(%TransferMoneyProcessManager{} = pm, %MoneyWithdrawn{}) do
@@ -43,6 +66,29 @@ defmodule Commanded.ExampleDomain.TransferMoneyProcessManager do
   end
 
   ## State mutators
+
+  def apply(
+        %TransferMoneyProcessManager{} = transfer,
+        %MoneyTransferRequested{} = event,
+        %{"user_uuid" => user_uuid} = _metadata
+      ) do
+    %MoneyTransferRequested{
+      transfer_uuid: transfer_uuid,
+      debit_account: debit_account,
+      credit_account: credit_account,
+      amount: amount
+    } = event
+
+    %TransferMoneyProcessManager{
+      transfer
+      | transfer_uuid: transfer_uuid,
+        debit_account: debit_account,
+        credit_account: credit_account,
+        amount: amount,
+        status: :withdraw_money_from_debit_account,
+        user_uuid: user_uuid
+    }
+  end
 
   def apply(%TransferMoneyProcessManager{} = transfer, %MoneyTransferRequested{} = event) do
     %MoneyTransferRequested{

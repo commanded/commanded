@@ -32,19 +32,42 @@ defmodule Commanded.EventStore.RecordedEvent do
 
   alias Commanded.EventStore.RecordedEvent
 
+  @type causation_id :: uuid() | nil
+  @type correlation_id :: uuid() | nil
+  @type created_at :: DateTime.t()
+  @type data :: domain_event()
+  @type domain_event :: struct()
+  @type event_id :: uuid()
+  @type event_number :: non_neg_integer()
+  @type event_type :: String.t()
+  @type metadata :: map()
+  @type stream_id :: String.t()
+  @type stream_version :: non_neg_integer()
   @type uuid :: String.t()
 
   @type t :: %RecordedEvent{
-          event_id: uuid(),
-          event_number: non_neg_integer(),
-          stream_id: String.t(),
-          stream_version: non_neg_integer(),
-          causation_id: uuid() | nil,
-          correlation_id: uuid() | nil,
-          event_type: String.t(),
-          data: struct(),
-          metadata: map(),
-          created_at: DateTime.t()
+          event_id: event_id(),
+          event_number: event_number(),
+          stream_id: stream_id(),
+          stream_version: stream_version(),
+          causation_id: causation_id(),
+          correlation_id: correlation_id(),
+          event_type: event_type(),
+          data: data(),
+          metadata: metadata(),
+          created_at: created_at()
+        }
+
+  @type enriched_metadata :: %{
+          :event_id => event_id(),
+          :event_number => event_number(),
+          :stream_id => stream_id(),
+          :stream_version => stream_version(),
+          :correlation_id => correlation_id(),
+          :causation_id => causation_id(),
+          :created_at => created_at(),
+          optional(atom()) => term(),
+          optional(String.t()) => term()
         }
 
   defstruct [
@@ -56,15 +79,15 @@ defmodule Commanded.EventStore.RecordedEvent do
     :correlation_id,
     :event_type,
     :data,
-    :metadata,
-    :created_at
+    :created_at,
+    metadata: %{}
   ]
 
   @doc """
   Enrich the event's metadata with fields from the `RecordedEvent` struct and
   any additional metadata passed as an option.
   """
-  @spec enrich_metadata(t(), [{:additional_metadata, map()}]) :: map()
+  @spec enrich_metadata(t(), [{:additional_metadata, map()}]) :: enriched_metadata()
   def enrich_metadata(%RecordedEvent{} = event, opts) do
     %RecordedEvent{
       event_id: event_id,
@@ -77,6 +100,8 @@ defmodule Commanded.EventStore.RecordedEvent do
       metadata: metadata
     } = event
 
+    additional_metadata = Keyword.get(opts, :additional_metadata, %{})
+
     %{
       event_id: event_id,
       event_number: event_number,
@@ -86,7 +111,7 @@ defmodule Commanded.EventStore.RecordedEvent do
       causation_id: causation_id,
       created_at: created_at
     }
-    |> Map.merge(Keyword.get(opts, :additional_metadata, %{}))
     |> Map.merge(metadata || %{})
+    |> Map.merge(additional_metadata)
   end
 end

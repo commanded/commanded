@@ -8,7 +8,7 @@ defmodule Commanded.DistributedSubscriptionsTest do
   setup do
     :ok = LocalCluster.start()
 
-    nodes = LocalCluster.start_nodes("commanded", 3)
+    nodes = LocalCluster.start_nodes("commanded", 3, applications: [:commanded])
 
     [nodes: nodes]
   end

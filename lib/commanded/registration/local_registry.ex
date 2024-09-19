@@ -112,7 +112,7 @@ defmodule Commanded.Registration.LocalRegistry do
 
   @doc false
   def handle_info(message, state) do
-    Logger.debug(fn -> "received unexpected message in handle_info/2: " <> inspect(message) end)
+    Logger.debug("received unexpected message in handle_info/2: " <> inspect(message))
 
     {:noreply, state}
   end

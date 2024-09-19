@@ -29,7 +29,7 @@ defmodule Commanded.Aggregates.DefaultLifespan do
   """
   @impl AggregateLifespan
   def after_error(error) do
-    if Exception.exception?(error) do
+    if Kernel.is_exception(error) do
       {:stop, error}
     else
       :infinity
