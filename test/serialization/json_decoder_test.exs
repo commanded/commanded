@@ -24,7 +24,7 @@ defmodule Commanded.Serialization.JsonDecoderTest do
     {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
     event = %ExampleEvent{name: "Ben", datetime: dt}
 
-    assert JsonSerializer.serialize(event) == @serialized_event_json
+    assert JsonSerializer.serialize(event) |> Jason.decode!() == Jason.decode!(@serialized_event_json)
   end
 
   test "should allow decoding of deserialized value from JSON" do
