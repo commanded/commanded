@@ -352,9 +352,9 @@ defmodule Commanded.Event.Handler do
 
   Can be used to start any related processes when the event handler is started.
 
-  This callback function must return `:ok`, or `{:stop, reason}` to stop the
-  handler process. Any other return value will terminate the event handler with
-  an error.
+  This callback function must return `:ok`, `{:ok, state}` to return new state,
+  or `{:stop, reason}` to stop the handler process. Any other return value
+  will terminate the event handler with an error.
 
   ### Example
 
@@ -364,8 +364,9 @@ defmodule Commanded.Event.Handler do
           name: "ExampleHandler"
 
         # Optional initialisation
-        def after_start(_handler_state) do
-          :ok
+        def after_start(handler_state) do
+          new_handler_state = Map.put(handler_state, :foo, "bar")
+          {:ok, new_handler_state}
         end
 
         def handle(%AnEvent{..}, _metadata) do
@@ -799,6 +800,10 @@ defmodule Commanded.Event.Handler do
     case handler_module.after_start(state.handler_state) do
       :ok ->
         {:noreply, state}
+
+      {:ok, %{} = new_handler_state} ->
+        new_state = %{state | handler_state: new_handler_state}
+        {:noreply, new_state}
 
       {:stop, reason} ->
         Logger.debug(describe(state) <> " `after_start/1` callback has requested to stop")

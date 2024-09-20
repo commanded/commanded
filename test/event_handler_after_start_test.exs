@@ -83,6 +83,17 @@ defmodule Commanded.Event.HandlerAfterStartTest do
 
       assert_receive {^ref, :after_start, :ok}
     end
+
+    test "should reply with new state" do
+      ref = make_ref()
+      state = %{test: self(), ref: ref, reply: {:ok, %{something: :new}}}
+      handler = start_supervised!({AfterStartHandler, state: state})
+
+      send_subscribed(handler)
+
+      assert_receive {^ref, :after_start, {:ok, new_state}}
+      assert new_state == %{something: :new}
+    end
   end
 
   defp send_subscribed(handler) do
