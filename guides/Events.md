@@ -87,8 +87,8 @@ This will ensure the handler only receives events appended to that stream.
 
 ### Event handler callbacks
 
-- `c:Commanded.Event.Handler.init/0` - (optional) initialisation callback function called when the handler starts.
 - `c:Commanded.Event.Handler.init/1` - (optional) used to configure the handler before it starts.
+- `c:Commanded.Event.Handler.after_start/1` - (optional) initialisation callback function called in the process of the started handler.
 - `c:Commanded.Event.Handler.error/3` - (optional) called when an event handle/2 callback returns an error.
 
 ### Metadata

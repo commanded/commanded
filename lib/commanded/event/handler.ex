@@ -344,7 +344,7 @@ defmodule Commanded.Event.Handler do
   @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
 
-  @doc deprecated: "Use the initialize/1 callback instead."
+  @doc deprecated: "Use the after_start/1 callback instead."
   @callback init() :: :ok | {:stop, reason :: any()}
 
   @doc """
@@ -364,7 +364,7 @@ defmodule Commanded.Event.Handler do
           name: "ExampleHandler"
 
         # Optional initialisation
-        def initialize(_handler_state) do
+        def after_start(_handler_state) do
           :ok
         end
 
@@ -375,7 +375,7 @@ defmodule Commanded.Event.Handler do
       end
 
   """
-  @callback initialize(handler_state :: term()) :: :ok | {:stop, reason :: any()}
+  @callback after_start(handler_state :: term()) :: :ok | {:stop, reason :: any()}
 
   @doc """
   Optional callback function called to configure the handler before it starts.
@@ -603,10 +603,7 @@ defmodule Commanded.Event.Handler do
       end
 
       @doc false
-      def init, do: :ok
-
-      @doc false
-      def initialize(_state), do: init()
+      def after_start(_state), do: :ok
 
       @doc false
       def init(config), do: {:ok, config}
@@ -614,7 +611,7 @@ defmodule Commanded.Event.Handler do
       @doc false
       def before_reset, do: :ok
 
-      defoverridable init: 0, init: 1, initialize: 1, before_reset: 0
+      defoverridable init: 1, after_start: 1, before_reset: 0
     end
   end
 
@@ -782,12 +779,17 @@ defmodule Commanded.Event.Handler do
 
     %Handler{handler_module: handler_module} = state
 
-    case handler_module.initialize(state.handler_state) do
+    if function_exported?(handler_module, :init, 0) do
+      IO.warn("#{inspect(handler_module)}.init/0 is deprecated, use after_start/1 instead")
+      :ok = handler_module.init()
+    end
+
+    case handler_module.after_start(state.handler_state) do
       :ok ->
         {:noreply, state}
 
       {:stop, reason} ->
-        Logger.debug(describe(state) <> " `init/0` callback has requested to stop")
+        Logger.debug(describe(state) <> " `after_start/1` callback has requested to stop")
 
         {:stop, reason, state}
     end

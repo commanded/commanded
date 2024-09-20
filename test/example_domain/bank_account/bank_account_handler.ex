@@ -8,7 +8,7 @@ defmodule Commanded.ExampleDomain.BankAccount.BankAccountHandler do
 
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
-  def init do
+  def after_start(_state) do
     case Agent.start_link(fn -> %{prefix: "", accounts: []} end, name: __MODULE__) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
