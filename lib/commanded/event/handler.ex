@@ -1177,7 +1177,6 @@ defmodule Commanded.Event.Handler do
       handler_module.handle_batch(enriched_events)
     rescue
       error ->
-        dbg("hit")
         stacktrace = __STACKTRACE__
         {:error, error, stacktrace}
     end
@@ -1285,15 +1284,7 @@ defmodule Commanded.Event.Handler do
       :skip ->
         # Skip the failed event by confirming receipt
         Logger.info(describe(state) <> " is skipping event")
-        state = confirm_receipt(maybe_failed_event, state)
-
-        if state.handler_callback == :batch do
-          %FailureContext{context: context} = failure_context
-          context = Map.put(context, :failure_action, :skip)
-          retry_fun.(context, state)
-        else
-          state
-        end
+        confirm_receipt(maybe_failed_event, state)
 
       {:stop, reason} ->
         Logger.warning(describe(state) <> " has requested to stop: #{inspect(reason)}")
