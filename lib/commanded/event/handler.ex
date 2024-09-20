@@ -376,7 +376,8 @@ defmodule Commanded.Event.Handler do
       end
 
   """
-  @callback after_start(handler_state :: term()) :: :ok | {:stop, reason :: any()}
+  @callback after_start(handler_state :: term()) ::
+              :ok | {:ok, state :: map()} | {:stop, reason :: any()}
 
   @doc """
   Optional callback function called to configure the handler before it starts.
