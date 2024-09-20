@@ -1022,7 +1022,7 @@ defmodule Commanded.Event.Handler do
        when not is_nil(last_seen_event) and event_number <= last_seen_event do
     Logger.debug(describe(state) <> " has already seen event ##{inspect(event_number)}")
 
-    confirm_receipt([event], state)
+    confirm_receipt(event, state)
   end
 
   # Delegate event to handler module.
@@ -1034,7 +1034,7 @@ defmodule Commanded.Event.Handler do
       :ok ->
         telemetry_stop(start_time, telemetry_metadata, :handle)
 
-        confirm_receipt([event], state)
+        confirm_receipt(event, state)
 
       {:ok, handler_state} ->
         telemetry_stop(
@@ -1043,7 +1043,7 @@ defmodule Commanded.Event.Handler do
           :handle
         )
 
-        confirm_receipt([event], %Handler{state | handler_state: handler_state})
+        confirm_receipt(event, %Handler{state | handler_state: handler_state})
 
       {:error, :already_seen_event} ->
         telemetry_stop(
@@ -1052,7 +1052,7 @@ defmodule Commanded.Event.Handler do
           :handle
         )
 
-        confirm_receipt([event], state)
+        confirm_receipt(event, state)
 
       {:error, reason} = error ->
         log_event_error(error, event, state)
@@ -1101,11 +1101,9 @@ defmodule Commanded.Event.Handler do
     %{event_number: last_event_number} = last_event = List.last(events)
 
     if last_event_number <= last_seen_event do
-      Logger.debug(fn ->
-        describe(state) <> " has already seen event ##{inspect(last_event_number)}"
-      end)
+      Logger.debug(describe(state) <> " has already seen event ##{inspect(last_event_number)}")
 
-      confirm_receipt([last_event], state)
+      confirm_receipt(last_event, state)
     else
       events
       |> Enum.reject(&(&1.event_number <= last_seen_event))
@@ -1120,57 +1118,67 @@ defmodule Commanded.Event.Handler do
   defp do_handle_batch([], _context, state), do: state
 
   defp do_handle_batch(events, context, %Handler{} = state) do
-    %Handler{handler_module: handler_module} = state
-
     telemetry_metadata = batch_telemetry_metadata(events, context, state)
     start_time = telemetry_start(telemetry_metadata, :batch)
 
+    case delegate_event_to_handler(events, state) do
+      :ok ->
+        telemetry_stop(start_time, telemetry_metadata, :batch)
+        confirm_receipt(events, state)
+
+      {:ok, handler_state} ->
+        telemetry_stop(start_time, %{telemetry_metadata | handler_state: state}, :batch)
+        confirm_receipt(events, %Handler{state | handler_state: handler_state})
+
+      {:error, reason} = error ->
+        log_batch_error(error, events, state)
+        telemetry_stop(start_time, Map.put(telemetry_metadata, :error, reason), :batch)
+
+        failure_context = build_failure_context(nil, context, state)
+        retry_fun = fn context, state -> handle_batch(events, context, state) end
+        handle_event_error(error, events, failure_context, state, retry_fun)
+
+      {:error, reason, stacktrace} ->
+        log_batch_error({:error, reason, stacktrace}, events, state)
+        telemetry_exception(start_time, :error, reason, stacktrace, telemetry_metadata, :batch)
+
+        failure_context = build_failure_context(nil, context, stacktrace, state)
+        retry_fun = fn context, state -> handle_batch(events, context, state) end
+        handle_event_error({:error, reason}, events, failure_context, state, retry_fun)
+
+      invalid ->
+        error =
+          {:error,
+           "invalid value: #{inspect(invalid, pretty: true)}, expected `:ok` or `{:error, term}`"}
+
+        log_batch_error(error, events, state)
+
+        telemetry_stop(
+          start_time,
+          Map.put(telemetry_metadata, :error, :invalid_return_value),
+          :batch
+        )
+
+        failure_context = build_failure_context(nil, context, state)
+        retry_fun = fn context, state -> handle_batch(events, context, state) end
+        handle_event_error(error, nil, failure_context, state, retry_fun)
+    end
+  end
+
+  defp delegate_event_to_handler(events, %Handler{} = state) when is_list(events) do
     enriched_events =
       Enum.map(events, fn e = %RecordedEvent{data: data} ->
         {data, enrich_metadata(e, state)}
       end)
 
+    %Handler{handler_module: handler_module} = state
+
     try do
-      case handler_module.handle_batch(enriched_events) do
-        :ok ->
-          telemetry_stop(start_time, telemetry_metadata, :batch)
-          confirm_receipt(events, state)
-
-        {:ok, handler_state} ->
-          telemetry_stop(start_time, %{telemetry_metadata | handler_state: state}, :batch)
-          confirm_receipt(events, %Handler{state | handler_state: handler_state})
-
-        {:error, reason} = error ->
-          log_batch_error(error, events, state)
-          telemetry_stop(start_time, Map.put(telemetry_metadata, :error, reason), :batch)
-
-          failure_context = build_failure_context(nil, context, state)
-          retry_fun = fn context, state -> handle_batch(events, context, state) end
-          handle_event_error(error, events, failure_context, state, retry_fun)
-
-        invalid ->
-          error =
-            {:error,
-             "invalid value: #{inspect(invalid, pretty: true)}, expected `:ok` or `{:error, term}`"}
-
-          log_batch_error(error, events, state)
-
-          telemetry_stop(
-            start_time,
-            Map.put(telemetry_metadata, :error, :invalid_return_value),
-            :batch
-          )
-
-          failure_context = build_failure_context(nil, context, state)
-          retry_fun = fn context, state -> handle_batch(events, context, state) end
-          handle_event_error(error, nil, failure_context, state, retry_fun)
-      end
+      handler_module.handle_batch(enriched_events)
     rescue
       error ->
+        dbg("hit")
         stacktrace = __STACKTRACE__
-        Logger.error(fn -> Exception.format(:error, error, stacktrace) end)
-        telemetry_exception(start_time, :error, error, stacktrace, telemetry_metadata, :batch)
-
         {:error, error, stacktrace}
     end
   end
@@ -1277,7 +1285,7 @@ defmodule Commanded.Event.Handler do
       :skip ->
         # Skip the failed event by confirming receipt
         Logger.info(describe(state) <> " is skipping event")
-        state = confirm_receipt([maybe_failed_event], state)
+        state = confirm_receipt(maybe_failed_event, state)
 
         if state.handler_callback == :batch do
           %FailureContext{context: context} = failure_context
@@ -1317,8 +1325,14 @@ defmodule Commanded.Event.Handler do
     )
   end
 
-  defp log_batch_error({:error, reason}, events, state) do
-    Logger.error(fn ->
+  defp log_batch_error(error, events, state) do
+    reason =
+      case error do
+        {:error, reason} -> inspect(reason, pretty: true)
+        {:error, reason, stacktrace} -> Exception.format(:error, reason, stacktrace)
+      end
+
+    Logger.error(
       describe(state) <>
         " failed to handle batch from " <>
         inspect(List.first(events), pretty: true) <>
@@ -1326,11 +1340,11 @@ defmodule Commanded.Event.Handler do
         inspect(List.last(events), pretty: true) <>
         " due to: " <>
         inspect(reason, pretty: true)
-    end)
+    )
   end
 
   # Confirm receipt of one or more events.
-  defp confirm_receipt(recorded_events, %Handler{} = state) do
+  defp confirm_receipt(recorded_events, %Handler{} = state) when is_list(recorded_events) do
     %Handler{
       application: application,
       consistency: consistency,
@@ -1351,6 +1365,9 @@ defmodule Commanded.Event.Handler do
 
     %Handler{state | last_seen_event: event_number}
   end
+
+  defp confirm_receipt(recorded_event, %Handler{} = state),
+    do: confirm_receipt([recorded_event], state)
 
   # Determine the partition key for an event to ensure ordered processing when
   # necessary.
