@@ -609,7 +609,14 @@ defmodule Commanded.Event.Handler do
       end
 
       @doc false
-      def after_start(_state), do: :ok
+      def after_start(_state) do
+        # TODO: remove this when we remove init/0
+        if function_exported?(__MODULE__, :init, 0) do
+          apply(__MODULE__, :init, [])
+        else
+          :ok
+        end
+      end
 
       @doc false
       def init(config), do: {:ok, config}
@@ -786,8 +793,7 @@ defmodule Commanded.Event.Handler do
     %Handler{handler_module: handler_module} = state
 
     if function_exported?(handler_module, :init, 0) do
-      IO.warn("#{inspect(handler_module)}.init/0 is deprecated, use after_start/1 instead")
-      :ok = handler_module.init()
+      Logger.warning("#{inspect(handler_module)}.init/0 is deprecated, use after_start/1 instead")
     end
 
     case handler_module.after_start(state.handler_state) do
