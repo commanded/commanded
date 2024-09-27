@@ -327,60 +327,69 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         event_store: event_store,
         event_store_meta: event_store_meta
       } do
-        {:ok, _subscriber1} =
+        {:ok, subscriber1} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 2)
 
-        {:ok, _subscriber2} =
+        {:ok, subscriber2} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 2)
 
-        assert_receive {:subscribed, _subscription1}
-        assert_receive {:subscribed, _subscription2}
-        refute_receive {:subscribed, _subscription}
+        assert_receive {:subscribed, ^subscriber1, _subscription1}
+        assert_receive {:subscribed, ^subscriber2, _subscription2}
+        refute_receive {:subscribed, _subscriber, _subscription}
       end
 
       test "should prevent too many subscribers to single subscription", %{
         event_store: event_store,
         event_store_meta: event_store_meta
       } do
-        {:ok, _subscriber} = Subscriber.start_link(event_store, event_store_meta, self())
+        {:ok, subscriber1} = Subscriber.start_link(event_store, event_store_meta, self())
 
-        assert {:error, :subscription_already_exists} =
-                 Subscriber.start_link(event_store, event_store_meta, self())
+        {:ok, subscriber2} = Subscriber.start_link(event_store, event_store_meta, self())
+
+        assert_receive {:subscribed, ^subscriber1, _subscription1}
+        assert_receive {:subscribe_error, :subscription_already_exists, ^subscriber2}
+        refute_receive {:subscribed, _subscriber, _subscription}
       end
 
       test "should prevent too many subscribers to subscription with concurrency limit", %{
         event_store: event_store,
         event_store_meta: event_store_meta
       } do
-        {:ok, _subscriber1} =
+        {:ok, subscriber1} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
 
-        {:ok, _subscriber2} =
+        {:ok, subscriber2} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
 
-        {:ok, _subscriber3} =
+        {:ok, subscriber3} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
 
-        assert {:error, :too_many_subscribers} =
-                 Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
+        {:ok, subscriber4} =
+          Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
+
+        assert_receive {:subscribed, ^subscriber1, _subscription1}
+        assert_receive {:subscribed, ^subscriber2, _subscription1}
+        assert_receive {:subscribed, ^subscriber3, _subscription1}
+        assert_receive {:subscribe_error, :too_many_subscribers, ^subscriber4}
+        refute_receive {:subscribed, _subscriber, _subscription}
       end
 
       test "should distribute events amongst subscribers", %{
         event_store: event_store,
         event_store_meta: event_store_meta
       } do
-        {:ok, _subscriber1} =
+        {:ok, subscriber1} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
 
-        {:ok, _subscriber2} =
+        {:ok, subscriber2} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
 
-        {:ok, _subscriber2} =
+        {:ok, subscriber3} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 3)
 
-        assert_receive {:subscribed, _subscription1}
-        assert_receive {:subscribed, _subscription2}
-        assert_receive {:subscribed, _subscription3}
+        assert_receive {:subscribed, ^subscriber1, _subscription1}
+        assert_receive {:subscribed, ^subscriber2, _subscription2}
+        assert_receive {:subscribed, ^subscriber3, _subscription3}
 
         :ok = event_store.append_to_stream(event_store_meta, "stream1", 0, build_events(6))
 
@@ -408,13 +417,13 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
           partition_by: fn %RecordedEvent{stream_id: stream_id} -> stream_id end
         ]
 
-        {:ok, _subscriber1} = Subscriber.start_link(event_store, event_store_meta, self(), opts)
-        {:ok, _subscriber2} = Subscriber.start_link(event_store, event_store_meta, self(), opts)
-        {:ok, _subscriber3} = Subscriber.start_link(event_store, event_store_meta, self(), opts)
+        {:ok, subscriber1} = Subscriber.start_link(event_store, event_store_meta, self(), opts)
+        {:ok, subscriber2} = Subscriber.start_link(event_store, event_store_meta, self(), opts)
+        {:ok, subscriber3} = Subscriber.start_link(event_store, event_store_meta, self(), opts)
 
-        assert_receive {:subscribed, _subscription1}
-        assert_receive {:subscribed, _subscription2}
-        assert_receive {:subscribed, _subscription3}
+        assert_receive {:subscribed, ^subscriber1, _subscription1}
+        assert_receive {:subscribed, ^subscriber2, _subscription2}
+        assert_receive {:subscribed, ^subscriber3, _subscription3}
 
         :ok = event_store.append_to_stream(event_store_meta, "stream0", 0, build_events(2))
         :ok = event_store.append_to_stream(event_store_meta, "stream1", 0, build_events(2))
@@ -516,8 +525,8 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         {:ok, subscriber2} =
           Subscriber.start_link(event_store, event_store_meta, self(), concurrency_limit: 2)
 
-        assert_receive {:subscribed, _subscription1}
-        assert_receive {:subscribed, _subscription2}
+        assert_receive {:subscribed, ^subscriber1, _subscription1}
+        assert_receive {:subscribed, ^subscriber2, _subscription2}
 
         :ok = event_store.append_to_stream(event_store_meta, "stream1", 0, build_events(2))
 
@@ -649,7 +658,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         {:ok, subscriber1} = Subscriber.start_link(event_store, event_store_meta, self())
 
-        assert_receive {:subscribed, _subscription}
+        assert_receive {:subscribed, ^subscriber1, _subscription}
         assert_receive {:events, ^subscriber1, received_events}
         assert length(received_events) == 1
         assert Enum.map(received_events, & &1.stream_id) == ["stream1"]
@@ -666,7 +675,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         {:ok, subscriber2} = Subscriber.start_link(event_store, event_store_meta, self())
 
-        assert_receive {:subscribed, _subscription}
+        assert_receive {:subscribed, ^subscriber2, _subscription}
         refute_receive {:events, _subscriber, _received_events}
 
         :ok = event_store.append_to_stream(event_store_meta, "stream3", 0, build_events(1))
@@ -689,7 +698,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         {:ok, subscriber1} = Subscriber.start_link(event_store, event_store_meta, self())
 
-        assert_receive {:subscribed, _subscription}
+        assert_receive {:subscribed, ^subscriber1, _subscription}
 
         assert_receive {:events, ^subscriber1,
                         [%RecordedEvent{event_number: 1, stream_id: "stream1"}] = received_events}
@@ -703,7 +712,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         {:ok, subscriber2} = Subscriber.start_link(event_store, event_store_meta, self())
 
-        assert_receive {:subscribed, _subscription}
+        assert_receive {:subscribed, ^subscriber2, _subscription}
 
         # Receive event #2 again because it wasn't ack'd
         assert_receive {:events, ^subscriber2,
@@ -731,7 +740,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
 
         ref = Process.monitor(subscriber)
 
-        assert_receive {:subscribed, subscription}
+        assert_receive {:subscribed, ^subscriber, subscription}
 
         ProcessHelper.shutdown(subscription)
 
@@ -746,7 +755,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       } do
         {:ok, subscriber} = Subscriber.start_link(event_store, event_store_meta, self())
 
-        assert_receive {:subscribed, subscription}
+        assert_receive {:subscribed, ^subscriber, subscription}
 
         ref = Process.monitor(subscription)
 

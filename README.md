@@ -19,18 +19,13 @@ You can use Commanded with one of the following event stores for persistence:
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
 
-Requires Erlang/OTP v21.0 and Elixir v1.9 or later.
+Requires Erlang/OTP v21.0 and Elixir v1.11 or later.
 
 ---
 
-### Supporting Commanded
-
-You can help support Commanded by helping to fund its ongoing development, new features, and releases.
-
-- [Become a GitHub sponsor](https://github.com/sponsors/slashdotdash)
-- [View sponsors & backers](BACKERS.md)
-
 #### Sponsors
+
+- [View sponsors & backers](BACKERS.md)
 
 [![Alembic](https://user-images.githubusercontent.com/3167/177830256-26a74e82-60ff-4c20-bd84-64ee7c12512c.svg "Alembic")](https://alembic.com.au/)
 
@@ -134,6 +129,7 @@ Commanded exists thanks to the following people who have contributed.
 <a href="https://github.com/commanded/commanded/graphs/contributors"><img src="https://opencollective.com/commanded/contributors.svg?width=890&button=false" width="890" /></a>
 
 - [Adil Yarulin](https://github.com/ayarulin)
+- [Alexandre de Souza](https://github.com/aleDsz)
 - [Andrey Akulov](https://github.com/astery)
 - [Andrzej Sliwa](https://github.com/andrzejsliwa)
 - [Ben Smith](https://github.com/slashdotdash)
@@ -146,21 +142,26 @@ Commanded exists thanks to the following people who have contributed.
 - [Danilo Silva](https://github.com/silvadanilo)
 - [Dave Lucia](https://github.com/davydog187)
 - [David Carlin](https://github.com/davich)
+- [Damir Vandic](https://github.com/dvic)
 - [Danni Friedland](https://github.com/BlueHotDog)
+- [Dilaksun Bavarajan](https://github.com/DilaksunB)
 - [Ernesto](https://github.com/lex-mala)
 - [Fernando Mendes](https://github.com/justmendes)
 - [Florian Ebeling](https://github.com/febeling)
 - [Henry Hazan](https://github.com/henry-hz)
 - [JC](https://github.com/jccf091)
 - [Joan Zapata](https://github.com/JoanZapata)
+- [Joao Gilberto Moura](https://github.com/joaobalsini)
 - [João Thallis](https://github.com/joaothallis)
 - [John Wilger](https://github.com/jwilger)
 - [Joseph Lozano](https://github.com/joseph-lozano)
+- [Kian-Meng Ang](https://github.com/kianmeng)
 - [Kok J Sam](https://github.com/sammkj)
 - [Leif Gensert](https://github.com/leifg)
 - [Luís Ferreira](https://github.com/zamith)
 - [Marcelo Dominguez](https://github.com/marpo60)
 - [Matt Doughty](https://github.com/m-doughty)
+- [Matthew Boehlig](https://github.com/thetamind)
 - [Michael Herold](https://github.com/michaelherold)
 - [Miguel Palhas](https://github.com/naps62)
 - [Nigel Thorne](https://github.com/nigelthorne)
@@ -171,12 +172,12 @@ Commanded exists thanks to the following people who have contributed.
 - [Raphaël Lustin](https://github.com/rlustin)
 - [Štefan Ľupták](https://github.com/EskiMag)
 - [Tobiasz Małecki](https://github.com/amatalai)
+- [Vladimir Drobyshevskiy](https://github.com/vheathen)
 - [Willy Wombat](https://github.com/octowombat)
+- [Yordis Prieto](https://github.com/yordis)
 - [Yuri de Figueiredo](https://github.com/y86)
 - [Zven](https://github.com/zven21)
 
 ## Need help?
 
-Please [open an issue](https://github.com/commanded/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the [Gitter chat room](https://gitter.im/commanded/Lobby) for Commanded.
-
-For commercial support, and consultancy, please contact [Ben Smith](mailto:ben@10consulting.com).
+Please [open an issue](https://github.com/commanded/commanded/issues) if you encounter a problem, or need assistance. You can also seek help in the #commanded channel in the [official Elixir Slack](https://elixir-slackin.herokuapp.com/).

@@ -1,10 +1,46 @@
 # Changelog
 
-## v1.4.0-rc.0
+## v1.4.3
+
+### Enhancements
+
+- Use `Logger.warning` to fix deprecation warnings ([#542](https://github.com/commanded/commanded/pull/542)).
+- Add typespec to `CompositeRouter.dispatch/2` function ([#536](https://github.com/commanded/commanded/pull/536)).
+- Support `opts` in `Commanded.EventStore.append_to_stream` function ([#528](https://github.com/commanded/commanded/pull/528)).
+- Process manager metadata access ([#514](https://github.com/commanded/commanded/pull/514)).
+
+### Bug fixes
+
+-  Correct parameter type in `ProcessManager.after_command/1` callback function ([#533](https://github.com/commanded/commanded/pull/533)).
+
+## v1.4.2
+
+- Record aggregate state while processing `Commanded.Aggregate.Multi` ([#507](https://github.com/commanded/commanded/pull/507)).
+- Properly handle EXIT signal in event handler ([#512](https://github.com/commanded/commanded/pull/512)).
+- Separate logging a process managers error ([#513](https://github.com/commanded/commanded/pull/513)).
+
+## v1.4.1
+
+### Enhancements
+
+- Retry command execution when the aggregate process is down ([#494](https://github.com/commanded/commanded/pull/494)).
+
+### Bug fixes
+
+- Remove duplicate apply function call when receiving missed events published to an aggregate's event stream ([364c877](https://github.com/commanded/commanded/commit/364c877e8f30a18d90544676fb58b94132d50720)).
+- Fix typespec typo in Commanded.Application ([#503](https://github.com/commanded/commanded/pull/503)).
+
+## v1.4.0
+
+### Enhancements
 
 - Allow a process manager to stop after dispatching a command ([#460](https://github.com/commanded/commanded/pull/460)).
 - Replace `use Mix.Config` with `import Config` in config files ([#467](https://github.com/commanded/commanded/pull/467)).
 - Event handler concurrency ([#486](https://github.com/commanded/commanded/pull/486)).
+- Remove `elixir_uuid` dependency ([#493](https://github.com/commanded/commanded/pull/493)).
+- Support and test for OTP 25 ([#489](https://github.com/commanded/commanded/pull/489)).
+
+---
 
 ## v1.3.1
 

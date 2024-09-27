@@ -1,13 +1,13 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "1.4.0-rc.0"
+  @version "1.4.3"
 
   def project do
     [
       app: :commanded,
       version: @version,
-      elixir: "~> 1.9",
+      elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       description: description(),
@@ -58,17 +58,17 @@ defmodule Commanded.Mixfile do
       {:backoff, "~> 1.1"},
 
       # Telemetry
-      {:telemetry, "~> 0.4 or ~> 1.0 or ~> 1.1"},
-      {:telemetry_registry, "~> 0.3"},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
+      {:telemetry_registry, "~> 0.2 or ~> 0.3"},
 
       # Optional dependencies
-      {:jason, "~> 1.3", optional: true},
+      {:jason, "~> 1.4", optional: true},
       {:phoenix_pubsub, "~> 2.1", optional: true},
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.2", only: :dev, runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.3", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:local_cluster, "~> 1.2", only: :test, runtime: false},
       {:mix_test_watch, "~> 1.1", only: :dev},
@@ -88,6 +88,7 @@ defmodule Commanded.Mixfile do
       canonical: "http://hexdocs.pm/commanded",
       source_ref: "v#{@version}",
       extra_section: "GUIDES",
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       extras: [
         "CHANGELOG.md",
         "guides/Getting Started.md",
@@ -232,9 +233,7 @@ defmodule Commanded.Mixfile do
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/commanded/commanded",
-        "Docs" => "https://hexdocs.pm/commanded/",
-        "Sponsor" => "https://opencollective.com/commanded"
+        "GitHub" => "https://github.com/commanded/commanded"
       }
     ]
   end

@@ -22,7 +22,7 @@ defmodule Commanded.Aggregates.ExampleAggregate do
   end
 
   alias Commanded.Aggregates.ExampleAggregate
-  alias Commands.{AppendItems, NoOp}
+  alias Commands.NoOp
   alias Events.ItemAppended
 
   def append_items(%ExampleAggregate{last_index: last_index}, count) do
