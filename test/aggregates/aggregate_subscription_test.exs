@@ -88,7 +88,8 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
       retry_attempts: 1
     }
 
-    {:ok, 1, _events} = Aggregate.execute(DefaultApp, BankAccount, account_number, context)
+    {:ok, 1, _events, _aggregate_state} =
+      Aggregate.execute(DefaultApp, BankAccount, account_number, context)
 
     [
       account_number: account_number
