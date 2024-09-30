@@ -8,7 +8,7 @@ defmodule Commanded.Event.PartitionEventHandler do
     concurrency: 5
 
   @impl Commanded.Event.Handler
-  def init do
+  def after_start(_state) do
     Process.send(:test, {:init, self()}, [])
   end
 

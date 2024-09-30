@@ -5,7 +5,7 @@ defmodule Commanded.Event.AppendingEventHandler do
     application: Commanded.DefaultApp,
     name: __MODULE__
 
-  def init do
+  def after_start(_state) do
     with {:ok, _pid} <- Agent.start_link(fn -> %{events: [], metadata: []} end, name: __MODULE__) do
       :ok
     end
