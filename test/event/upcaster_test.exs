@@ -102,6 +102,43 @@ defmodule Event.UpcasterTest do
     end
   end
 
+  describe "upcast events received by batch event handler" do
+    alias Commanded.Event.Upcast.BatchEventHandler
+
+    setup do
+      handler = start_supervised!(BatchEventHandler)
+
+      [
+        handler: handler,
+        reply_to: :erlang.pid_to_list(self())
+      ]
+    end
+
+    test "will receive upcasted events", %{reply_to: reply_to} do
+      write_events(
+        DefaultApp,
+        [
+          struct(EventOne, version: 1, reply_to: reply_to),
+          struct(EventTwo, version: 1, reply_to: reply_to),
+          struct(EventThree, version: 1, reply_to: reply_to),
+          struct(EventFive, version: 1, reply_to: reply_to)
+        ]
+      )
+
+      assert_receive [{%EventOne{version: 1}, metadata1}]
+      assert_receive [{%EventTwo{version: 2}, metadata2}]
+      assert_receive [{%EventFour{version: 2, name: "Chris"}, metadata4}]
+      assert_receive [{%EventFive{version: 2, event_metadata: event_metadata}, metadata5}]
+      refute_receive [{%EventThree{}, _metadata3}]
+
+      assert_metadata(metadata1)
+      assert_metadata(metadata2)
+      assert_metadata(metadata4)
+      assert_metadata(metadata5)
+      assert_metadata(event_metadata)
+    end
+  end
+
   describe "upcast events received by process manager" do
     alias Commanded.Event.Upcast.ProcessManager
     alias Commanded.Event.Upcast.ProcessManager.Application
