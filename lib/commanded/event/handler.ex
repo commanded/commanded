@@ -335,8 +335,8 @@ defmodule Commanded.Event.Handler do
   alias Commanded.Event.Handler
   alias Commanded.Event.Upcast
   alias Commanded.EventStore
-  alias Commanded.EventStore.SnapshotData
   alias Commanded.EventStore.RecordedEvent
+  alias Commanded.EventStore.SnapshotData
   alias Commanded.EventStore.Subscription
   alias Commanded.Subscriptions
   alias Commanded.Telemetry
