@@ -83,6 +83,22 @@ defmodule Commanded.Registration do
       @before_compile unquote(__MODULE__)
 
       alias unquote(__MODULE__)
+
+      # This is workaround for the issue described in
+      # https://github.com/commanded/commanded-swarm-registry/issues/2#issuecomment-1121685703
+      # In short, "handle_xxx" clauses defined in `__before_compile__/1` are not available in runtime
+      # unless these dummy clauses are present in `__using__/1`
+      @impl true
+      def handle_call(:will_not_be_called, _, _) do
+      end
+
+      @impl true
+      def handle_cast(:will_not_be_called, _) do
+      end
+
+      @impl true
+      def handle_info(:will_not_be_called, _) do
+      end
     end
   end
 
