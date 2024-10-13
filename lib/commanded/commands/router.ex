@@ -208,8 +208,8 @@ defmodule Commanded.Commands.Router do
 
   alias Commanded.Aggregates.DefaultLifespan
   alias Commanded.Commands.{ExecutionResult, Router}
-  alias Commanded.UUID
   alias Commanded.Telemetry
+  alias Commanded.UUID
 
   defmacro __using__(opts) do
     quote do
