@@ -4,6 +4,7 @@ defmodule Commanded.Application.TelemetryTest do
   alias Commanded.DefaultApp
   alias Commanded.Middleware.Commands.IncrementCount
   alias Commanded.Middleware.Commands.RaiseError
+  alias Commanded.Middleware.Commands.Fail
   alias Commanded.UUID
 
   setup do
@@ -53,6 +54,20 @@ defmodule Commanded.Application.TelemetryTest do
     assert_receive {[:commanded, :aggregate, :execute, :start], 2, _meas, _meta}
     assert_receive {[:commanded, :aggregate, :execute, :exception], 3, _meas, _meta}
     assert_receive {[:commanded, :application, :dispatch, :stop], 4, _meas, meta}
+
+    assert %{application: DefaultApp, error: ^error, execution_context: %{command: ^command}} =
+             meta
+  end
+
+  test "emit `[:commanded, :application, :dispatch, :start | :stop]` event on unregistered command" do
+    command = %Fail{aggregate_uuid: UUID.uuid4()}
+    error = :unregistered_command
+
+    assert {:error, ^error} = TestRouter.dispatch(command, application: DefaultApp)
+
+    assert_receive {[:commanded, :application, :dispatch, :start], 1, _meas, _meta}
+
+    assert_receive {[:commanded, :application, :dispatch, :stop], 2, _meas, meta}
 
     assert %{application: DefaultApp, error: ^error, execution_context: %{command: ^command}} =
              meta
