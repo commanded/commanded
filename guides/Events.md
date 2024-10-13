@@ -33,6 +33,7 @@ defmodule ExampleHandler do
     application: ExampleApp,
     name: "ExampleHandler"
 
+  @impl Commanded.Event.Handler
   def handle(%AnEvent{..}, _metadata) do
     # ... process the event
     :ok
@@ -120,6 +121,7 @@ defmodule ExampleHandler do
     application: ExampleApp,
     name: "ExampleHandler"
 
+  @impl Commanded.Event.Handler
   def handle(event, metadata) do
     IO.inspect(metadata)
     # %{
@@ -199,7 +201,7 @@ end
 An event handler can be reset (using a mix task), it will restart the event store subscription from the configured
 `start_from`. This allow an individual handler to be restart while the app is still running.
 
-You can define a `before_reset/1` function that will be called before resetting the event handler.
+You can implement the `before_reset/0` callback that will be called before resetting the event handler.
 
 ```elixir
 defmodule ExampleHandler do
@@ -211,6 +213,7 @@ defmodule ExampleHandler do
 
   alias Commanded.Event.FailureContext
 
+  @impl Commanded.Event.Handler
   def before_reset do
     # Do something
     :ok
