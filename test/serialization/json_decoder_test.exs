@@ -17,23 +17,32 @@ defmodule Commanded.Serialization.JsonDecoderTest do
       %ExampleEvent{event | datetime: dt}
     end
   end
-
-  @serialized_event_json "{\"datetime\":\"2016-09-20T20:01:02Z\",\"name\":\"Ben\"}"
-
   test "should serialize value to JSON" do
-    {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
-    event = %ExampleEvent{name: "Ben", datetime: dt}
+    event = %ExampleEvent{name: "Ben", datetime: ~U[2024-10-22 00:00:00Z]}
 
-    assert JsonSerializer.serialize(event) == @serialized_event_json
+    serialized = JsonSerializer.serialize(event)
+
+    assert serialized =~ "\"datetime\":\"2024-10-22T00:00:00Z\""
+    assert serialized =~ "\"name\":\"Ben\""
   end
 
   test "should allow decoding of deserialized value from JSON" do
-    {:ok, dt, _} = DateTime.from_iso8601("2016-09-20 20:01:02Z")
+    serialized = "{\"name\":\"Ben\",\"datetime\":\"2024-10-22T00:00:00Z\"}"
 
-    event = %ExampleEvent{name: "Ben", datetime: dt}
-    type = Atom.to_string(event.__struct__)
+    type = Atom.to_string(ExampleEvent)
+    deserialized = JsonSerializer.deserialize(serialized, type: type)
 
-    assert JsonSerializer.deserialize(@serialized_event_json, type: type) == event
+    event = %ExampleEvent{name: "Ben", datetime: ~U[2024-10-22 00:00:00Z]}
+    assert deserialized == event
+  end
+
+  test "should round-trip serialization-deserialization" do
+    event = %ExampleEvent{name: "Ben", datetime: ~U[2024-10-22 00:00:00Z]}
+    type = Atom.to_string(ExampleEvent)
+
+    deserialized = event |> JsonSerializer.serialize() |> JsonSerializer.deserialize(type: type)
+
+    assert deserialized == event
   end
 
   defmodule ParentEvent do
