@@ -64,13 +64,14 @@ defmodule Commanded.ApplicationTest do
     test "should fail to start unconfigured application" do
       Process.flag(:trap_exit, true)
 
-      UnconfiguredApplication.start_link()
+      {:error, reason} = UnconfiguredApplication.start_link()
 
-      assert_receive {:EXIT, _pid,
-                      {%ArgumentError{
-                         message:
-                           "missing :event_store config for application Commanded.UnconfiguredApplication"
-                       }, _}}
+      assert match?(
+               {%ArgumentError{
+                  message:
+                    "missing :event_store config for application Commanded.UnconfiguredApplication"
+                }, _}, reason
+             )
     end
   end
 end
