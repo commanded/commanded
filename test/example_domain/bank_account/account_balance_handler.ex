@@ -9,7 +9,7 @@ defmodule Commanded.ExampleDomain.BankAccount.AccountBalanceHandler do
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyDeposited
   alias Commanded.ExampleDomain.BankAccount.Events.MoneyWithdrawn
 
-  def init do
+  def after_start(_state) do
     with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
       :ok
     end

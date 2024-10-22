@@ -104,7 +104,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
         application: BankApp,
         name: __MODULE__
 
-      def init do
+      def after_start(_state) do
         with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
           :ok
         end
