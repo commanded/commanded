@@ -70,7 +70,8 @@ defmodule Commanded.ApplicationTest do
                {%ArgumentError{
                   message:
                     "missing :event_store config for application Commanded.UnconfiguredApplication"
-                }, _}, reason
+                }, _},
+               reason
              )
     end
   end

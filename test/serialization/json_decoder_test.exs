@@ -17,6 +17,7 @@ defmodule Commanded.Serialization.JsonDecoderTest do
       %ExampleEvent{event | datetime: dt}
     end
   end
+
   test "should serialize value to JSON" do
     event = %ExampleEvent{name: "Ben", datetime: ~U[2024-10-22 00:00:00Z]}
 
