@@ -504,9 +504,15 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     %RecordedEvent{event_number: event_number} = event
 
     update_persistent_subscription(state, pid, fn %PersistentSubscription{} = subscription ->
-      subscription = PersistentSubscription.ack(subscription, event_number)
+      case PersistentSubscription.ack(subscription, event_number) do
+        %PersistentSubscription{} = subscription ->
+          publish_events(state, subscription)
 
-      publish_events(state, subscription)
+        {:error, :unexpected_ack} ->
+          # We tried to ack an event but there is no matching in-flight event
+          # I *think* it's okay to ignore this and leave the subscription as is
+          subscription
+      end
     end)
   end
 
