@@ -45,7 +45,8 @@ defmodule Commanded.Event.ResetEventHandlerTest do
       initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
       :ok = EventStore.append_to_stream(BankApp, stream_uuid, 0, to_event_data(initial_events))
 
-      handler = start_supervised!({BankAccountHandler, start_from: :current})
+      handler =
+        start_supervised!({BankAccountHandler, start_from: :current, persistence: :ephemeral})
 
       Wait.until(fn ->
         assert BankAccountHandler.current_accounts() == []
