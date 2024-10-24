@@ -30,7 +30,7 @@ jobs:
             otp: 25
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Elixir
       id: beam
@@ -40,7 +40,7 @@ jobs:
         otp-version: ${{ matrix.otp }}
 
     - name: Restore dependencies cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: deps
         key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
@@ -64,7 +64,7 @@ jobs:
         mix test --include distributed
 
     - name: Retrieve Dialyzer PLT cache
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       id: plt-cache
       with:
         path: priv/plts
