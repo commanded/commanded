@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.4.6
+
+### Enhancements
+- Includes changelog updates
+- Version bump
+
+## v1.4.5
+
+### Enhancements
+- Support OTP 26 and Elixir 1.17 ([#595](https://github.com/commanded/commanded/pull/595)).
+
+## v1.4.4
+
+### Enhancements
+- feat: put aggregate_state into assigns of the pipeline ([#502](https://github.com/commanded/commanded/pull/502)).
+- Add tag to partition test case ([#525](https://github.com/commanded/commanded/pull/525)).
+- Make before_reset/0 an explicit callback function ([#550](https://github.com/commanded/commanded/pull/550)).
+- New `Event.Handler.after_start/1` callback allows configuration in the handler's process ([#568](https://github.com/commanded/commanded/pull/568)).
+
+### Bug fixes
+- Fix EventData typespec ([#495](https://github.com/commanded/commanded/pull/495)).
+- Fix refute_receive_event examples ([#557](https://github.com/commanded/commanded/pull/557)).
+- Fix interested? function doc ([#562](https://github.com/commanded/commanded/pull/562)).
+- Use TypeProvider for process managers snapshot serialization ([#558](https://github.com/commanded/commanded/pull/558)).
+- fix(router.ex): Telemetry is not emitted if dispatch fails for {:error, :unregistered_command} ([#563](in https://github.com/commanded/commanded/pull/563)).
+
 ## v1.4.3
 
 ### Enhancements
