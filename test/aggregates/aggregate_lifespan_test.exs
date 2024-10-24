@@ -176,20 +176,30 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       ref: ref,
       reply_to: reply_to
     } do
+      lifespan = 100
+
       command = %Command{
         uuid: aggregate_uuid,
         action: :noop,
         reply_to: reply_to,
-        lifespan: 25
+        lifespan: lifespan
       }
 
-      :ok = LifespanRouter.dispatch(command, application: DefaultApp)
-      :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+      {elapsed_usec, _} =
+        :timer.tc(fn ->
+          :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+          :ok = LifespanRouter.dispatch(command, application: DefaultApp)
 
-      assert_receive :after_command
-      assert_receive :after_command
+          assert_receive :after_command
+          assert_receive :after_command
+        end)
 
-      refute_receive {:DOWN, ^ref, :process, _pid, _reason}, 25
+      # after dispatching and receiving, figure out how much time is left in the lifespan
+      elapsed = ceil(elapsed_usec / 1000)
+      remaining_lifespan = lifespan - elapsed
+
+      # the aggregate should not shutdown until after the remaining lifespan has elapsed
+      refute_receive {:DOWN, ^ref, :process, _pid, _reason}, remaining_lifespan
       assert_receive {:DOWN, ^ref, :process, _pid, :normal}
     end
 
