@@ -111,9 +111,13 @@ defmodule Commanded.Registration.LocalRegistry do
   end
 
   @doc false
+  def handle_info(message, %Commanded.Aggregates.Aggregate{} = state) do
+    Logger.debug("received unexpected message in handle_info/2: " <> inspect(message))
+    {:noreply, state, Map.get(state, :lifespan_timeout, :infinity)}
+  end
+
   def handle_info(message, state) do
     Logger.debug("received unexpected message in handle_info/2: " <> inspect(message))
-
     {:noreply, state}
   end
 

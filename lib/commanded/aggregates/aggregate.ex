@@ -347,7 +347,7 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call(:aggregate_state, _from, %Aggregate{} = state) do
     %Aggregate{aggregate_state: aggregate_state} = state
 
-    {:reply, aggregate_state, state}
+    {:reply, aggregate_state, state, Map.get(state, :lifespan_timeout, :infinity)}
   end
 
   @doc false
@@ -355,7 +355,7 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call(:aggregate_version, _from, %Aggregate{} = state) do
     %Aggregate{aggregate_version: aggregate_version} = state
 
-    {:reply, aggregate_version, state}
+    {:reply, aggregate_version, state, Map.get(state, :lifespan_timeout, :infinity)}
   end
 
   @doc false
