@@ -51,7 +51,7 @@ defmodule Commanded.Aggregates.ExecutionContext do
     before_execute: nil,
     retry_attempts: 0,
     returning: false,
-    lifespan: DefaultLifespan,
+    lifespan: Application.compile_env(:commanded, :aggregate_lifespan, DefaultLifespan),
     metadata: %{}
   ]
 
