@@ -1,5 +1,6 @@
 defmodule Commanded.Event.ErrorHandler do
   alias Commanded.Event.FailureContext
+
   @doc """
     Stop the `Commanded.Event.Handler` with the reason given.
   """
@@ -12,7 +13,7 @@ defmodule Commanded.Event.ErrorHandler do
     Adds up to 1 second of jitter.
   """
   def backoff(_error, _failed_event, %FailureContext{context: context}) do
-    context = Map.update(context, :failures, 1, & &1 + 1)
+    context = Map.update(context, :failures, 1, &(&1 + 1))
     failures = Map.fetch!(context, :failures)
 
     base_delay = failures ** 2 * 1000
