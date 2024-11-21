@@ -626,12 +626,38 @@ defmodule Commanded.Event.Handler do
       @doc false
       def before_reset, do: :ok
 
-      defoverridable init: 1, after_start: 1, before_reset: 0
+      @doc false
+      def error(error, failed_event, failure_context) do
+        retry_strategy = Keyword.get(unquote(using_opts), :retry, :stop)
+        Handler.handle_error(retry_strategy, error, failed_event, failure_context)
+      end
+
+      defoverridable init: 1, after_start: 1, before_reset: 0, error: 3
+    end
+  end
+
+  def handle_error(:stop, {:error, reason}, _failed_event, _failure_context) do
+    {:stop, reason}
+  end
+
+  def handle_error(:backoff, {:error, reason}, _event, %FailureContext{context: context}) do
+    context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)
+    max_failures = Map.get(context, :max_failures, 2)
+
+    case Map.get(context, :failures) do
+      too_many when too_many >= max_failures ->
+        Logger.warning("Stopping #{__MODULE__} after too many failures.")
+        {:stop, reason}
+
+      failures ->
+        delay = trunc(failures ** 2) * 1000 + trunc(:rand.uniform() * 1000)
+        Logger.debug("Failure #{failures}, delaying for #{delay}ms")
+        {:retry, delay, context}
     end
   end
 
   # GenServer start options
-  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after]
+  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after, :retry]
 
   # Event handler configuration options
   @handler_opts [
@@ -683,9 +709,6 @@ defmodule Commanded.Event.Handler do
     quote generated: true do
       @doc false
       def handle(_event, _metadata), do: :ok
-
-      @doc false
-      def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
     end
   end
 
