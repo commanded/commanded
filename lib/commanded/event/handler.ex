@@ -542,7 +542,7 @@ defmodule Commanded.Event.Handler do
                      &ErrorHandler.backoff/3
 
                    :grumpy_old_bastard ->
-                     &ErrorHandler.grumpy_old_bastard/3
+                     &ErrorHandler.grump/3
 
                    error_handler when is_function(error_handler, 3) ->
                      error_handler
