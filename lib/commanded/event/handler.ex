@@ -630,7 +630,7 @@ defmodule Commanded.Event.Handler do
 
       @doc false
       def error({:error, reason} = error, failed_event, failure_context) do
-        apply(@retry_strategy, :handle_error, [error, failed_event, failure_context])
+        @retry_strategy.handle_error(error, failed_event, failure_context)
       end
 
       defoverridable init: 1, after_start: 1, before_reset: 0, error: 3
