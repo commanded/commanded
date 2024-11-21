@@ -331,12 +331,12 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
+  alias Commanded.Event.ErrorHandler
   alias Commanded.Event.FailureContext
   alias Commanded.Event.Handler
   alias Commanded.Event.Upcast
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.Subscription
-  alias Commanded.Event.ErrorHandler
   alias Commanded.Subscriptions
   alias Commanded.Telemetry
 
