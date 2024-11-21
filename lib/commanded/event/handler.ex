@@ -336,6 +336,7 @@ defmodule Commanded.Event.Handler do
   alias Commanded.Event.Upcast
   alias Commanded.EventStore.RecordedEvent
   alias Commanded.EventStore.Subscription
+  alias Commanded.Event.ErrorHandler
   alias Commanded.Subscriptions
   alias Commanded.Telemetry
 
@@ -533,7 +534,19 @@ defmodule Commanded.Event.Handler do
       @before_compile unquote(__MODULE__)
       @behaviour Handler
 
-      @retry_strategy unquote(__MODULE__).extract_error_handler_module(unquote(using_opts))
+      @on_error (case Keyword.get(unquote(using_opts), :on_error, :stop) do
+                   :stop ->
+                     &ErrorHandler.stop_on_error/3
+
+                   :backoff ->
+                     &ErrorHandler.backoff/3
+
+                   :grumpy_old_bastard ->
+                     &ErrorHandler.grumpy_old_bastard/3
+
+                   error_handler when is_function(error_handler, 3) ->
+                     error_handler
+                 end)
 
       @doc """
       Start an event handler `GenServer` process linked to the current process.
@@ -629,8 +642,9 @@ defmodule Commanded.Event.Handler do
       def before_reset, do: :ok
 
       @doc false
-      def error({:error, reason} = error, failed_event, failure_context) do
-        @retry_strategy.handle_error(error, failed_event, failure_context)
+      def error({:error, reason} = error, failed_event, %FailureContext{} = failure_context)
+          when is_struct(failed_event) do
+        @on_error.(error, failed_event, failure_context)
       end
 
       defoverridable init: 1, after_start: 1, before_reset: 0, error: 3
@@ -638,7 +652,7 @@ defmodule Commanded.Event.Handler do
   end
 
   # GenServer start options
-  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after, :retry]
+  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after, :on_error]
 
   # Event handler configuration options
   @handler_opts [
@@ -870,35 +884,6 @@ defmodule Commanded.Event.Handler do
     )
 
     {:noreply, state}
-  end
-
-  def extract_error_handler_module(opts) do
-    case Keyword.get(opts, :retry, :stop) do
-      :stop ->
-        Commanded.Event.ErrorHandler.Stop
-
-      :backoff ->
-        Commanded.Event.ErrorHandler.Backoff
-
-      :grumpy_old_bastard ->
-        Commanded.Event.ErrorHandler.GrumpyOldBastard
-
-      module when is_atom(module) ->
-        # todo check this at macro time, why wait?
-        if function_exported?(module, :handle_error, 3) do
-          module
-        else
-          raise """
-          Invalid Event.Handler error module specified: #{module}.
-               `retry` option is set to #{module} but that module does not export `handle_error/3`
-
-               defmodule MyHandler do
-                 use Commanded.Event.Handler,
-                   retry: #{module} <-- this needs to implement `handle_error/3`
-
-          """
-        end
-    end
   end
 
   defp reset_subscription(%Handler{} = state) do
