@@ -533,6 +533,8 @@ defmodule Commanded.Event.Handler do
       @before_compile unquote(__MODULE__)
       @behaviour Handler
 
+      @retry_strategy unquote(__MODULE__).extract_error_handler_module(unquote(using_opts))
+
       @doc """
       Start an event handler `GenServer` process linked to the current process.
 
@@ -627,32 +629,11 @@ defmodule Commanded.Event.Handler do
       def before_reset, do: :ok
 
       @doc false
-      def error(error, failed_event, failure_context) do
-        retry_strategy = Keyword.get(unquote(using_opts), :retry, :stop)
-        Handler.handle_error(retry_strategy, error, failed_event, failure_context)
+      def error({:error, reason} = error, failed_event, failure_context) do
+        apply(@retry_strategy, :handle_error, [error, failed_event, failure_context])
       end
 
       defoverridable init: 1, after_start: 1, before_reset: 0, error: 3
-    end
-  end
-
-  def handle_error(:stop, {:error, reason}, _failed_event, _failure_context) do
-    {:stop, reason}
-  end
-
-  def handle_error(:backoff, {:error, reason}, _event, %FailureContext{context: context}) do
-    context = Map.update(context, :failures, 1, fn failures -> failures + 1 end)
-    max_failures = Map.get(context, :max_failures, 2)
-
-    case Map.get(context, :failures) do
-      too_many when too_many >= max_failures ->
-        Logger.warning("Stopping #{__MODULE__} after too many failures.")
-        {:stop, reason}
-
-      failures ->
-        delay = trunc(failures ** 2) * 1000 + trunc(:rand.uniform() * 1000)
-        Logger.debug("Failure #{failures}, delaying for #{delay}ms")
-        {:retry, delay, context}
     end
   end
 
@@ -889,6 +870,35 @@ defmodule Commanded.Event.Handler do
     )
 
     {:noreply, state}
+  end
+
+  def extract_error_handler_module(opts) do
+    case Keyword.get(opts, :retry, :stop) do
+      :stop ->
+        Commanded.Event.ErrorHandler.Stop
+
+      :backoff ->
+        Commanded.Event.ErrorHandler.Backoff
+
+      :grumpy_old_bastard ->
+        Commanded.Event.ErrorHandler.GrumpyOldBastard
+
+      module when is_atom(module) ->
+        # todo check this at macro time, why wait?
+        if function_exported?(module, :handle_error, 3) do
+          module
+        else
+          raise """
+          Invalid Event.Handler error module specified: #{module}.
+               `retry` option is set to #{module} but that module does not export `handle_error/3`
+
+               defmodule MyHandler do
+                 use Commanded.Event.Handler,
+                   retry: #{module} <-- this needs to implement `handle_error/3`
+
+          """
+        end
+    end
   end
 
   defp reset_subscription(%Handler{} = state) do
