@@ -632,7 +632,7 @@ defmodule Commanded.Event.Handler do
   end
 
   # GenServer start options
-  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after, :on_error]
+  @start_opts [:debug, :name, :timeout, :spawn_opt, :hibernate_after]
 
   # Event handler configuration options
   @handler_opts [

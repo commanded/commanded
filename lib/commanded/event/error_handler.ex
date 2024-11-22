@@ -22,11 +22,4 @@ defmodule Commanded.Event.ErrorHandler do
 
     {:retry, delay, context}
   end
-
-  @doc """
-    Stop everything and be grumpy about it.
-  """
-  def grump(_error, _failed_event, _failure_context) do
-    {:stop, "You have no business coding on the BEAM."}
-  end
 end
