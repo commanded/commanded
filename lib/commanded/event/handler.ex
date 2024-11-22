@@ -1081,7 +1081,7 @@ defmodule Commanded.Event.Handler do
     %Handler{application: application, handler_module: handler_module} = state
 
     if function_exported?(handler_module, :error, 3) do
-      apply(handler_module, :error, [error, data, failure_context])
+      handler_module.error(error, data, failure_context)
     else
       case Commanded.Application.event_handler_error_handler(application) do
         default when default in [nil, :stop] ->
