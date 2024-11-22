@@ -534,20 +534,6 @@ defmodule Commanded.Event.Handler do
       @before_compile unquote(__MODULE__)
       @behaviour Handler
 
-      @on_error (case Keyword.get(unquote(using_opts), :on_error, :stop) do
-                   :stop ->
-                     &ErrorHandler.stop_on_error/3
-
-                   :backoff ->
-                     &ErrorHandler.backoff/3
-
-                   :grumpy_old_bastard ->
-                     &ErrorHandler.grump/3
-
-                   error_handler when is_function(error_handler, 3) ->
-                     error_handler
-                 end)
-
       @doc """
       Start an event handler `GenServer` process linked to the current process.
 
@@ -641,13 +627,7 @@ defmodule Commanded.Event.Handler do
       @doc false
       def before_reset, do: :ok
 
-      @doc false
-      def error({:error, reason} = error, failed_event, %FailureContext{} = failure_context)
-          when is_struct(failed_event) do
-        @on_error.(error, failed_event, failure_context)
-      end
-
-      defoverridable init: 1, after_start: 1, before_reset: 0, error: 3
+      defoverridable init: 1, after_start: 1, before_reset: 0
     end
   end
 
@@ -700,7 +680,7 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   defmacro __before_compile__(_env) do
-    # Include default `handle/2` and `error/3` callback functions in module
+    # Include default `handle/2` callback function in module
     quote generated: true do
       @doc false
       def handle(_event, _metadata), do: :ok
@@ -1044,9 +1024,8 @@ defmodule Commanded.Event.Handler do
          %Handler{} = state
        ) do
     %RecordedEvent{data: data} = failed_event
-    %Handler{handler_module: handler_module} = state
 
-    case handler_module.error(error, data, failure_context) do
+    case on_error(state, error, data, failure_context) do
       {:retry, %FailureContext{context: context}} when is_map(context) ->
         # Retry the failed event
         Logger.info(describe(state) <> " is retrying failed event")
@@ -1095,6 +1074,25 @@ defmodule Commanded.Event.Handler do
 
         # Stop event handler with original error
         throw(error)
+    end
+  end
+
+  defp on_error(%Handler{} = state, error, data, failure_context) do
+    %Handler{application: application, handler_module: handler_module} = state
+
+    if function_exported?(handler_module, :error, 3) do
+      apply(handler_module, :error, [error, data, failure_context])
+    else
+      case Commanded.Application.event_handler_error_handler(application) do
+        default when default in [nil, :stop] ->
+          ErrorHandler.stop_on_error(error, data, failure_context)
+
+        :backoff ->
+          ErrorHandler.backoff(error, data, failure_context)
+
+        module when is_atom(module) ->
+          module.error(error, data, failure_context)
+      end
     end
   end
 
