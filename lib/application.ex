@@ -400,7 +400,7 @@ defmodule Commanded.Application do
   def registry_adapter(application), do: Config.get(application, :registry)
 
   @doc false
-  @spec event_handler_error_handler(Commanded.Application.t()) :: atom | module
-  def event_handler_error_handler(application),
-    do: Config.get(application, :event_handler_error_handler)
+  @spec on_event_handler_error(Commanded.Application.t()) :: atom | module
+  def on_event_handler_error(application),
+    do: Config.get(application, :on_event_handler_error)
 end
