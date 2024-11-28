@@ -1083,7 +1083,7 @@ defmodule Commanded.Event.Handler do
     if function_exported?(handler_module, :error, 3) do
       handler_module.error(error, data, failure_context)
     else
-      case Commanded.Application.event_handler_error_handler(application) do
+      case Commanded.Application.on_event_handler_error(application) do
         default when default in [nil, :stop] ->
           ErrorHandler.stop_on_error(error, data, failure_context)
 
