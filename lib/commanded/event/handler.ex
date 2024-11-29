@@ -323,6 +323,58 @@ defmodule Commanded.Event.Handler do
   The above example requires three named Commanded applications to have already
   been started.
 
+  ## Error handling
+
+  Commanded provides two paths to dealing with errors in Event Handlers:
+
+  1) Application-wide strategies using `on_event_handler_error`
+  2) A custom, per-handler callback using `error/3`
+
+  ### Application level error handling
+
+  The error mechanism for handling errors can be configured at a Commanded
+  Application level by setting the `on_event_handler_error` option in the
+  Application's configuration.
+
+  The following options are supported:
+
+  - `:stop` - Stop the Event Handler on the first error. This will crash the
+    Event Handler process and it will be up to the Supervisor above it to take
+    appropriate action.
+
+    Given a transient error, the Supervisor should be able to restart the handler
+    and eventually make forward progress.
+
+    Given a permanent error, such as a malformed event, or a bug in the handler,
+    the handler will never be able to make forward progress and will crash
+    immediately upon startup, which will eventually cause the Supervisor to give
+    up and crash. This will eventually cascade its way upwards and crash the
+    Elixir application.
+
+    For historical reasons, this is the default behaviour.
+
+  - `:backoff` - Retry the failed event indefinitely, but with an exponential
+    backoff with jitter. The first retry will come between 1 and 2 seconds, and
+    each subsequent attempt exponentially more. There is no maximum number of
+    retries, but the time between attempts will quickly expand into years.
+
+  - A module which implements `error/3` as described below. This callback is
+    given the chance to decide how to respond to an error.
+
+  #### Example
+
+  ```elixir
+  # congigure all event handlers in BankApp to retry with backoff:
+  config :my_app, MyApp.BankApp,
+    on_event_handler_error: :backoff
+  ```
+
+  ### Custom error callback
+
+  An application may also choose to implement the `error/3` callback in the
+  handler itself which overrides the configured behaviour. See `c:error/3` below
+  for details.
+
   ## Telemetry
 
   #{telemetry_docs()}
