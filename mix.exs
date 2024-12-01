@@ -103,6 +103,7 @@ defmodule Commanded.Mixfile do
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
         "guides/Testing.md",
+        "guides/InMemoryEventStore.md",
         "guides/Deployment.md",
         "guides/upgrades/0.19-1.0.md": [
           filename: "0.19-1.0",
