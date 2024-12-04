@@ -323,6 +323,58 @@ defmodule Commanded.Event.Handler do
   The above example requires three named Commanded applications to have already
   been started.
 
+  ## Error handling
+
+  Commanded provides two paths to dealing with errors in Event Handlers:
+
+  1) Application-wide strategies using `on_event_handler_error`
+  2) A custom, per-handler callback using `error/3`
+
+  ### Application level error handling
+
+  The error mechanism for handling errors can be configured at a Commanded
+  Application level by setting the `on_event_handler_error` option in the
+  Application's configuration.
+
+  The following options are supported:
+
+  - `:stop` - Stop the Event Handler on the first error. This will crash the
+    Event Handler process and it will be up to the Supervisor above it to take
+    appropriate action.
+
+    Given a transient error, the Supervisor should be able to restart the handler
+    and eventually make forward progress.
+
+    Given a permanent error, such as a malformed event, or a bug in the handler,
+    the handler will never be able to make forward progress and will crash
+    immediately upon startup, which will eventually cause the Supervisor to give
+    up and crash. This will eventually cascade its way upwards and crash the
+    Elixir application.
+
+    For historical reasons, this is the default behaviour.
+
+  - `:backoff` - Retry the failed event indefinitely, but with an exponential
+    backoff with jitter. The first retry will come between 1 and 2 seconds, and
+    each subsequent attempt exponentially more. There is no maximum number of
+    retries, but the time between attempts will quickly expand into years.
+
+  - A module which implements `error/3` as described below. This callback is
+    given the chance to decide how to respond to an error.
+
+  #### Example
+
+  ```elixir
+  # congigure all event handlers in BankApp to retry with backoff:
+  config :my_app, MyApp.BankApp,
+    on_event_handler_error: :backoff
+  ```
+
+  ### Custom error callback
+
+  An application may also choose to implement the `error/3` callback in the
+  handler itself which overrides the configured behaviour. See `c:error/3` below
+  for details.
+
   ## Telemetry
 
   #{telemetry_docs()}
@@ -331,6 +383,7 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
+  alias Commanded.Event.ErrorHandler
   alias Commanded.Event.FailureContext
   alias Commanded.Event.Handler
   alias Commanded.Event.Upcast
@@ -679,13 +732,10 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   defmacro __before_compile__(_env) do
-    # Include default `handle/2` and `error/3` callback functions in module
+    # Include default `handle/2` callback function in module
     quote generated: true do
       @doc false
       def handle(_event, _metadata), do: :ok
-
-      @doc false
-      def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
     end
   end
 
@@ -1026,9 +1076,8 @@ defmodule Commanded.Event.Handler do
          %Handler{} = state
        ) do
     %RecordedEvent{data: data} = failed_event
-    %Handler{handler_module: handler_module} = state
 
-    case handler_module.error(error, data, failure_context) do
+    case on_error(state, error, data, failure_context) do
       {:retry, %FailureContext{context: context}} when is_map(context) ->
         # Retry the failed event
         Logger.info(describe(state) <> " is retrying failed event")
@@ -1077,6 +1126,25 @@ defmodule Commanded.Event.Handler do
 
         # Stop event handler with original error
         throw(error)
+    end
+  end
+
+  defp on_error(%Handler{} = state, error, data, failure_context) do
+    %Handler{application: application, handler_module: handler_module} = state
+
+    if function_exported?(handler_module, :error, 3) do
+      handler_module.error(error, data, failure_context)
+    else
+      case Commanded.Application.on_event_handler_error(application) do
+        default when default in [nil, :stop] ->
+          ErrorHandler.stop_on_error(error, data, failure_context)
+
+        :backoff ->
+          ErrorHandler.backoff(error, data, failure_context)
+
+        module when is_atom(module) ->
+          module.error(error, data, failure_context)
+      end
     end
   end
 

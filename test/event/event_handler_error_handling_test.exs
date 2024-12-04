@@ -3,6 +3,10 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
 
   import ExUnit.CaptureLog
 
+  alias Commanded.Application.Config, as: AppConfig
+
+  alias Commanded.DefaultApp
+
   alias Commanded.Event.ErrorAggregate.Events.{
     ErrorEvent,
     ExceptionEvent,
@@ -12,6 +16,8 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   alias Commanded.Event.ErrorEventHandler
   alias Commanded.Event.FailureContext
   alias Commanded.Event.Handler
+  alias Commanded.Event.SimpleErrorEventHandler
+  alias Commanded.Event.ThreeStrikesErrorHandler
   alias Commanded.Helpers.EventFactory
 
   setup do
@@ -23,6 +29,53 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
       handler: handler,
       ref: Process.monitor(handler)
     ]
+  end
+
+  describe "Configured error handling" do
+    setup [:listen_for_telemetry_events, :start_simple_error_handler]
+
+    test ":stop stops the handler", %{handler: handler, ref: ref} do
+      AppConfig.__put__(DefaultApp, :on_event_handler_error, :stop)
+
+      send_error_event(handler)
+
+      assert_receive {:DOWN, ^ref, :process, ^handler, :failed}
+    end
+
+    test ":backoff delays the next attempt", %{handler: handler} do
+      AppConfig.__put__(DefaultApp, :on_event_handler_error, :backoff)
+
+      # When we sent the error event
+      send_error_event(handler)
+
+      # Then the first attempt and failure occur
+      assert_receive {[:commanded, :event, :handle, :start], 1, _, %{context: %{}}}
+      assert_receive {[:commanded, :event, :handle, :stop], 2, _, %{context: %{}}}
+
+      # And then the next one is received up to 2 seconds later
+      assert_receive {[:commanded, :event, :handle, :start], 3, _, %{context: %{failures: 1}}},
+                     2100
+
+      assert_receive {[:commanded, :event, :handle, :stop], 4, _, %{context: %{failures: 1}}},
+                     2100
+    end
+
+    test "error handler can be a custom module", %{handler: handler, ref: ref} do
+      AppConfig.__put__(DefaultApp, :on_event_handler_error, ThreeStrikesErrorHandler)
+
+      send_error_event(handler)
+
+      assert_receive {[:commanded, :event, :handle, :start], 1, _, %{context: %{}}}
+      assert_receive {[:commanded, :event, :handle, :stop], 2, _, %{context: %{}}}
+
+      assert_receive {[:commanded, :event, :handle, :start], 3, _, %{context: %{attempts: 1}}}
+      assert_receive {[:commanded, :event, :handle, :stop], 4, _, %{context: %{attempts: 1}}}
+
+      assert_receive {[:commanded, :event, :handle, :start], 5, _, %{context: %{attempts: 2}}}
+      assert_receive {[:commanded, :event, :handle, :stop], 6, _, %{context: %{attempts: 2}}}
+
+      assert_receive {:DOWN, ^ref, :process, ^handler, :too_many}
+    end
   end
 
   describe "event handling exception handling" do
@@ -180,4 +233,45 @@ defmodule Commanded.Event.EventHandlerErrorHandlingTest do
   end
 
   defp reply_to, do: :erlang.pid_to_list(self())
+
+  def listen_for_telemetry_events(_) do
+    agent = start_supervised!({Agent, fn -> 1 end})
+    handler_id = :"#{__MODULE__}-handler"
+
+    events = [
+      [:commanded, :event, :handle, :start],
+      [:commanded, :event, :handle, :stop],
+      [:commanded, :event, :handle, :exception]
+    ]
+
+    increment = fn n -> {n, n + 1} end
+
+    :telemetry.attach_many(
+      handler_id,
+      events,
+      fn event_name, measurements, metadata, reply_to ->
+        if Process.alive?(agent) do
+          num = Agent.get_and_update(agent, increment)
+          send(reply_to, {event_name, num, measurements, metadata})
+        end
+      end,
+      self()
+    )
+
+    on_exit(fn ->
+      :telemetry.detach(handler_id)
+    end)
+  end
+
+  defp start_simple_error_handler(_) do
+    start_supervised!(DefaultApp)
+    handler = start_supervised!(SimpleErrorEventHandler)
+    true = Process.unlink(handler)
+    ref = Process.monitor(handler)
+
+    [
+      handler: handler,
+      ref: ref
+    ]
+  end
 end
