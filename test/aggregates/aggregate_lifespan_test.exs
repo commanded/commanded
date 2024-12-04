@@ -1,7 +1,7 @@
 defmodule Commanded.Aggregates.AggregateLifespanTest do
   use ExUnit.Case
 
-  alias Commanded.Aggregates.{DefaultLifespanRouter, LifespanAggregate, LifespanRouter}
+  alias Commanded.Aggregates.{Aggregate, DefaultLifespanRouter, LifespanAggregate, LifespanRouter}
   alias Commanded.Aggregates.LifespanAggregate.{Command, Event}
   alias Commanded.{DefaultApp, EventStore}
   alias Commanded.EventStore.RecordedEvent
@@ -95,6 +95,64 @@ defmodule Commanded.Aggregates.AggregateLifespanTest do
       }
 
       :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+
+      assert_receive {:DOWN, ^ref, :process, _pid, :normal}
+    end
+
+    test "honours lifespan after a call to aggregate_state", %{
+      aggregate_uuid: aggregate_uuid,
+      ref: ref,
+      reply_to: reply_to
+    } do
+      command = %Command{
+        uuid: aggregate_uuid,
+        reply_to: reply_to,
+        action: :event,
+        lifespan: 500
+      }
+
+      :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+
+      %{lifespan: 500} = Aggregate.aggregate_state(DefaultApp, LifespanAggregate, aggregate_uuid)
+
+      assert_receive {:DOWN, ^ref, :process, _pid, :normal}
+    end
+
+    test "honours lifespan after a call to aggregate_version", %{
+      aggregate_uuid: aggregate_uuid,
+      ref: ref,
+      reply_to: reply_to
+    } do
+      command = %Command{
+        uuid: aggregate_uuid,
+        reply_to: reply_to,
+        action: :event,
+        lifespan: 500
+      }
+
+      :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+
+      1 = Aggregate.aggregate_version(DefaultApp, LifespanAggregate, aggregate_uuid)
+
+      assert_receive {:DOWN, ^ref, :process, _pid, :normal}
+    end
+
+    test "honours lifespan after an info message is handled", %{
+      aggregate_uuid: aggregate_uuid,
+      pid: pid,
+      ref: ref,
+      reply_to: reply_to
+    } do
+      command = %Command{
+        uuid: aggregate_uuid,
+        reply_to: reply_to,
+        action: :event,
+        lifespan: 500
+      }
+
+      :ok = LifespanRouter.dispatch(command, application: DefaultApp)
+
+      send(pid, :unexpected_message)
 
       assert_receive {:DOWN, ^ref, :process, _pid, :normal}
     end

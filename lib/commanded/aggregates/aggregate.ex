@@ -326,14 +326,13 @@ defmodule Commanded.Aggregates.Aggregate do
       if Snapshotting.snapshot_required?(snapshotting, aggregate_version) do
         :ok = GenServer.cast(self(), {:take_snapshot, lifespan_timeout})
 
+        # Don't reply with a lifetime because we just asked for a snapshot to
+        # be taken. When it finishes, it will set the timeout.
         {:reply, formatted_reply, state}
       else
         state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
 
-        case lifespan_timeout do
-          {:stop, reason} -> {:stop, reason, formatted_reply, state}
-          lifespan_timeout -> {:reply, formatted_reply, state, lifespan_timeout}
-        end
+        reply_with_lifespan(formatted_reply, state)
       end
 
     telemetry_metadata = telemetry_metadata(context, from, state)
@@ -347,7 +346,7 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call(:aggregate_state, _from, %Aggregate{} = state) do
     %Aggregate{aggregate_state: aggregate_state} = state
 
-    {:reply, aggregate_state, state}
+    reply_with_lifespan(aggregate_state, state)
   end
 
   @doc false
@@ -355,13 +354,13 @@ defmodule Commanded.Aggregates.Aggregate do
   def handle_call(:aggregate_version, _from, %Aggregate{} = state) do
     %Aggregate{aggregate_version: aggregate_version} = state
 
-    {:reply, aggregate_version, state}
+    reply_with_lifespan(aggregate_version, state)
   end
 
   @doc false
   @impl GenServer
   def handle_info({:events, events}, %Aggregate{} = state) do
-    %Aggregate{application: application, lifespan_timeout: lifespan_timeout} = state
+    %Aggregate{application: application} = state
 
     Logger.debug(describe(state) <> " received events: " <> inspect(events))
 
@@ -372,10 +371,7 @@ defmodule Commanded.Aggregates.Aggregate do
         |> Upcast.upcast_event_stream(additional_metadata: %{application: application})
         |> Enum.reduce(state, &handle_event/2)
 
-      case lifespan_timeout do
-        {:stop, reason} -> {:stop, reason, state}
-        lifespan_timeout -> {:noreply, state, lifespan_timeout}
-      end
+      noreply_with_lifespan(state)
     catch
       {:error, error} ->
         Logger.debug(describe(state) <> " stopping due to: " <> inspect(error))
@@ -391,6 +387,14 @@ defmodule Commanded.Aggregates.Aggregate do
     Logger.debug(describe(state) <> " stopping due to inactivity timeout")
 
     {:stop, :normal, state}
+  end
+
+  @doc false
+  @impl GenServer
+  def handle_info(message, %Aggregate{} = state) do
+    Logger.debug("received unexpected message in handle_info/2: " <> inspect(message))
+
+    noreply_with_lifespan(state)
   end
 
   defp event_already_seen?(%RecordedEvent{} = event, %Aggregate{} = state) do
@@ -582,7 +586,6 @@ defmodule Commanded.Aggregates.Aggregate do
     %Aggregate{
       aggregate_state: aggregate_state,
       aggregate_version: aggregate_version,
-      lifespan_timeout: lifespan_timeout,
       snapshotting: snapshotting
     } = state
 
@@ -599,10 +602,7 @@ defmodule Commanded.Aggregates.Aggregate do
           state
       end
 
-    case lifespan_timeout do
-      {:stop, reason} -> {:stop, reason, state}
-      lifespan_timeout -> {:noreply, state, lifespan_timeout}
-    end
+    noreply_with_lifespan(state)
   end
 
   defp telemetry_start(telemetry_metadata) do
@@ -665,5 +665,23 @@ defmodule Commanded.Aggregates.Aggregate do
     } = aggregate
 
     "#{inspect(aggregate_module)}<#{aggregate_uuid}@#{aggregate_version}>"
+  end
+
+  defp reply_with_lifespan(reply, state) do
+    %Aggregate{lifespan_timeout: lifespan_timeout} = state
+
+    case lifespan_timeout do
+      {:stop, reason} -> {:stop, reason, reply, state}
+      lifespan_timeout -> {:reply, reply, state, lifespan_timeout}
+    end
+  end
+
+  defp noreply_with_lifespan(state) do
+    %Aggregate{lifespan_timeout: lifespan_timeout} = state
+
+    case lifespan_timeout do
+      {:stop, reason} -> {:stop, reason, state}
+      lifespan_timeout -> {:noreply, state, lifespan_timeout}
+    end
   end
 end
