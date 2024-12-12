@@ -324,7 +324,7 @@ You can optionally choose to include the aggregate's version as part of the disp
 {:ok, aggregate_version} = BankApp.dispatch(command, include_aggregate_version: true)
 ```
 
-This is useful when you need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
+The returned `aggregate_version` can be used as an ETAG, allowing you to synchronize operations across the read-side and write-side of your application. For example, if need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
 
 ```elixir
 defmodule BankAccountProjector do
