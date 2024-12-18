@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.4.7
+
+
+### Enhancements
+
+* Application-wide event handler error handling by @drteeth in https://github.com/commanded/commanded/pull/605
+* chore: remove asdf file by @yordis in https://github.com/commanded/commanded/pull/570
+* chore: improve docs about aggregate version by @yordis in https://github.com/commanded/commanded/pull/608
+* Update include_aggregate_version documentation by @TylerPachal in https://github.com/commanded/commanded/pull/609
+
+### Bug fixes
+
+* Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
+* feat: default aggregate lifespan configuration by @yordis in https://github.com/commanded/commanded/pull/548
+* Aggregate.handle_* now properly handles lifespans by @drteeth in https://github.com/commanded/commanded/pull/606
+* Allow registration handle_call/cast callbacks to be called by @drteeth in https://github.com/commanded/commanded/pull/607
+* Update local_cluster by @drteeth in https://github.com/commanded/commanded/pull/610
+
 ## v1.4.6
 
 ### Enhancements
