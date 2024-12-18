@@ -234,6 +234,7 @@ defmodule Commanded.Mixfile do
       maintainers: ["Ben Smith"],
       licenses: ["MIT"],
       links: %{
+        "Changelog" => "https://hexdocs.pm/commanded/#{@version}/changelog.html",
         "GitHub" => "https://github.com/commanded/commanded"
       }
     ]
