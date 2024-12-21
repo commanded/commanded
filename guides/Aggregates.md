@@ -20,7 +20,7 @@ end
 
 ## Command functions
 
-A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events. You can return a single event or a list of events:  `%Event{}`, `[%Event{}]`, `{:ok, %Event{}}`, or `{:ok, [%Event{}]}`.
+A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events. You can return a single event or a list of events: `%Event{}`, `[%Event{}]`, `{:ok, %Event{}}`, or `{:ok, [%Event{}]}`.
 
 To respond without returning an event you can return `:ok`, `nil` or an empty list as either `[]` or `{:ok, []}`.
 
@@ -47,7 +47,7 @@ end
 
 The state of an aggregate can only be mutated by applying a domain event to its state. This is achieved by an `apply/2` function that receives the state and the domain event. It returns the modified state.
 
-Pattern matching is used to invoke the respective `apply/2` function for an event. These functions *must never fail* as they are used when rebuilding the aggregate state from its history of domain events. You cannot reject the event once it has occurred.
+Pattern matching is used to invoke the respective `apply/2` function for an event. These functions **MUST NOT** fail as they are used when rebuilding the aggregate state from its history of domain events. You cannot reject the event once it has occurred.
 
 ```elixir
 defmodule ExampleAggregate do
@@ -159,6 +159,20 @@ defmodule BankAccount do
   end
 end
 ```
+
+> #### Effective Aggregate State {: .tip}
+>
+> The aggregate state should be carefully designed to maintain only the data required to:
+>
+> - Enforce business rules and invariants (e.g. preventing withdrawals that would overdraw an account)
+> - Provide context for command handling based on previous events (e.g. checking an order's current status)
+> - Make decisions that depend on historical events (e.g. verifying a refund doesn't exceed original payment)
+>
+> A common anti-pattern is blindly copying all event data into aggregate state without considering whether that data
+> is actually needed for command handling. If a piece of state is never referenced in any command handling logic,
+> it should be removed from the aggregate. This keeps the aggregate focused and maintainable.
+>
+> State that is only needed for querying/reporting should be maintained in read models rather than aggregate state.
 
 ## Using `Commanded.Aggregate.Multi` to return multiple events
 
@@ -284,8 +298,9 @@ defimpl Commanded.Serialization.JsonDecoder, for: ExampleAggregate do
   end
 end
 ```
+
 Note: The default JSON encoding of a `DateTime` struct uses the `to_iso8601/1` function which is why we must decode it using the `from_iso8601/1` function.
 
 ### Rebuilding an aggregate snapshot
 
-Whenever you change the structure of an aggregate's state you *must* increment the `snapshot_version` number. The aggregate state will be rebuilt from its events, ignoring any existing snapshots. They will be overwritten when the next snapshot is taken.
+Whenever you change the structure of an aggregate's state you **MUST** increment the `snapshot_version` number. The aggregate state will be rebuilt from its events, ignoring any existing snapshots. They will be overwritten when the next snapshot is taken.
