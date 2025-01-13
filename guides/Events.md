@@ -76,7 +76,7 @@ You should start your event handlers using an OTP `Supervisor` to ensure they ar
 You can choose the default error behaviour for *all* of your event handlers in each Application's configuration:
 
 ```ellxir
-config :exchange, Exchange.EventStore.CommandDispatcher,
+config :example, ExampleApp,
   on_event_handler_error: :stop # or :backoff or MyCustomErrorHandler
 ```
 
@@ -84,7 +84,9 @@ The default behaviour is to stop the event handler process when any error is enc
 
 The `:backoff` option, introduced in v1.4.7, cause the even handler to retry after an exponentially increasing backoff period (up to a maximum of 24 hours). The event handler will still not be able to make forward progress until you address the issue, but it won't take your supervisors or applications down with it.
 
-Finally, if you want to provide your own strategy, you can pass in a module that implements an `c:error/3` function that matches the `c:error/3` callback mentioned above.
+If you want to provide your own strategy, you can pass in a module that implements an `c:error/3` function that matches the `c:error/3` callback mentioned above.
+
+It's important to note that if your event handler overrides the `error/3` callback, then that will be called instead of the application-wide strategy.
 
 ### Subscribing to an individual stream
 
