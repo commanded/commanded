@@ -71,6 +71,21 @@ Use the `:current` position when you don't want newly created event handlers to 
 
 You should start your event handlers using an OTP `Supervisor` to ensure they are restarted on error. See the [Supervision guide](https://hexdocs.pm/commanded/supervision.html) for more details.
 
+### Configuration options
+
+You can choose the default error behaviour for *all* of your event handlers in each Application's configuration:
+
+```ellxir
+config :exchange, Exchange.EventStore.CommandDispatcher,
+  on_event_handler_error: :stop # or :backoff or MyCustomErrorHandler
+```
+
+The default behaviour is to stop the event handler process when any error is encountered. As event handlers are supervised either by a custom supervisor or by the application itself, the handlers are usually restarted right away. If the error is permanent, due to a logic or data bug, then the process will likely crash again right away. This can lead the supervisor itself to give up, crash and this will continue up your supervision tree until it stops your application.
+
+The `:backoff` option, introduced in v1.4.7, cause the even handler to retry after an exponentially increasing backoff period (up to a maximum of 24 hours). The event handler will still not be able to make forward progress until you address the issue, but it won't take your supervisors or applications down with it.
+
+Finally, if you want to provide your own strategy, you can pass in a module that implements an `c:error/3` function that matches the `c:error/3` callback mentioned above.
+
 ### Subscribing to an individual stream
 
 By default event handlers will subscribe to all events appended to any stream. Provide a `subscribe_to` option to subscribe to a single stream.
