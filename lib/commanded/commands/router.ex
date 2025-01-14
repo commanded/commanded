@@ -338,6 +338,7 @@ defmodule Commanded.Commands.Router do
                                    by: by,
                                    prefix: prefix
                                  )
+
         config ->
           raise "#{inspect(aggregate_module)} aggregate has already been identified by: `#{inspect(Keyword.get(config, :by))}`"
       end
@@ -479,7 +480,7 @@ defmodule Commanded.Commands.Router do
 
   defmacro __before_compile__(_env) do
     quote generated: true do
-      def stream_uuid(aggregate) when is_struct(aggregate)  do
+      def stream_uuid(aggregate) when is_struct(aggregate) do
         case Map.fetch(@registered_identities, aggregate.__struct__) do
           {:ok, opts} ->
             field = Keyword.fetch!(opts, :by)

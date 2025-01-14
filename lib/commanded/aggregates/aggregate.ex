@@ -585,13 +585,15 @@ defmodule Commanded.Aggregates.Aggregate do
         metadata: metadata
       )
 
-    opts = case Keyword.pop(opts, :trim_stream) do
-      {true, opts} ->
-        trim_stream_to_version = expected_version + length(pending_events)
-        Keyword.put(opts, :trim_stream_to_version, trim_stream_to_version)
-      {_, opts} ->
-        opts
-    end
+    opts =
+      case Keyword.pop(opts, :trim_stream) do
+        {true, opts} ->
+          trim_stream_to_version = expected_version + length(pending_events)
+          Keyword.put(opts, :trim_stream_to_version, trim_stream_to_version)
+
+        {_, opts} ->
+          opts
+      end
 
     EventStore.append_to_stream(application, aggregate_uuid, expected_version, event_data, opts)
   end
