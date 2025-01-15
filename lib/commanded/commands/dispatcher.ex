@@ -108,17 +108,19 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version, events} ->
+      {:ok, aggregate_version, events, aggregate_state} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
         |> Pipeline.assign(:events, events)
+        |> Pipeline.assign(:aggregate_state, aggregate_state)
         |> after_dispatch(payload)
         |> Pipeline.respond(:ok)
 
-      {:ok, aggregate_version, events, reply} ->
+      {:ok, aggregate_version, events, aggregate_state, reply} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
         |> Pipeline.assign(:events, events)
+        |> Pipeline.assign(:aggregate_state, aggregate_state)
         |> after_dispatch(payload)
         |> Pipeline.respond({:ok, reply})
 

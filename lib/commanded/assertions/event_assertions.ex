@@ -91,13 +91,13 @@ defmodule Commanded.Assertions.EventAssertions do
 
   Refute that `ExampleEvent` is produced by given anonymous function:
 
-    refute_receive_event(ExampleApp, ExampleEvent, fn ->
-      :ok = MyApp.dispatch(command)
-    end)
+      refute_receive_event(ExampleApp, ExampleEvent, fn ->
+        :ok = MyApp.dispatch(command)
+      end)
 
   Refute that `ExampleEvent` is produced by `some_func/0` function:
 
-    refute_receive_event(ExampleApp, ExampleEvent, &some_func/0)
+      refute_receive_event(ExampleApp, ExampleEvent, &some_func/0)
 
   Refute that `ExampleEvent` matching given `event_matches?/1` predicate function
   is produced by `some_func/0` function:

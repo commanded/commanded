@@ -331,6 +331,7 @@ defmodule Commanded.Event.Handler do
 
   require Logger
 
+  alias Commanded.Event.ErrorHandler
   alias Commanded.Event.FailureContext
   alias Commanded.Event.Handler
   alias Commanded.Event.Upcast
@@ -344,14 +345,17 @@ defmodule Commanded.Event.Handler do
   @type subscribe_from :: :origin | :current | non_neg_integer()
   @type consistency :: :eventual | :strong
 
+  @doc deprecated: "Use the after_start/1 callback instead."
+  @callback init() :: :ok | {:stop, reason :: any()}
+
   @doc """
   Optional initialisation callback function called when the handler starts.
 
   Can be used to start any related processes when the event handler is started.
 
-  This callback function must return `:ok`, or `{:stop, reason}` to stop the
-  handler process. Any other return value will terminate the event handler with
-  an error.
+  This callback function must return `:ok`, `{:ok, state}` to return new state,
+  or `{:stop, reason}` to stop the handler process. Any other return value
+  will terminate the event handler with an error.
 
   ### Example
 
@@ -361,8 +365,9 @@ defmodule Commanded.Event.Handler do
           name: "ExampleHandler"
 
         # Optional initialisation
-        def init do
-          :ok
+        def after_start(handler_state) do
+          new_handler_state = Map.put(handler_state, :foo, "bar")
+          {:ok, new_handler_state}
         end
 
         def handle(%AnEvent{..}, _metadata) do
@@ -372,7 +377,8 @@ defmodule Commanded.Event.Handler do
       end
 
   """
-  @callback init() :: :ok | {:stop, reason :: any()}
+  @callback after_start(handler_state :: term()) ::
+              :ok | {:ok, state :: map()} | {:stop, reason :: any()}
 
   @doc """
   Optional callback function called to configure the handler before it starts.
@@ -515,7 +521,13 @@ defmodule Commanded.Event.Handler do
   """
   @callback partition_by(domain_event, metadata) :: any()
 
-  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2
+  @doc """
+  Called before an event handler gets reset
+  """
+
+  @callback before_reset() :: :ok
+
+  @optional_callbacks init: 0, init: 1, error: 3, partition_by: 2, before_reset: 0
 
   defmacro __using__(using_opts) do
     quote location: :keep do
@@ -600,7 +612,14 @@ defmodule Commanded.Event.Handler do
       end
 
       @doc false
-      def init, do: :ok
+      def after_start(_state) do
+        # TODO: remove this when we remove init/0
+        if function_exported?(__MODULE__, :init, 0) do
+          apply(__MODULE__, :init, [])
+        else
+          :ok
+        end
+      end
 
       @doc false
       def init(config), do: {:ok, config}
@@ -608,7 +627,7 @@ defmodule Commanded.Event.Handler do
       @doc false
       def before_reset, do: :ok
 
-      defoverridable init: 0, init: 1, before_reset: 0
+      defoverridable init: 1, after_start: 1, before_reset: 0
     end
   end
 
@@ -661,13 +680,10 @@ defmodule Commanded.Event.Handler do
 
   @doc false
   defmacro __before_compile__(_env) do
-    # Include default `handle/2` and `error/3` callback functions in module
+    # Include default `handle/2` callback function in module
     quote generated: true do
       @doc false
       def handle(_event, _metadata), do: :ok
-
-      @doc false
-      def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
     end
   end
 
@@ -776,12 +792,20 @@ defmodule Commanded.Event.Handler do
 
     %Handler{handler_module: handler_module} = state
 
-    case handler_module.init() do
+    if function_exported?(handler_module, :init, 0) do
+      Logger.warning("#{inspect(handler_module)}.init/0 is deprecated, use after_start/1 instead")
+    end
+
+    case handler_module.after_start(state.handler_state) do
       :ok ->
         {:noreply, state}
 
+      {:ok, %{} = new_handler_state} ->
+        new_state = %{state | handler_state: new_handler_state}
+        {:noreply, new_state}
+
       {:stop, reason} ->
-        Logger.debug(describe(state) <> " `init/0` callback has requested to stop")
+        Logger.debug(describe(state) <> " `after_start/1` callback has requested to stop")
 
         {:stop, reason, state}
     end
@@ -1000,9 +1024,8 @@ defmodule Commanded.Event.Handler do
          %Handler{} = state
        ) do
     %RecordedEvent{data: data} = failed_event
-    %Handler{handler_module: handler_module} = state
 
-    case handler_module.error(error, data, failure_context) do
+    case on_error(state, error, data, failure_context) do
       {:retry, %FailureContext{context: context}} when is_map(context) ->
         # Retry the failed event
         Logger.info(describe(state) <> " is retrying failed event")
@@ -1051,6 +1074,25 @@ defmodule Commanded.Event.Handler do
 
         # Stop event handler with original error
         throw(error)
+    end
+  end
+
+  defp on_error(%Handler{} = state, error, data, failure_context) do
+    %Handler{application: application, handler_module: handler_module} = state
+
+    if function_exported?(handler_module, :error, 3) do
+      handler_module.error(error, data, failure_context)
+    else
+      case Commanded.Application.on_event_handler_error(application) do
+        default when default in [nil, :stop] ->
+          ErrorHandler.stop_on_error(error, data, failure_context)
+
+        :backoff ->
+          ErrorHandler.backoff(error, data, failure_context)
+
+        module when is_atom(module) ->
+          module.error(error, data, failure_context)
+      end
     end
   end
 

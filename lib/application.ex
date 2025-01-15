@@ -398,4 +398,9 @@ defmodule Commanded.Application do
   @doc false
   @spec registry_adapter(Commanded.Application.t()) :: {module, map}
   def registry_adapter(application), do: Config.get(application, :registry)
+
+  @doc false
+  @spec on_event_handler_error(Commanded.Application.t()) :: atom | module
+  def on_event_handler_error(application),
+    do: Config.get(application, :on_event_handler_error)
 end
