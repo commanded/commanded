@@ -14,8 +14,9 @@ defmodule Commanded.Event.Mapper do
 
   """
 
-  alias Commanded.EventStore.TypeProvider
+  alias Commanded.Event.EventId
   alias Commanded.EventStore.{EventData, RecordedEvent}
+  alias Commanded.EventStore.TypeProvider
 
   @type event :: struct
 
@@ -56,7 +57,8 @@ defmodule Commanded.Event.Mapper do
       correlation_id: Keyword.get(fields, :correlation_id),
       event_type: TypeProvider.to_string(event),
       data: event,
-      metadata: Keyword.get(fields, :metadata, %{})
+      metadata: Keyword.get(fields, :metadata, %{}),
+      event_id: EventId.event_id(event)
     }
   end
 
