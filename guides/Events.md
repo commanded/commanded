@@ -103,11 +103,53 @@ end
 
 This will ensure the handler only receives events appended to that stream.
 
+### Handling errors
+
+It is important to consider how errors in the handling of events will affect your application. By default any errors encountered are configured to stop the event handler immediately. For this reason it is vital to have handlers under supervision. Errors in handlers occur in two categories:
+
+#### Transient errors
+
+Transient errors occur due temporary issues such as network connectivity, flakey downstream services, memory, or disk issues. Retrying here will often solve the problem.
+
+#### Permanent errors
+
+Permanent errors occure due to bugs in code, and as such have no hope of resolving themselves. The handler will not be able to make any progress, and will repeatedly crash.
+
+Repeated crashes become a problem when the handler crashes more than it's supervisor is configured to tolerate. When that happens, the supervisor itself will crash and this process will continue upwards until finally the application itself crashes. This is obviously bad.
+
+You can opt to have your event handlers backoff when crashing to avoid this:
+
+```elixir
+config :my_app, MyApp.CommandedApp,
+  on_event_handler_error: :backoff
+```
+
+This will cause all event handlers from `MyApp.CommandedApp` to back off exponentially when they encounter an error. Errors will backoff to maximum of 24 hours, and will continue at that rate until the issue is resolved. The event handler still can't make any forward progress, but it will at least not bring down your application.
+
+It is also possible to configure the error handler for the default behaviour `:stop`.
+
+You can bring your own Commanded application-level behaviour by specifiying a module which implements `c:Commanded.Event.Handler.error/3`
+
+```elixir
+defmodule YoloErrorHandler do
+  def error(error, failing_event, failure_context) do
+    # Ignore all errors!
+    :skip
+  end
+end
+
+config :my_app, MyApp.CommandedApp,
+  on_event_handler_error: YoloErrorHandler
+```
+
 ### Event handler callbacks
 
 - `c:Commanded.Event.Handler.init/1` - (optional) used to configure the handler before it starts.
 - `c:Commanded.Event.Handler.after_start/1` - (optional) initialisation callback function called in the process of the started handler.
 - `c:Commanded.Event.Handler.error/3` - (optional) called when an event handle/2 callback returns an error.
+
+Error event handlers configured on a per handler basis like this will override the application level error handling.
+
 
 ### Metadata
 
