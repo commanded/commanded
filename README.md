@@ -76,7 +76,7 @@ MIT License
     - [Domain events](guides/Events.md#domain-events)
     - [Event handlers](guides/Events.md#event-handlers)
       - [Consistency guarantee](guides/Events.md#consistency-guarantee)
-      - [Error handling](guides/Events.md#error-handling)
+      - [Error handling](guides/Events.md#handling-errors)
     - [Upcasting events](guides/Events.md#upcasting-events)
   - [Process managers](guides/Process%20Managers.md)
     - [Example process manager](guides/Process%20Managers.md#example-process-manager)
