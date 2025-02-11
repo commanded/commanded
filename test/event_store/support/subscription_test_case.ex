@@ -778,12 +778,8 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       wait_for_event_store()
     end
 
-    # Optionally wait for the event store
     defp wait_for_event_store do
-      case event_store_wait() do
-        nil -> :ok
-        wait -> :timer.sleep(wait)
-      end
+      :timer.sleep(1)
     end
 
     defp assert_receive_events(event_store, event_store_meta, subscription, opts) do
