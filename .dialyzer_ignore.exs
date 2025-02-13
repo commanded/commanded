@@ -2,6 +2,7 @@
   # Erlang v24.x
   {"lib/commanded/event/upcaster.ex", :unknown_function},
   {"lib/commanded/serialization/json_decoder.ex", :unknown_function},
+  {"lib/commanded/event/event_id.ex", :unknown_function},
 
   # Erlang v23.x
   {":0:unknown_function Function Commanded.Event.Upcaster.Atom.__impl__/1 does not exist.",
@@ -47,5 +48,27 @@
   {":0:unknown_function Function Commanded.Serialization.JsonDecoder.Reference.__impl__/1 does not exist.",
    :unknown_function},
   {":0:unknown_function Function Commanded.Serialization.JsonDecoder.Tuple.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Atom.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.BitString.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Float.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Function.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Integer.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.List.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Map.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.PID.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Port.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Reference.__impl__/1 does not exist.",
+   :unknown_function},
+  {":1:unknown_function Function Commanded.Event.EventId.Tuple.__impl__/1 does not exist.",
    :unknown_function}
 ]

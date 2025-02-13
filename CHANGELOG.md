@@ -1,48 +1,58 @@
 # Changelog
 
+## v1.5.0
+
+### Enhancements
+
+- Add `Commanded.Event.EventId` protocol ([#616](https://github.com/commanded/commanded/pull/616)).
+
 ## v1.4.8
 
 ### Bug fixes
 
-* `Commanded.Event.ErrorHandler` now keeps surounding failure context by @drteeth in https://github.com/commanded/commanded/issues/617
+- `Commanded.Event.ErrorHandler` now keeps surounding failure context by @drteeth in https://github.com/commanded/commanded/issues/617
 
 ## v1.4.7
 
 ### Enhancements
 
-* Application-wide event handler error handling by @drteeth in https://github.com/commanded/commanded/pull/605
-* chore: remove asdf file by @yordis in https://github.com/commanded/commanded/pull/570
-* chore: improve docs about aggregate version by @yordis in https://github.com/commanded/commanded/pull/608
-* Update include_aggregate_version documentation by @TylerPachal in https://github.com/commanded/commanded/pull/609
+- Application-wide event handler error handling by @drteeth in https://github.com/commanded/commanded/pull/605
+- chore: remove asdf file by @yordis in https://github.com/commanded/commanded/pull/570
+- chore: improve docs about aggregate version by @yordis in https://github.com/commanded/commanded/pull/608
+- Update include_aggregate_version documentation by @TylerPachal in https://github.com/commanded/commanded/pull/609
 
 ### Bug fixes
 
-* Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
-* feat: default aggregate lifespan configuration by @yordis in https://github.com/commanded/commanded/pull/548
-* Aggregate.handle_* now properly handles lifespans by @drteeth in https://github.com/commanded/commanded/pull/606
-* Allow registration handle_call/cast callbacks to be called by @drteeth in https://github.com/commanded/commanded/pull/607
-* Update local_cluster by @drteeth in https://github.com/commanded/commanded/pull/610
+- Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
+- feat: default aggregate lifespan configuration by @yordis in https://github.com/commanded/commanded/pull/548
+- Aggregate.handle\_\* now properly handles lifespans by @drteeth in https://github.com/commanded/commanded/pull/606
+- Allow registration handle_call/cast callbacks to be called by @drteeth in https://github.com/commanded/commanded/pull/607
+- Update local_cluster by @drteeth in https://github.com/commanded/commanded/pull/610
 
 ## v1.4.6
 
 ### Enhancements
+
 - Includes changelog updates
 - Version bump
 
 ## v1.4.5
 
 ### Enhancements
+
 - Support OTP 26 and Elixir 1.17 ([#595](https://github.com/commanded/commanded/pull/595)).
 
 ## v1.4.4
 
 ### Enhancements
+
 - feat: put aggregate_state into assigns of the pipeline ([#502](https://github.com/commanded/commanded/pull/502)).
 - Add tag to partition test case ([#525](https://github.com/commanded/commanded/pull/525)).
 - Make before_reset/0 an explicit callback function ([#550](https://github.com/commanded/commanded/pull/550)).
 - New `Event.Handler.after_start/1` callback allows configuration in the handler's process ([#568](https://github.com/commanded/commanded/pull/568)).
 
 ### Bug fixes
+
 - Fix EventData typespec ([#495](https://github.com/commanded/commanded/pull/495)).
 - Fix refute_receive_event examples ([#557](https://github.com/commanded/commanded/pull/557)).
 - Fix interested? function doc ([#562](https://github.com/commanded/commanded/pull/562)).
@@ -60,7 +70,7 @@
 
 ### Bug fixes
 
--  Correct parameter type in `ProcessManager.after_command/1` callback function ([#533](https://github.com/commanded/commanded/pull/533)).
+- Correct parameter type in `ProcessManager.after_command/1` callback function ([#533](https://github.com/commanded/commanded/pull/533)).
 
 ## v1.4.2
 
@@ -238,7 +248,7 @@
 
 - Use `DateTime` instead of `NaiveDateTime` for all datetimes ([#254](https://github.com/commanded/commanded/pull/254)).
 
-    This affects the `created_at` field defined in the `Commanded.EventStore.RecordedEvent`. You will need to migrate from `NaiveDateTime` to `DateTime` if you use this field in your code (such as in an event handler's metadata).
+  This affects the `created_at` field defined in the `Commanded.EventStore.RecordedEvent`. You will need to migrate from `NaiveDateTime` to `DateTime` if you use this field in your code (such as in an event handler's metadata).
 
 ---
 
@@ -288,7 +298,7 @@
   end
   ```
 
-  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required. You *must* update all your domain event modules, aggregate state (when using state snapshotting), and process manager state to include `@derive Jason.Encoder` as shown below:
+  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required. You _must_ update all your domain event modules, aggregate state (when using state snapshotting), and process manager state to include `@derive Jason.Encoder` as shown below:
 
   ```elixir
   defmodule AnEvent do
@@ -507,7 +517,7 @@ Using [EventStoreDB](https://www.eventstore.com/):
 
 ### Enhancements
 
-- `Commanded.Event.Handler` and `Commanded.ProcessManagers.ProcessManager` macros to simplify defining, and starting, event handlers and process managers. Note the previous approach to defining and starting may still be used, so this is *not* a breaking change.
+- `Commanded.Event.Handler` and `Commanded.ProcessManagers.ProcessManager` macros to simplify defining, and starting, event handlers and process managers. Note the previous approach to defining and starting may still be used, so this is _not_ a breaking change.
 
 ---
 

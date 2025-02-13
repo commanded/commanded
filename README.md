@@ -78,6 +78,7 @@ MIT License
       - [Consistency guarantee](guides/Events.md#consistency-guarantee)
       - [Error handling](guides/Events.md#handling-errors)
     - [Upcasting events](guides/Events.md#upcasting-events)
+    - [`Commanded.Event.EventId`]: `Commanded.Event.EventId` protocol.
   - [Process managers](guides/Process%20Managers.md)
     - [Example process manager](guides/Process%20Managers.md#example-process-manager)
   - [Supervision](guides/Supervision.md)

@@ -25,6 +25,10 @@ defmodule Commanded.MockEventStoreCase do
   end
 
   def stub_event_store(_context) do
+    stub(MockEventStore, :supported_features, fn ->
+      MapSet.new([:event_id])
+    end)
+
     stub(MockEventStore, :ack_event, fn _event_store_meta, _subscription, _ack ->
       :ok
     end)

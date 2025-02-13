@@ -17,6 +17,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       :name,
       :serializer,
       persisted_events: [],
+      event_ids: MapSet.new(),
       streams: %{},
       transient_subscribers: %{},
       persistent_subscriptions: %{},
@@ -28,6 +29,8 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   alias Commanded.EventStore.Adapters.InMemory.{PersistentSubscription, State, Subscription}
   alias Commanded.EventStore.{EventData, RecordedEvent, SnapshotData}
   alias Commanded.UUID
+
+  @supported_features MapSet.new([:event_id])
 
   def start_link(opts \\ []) do
     {start_opts, in_memory_opts} =
@@ -61,6 +64,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     ]
 
     {:ok, child_spec, %{name: event_store_name}}
+  end
+
+  @impl Commanded.EventStore.Adapter
+  def supported_features do
+    @supported_features
   end
 
   @impl Commanded.EventStore.Adapter
@@ -379,32 +387,40 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       end)
       |> Enum.map(&serialize(state, &1))
 
-    stream_events = prepend(existing_events, new_events)
-    next_event_number = List.last(new_events).event_number + 1
+    new_event_ids =
+      new_events
+      |> Enum.map(& &1.event_id)
+      |> MapSet.new()
 
-    state = %State{
-      state
-      | streams: Map.put(streams, stream_uuid, stream_events),
-        persisted_events: prepend(persisted_events, new_events),
-        next_event_number: next_event_number
-    }
+    with :ok <- verify_event_ids(state, new_event_ids) do
+      stream_events = prepend(existing_events, new_events)
+      next_event_number = List.last(new_events).event_number + 1
 
-    publish_all_events = Enum.map(new_events, &deserialize(state, &1))
+      state = %State{
+        state
+        | streams: Map.put(streams, stream_uuid, stream_events),
+          persisted_events: prepend(persisted_events, new_events),
+          next_event_number: next_event_number,
+          event_ids: MapSet.union(state.event_ids, new_event_ids)
+      }
 
-    publish_stream_events =
-      Enum.map(publish_all_events, &set_event_number_from_version(&1, stream_uuid))
+      publish_all_events = Enum.map(new_events, &deserialize(state, &1))
 
-    state = publish_to_transient_subscribers(state, :all, publish_all_events)
-    state = publish_to_transient_subscribers(state, stream_uuid, publish_stream_events)
+      publish_stream_events =
+        Enum.map(publish_all_events, &set_event_number_from_version(&1, stream_uuid))
 
-    persistent_subscriptions =
-      Enum.into(persistent_subscriptions, %{}, fn {subscription_name, subscription} ->
-        {subscription_name, publish_events(state, subscription)}
-      end)
+      state = publish_to_transient_subscribers(state, :all, publish_all_events)
+      state = publish_to_transient_subscribers(state, stream_uuid, publish_stream_events)
 
-    state = %State{state | persistent_subscriptions: persistent_subscriptions}
+      persistent_subscriptions =
+        Enum.into(persistent_subscriptions, %{}, fn {subscription_name, subscription} ->
+          {subscription_name, publish_events(state, subscription)}
+        end)
 
-    {:ok, state}
+      state = %State{state | persistent_subscriptions: persistent_subscriptions}
+
+      {:ok, state}
+    end
   end
 
   defp set_event_number_from_version(%RecordedEvent{} = event, :all), do: event
@@ -416,6 +432,18 @@ defmodule Commanded.EventStore.Adapters.InMemory do
     %RecordedEvent{event | event_number: stream_version}
   end
 
+  defp verify_event_ids(%State{} = state, new_event_ids) do
+    intersection =
+      state.event_ids
+      |> MapSet.intersection(new_event_ids)
+      |> MapSet.size()
+
+    case intersection do
+      0 -> :ok
+      _ -> {{:error, :duplicate_event}, state}
+    end
+  end
+
   defp prepend(list, []), do: list
   defp prepend(list, [item | remainder]), do: prepend([item | list], remainder)
 
@@ -425,11 +453,12 @@ defmodule Commanded.EventStore.Adapters.InMemory do
       correlation_id: correlation_id,
       event_type: event_type,
       data: data,
-      metadata: metadata
+      metadata: metadata,
+      event_id: event_id
     } = event
 
     %RecordedEvent{
-      event_id: UUID.uuid4(),
+      event_id: event_id || UUID.uuid4(),
       event_number: event_number,
       stream_id: stream_uuid,
       stream_version: stream_version,

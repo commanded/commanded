@@ -92,6 +92,8 @@ defmodule Commanded.Application.Supervisor do
     {adapter, adapter_config} =
       Commanded.EventStore.adapter(name, Keyword.get(config, :event_store))
 
+    Commanded.EventStore.verify_adapter_features!(adapter)
+
     {:ok, child_spec, adapter_meta} = adapter.child_spec(name, adapter_config)
 
     config = Keyword.put(config, :event_store, {adapter, adapter_meta})

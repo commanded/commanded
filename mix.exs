@@ -1,7 +1,7 @@
 defmodule Commanded.Mixfile do
   use Mix.Project
 
-  @version "1.4.8"
+  @version "1.5.0"
 
   def project do
     [
@@ -154,7 +154,8 @@ defmodule Commanded.Mixfile do
           Commanded.Event.FailureContext,
           Commanded.Event.Handler,
           Commanded.Event.Mapper,
-          Commanded.Event.Upcaster
+          Commanded.Event.Upcaster,
+          Commanded.Event.EventId
         ],
         "Process Managers": [
           Commanded.ProcessManagers.FailureContext,
