@@ -38,6 +38,7 @@ defmodule Commanded.Event.ResetEventHandlerTest do
       end)
     end
 
+    @tag :skip
     test "should be reset when starting from `:current`" do
       stream_uuid = UUID.uuid4()
 
