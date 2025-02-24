@@ -9,7 +9,7 @@ config :logger, :console, level: :debug, format: "[$level] $message\n"
 config :ex_unit,
   assert_receive_timeout: 1_000,
   capture_log: [level: :debug],
-  exclude: [:distributed]
+  exclude: [:distributed, :eventstore_adapter]
 
 config :commanded,
   assert_receive_event_timeout: 100,
@@ -32,3 +32,14 @@ config :commanded, Commanded.ProcessManagers.ExampleApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ResumeApp, default_app_config
 config :commanded, Commanded.ProcessManagers.TodoApp, default_app_config
 config :commanded, Commanded.TestApplication, default_app_config
+
+config :commanded, event_stores: [TestEventStore]
+
+config :commanded, TestEventStore,
+  serializer: Commanded.Serialization.JsonSerializer,
+  username: "postgres",
+  password: "postgres",
+  database: "eventstore_test",
+  hostname: "localhost",
+  pool_size: 5,
+  pool_overflow: 0

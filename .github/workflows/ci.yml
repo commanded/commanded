@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - edited
+      - opened
+      - reopened
+      - synchronize
+
+concurrency:
+  group: "CI ${{ github.head_ref || github.run_id }}"
+  cancel-in-progress: true
+
+env:
+  MIX_ENV: test
+
+jobs:
+  conventional-commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.3
+      - uses: webiny/action-conventional-commits@v1.3.0
+        with:
+          allowed-commit-types: "feat,fix,chore"
+
+  quality-assurance:
+    name: Quality Assurance
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ["5432:5432"]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - elixir: 1.18.x
+            otp: 27
+          - elixir: 1.17.x
+            otp: 27
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Install dependencies
+        run: mix do deps.get, deps.compile
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Check compilation
+        run: mix compile --warnings-as-errors
+
+      - name: Analyse code
+        run: mix credo --strict
+
+      - name: Setup Event Store
+        env:
+          MIX_ENV: test
+        run: mix setup
+
+      - name: Run tests
+        run: |
+          epmd -daemon
+          mix test.all
+
+      - name: Retrieve Dialyzer PLT cache
+        uses: actions/cache@v4
+        id: plt-cache
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-plts-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-plts-
+
+      - name: Create Dialyzer PLTs
+        if: steps.plt-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p priv/plts
+          mix dialyzer --plt
+
+      - name: Run Dialyzer
+        run: mix dialyzer --no-check
