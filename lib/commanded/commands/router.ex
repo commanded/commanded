@@ -208,9 +208,13 @@ defmodule Commanded.Commands.Router do
 
   alias Commanded.Aggregates.DefaultLifespan
   alias Commanded.Commands.{ExecutionResult, Router}
+  alias Commanded.Telemetry
   alias Commanded.UUID
 
   defmacro __using__(opts) do
+    otp_app = Keyword.get(opts, :otp_app, :commanded)
+    app_module = Keyword.get(opts, :application)
+
     quote do
       require Logger
 
@@ -224,11 +228,20 @@ defmodule Commanded.Commands.Router do
       Module.register_attribute(__MODULE__, :registered_identities, accumulate: false)
 
       @default_dispatch_opts [
-        application: Keyword.get(unquote(opts), :application),
+        application: unquote(app_module),
         consistency: Router.get_opt(unquote(opts), :default_consistency, :eventual),
         returning: Router.get_default_dispatch_return(unquote(opts)),
         timeout: 5_000,
-        lifespan: DefaultLifespan,
+        lifespan:
+          if unquote(app_module) do
+            Application.compile_env(
+              unquote(otp_app),
+              [unquote(app_module), :aggregate_lifespan],
+              DefaultLifespan
+            )
+          else
+            DefaultLifespan
+          end,
         metadata: %{},
         retry_attempts: 10
       ]
@@ -578,10 +591,31 @@ defmodule Commanded.Commands.Router do
       end
 
       # Catch unregistered commands, log and return an error.
-      defp do_dispatch(command, _opts) do
+      defp do_dispatch(command, opts) do
+        event_prefix = [:commanded, :application, :dispatch]
+        application = Keyword.fetch!(opts, :application)
+
+        context = %Commanded.Aggregates.ExecutionContext{
+          command: command
+        }
+
+        telemetry_metadata = %{
+          application: application,
+          error: nil,
+          execution_context: context
+        }
+
+        start_time = Telemetry.start(event_prefix, telemetry_metadata)
+
         Logger.error(fn ->
           "attempted to dispatch an unregistered command: " <> inspect(command)
         end)
+
+        Telemetry.stop(
+          event_prefix,
+          start_time,
+          Map.put(telemetry_metadata, :error, :unregistered_command)
+        )
 
         {:error, :unregistered_command}
       end

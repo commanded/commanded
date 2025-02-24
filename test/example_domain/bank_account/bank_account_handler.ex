@@ -6,9 +6,11 @@ defmodule Commanded.ExampleDomain.BankAccount.BankAccountHandler do
     name: __MODULE__,
     start_from: :origin
 
+  alias Commanded.Event.Handler
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
 
-  def init do
+  @impl Handler
+  def after_start(_state) do
     case Agent.start_link(fn -> %{prefix: "", accounts: []} end, name: __MODULE__) do
       {:ok, _} -> :ok
       {:error, {:already_started, _}} -> :ok
@@ -16,10 +18,12 @@ defmodule Commanded.ExampleDomain.BankAccount.BankAccountHandler do
     end
   end
 
+  @impl Handler
   def before_reset do
     Agent.update(__MODULE__, fn state -> %{state | accounts: []} end)
   end
 
+  @impl Handler
   def handle(%BankAccountOpened{} = event, _metadata) do
     %BankAccountOpened{account_number: account_number} = event
 

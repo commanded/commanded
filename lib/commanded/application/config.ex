@@ -15,6 +15,14 @@ defmodule Commanded.Application.Config do
     application |> lookup() |> Keyword.get(setting)
   end
 
+  @doc """
+  Put a value into the application's config. This is test induced damage and you
+  probably shouldn't be using it.
+  """
+  def __put__(application, setting, value) when is_atom(application) and is_atom(setting) do
+    GenServer.call(__MODULE__, {:put, application, setting, value})
+  end
+
   @impl GenServer
   def init(:ok) do
     table = :ets.new(__MODULE__, [:named_table, read_concurrency: true])
@@ -26,6 +34,17 @@ defmodule Commanded.Application.Config do
   def handle_call({:associate, pid, application, config}, _from, table) do
     ref = Process.monitor(pid)
     true = :ets.insert(table, {application, pid, ref, config})
+
+    {:reply, :ok, table}
+  end
+
+  @impl GenServer
+  def handle_call({:put, application, settings, value}, _from, table) do
+    config =
+      lookup(application)
+      |> Keyword.put(settings, value)
+
+    true = :ets.update_element(table, application, {4, config})
 
     {:reply, :ok, table}
   end

@@ -408,6 +408,7 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
         assert length(subscribers) == 3
       end
 
+      @tag :partition
       test "should distribute events to subscribers using optional partition by function", %{
         event_store: event_store,
         event_store_meta: event_store_meta
@@ -777,12 +778,8 @@ defmodule Commanded.EventStore.SubscriptionTestCase do
       wait_for_event_store()
     end
 
-    # Optionally wait for the event store
     defp wait_for_event_store do
-      case event_store_wait() do
-        nil -> :ok
-        wait -> :timer.sleep(wait)
-      end
+      :timer.sleep(1)
     end
 
     defp assert_receive_events(event_store, event_store_meta, subscription, opts) do

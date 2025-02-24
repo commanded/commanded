@@ -24,7 +24,8 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: BankAccount, function: :open_account}
 
-    {:ok, 1, events} = Aggregate.execute(BankApp, BankAccount, account_number, context)
+    {:ok, 1, events, _aggregate_state} =
+      Aggregate.execute(BankApp, BankAccount, account_number, context)
 
     assert events == [%BankAccountOpened{account_number: account_number, initial_balance: 1_000}]
 
@@ -50,7 +51,8 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
 
-    {:ok, 1, events} = Aggregate.execute(BankApp, BankAccount, account_number, context)
+    {:ok, 1, events, _aggregate_state} =
+      Aggregate.execute(BankApp, BankAccount, account_number, context)
 
     assert events == [%BankAccountOpened{account_number: account_number, initial_balance: 1_000}]
 
@@ -76,7 +78,8 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
     command = %OpenAccount{account_number: account_number, initial_balance: 1_000}
     context = %ExecutionContext{command: command, handler: OpenAccountHandler, function: :handle}
 
-    {:ok, 1, _events} = Aggregate.execute(BankApp, BankAccount, account_number, context)
+    {:ok, 1, _events, _aggregate_state} =
+      Aggregate.execute(BankApp, BankAccount, account_number, context)
 
     state_before = Aggregate.aggregate_state(BankApp, BankAccount, account_number)
 
@@ -133,7 +136,7 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
   defp assert_no_events(command_fun) do
     id = UUID.uuid4()
 
-    assert {:ok, 0, []} = execute_aggregate_command(id, command_fun)
+    assert {:ok, 0, [], _aggregate_state} = execute_aggregate_command(id, command_fun)
   end
 
   defp assert_event_result(command_fun) do
@@ -141,7 +144,8 @@ defmodule Commanded.Aggregates.ExecuteCommandTest do
 
     id = UUID.uuid4()
 
-    assert {:ok, 1, [%Event{id: ^id}]} = execute_aggregate_command(id, command_fun)
+    assert {:ok, 1, [%Event{id: ^id}], _aggregate_state} =
+             execute_aggregate_command(id, command_fun)
   end
 
   defp execute_aggregate_command(id, command_fun) do

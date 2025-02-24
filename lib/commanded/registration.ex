@@ -83,15 +83,7 @@ defmodule Commanded.Registration do
       @before_compile unquote(__MODULE__)
 
       alias unquote(__MODULE__)
-    end
-  end
 
-  @doc """
-  Allow a registry adapter to handle the standard `GenServer` callback
-  functions.
-  """
-  defmacro __before_compile__(_env) do
-    quote generated: true, location: :keep do
       @doc false
       def handle_call(request, from, state) do
         adapter = registry_adapter(state)
@@ -106,6 +98,16 @@ defmodule Commanded.Registration do
         adapter.handle_cast(request, state)
       end
 
+      defoverridable(handle_call: 3, handle_cast: 2)
+    end
+  end
+
+  @doc """
+  Allow a registry adapter to handle the standard `GenServer` callback
+  functions.
+  """
+  defmacro __before_compile__(_env) do
+    quote generated: true, location: :keep do
       @doc false
       def handle_info(msg, state) do
         adapter = registry_adapter(state)
