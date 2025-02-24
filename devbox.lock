@@ -1,8 +1,13 @@
 {
   "lockfile_version": "1",
   "packages": {
+    "darwin.apple_sdk.frameworks.CoreServices": {
+      "resolved": "github:NixOS/nixpkgs/2d068ae5c6516b2d04562de50a58c682540de9bf?narHash=sha256-XcdiWLEhjJkMxDLKQJ0CCivmYYCvA5MDxu9pMybM5kM%3D#darwin.apple_sdk.frameworks.CoreServices",
+      "source": "nixpkg"
+    },
     "elixir@1.16.3": {
       "last_modified": "2024-08-14T11:41:26Z",
+      "plugin_version": "0.0.1",
       "resolved": "github:NixOS/nixpkgs/0cb2fd7c59fed0cd82ef858cbcbdb552b9a33465#elixir",
       "source": "devbox-search",
       "version": "1.16.3",
@@ -48,6 +53,9 @@
           "store_path": "/nix/store/mxr48y86anc2p6lgvfd9l0qq1d4csz2h-elixir-1.16.3"
         }
       }
+    },
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "resolved": "github:NixOS/nixpkgs/2d068ae5c6516b2d04562de50a58c682540de9bf?lastModified=1740303746&narHash=sha256-XcdiWLEhjJkMxDLKQJ0CCivmYYCvA5MDxu9pMybM5kM%3D"
     }
   }
 }
