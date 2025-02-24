@@ -21,7 +21,7 @@ defmodule Commanded.Event.ErrorHandlerTest do
       context = %FailureContext{context: %{}}
 
       {:retry, delay, context} =
-        ErrorHandler.backoff(an_error(), an_event(), context, no_jitter())
+        ErrorHandler.backoff(an_error(), an_event(), context, jitter_fn: no_jitter())
 
       assert context.context.failures == 1
       assert delay == :timer.seconds(1)
@@ -31,7 +31,7 @@ defmodule Commanded.Event.ErrorHandlerTest do
       jitter_fn = fn -> 234 end
 
       {:retry, delay, _} =
-        ErrorHandler.backoff(an_error(), an_event(), failure_context(), jitter_fn)
+        ErrorHandler.backoff(an_error(), an_event(), failure_context(), jitter_fn: jitter_fn)
 
       assert delay == 1234
     end
@@ -54,7 +54,7 @@ defmodule Commanded.Event.ErrorHandlerTest do
 
       Enum.reduce(expectations, failure_context, fn {expected_failures, expected_delay}, ctx ->
         {:retry, actual_delay, context} =
-          ErrorHandler.backoff(an_error(), an_event(), ctx, no_jitter())
+          ErrorHandler.backoff(an_error(), an_event(), ctx, jitter_fn: no_jitter())
 
         assert actual_delay == expected_delay
         actual_failures = Map.fetch!(context.context, :failures)
@@ -69,9 +69,53 @@ defmodule Commanded.Event.ErrorHandlerTest do
       context = %FailureContext{context: %{failures: 500}}
 
       {:retry, actual_delay, _context} =
-        ErrorHandler.backoff(an_error(), an_event(), context, no_jitter())
+        ErrorHandler.backoff(an_error(), an_event(), context, jitter_fn: no_jitter())
 
       assert actual_delay == :timer.hours(24)
+    end
+
+    test "retains failure_context" do
+      failure_context = %FailureContext{
+        application: MyApp.CommandedApp,
+        handler_name: "MyApp.FailingEventHandler",
+        handler_state: nil,
+        context: %{},
+        metadata: %{
+          application: MyApp.CommandedApp,
+          causation_id: "49d9a83c-8bcd-4fa9-9ccb-3c196717415c",
+          correlation_id: "e9c3b49e-0ac5-44db-8ddb-83835a7c9437",
+          created_at: ~U[2024-06-25 20:55:24.576545Z],
+          event_id: "0f117f39-3b2f-491e-b39d-9325fd1d19d1",
+          event_number: 1,
+          handler_name: "MyApp.FailingEventHandler",
+          state: nil,
+          stream_id: "2iO5kHYbIAGW1rrZ7FeHCRMvbT5",
+          stream_version: 1
+        },
+        stacktrace: nil
+      }
+
+      assert {:retry, _delay, ctx} = ErrorHandler.backoff(an_error(), an_event(), failure_context)
+
+      assert ctx == %FailureContext{
+               application: MyApp.CommandedApp,
+               handler_name: "MyApp.FailingEventHandler",
+               handler_state: nil,
+               context: %{failures: 1},
+               metadata: %{
+                 application: MyApp.CommandedApp,
+                 causation_id: "49d9a83c-8bcd-4fa9-9ccb-3c196717415c",
+                 correlation_id: "e9c3b49e-0ac5-44db-8ddb-83835a7c9437",
+                 created_at: ~U[2024-06-25 20:55:24.576545Z],
+                 event_id: "0f117f39-3b2f-491e-b39d-9325fd1d19d1",
+                 event_number: 1,
+                 handler_name: "MyApp.FailingEventHandler",
+                 state: nil,
+                 stream_id: "2iO5kHYbIAGW1rrZ7FeHCRMvbT5",
+                 stream_version: 1
+               },
+               stacktrace: nil
+             }
     end
   end
 

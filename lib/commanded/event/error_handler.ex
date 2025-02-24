@@ -14,12 +14,9 @@ defmodule Commanded.Event.ErrorHandler do
     * Minimum of 1 second delay
     * Maximum of 24 hour delay
   """
-  def backoff(
-        _error,
-        _event,
-        %FailureContext{} = failure_context,
-        jitter_fn \\ &one_second_jitter/0
-      ) do
+  def backoff(_error, _event, %FailureContext{} = failure_context, opts \\ []) do
+    jitter_fn = Keyword.get(opts, :jitter_fn, &one_second_jitter/0)
+
     %FailureContext{context: context} = failure_context
     context = Map.update(context, :failures, 1, &(&1 + 1))
     failures = Map.fetch!(context, :failures)
@@ -29,7 +26,8 @@ defmodule Commanded.Event.ErrorHandler do
     delay = max(delay, :timer.seconds(1))
     delay = min(delay, :timer.hours(24))
 
-    failure_context = %FailureContext{context: context}
+    failure_context = %{failure_context | context: context}
+
     {:retry, delay, failure_context}
   end
 
