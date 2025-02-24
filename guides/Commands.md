@@ -141,7 +141,7 @@ The above configuration requires that all commands for the `BankAccount` aggrega
 
 #### Identity prefix
 
-An optional identity prefix can be used to distinguish between different aggregates that  would otherwise share the same identity. As an example you might have a `User` and a `UserPreferences` aggregate that you wish to share the same identity. In this scenario you should specify a `prefix` for each aggregate (e.g. "user-" and "user-preference-").
+An optional identity prefix can be used to distinguish between different aggregates that would otherwise share the same identity. As an example you might have a `User` and a `UserPreferences` aggregate that you wish to share the same identity. In this scenario you should specify a `prefix` for each aggregate (e.g. "user-" and "user-preference-").
 
 ```elixir
 defmodule BankRouter do
@@ -155,7 +155,7 @@ defmodule BankRouter do
 end
 ```
 
-The prefix is used as the stream identity when appending, and reading, the aggregate's events (e.g. `<prefix><instance_identity>`). Note you *must not* change the stream prefix once you have events persisted in your event store, otherwise the aggregate's events cannot be read from the event store and its state cannot be rebuilt since the stream name will be different.
+The prefix is used as the stream identity when appending, and reading, the aggregate's events (e.g. `<prefix><instance_identity>`). Note you **must not** change the stream prefix once you have events persisted in your event store, otherwise the aggregate's events cannot be read from the event store and its state cannot be rebuilt since the stream name will be different.
 
 #### Custom aggregate identity
 
@@ -231,40 +231,40 @@ end
 
 You can choose the consistency guarantee when dispatching a command.
 
-- *Strong consistency* offers up-to-date data but at the cost of high latency.
-- *Eventual consistency* offers low latency but read model queries may reply with stale data since they may not have processed the persisted events.
+- **Strong consistency** offers up-to-date data but at the cost of high latency.
+- **Eventual consistency** offers low latency but read model queries may reply with stale data since they may not have processed the persisted events.
 
 In Commanded, the available options during command dispatch are:
 
-  - `:eventual` (default) - don't block command dispatch and don't wait for any event handlers, regardless of their own consistency configuration.
+- `:eventual` (default) - don't block command dispatch and don't wait for any event handlers, regardless of their own consistency configuration.
 
-    ```elixir
-    :ok = BankApp.dispatch(command)
-    :ok = BankApp.dispatch(command, consistency: :eventual)
-    ```
+  ```elixir
+  :ok = BankApp.dispatch(command)
+  :ok = BankApp.dispatch(command, consistency: :eventual)
+  ```
 
-  - `:strong` - block command dispatch until all strongly consistent event handlers and process managers have successfully processed all events created by the command.
+- `:strong` - block command dispatch until all strongly consistent event handlers and process managers have successfully processed all events created by the command.
 
-    ```elixir
-    :ok = BankApp.dispatch(command, consistency: :strong)
-    ```
+  ```elixir
+  :ok = BankApp.dispatch(command, consistency: :strong)
+  ```
 
-    Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
+  Dispatching a command using `:strong` consistency but without any strongly consistent event handlers configured will have no effect.
 
-  - Provide an explicit list of event handler and process manager modules (or their configured names), containing only those handlers you'd like to wait for. No other handlers will be awaited on, regardless of their own configured consistency setting.
+- Provide an explicit list of event handler and process manager modules (or their configured names), containing only those handlers you'd like to wait for. No other handlers will be awaited on, regardless of their own configured consistency setting.
 
-    ```elixir
-    :ok = BankApp.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
-    :ok = BankApp.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
-    ```
+  ```elixir
+  :ok = BankApp.dispatch(command, consistency: [ExampleHandler, AnotherHandler])
+  :ok = BankApp.dispatch(command, consistency: ["ExampleHandler", "AnotherHandler"])
+  ```
 
-    Note you cannot opt-in to strong consistency for a handler that has been configured as eventually consistent.
+  Note you cannot opt-in to strong consistency for a handler that has been configured as eventually consistent.
 
 #### Which consistency guarantee should I use?
 
 When dispatching a command using `consistency: :strong` the dispatch will block until all of the strongly consistent event handlers and process managers have handled all events created by the command. This guarantees that when you receive the `:ok` response from dispatch, your strongly consistent read models will have been updated and can safely be queried.
 
-Strong consistency helps to alleviate problems and workarounds you would otherwise encounter when dealing with eventual consistency in your own application. Use `:strong` consistency when you want to query a read model immediately after dispatching a command. You *must* also configure the event handler to use `:strong` consistency.
+Strong consistency helps to alleviate problems and workarounds you would otherwise encounter when dealing with eventual consistency in your own application. Use `:strong` consistency when you want to query a read model immediately after dispatching a command. You **must** also configure the event handler to use `:strong` consistency.
 
 Using `:eventual` consistency, or omitting the `consistency` option, will cause the command dispatch to immediately return without waiting for any event handlers or process managers. The handlers run independently, and asynchronously, in the background, therefore you will need to deal with potentially stale read model data.
 
@@ -318,13 +318,64 @@ This is useful if you need to get information from the events produced by the ag
 
 ### Dispatch returning aggregate version
 
-You can optionally choose to include the aggregate's version as part of the dispatch result by setting the  `include_aggregate_version` option to true:
+You can optionally choose to include the aggregate's version as part of the dispatch result by setting the `include_aggregate_version` option to true:
 
 ```elixir
 {:ok, aggregate_version} = BankApp.dispatch(command, include_aggregate_version: true)
 ```
 
-This is useful when you need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
+The returned `aggregate_version` can be used as an ETAG, allowing you to synchronize operations across the read-side and write-side of your application. For example, if need to wait for an event handler, such as a read model projection, to be up-to-date before continuing execution or querying its data.
+
+```elixir
+defmodule BankAccountProjector do
+  use Commanded.Projections.Ecto,
+    application: BankApp,
+    name: "BankAccountProjector",
+    repo: BankApp.Repo
+
+  project(%BankAccountOpened{} = event, metadata, fn multi ->
+    multi
+    |> Ecto.Multi.run(:bank_account, &find_bank_account(&1, &2, event.id))
+    |> Ecto.Multi.update(
+      :updated_bank_account,
+      &BankAccount.changeset(&1.bank_account, %{
+        # Notice that I am using the stream version from the metadata
+        # to update the auction's stream version.
+        stream_version: metadata.stream_version,
+      })
+    )
+  end)
+end
+```
+
+Then you can use the aggregate version to wait for the event handler to be up-to-date:
+
+```elixir
+defmodule BankAccounts do
+  def get_bank_account(id, stream_version) do
+    query =
+      from b in BankAccount,
+        where: b.id == ^id,
+        where: b.stream_version >= ^stream_version,
+        order_by: [asc: b.stream_version]
+
+    case BankApp.one(query) do
+      nil ->
+        # not ready yet means the projection is not yet up-to-date
+        # so you can retry the query
+        {:error, :not_ready}
+
+      bank_account ->
+        {:ok, bank_account}
+    end
+  end
+end
+```
+
+### Aggregate version as an ETAG
+
+The aggregate version can be thought of as an ETAG (Entity Tag) for a given resource. ETAGs are commonly used in HTTP caching mechanisms to determine if a resource has changed. Similarly, the aggregate version serves as a unique identifier for a specific state of the aggregate.
+When building a REST API, you can use the aggregate version as the ETAG in your HTTP responses.
 
 ### Causation and correlation ids
 
@@ -342,7 +393,7 @@ You can set causation and correlation ids when dispatching a command:
 When dispatching a command in an event handler, you should copy these values from the metadata (second) argument associated with the event you are handling:
 
 ```elixir
-defmodule ExampleHandler do  
+defmodule ExampleHandler do
   use Commanded.Event.Handler,
     application: ExampleApp,
     name: "ExampleHandler"

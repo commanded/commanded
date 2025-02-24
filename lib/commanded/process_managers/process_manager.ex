@@ -322,7 +322,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
   @callback init(config :: Keyword.t()) :: {:ok, Keyword.t()}
 
   @doc """
-  Is the process manager interested in the given command?
+  Is the process manager interested in the given event?
 
   See `c:interested?/2` for details.
   """
@@ -335,7 +335,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
               | false
 
   @doc """
-  Is the process manager interested in the given command?
+  Is the process manager interested in the given event?
 
   The `c:interested?/2` function is used to indicate which events
   the process manager receives. The response is used to route the event to an existing

@@ -6,9 +6,16 @@ defmodule Commanded.DistributedSubscriptionsTest do
   @moduletag :distributed
 
   setup do
+    {"", 0} = System.cmd("epmd", ["-daemon"])
     :ok = LocalCluster.start()
 
-    nodes = LocalCluster.start_nodes("commanded", 3, applications: [:commanded])
+    {:ok, cluster} =
+      LocalCluster.start_link(3,
+        prefix: "commanded",
+        applications: [:commanded]
+      )
+
+    {:ok, nodes} = LocalCluster.nodes(cluster)
 
     [nodes: nodes]
   end
