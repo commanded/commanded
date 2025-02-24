@@ -33,6 +33,7 @@ defmodule ExampleHandler do
     application: ExampleApp,
     name: "ExampleHandler"
 
+  @impl Commanded.Event.Handler
   def handle(%AnEvent{..}, _metadata) do
     # ... process the event
     :ok
@@ -70,6 +71,23 @@ Use the `:current` position when you don't want newly created event handlers to 
 
 You should start your event handlers using an OTP `Supervisor` to ensure they are restarted on error. See the [Supervision guide](https://hexdocs.pm/commanded/supervision.html) for more details.
 
+### Configuration options
+
+You can choose the default error behaviour for *all* of your event handlers in each Application's configuration:
+
+```ellxir
+config :example, ExampleApp,
+  on_event_handler_error: :stop # or :backoff or MyCustomErrorHandler
+```
+
+The default behaviour is to stop the event handler process when any error is encountered. As event handlers are supervised either by a custom supervisor or by the application itself, the handlers are usually restarted right away. If the error is permanent, due to a logic or data bug, then the process will likely crash again right away. This can lead the supervisor itself to give up, crash and this will continue up your supervision tree until it stops your application.
+
+The `:backoff` option, introduced in v1.4.7, cause the even handler to retry after an exponentially increasing backoff period (up to a maximum of 24 hours). The event handler will still not be able to make forward progress until you address the issue, but it won't take your supervisors or applications down with it.
+
+If you want to provide your own strategy, you can pass in a module that implements an `c:error/3` function that matches the `c:error/3` callback mentioned above.
+
+It's important to note that if your event handler overrides the `error/3` callback, then that will be called instead of the application-wide strategy.
+
 ### Subscribing to an individual stream
 
 By default event handlers will subscribe to all events appended to any stream. Provide a `subscribe_to` option to subscribe to a single stream.
@@ -85,11 +103,53 @@ end
 
 This will ensure the handler only receives events appended to that stream.
 
+### Handling errors
+
+It is important to consider how errors in the handling of events will affect your application. By default any errors encountered are configured to stop the event handler immediately. For this reason it is vital to have handlers under supervision. Errors in handlers occur in two categories:
+
+#### Transient errors
+
+Transient errors occur due temporary issues such as network connectivity, flakey downstream services, memory, or disk issues. Retrying here will often solve the problem.
+
+#### Permanent errors
+
+Permanent errors occure due to bugs in code, and as such have no hope of resolving themselves. The handler will not be able to make any progress, and will repeatedly crash.
+
+Repeated crashes become a problem when the handler crashes more than it's supervisor is configured to tolerate. When that happens, the supervisor itself will crash and this process will continue upwards until finally the application itself crashes. This is obviously bad.
+
+You can opt to have your event handlers backoff when crashing to avoid this:
+
+```elixir
+config :my_app, MyApp.CommandedApp,
+  on_event_handler_error: :backoff
+```
+
+This will cause all event handlers from `MyApp.CommandedApp` to back off exponentially when they encounter an error. Errors will backoff to maximum of 24 hours, and will continue at that rate until the issue is resolved. The event handler still can't make any forward progress, but it will at least not bring down your application.
+
+It is also possible to configure the error handler for the default behaviour `:stop`.
+
+You can bring your own Commanded application-level behaviour by specifiying a module which implements `c:Commanded.Event.Handler.error/3`
+
+```elixir
+defmodule YoloErrorHandler do
+  def error(error, failing_event, failure_context) do
+    # Ignore all errors!
+    :skip
+  end
+end
+
+config :my_app, MyApp.CommandedApp,
+  on_event_handler_error: YoloErrorHandler
+```
+
 ### Event handler callbacks
 
-- `c:Commanded.Event.Handler.init/0` - (optional) initialisation callback function called when the handler starts.
 - `c:Commanded.Event.Handler.init/1` - (optional) used to configure the handler before it starts.
+- `c:Commanded.Event.Handler.after_start/1` - (optional) initialisation callback function called in the process of the started handler.
 - `c:Commanded.Event.Handler.error/3` - (optional) called when an event handle/2 callback returns an error.
+
+Error event handlers configured on a per handler basis like this will override the application level error handling.
+
 
 ### Metadata
 
@@ -120,6 +180,7 @@ defmodule ExampleHandler do
     application: ExampleApp,
     name: "ExampleHandler"
 
+  @impl Commanded.Event.Handler
   def handle(event, metadata) do
     IO.inspect(metadata)
     # %{
@@ -199,7 +260,7 @@ end
 An event handler can be reset (using a mix task), it will restart the event store subscription from the configured
 `start_from`. This allow an individual handler to be restart while the app is still running.
 
-You can define a `before_reset/1` function that will be called before resetting the event handler.
+You can implement the `before_reset/0` callback that will be called before resetting the event handler.
 
 ```elixir
 defmodule ExampleHandler do
@@ -211,6 +272,7 @@ defmodule ExampleHandler do
 
   alias Commanded.Event.FailureContext
 
+  @impl Commanded.Event.Handler
   def before_reset do
     # Do something
     :ok

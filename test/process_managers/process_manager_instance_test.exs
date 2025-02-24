@@ -17,11 +17,15 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
   alias Commanded.Registration.LocalRegistry
   alias Commanded.UUID
 
+  alias Commanded.Serialization.ModuleNameTypeProvider
+  alias Commanded.Serialization.TypeProvider.Mock, as: MockTypeProvider
+
   setup :set_mox_global
   setup :verify_on_exit!
 
   setup do
     mock_event_store()
+    mock_type_provider()
 
     {:ok, registry_meta} = start_local_registry()
 
@@ -44,6 +48,12 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
       expect(MockEventStore, :read_snapshot, fn _adapter_meta, ^expected_source_uuid ->
         {:error, :snapshot_not_found}
+      end)
+
+      # Ensure a type provider call is made
+      expect(MockTypeProvider, :to_string, fn process_state ->
+        assert %TransferMoneyProcessManager{} = process_state
+        ModuleNameTypeProvider.to_string(process_state)
       end)
 
       expect(MockEventStore, :record_snapshot, fn _adapter_meta, snapshot ->
@@ -221,6 +231,20 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstanceTest do
 
     stub(MockEventStore, :record_snapshot, fn _event_store, _snapshot -> :ok end)
     stub(MockEventStore, :ack_event, fn _event_store, _pid, _event -> :ok end)
+  end
+
+  defp mock_type_provider do
+    stub(MockTypeProvider, :to_string, fn struct -> ModuleNameTypeProvider.to_string(struct) end)
+    stub(MockTypeProvider, :to_struct, fn type -> ModuleNameTypeProvider.to_struct(type) end)
+
+    current_type_provider = Application.get_env(:commanded, :type_provider)
+    Application.put_env(:commanded, :type_provider, MockTypeProvider)
+
+    on_exit(fn ->
+      if current_type_provider,
+        do: Application.put_env(:commanded, :type_provider, current_type_provider),
+        else: Application.delete_env(:commanded, :type_provider)
+    end)
   end
 
   defp start_local_registry do

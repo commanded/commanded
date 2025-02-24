@@ -108,17 +108,19 @@ defmodule Commanded.Commands.Dispatcher do
       end
 
     case result do
-      {:ok, aggregate_version, events} ->
+      {:ok, aggregate_version, events, aggregate_state} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
         |> Pipeline.assign(:events, events)
+        |> Pipeline.assign(:aggregate_state, aggregate_state)
         |> after_dispatch(payload)
         |> Pipeline.respond(:ok)
 
-      {:ok, aggregate_version, events, reply} ->
+      {:ok, aggregate_version, events, aggregate_state, reply} ->
         pipeline
         |> Pipeline.assign(:aggregate_version, aggregate_version)
         |> Pipeline.assign(:events, events)
+        |> Pipeline.assign(:aggregate_state, aggregate_state)
         |> after_dispatch(payload)
         |> Pipeline.respond({:ok, reply})
 
@@ -128,6 +130,11 @@ defmodule Commanded.Commands.Dispatcher do
 
       {:error, :remote_node_down} ->
         # Maybe retry command when aggregate process not found on a remote node
+        maybe_retry(pipeline, payload, context)
+
+      {:error, :aggregate_execution_timeout} ->
+        # The main reason for a timeout is that aggregate loading is slow, so retrying
+        # is expected to help.
         maybe_retry(pipeline, payload, context)
 
       {:error, error} ->
@@ -239,8 +246,10 @@ defmodule Commanded.Commands.Dispatcher do
       {:ok, context} ->
         execute(pipeline, payload, context)
 
-      reply ->
-        reply
+      {:error, :too_many_attempts} = error ->
+        pipeline
+        |> Pipeline.respond(error)
+        |> after_failure(payload)
     end
   end
 end
