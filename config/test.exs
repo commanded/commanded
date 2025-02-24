@@ -32,3 +32,12 @@ config :commanded, Commanded.ProcessManagers.ExampleApp, default_app_config
 config :commanded, Commanded.ProcessManagers.ResumeApp, default_app_config
 config :commanded, Commanded.ProcessManagers.TodoApp, default_app_config
 config :commanded, Commanded.TestApplication, default_app_config
+
+config :commanded, TestSupport.TestEventStore,
+  serializer: Commanded.Serialization.JsonSerializer,
+  username: "postgres",
+  password: "postgres",
+  database: "eventstore_test",
+  hostname: "localhost",
+  pool_size: 5,
+  pool_overflow: 0
