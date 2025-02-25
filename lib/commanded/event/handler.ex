@@ -1395,8 +1395,11 @@ defmodule Commanded.Event.Handler do
     last_event = List.last(recorded_events)
     %RecordedEvent{event_number: event_number} = last_event
 
-    Logger.debug(describe(state) <> " confirming receipt of event ##{inspect(event_number)}")
-    Logger.debug(" events: #{inspect(recorded_events)}")
+    Logger.debug(fn ->
+      describe(state) <>
+        " confirming receipt of event ##{inspect(event_number)}" <>
+        " of events: #{inspect(recorded_events)}"
+    end)
 
     # If we have a batch, we only confirm the last event received to the
     # subscription.

@@ -205,7 +205,7 @@ defmodule Commanded.Aggregates.AggregateTelemetryTest do
       count = 3
 
       for _i <- 1..count do
-        {:ok, _version, _events} = GenServer.call(pid, {:execute_command, context})
+        {:ok, _version, _events, _state} = GenServer.call(pid, {:execute_command, context})
       end
 
       Process.exit(pid, :normal)

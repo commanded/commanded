@@ -18,6 +18,9 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
 
       assert_receive {:batch, [{^event, metadata}]}
       assert match?(%{state: 0}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "initially set as runtime option" do
@@ -28,6 +31,9 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
 
       assert_receive {:batch, [{^event, metadata}]}
       assert match?(%{state: 1}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "updated by returning `{:ok, new_state}` from `handle_batch/2` function" do
@@ -45,8 +51,12 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
       send_events_to_handler(handler, [event3], 3)
       assert_receive {:batch, [{^event3, metadata3}]}
       assert match?(%{state: 2}, metadata3)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
+    # @tag only: true
     test "not updated when returning `:ok` from `handle_batch/2` function" do
       handler = start_supervised!(StatefulBatchedEventHandler)
 
@@ -60,8 +70,12 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
       send_events_to_handler(handler, [event2], 2)
       assert_receive {:batch, [{^event2, metadata}]}
       assert match?(%{state: 0}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
+    # @tag only: true
     test "state is reset when process restarts" do
       opts = [state: 10]
       handler = start_supervised!({StatefulBatchedEventHandler, opts})
@@ -88,6 +102,9 @@ defmodule Commanded.Event.EventHandlerBatchStateTest do
 
       assert_receive {:batch, [{^event3, metadata}]}
       assert match?(%{state: 10}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
   end
 

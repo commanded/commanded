@@ -503,7 +503,7 @@ defmodule Commanded.EventStore.Adapters.InMemory do
 
   defp ack_persistent_subscription_by_pid(%State{} = state, %RecordedEvent{} = event, pid) do
     %RecordedEvent{event_number: event_number} = event
-    Logger.debug(fn -> "Acknowleding event ##{event_number}" end)
+    Logger.debug(fn -> "Acknowledging event ##{event_number}" end)
 
     update_persistent_subscription(state, pid, fn %PersistentSubscription{} = subscription ->
       case PersistentSubscription.ack(subscription, event_number) do

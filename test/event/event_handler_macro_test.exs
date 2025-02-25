@@ -32,6 +32,9 @@ defmodule Commanded.Event.EventHandlerMacroTest do
       Wait.until(fn ->
         assert AccountBalanceHandler.current_balance() == 1_050
       end)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "cannot specify conflicting options" do
