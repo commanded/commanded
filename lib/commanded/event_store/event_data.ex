@@ -11,7 +11,8 @@ defmodule Commanded.EventStore.EventData do
           correlation_id: uuid(),
           event_type: String.t(),
           data: struct(),
-          metadata: map()
+          metadata: map(),
+          event_id: uuid() | nil
         }
 
   defstruct [
@@ -19,6 +20,7 @@ defmodule Commanded.EventStore.EventData do
     :correlation_id,
     :event_type,
     :data,
-    :metadata
+    :metadata,
+    :event_id
   ]
 end

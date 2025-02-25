@@ -33,6 +33,10 @@ defmodule Commanded.ExampleDomain.BankAccount do
     defmodule MoneyDeposited do
       @derive Jason.Encoder
       defstruct [:account_number, :transfer_uuid, :amount, :balance]
+
+      defimpl Commanded.Event.EventId do
+        def event_id(%{transfer_uuid: transfer_uuid}), do: transfer_uuid
+      end
     end
 
     defmodule MoneyWithdrawn do
