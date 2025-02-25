@@ -19,7 +19,12 @@ defmodule Commanded.Mixfile do
       consolidate_protocols: Mix.env() == :prod,
       dialyzer: dialyzer(),
       name: "Commanded",
-      source_url: "https://github.com/commanded/commanded"
+      source_url: "https://github.com/commanded/commanded",
+      preferred_cli_env: [
+        setup: :test,
+        reset: :test,
+        "test.all": :test
+      ]
     ]
   end
 
@@ -64,6 +69,7 @@ defmodule Commanded.Mixfile do
       # Optional dependencies
       {:jason, "~> 1.4", optional: true},
       {:phoenix_pubsub, "~> 2.1", optional: true},
+      {:eventstore, "~> 1.4", optional: true},
 
       # Build and test tools
       {:benchfella, "~> 0.3", only: :bench},
@@ -241,7 +247,11 @@ defmodule Commanded.Mixfile do
   end
 
   defp aliases do
-    []
+    [
+      reset: ["event_store.drop", "setup"],
+      setup: ["event_store.create", "event_store.init"],
+      "test.all": ["test --include distributed --include eventstore_adapter"]
+    ]
   end
 
   defp dialyzer do
