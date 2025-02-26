@@ -819,9 +819,6 @@ defmodule Commanded.Event.Handler do
 
         @doc false
         def handle_batch(_events), do: :ok
-
-        @doc false
-        def error({:error, reason}, _failed_event, _failure_context), do: {:stop, reason}
       end
     end
   end

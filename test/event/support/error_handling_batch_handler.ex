@@ -73,4 +73,13 @@ defmodule Commanded.Event.ErrorHandlingBatchHandler do
       {:retry, context}
     end
   end
+
+  def error(
+        {:error, %ArgumentError{message: "Raise"} = reason},
+        [%Commanded.Event.ReplyEvent{reply_to: reply_to, value: :raise} | _],
+        _failure_context
+      ) do
+    send(reply_to, {:error, :stopping})
+    {:stop, reason}
+  end
 end
