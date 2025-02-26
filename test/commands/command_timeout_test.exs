@@ -16,7 +16,7 @@ defmodule Commanded.Commands.CommandTimeoutTest do
     # Handler is set to take longer than the configured timeout
     case TimeoutRouter.dispatch(command, application: DefaultApp) do
       {:error, :aggregate_execution_failed} -> :ok
-      {:error, :too_many_attempts} -> :ok
+      {:error, :aggregate_execution_timeout} -> :ok
       reply -> flunk("received an unexpected response: #{inspect(reply)}")
     end
   end
