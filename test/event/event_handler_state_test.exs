@@ -18,6 +18,9 @@ defmodule Commanded.Event.EventHandlerStateTest do
 
       assert_receive {:event, ^event, metadata}
       assert match?(%{state: 0}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "initially set as runtime option" do
@@ -28,6 +31,9 @@ defmodule Commanded.Event.EventHandlerStateTest do
 
       assert_receive {:event, ^event, metadata}
       assert match?(%{state: 1}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "updated by returning `{:ok, new_state}` from `handle/2` function" do
@@ -42,6 +48,9 @@ defmodule Commanded.Event.EventHandlerStateTest do
 
       assert_receive {:event, ^event2, metadata}
       assert match?(%{state: 1}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "not updated when returning `:ok` from `handle/2` function" do
@@ -56,6 +65,9 @@ defmodule Commanded.Event.EventHandlerStateTest do
 
       assert_receive {:event, ^event2, metadata}
       assert match?(%{state: 0}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
 
     test "state is reset when process restarts" do
@@ -83,6 +95,9 @@ defmodule Commanded.Event.EventHandlerStateTest do
 
       assert_receive {:event, ^event3, metadata}
       assert match?(%{state: 10}, metadata)
+
+      # Make sure the event handler doesn't continue running logic after the test is done
+      Process.exit(handler, :kill)
     end
   end
 
