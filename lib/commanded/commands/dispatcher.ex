@@ -132,11 +132,6 @@ defmodule Commanded.Commands.Dispatcher do
         # Maybe retry command when aggregate process not found on a remote node
         maybe_retry(pipeline, payload, context)
 
-      {:error, :aggregate_execution_timeout} ->
-        # The main reason for a timeout is that aggregate loading is slow, so retrying
-        # is expected to help.
-        maybe_retry(pipeline, payload, context)
-
       {:error, error} ->
         pipeline
         |> Pipeline.respond({:error, error})
@@ -246,10 +241,8 @@ defmodule Commanded.Commands.Dispatcher do
       {:ok, context} ->
         execute(pipeline, payload, context)
 
-      {:error, :too_many_attempts} = error ->
-        pipeline
-        |> Pipeline.respond(error)
-        |> after_failure(payload)
+      reply ->
+        reply
     end
   end
 end
