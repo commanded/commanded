@@ -113,8 +113,20 @@ defmodule Commanded.Aggregates.Aggregate do
   alias Commanded.Telemetry
 
   @type state :: struct()
-
   @type uuid :: String.t()
+  @type return_event :: struct() | list(struct()) | {:ok, struct()} | {:ok, list(struct())}
+  @type no_return_event :: :ok | {:ok, []} | nil | []
+
+  @doc """
+  Execute a command against the aggregate. Returns either no event, one event, a list of events, or an error tuple.
+  """
+  @callback execute(aggregate :: state(), command :: struct()) ::
+              return_event() | no_return_event() | {:error, term()}
+
+  @doc """
+  Apply an event to the aggregate state. Returns the updated aggregate.
+  """
+  @callback apply(aggregate :: state(), event :: struct()) :: state()
 
   defstruct [
     :application,
