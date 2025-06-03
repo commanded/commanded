@@ -1,0 +1,45 @@
+---
+name: Report an issue
+description: Tell us about something that is not working the way we (probably) intend.
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Thank you for contributing to Commanded! :heart:
+
+        Please, do not use this form for guidance, questions or support.
+        Try instead in [GitHub Discussions](https://github.com/commanded/commanded/discussions).
+
+  - type: textarea
+    id: elixir-and-otp-version
+    attributes:
+      label: Elixir and Erlang/OTP versions
+      description: Paste the output of `elixir --version` here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: commanded-version
+    attributes:
+      label: Commanded version
+      description: Paste the output of `mix deps | grep commanded` here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+      description: >
+        Include code samples, errors, and stacktraces if appropriate.
+        If reporting a bug, please include the reproducing steps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A short description on how you expect the code to behave.
+    validations:
+      required: true

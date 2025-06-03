@@ -1,0 +1,7 @@
+---
+blank_issues_enabled: true
+
+contact_links:
+  - name: Ask questions, support, and general discussions
+    url: https://github.com/commanded/commanded/discussions
+    about: Ask questions, provide support, and more on GitHub Discussions
