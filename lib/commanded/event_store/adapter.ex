@@ -79,7 +79,9 @@ defmodule Commanded.EventStore.Adapter do
 
   @doc """
   Acknowledge receipt and successful processing of the given event received from
-  a subscription to an event stream.
+  a subscription to an event stream. Note that if the event is part of a batch,
+  all events that precede this event in the batch are considered to be acknowledged
+  as well.
   """
   @callback ack_event(adapter_meta, pid, RecordedEvent.t()) :: :ok
 

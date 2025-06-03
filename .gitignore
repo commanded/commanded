@@ -11,4 +11,5 @@ erl_crash.dump
 /priv/plts/*.plt.hash
 /bench/graphs
 /bench/snapshots
+.devbox
 .tool-versions
