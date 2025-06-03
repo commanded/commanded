@@ -6,10 +6,14 @@ if Code.ensure_loaded?(Jason) do
 
     alias Commanded.EventStore.TypeProvider
     alias Commanded.Serialization.JsonDecoder
+    alias Commanded.Serialization.Serializer
+
+    @behaviour Serializer
 
     @doc """
     Serialize given term to JSON binary data.
     """
+    @impl Serializer
     def serialize(term) do
       Jason.encode!(term)
     end
@@ -17,6 +21,7 @@ if Code.ensure_loaded?(Jason) do
     @doc """
     Deserialize given JSON binary data to the expected type.
     """
+    @impl Serializer
     def deserialize(binary, config \\ [])
 
     def deserialize(binary, config) do
