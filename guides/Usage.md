@@ -39,8 +39,13 @@ Here's an example bank account opening feature built using Commanded to demonstr
     defmodule BankAccount do
       defstruct [:account_number, :balance]
 
+      alias Commanded.Aggregates.Aggregate
+
+      @behaviour Aggregate
+
       # Public command API
 
+      @impl Aggregate
       def execute(%BankAccount{account_number: nil}, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
         when initial_balance > 0
       do
@@ -48,6 +53,7 @@ Here's an example bank account opening feature built using Commanded to demonstr
       end
 
       # Ensure initial balance is never zero or negative
+      @impl Aggregate
       def execute(%BankAccount{}, %OpenBankAccount{initial_balance: initial_balance})
         when initial_balance <= 0
       do
@@ -55,12 +61,14 @@ Here's an example bank account opening feature built using Commanded to demonstr
       end
 
       # Ensure account has not already been opened
+      @impl Aggregate
       def execute(%BankAccount{}, %OpenBankAccount{}) do
         {:error, :account_already_opened}
       end
 
       # State mutators
 
+      @impl Aggregate
       def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
         %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
 

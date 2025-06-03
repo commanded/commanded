@@ -117,7 +117,7 @@ defmodule Commanded.ExampleDomain.OpenAccountHandler do
 end
 ```
 
-An alternative approach is to expose one or more public command functions, `execute/2`, and use pattern matching on the command argument. With this approach you can route your commands directly to the aggregate.
+An alternative approach is to expose one or more public command functions, `execute/2`, and use pattern matching on the command argument. With this approach you can route your commands directly to the aggregate. To make this more explicit, you can implement the `Commanded.Aggregates.Aggregate` behaviour.
 
 In this example the `execute/2` function pattern matches on the `OpenAccount` command module:
 
@@ -125,8 +125,12 @@ In this example the `execute/2` function pattern matches on the `OpenAccount` co
 defmodule BankAccount do
   defstruct [:account_number, :balance]
 
+  alias Commanded.Aggregates.Aggregate
+  @behaviour Aggregate
+
   # Public API
 
+  @impl Aggregate
   def execute(
     %BankAccount{account_number: nil},
     %OpenAccount{initial_balance: initial_balance} = command
@@ -137,18 +141,21 @@ defmodule BankAccount do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
   end
 
+  @impl Aggregate
   def execute(%BankAccount{}, %OpenAccount{initial_balance: initial_balance})
     when initial_balance <= 0
   do
     {:error, :initial_balance_must_be_above_zero}
   end
 
+  @impl Aggregate
   def execute(%BankAccount{}, %OpenAccount{}) do
     {:error, :account_already_opened}
   end
 
   # State mutators
 
+  @impl Aggregate
   def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
     %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
 
@@ -192,10 +199,14 @@ defmodule BankAccount do
     state: nil,
   ]
 
+  alias Commanded.Aggregate
   alias Commanded.Aggregate.Multi
+
+  @behaviour Aggregate
 
   # Public API
 
+  @impl Aggregate
   def execute(
     %BankAccount{state: :active} = account,
     %WithdrawMoney{amount: amount})
@@ -209,6 +220,7 @@ defmodule BankAccount do
 
   # State mutators
 
+  @impl Aggregate
   def apply(%BankAccount{} = state, %MoneyWithdrawn{balance: balance}),
     do: %BankAccount{state | balance: balance}
 
