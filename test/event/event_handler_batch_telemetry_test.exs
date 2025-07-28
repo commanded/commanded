@@ -85,8 +85,7 @@ defmodule Commanded.Event.EventHandlerBatchTelemetryTest do
       recorded_events = EventFactory.map_to_recorded_events(events, 1, metadata: metadata)
       state = setup_state(ErrorHandlingBatchHandler)
 
-      {:stop, _, _} =
-        Handler.handle_info({:events, recorded_events}, state)
+      {:stop, _, _} = Handler.handle_info({:events, recorded_events}, state)
 
       assert_receive {[:commanded, :event, :batch, :start], _measurements, _metadata}
       refute_received {[:commanded, :event, :batch, :stop], _measurements, _metadata}
