@@ -116,7 +116,10 @@ defmodule Commanded.Event.HandlerInitTest do
   end
 
   defp assert_hibernated(pid) do
-    assert Process.info(pid, :current_function) == {:current_function, {:erlang, :hibernate, 3}}
+    pre_otp_28 = {:current_function, {:erlang, :hibernate, 3}}
+    post_otp_28 = {:current_function, {:gen_server, :loop_hibernate, 4}}
+
+    assert Process.info(pid, :current_function) in  [pre_otp_28, post_otp_28]
   end
 
   defp send_subscribed(handler) do
