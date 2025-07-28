@@ -14,6 +14,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
     defstruct [
       :application,
+      :dispatch_opts,
       :idle_timeout,
       :process_router,
       :process_manager_name,
@@ -29,6 +30,7 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
 
     state = %State{
       application: Keyword.fetch!(opts, :application),
+      dispatch_opts: Keyword.get(opts, :dispatch_opts, []),
       idle_timeout: Keyword.fetch!(opts, :idle_timeout),
       process_router: Keyword.fetch!(opts, :process_router),
       process_manager_name: Keyword.fetch!(opts, :process_manager_name),
@@ -225,12 +227,13 @@ defmodule Commanded.ProcessManagers.ProcessManagerInstance do
         commands = List.wrap(commands)
 
         # Copy event id, as causation id, and correlation id from handled event.
-        opts = [
-          causation_id: event_id,
-          correlation_id: correlation_id,
-          metadata: metadata || %{},
-          returning: false
-        ]
+        opts =
+          Keyword.merge(state.dispatch_opts,
+            causation_id: event_id,
+            correlation_id: correlation_id,
+            metadata: metadata || %{},
+            returning: false
+          )
 
         with :ok <- dispatch_commands(commands, opts, state, event) do
           telemetry_stop(start_time, telemetry_metadata, {:ok, commands})

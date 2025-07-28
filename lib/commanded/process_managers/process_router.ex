@@ -20,6 +20,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
     defstruct [
       :application,
       :consistency,
+      :dispatch_opts,
       :event_timeout,
       :idle_timeout,
       :process_manager_name,
@@ -53,12 +54,13 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     state = %State{
       application: application,
+      consistency: consistency,
+      dispatch_opts: Keyword.get(opts, :dispatch_opts, []),
+      event_timeout: Keyword.get(router_opts, :event_timeout),
+      idle_timeout: Keyword.get(router_opts, :idle_timeout, :infinity),
       process_manager_name: process_name,
       process_manager_module: process_module,
-      consistency: consistency,
-      subscription: subscription,
-      event_timeout: Keyword.get(router_opts, :event_timeout),
-      idle_timeout: Keyword.get(router_opts, :idle_timeout, :infinity)
+      subscription: subscription
     }
 
     with {:ok, pid} <- Registration.start_link(application, name, __MODULE__, state, start_opts) do
@@ -474,6 +476,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
   defp start_process_manager(process_uuid, %State{} = state) do
     %State{
       application: application,
+      dispatch_opts: dispatch_opts,
       idle_timeout: idle_timeout,
       process_managers: process_managers,
       process_manager_name: process_manager_name,
@@ -483,6 +486,7 @@ defmodule Commanded.ProcessManagers.ProcessRouter do
 
     opts = [
       application: application,
+      dispatch_opts: dispatch_opts,
       idle_timeout: idle_timeout,
       process_manager_name: process_manager_name,
       process_manager_module: process_manager_module,
