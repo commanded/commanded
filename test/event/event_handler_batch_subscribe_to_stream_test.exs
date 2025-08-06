@@ -16,7 +16,9 @@ defmodule Commanded.Event.EventHandlerBatchSubscribeToStreamTest do
       subscribe_to: "stream2",
       batch_size: 3
 
-    def handle_batch([{%AnEvent{stream_uuid: stream_uuid, reply_to: reply_to}, _metadata} | _rest]) do
+    def handle_batch([
+          {%AnEvent{stream_uuid: stream_uuid, reply_to: reply_to}, _metadata} | _rest
+        ]) do
       pid = :erlang.list_to_pid(reply_to)
       Process.send(pid, {:event, stream_uuid}, [])
 
