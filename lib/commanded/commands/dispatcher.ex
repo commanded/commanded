@@ -67,6 +67,12 @@ defmodule Commanded.Commands.Dispatcher do
     struct(Pipeline, Map.from_struct(payload))
   end
 
+  # FIXME: Elixir 1.18.x-otp-28
+  # Please file a bug in https://github.com/jeremyjh/dialyxir/issues with this message.
+  # Unknown error occurred: %FunctionClauseError{module: Dialyxir.Warnings.CallWithoutOpaque, function: :format_long, arity: 1, kind: nil, args: nil, clauses: nil}
+  # Open issue in dialyxir:
+  # https://github.com/jeremyjh/dialyxir/issues/568
+  @dialyzer {:nowarn_function, execute: 3}
   defp execute(%Pipeline{} = pipeline, %Payload{} = payload, %ExecutionContext{} = context) do
     %Pipeline{application: application, assigns: %{aggregate_uuid: aggregate_uuid}} = pipeline
     %Payload{aggregate_module: aggregate_module, timeout: timeout} = payload
