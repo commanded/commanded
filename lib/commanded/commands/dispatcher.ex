@@ -67,7 +67,7 @@ defmodule Commanded.Commands.Dispatcher do
     struct(Pipeline, Map.from_struct(payload))
   end
 
-  # FIXME: Elixir 1.18.x-otp-28
+  # Ignoring this dialyzer warning until dialyxir catches up on Elixir 1.18.x-otp-28
   # Please file a bug in https://github.com/jeremyjh/dialyxir/issues with this message.
   # Unknown error occurred: %FunctionClauseError{module: Dialyxir.Warnings.CallWithoutOpaque, function: :format_long, arity: 1, kind: nil, args: nil, clauses: nil}
   # Open issue in dialyxir:
