@@ -631,7 +631,8 @@ defmodule Commanded.ProcessManagers.ProcessManager do
     :subscribe_to,
     :subscription_opts,
     :event_timeout,
-    :idle_timeout
+    :idle_timeout,
+    :dispatch_opts
   ]
 
   def parse_config!(module, config) do
