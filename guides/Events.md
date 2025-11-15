@@ -223,6 +223,70 @@ You request the consistency guarantee, either `:strong` or `:eventual`, when dis
 
 An event handler is a `GenServer` process that subscribes to the configured event store. For each event persisted to the store the `handle/2` callback is called, passing the domain event and its metadata.
 
+## Batching
+
+Event handlers can process events in batches for improved throughput. Specify `batch_size` and implement `handle_batch/1`:
+
+```elixir
+defmodule AccountProjector do
+  use Commanded.Event.Handler,
+    application: BankingApp,
+    name: "AccountProjector",
+    batch_size: 100
+
+  def handle_batch(events) do
+    # events is a list of {event_data, metadata} tuples
+    events
+    |> Enum.map(fn {event, metadata} -> transform(event, metadata) end)
+    |> Repo.insert_all()
+
+    :ok
+  end
+end
+```
+
+All events in the batch are acknowledged when `:ok` is returned. Batching and concurrency cannot be used together.
+
+### Batch failure and idempotency
+
+If `handle_batch/1` returns `{:error, reason}` or crashes, **none** of the events in the batch are acknowledged. The EventStore will redeliver the entire batch.
+
+In case you wanted to make your handler idempotent per event, you could track the last processed `event_number` to skip already-seen events.
+
+### Batch timeout
+
+Add `batch_timeout` to flush batches on size OR time, whichever comes first:
+
+```elixir
+use Commanded.Event.Handler,
+  batch_size: 50,
+  batch_timeout: 100  # milliseconds
+```
+
+The batch flushes when either 50 events accumulate or 100ms elapse. Default is `:infinity` (no timeout).
+
+**Recommended starting values:** `batch_size: 50, batch_timeout: 100`
+
+### Monitoring with Telemetry
+
+Track `flush_reason` to tune batch parameters:
+
+```elixir
+:telemetry.attach(
+  "batch-monitor",
+  [:commanded, :event, :batch, :stop],
+  fn _event, measurements, metadata, _config ->
+    # metadata.flush_reason is :size | :timeout | :immediate
+    # metadata.event_count is the batch size
+    # measurements.duration is processing time
+    
+    if metadata.flush_reason == :timeout and metadata.event_count < 10 do
+      Logger.warning("Small timeout flush - consider tuning batch_size")
+    end
+  end,
+  nil
+)
+
 ## Upcasting events
 
 Commanded supports upcasting of events at runtime using the `Commanded.Event.Upcaster` protocol.
