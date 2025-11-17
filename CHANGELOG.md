@@ -11,11 +11,6 @@
   - Follows Broadway/GenStage patterns for familiar API
   - See event handler guide for usage examples and timeout recommendations
 
-### Bug fixes
-
-* Fix race condition in batch processing where timer could fire during batch handling
-  - Buffer and timer now cleared before processing to prevent stale state
-
 ## v1.4.9
 
 ### Enhancements
