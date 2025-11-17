@@ -96,6 +96,16 @@ defmodule Commanded.Event.BatchTimeoutTest do
         )
       end
     end
+
+    test "requires batch_size when batch_timeout is provided" do
+      assert_raise ArgumentError, ~r/:batch_timeout requires :batch_size/, fn ->
+        Handler.parse_config!(__MODULE__.TestModule,
+          application: Commanded.DefaultApp,
+          name: "TestHandler",
+          batch_timeout: 100
+        )
+      end
+    end
   end
 
   describe "batch flushing" do

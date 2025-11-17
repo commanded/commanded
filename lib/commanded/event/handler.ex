@@ -862,7 +862,13 @@ defmodule Commanded.Event.Handler do
     end
 
     {batch_size, config} = Keyword.pop(config, :batch_size)
-    {batch_timeout, config} = Keyword.pop(config, :batch_timeout, :infinity)
+    {batch_timeout_opt, config} = Keyword.pop(config, :batch_timeout, :__no_batch_timeout__)
+    batch_timeout =
+      case batch_timeout_opt do
+        :__no_batch_timeout__ -> :infinity
+        value -> value
+      end
+    batch_timeout_provided? = batch_timeout_opt != :__no_batch_timeout__
 
     # Validate batch_size
     unless is_nil(batch_size) or (is_integer(batch_size) and batch_size > 0) do
@@ -883,6 +889,12 @@ defmodule Commanded.Event.Handler do
     config =
       case batch_size do
         nil ->
+          if batch_timeout_provided? do
+            raise ArgumentError,
+                  inspect(module) <>
+                    " :batch_timeout requires :batch_size. Remove the timeout or configure batching."
+          end
+
           # Delegate to `handle_event/2` when `batch_size` is not specified
           config
           |> Keyword.put(:handler_callback, :event)
@@ -1208,8 +1220,9 @@ defmodule Commanded.Event.Handler do
 
         # Check if we should flush based on size
         if length(new_buffer) >= batch_size do
-          flush_batch_buffer(state, :size)
+          state
           |> cancel_batch_timer()
+          |> flush_batch_buffer(:size)
         else
           state
         end
@@ -1254,8 +1267,22 @@ defmodule Commanded.Event.Handler do
   defp cancel_batch_timer(%Handler{batch_timer_ref: nil} = state), do: state
 
   defp cancel_batch_timer(%Handler{batch_timer_ref: ref} = state) do
-    Process.cancel_timer(ref)
-    %Handler{state | batch_timer_ref: nil}
+    case Process.cancel_timer(ref) do
+      false ->
+        drain_flush_batch_timeout_message()
+        %Handler{state | batch_timer_ref: nil}
+
+      _remaining ->
+        %Handler{state | batch_timer_ref: nil}
+    end
+  end
+
+  defp drain_flush_batch_timeout_message do
+    receive do
+      :flush_batch_timeout -> :ok
+    after
+      0 -> :ok
+    end
   end
 
   defp handle_event(event, context \\ %{}, handler)
