@@ -92,6 +92,42 @@ defmodule Commanded.Event.BatchTimeoutIntegrationTest do
       assert is_reference(second_timer)
       assert second_timer != first_timer
     end
+
+    test "size flush cancels pending timeout before next batch" do
+      Process.register(self(), :counter_test_process)
+
+      on_exit(fn ->
+        if Process.whereis(:counter_test_process) do
+          Process.unregister(:counter_test_process)
+        end
+      end)
+
+      batch_timeout = 50
+      state = setup_state(CounterHandler, batch_size: 3, batch_timeout: batch_timeout)
+
+      # First batch fills immediately, should flush on size
+      events_full = build_events(3)
+      recorded_full = EventFactory.map_to_recorded_events(events_full, 1)
+      {:noreply, state1} = Handler.handle_info({:events, recorded_full}, state)
+
+      assert_receive {:batch_flushed, 3}, 50
+
+      # Wait right before the original timeout would have fired
+      Process.sleep(batch_timeout - 5)
+
+      # Start a new partial batch (should start a fresh timer only)
+      events_partial = build_events(2)
+      recorded_partial = EventFactory.map_to_recorded_events(events_partial, 4)
+      {:noreply, state2} = Handler.handle_info({:events, recorded_partial}, state1)
+
+      # Old timer should have been cancelled, so no timeout should fire yet
+      refute_receive :flush_batch_timeout, 20
+
+      # The new timer should still flush the partial batch eventually
+      assert_receive :flush_batch_timeout, 200
+      {:noreply, _state3} = Handler.handle_info(:flush_batch_timeout, state2)
+      assert_receive {:batch_flushed, 2}, 50
+    end
   end
 
   describe "multiple flush cycles" do
