@@ -354,42 +354,54 @@ defmodule Commanded.Event.Handler do
 
   ## Batching
 
-  Sometimes, it is more efficient to process a whole batch of events, write them
-  in a target system in one transaction, and move the stream pointer forward by
-  acknowledging just the last event processed. For this there is batching support
-  in the event handler, which you can use as follows:
+  Event handlers can process events in batches rather than one at a time. This
+  allows writing to a target system in a single transaction and acknowledging
+  all events at once, reducing overhead.
 
-  * Specify the `batch_size` option in your configuration to indicate how large
-    you want batches to be. This triggers batching support;
+  To enable batching, set the `batch_size` option and implement `handle_batch/1`
+  instead of `handle/2`. The callback receives a list of `{event, metadata}`
+  tuples. On returning `:ok`, all events in the batch are acknowledged. There
+  is no partial acknowledgement.
 
-  * Implement the `handle_batch/1` instead of the `handle/2` callback. This callback
-    will receive a list of `{event, metadata}` tuples.
+  Batching and concurrency are not supported together; setting both will raise
+  a compilation error.
 
-  On returning `:ok` from the batch handler, all events will be acknowledged. Currently,
-  no mechanism exists for partial acknowledgement of a batch.
+  ### `batch_size`
 
-  Batching and concurrency currently are not supported together; setting conflicting
-  options will trigger a compilation error.
+  The `batch_size` option controls the EventStore subscription's in-flight
+  buffer — how many events the subscription can deliver without waiting for
+  acknowledgement. It is not an accumulation mechanism at the handler level.
+  The handler processes each delivery from the subscription immediately.
 
-  ### Batch timeout
+  During live operation, when events arrive one at a time, `handle_batch/1`
+  is called with a single event — regardless of the configured `batch_size`.
+  Larger batches form naturally only when the subscription has multiple events
+  queued, such as during catch-up replay, back-pressure recovery, or bulk
+  appends.
 
-  Control the maximum time events wait in a batch using the `batch_timeout` option.
-  Batches are flushed when EITHER condition is met:
+  When `batch_timeout` is configured, `batch_size` also serves as the maximum
+  size of the handler's internal buffer — once the buffer reaches `batch_size`
+  events, it is flushed immediately regardless of the timeout.
 
-  * `batch_size` events accumulated, OR
-  * `batch_timeout` milliseconds elapsed since the first event in the batch
+  ### `batch_timeout`
 
-  This solves the unbounded latency problem for low-volume event streams that would
-  otherwise wait indefinitely for a batch to fill.
+  The `batch_timeout` option adds time-based buffering at the handler level.
+  When set, events are accumulated in the handler process and flushed when
+  either condition is met first:
 
-  The `batch_timeout` option accepts:
+  * `batch_size` events have accumulated, OR
+  * `batch_timeout` milliseconds have elapsed since the first buffered event
 
-  * A positive integer representing milliseconds
-  * `:infinity` (default) - no timeout, wait for batch to fill
+  This enables use cases such as accumulating changes before writing them in
+  one go to a projection, batching bulk database inserts, or reducing per-event
+  overhead for side effects — even when events arrive individually during
+  steady-state operation.
 
-  #### Example
+  `batch_timeout` accepts a positive integer (milliseconds) or `:infinity`
+  (the default — no buffering, backwards compatible with previous behaviour).
+  Requires `batch_size` to be configured.
 
-  Order processing handler that flushes every 100ms or 50 orders:
+  ### Example
 
       defmodule OrderProjector do
         use Commanded.Event.Handler,
@@ -399,44 +411,18 @@ defmodule Commanded.Event.Handler do
           batch_timeout: 100
 
         def handle_batch(events) do
-          # Process up to 50 orders, or flush after 100ms
+          # Receives up to 50 events, or whatever accumulated within 100ms
           :ok
         end
       end
 
-  #### Monitoring with Telemetry
+  ### Telemetry
 
-  Batch events include `flush_reason` in their metadata, allowing you to monitor
-  how your batches are being flushed:
+  Batch telemetry events include a `flush_reason` field:
 
-      :telemetry.attach(
-        "batch-monitor",
-        [:commanded, :event, :batch, :stop],
-        fn _event, measurements, metadata, _config ->
-          event_count = metadata.event_count
-          flush_reason = metadata.flush_reason
-          handler_name = metadata.handler_name
-
-          # Track metrics by flush reason
-          :telemetry.execute(
-            [:my_app, :batch, :processed],
-            %{count: event_count, duration: measurements.duration},
-            %{handler: handler_name, reason: flush_reason}
-          )
-
-          # Alert on small timeout flushes (might need tuning)
-          if flush_reason == :timeout and event_count < 10 do
-            require Logger
-            Logger.warning("Handler: " <> handler_name <> " flushing small batch on timeout")
-          end
-        end,
-        nil
-      )
-
-  Flush reasons:
-  - `:size` - Batch filled to `batch_size`
-  - `:timeout` - `batch_timeout` elapsed
-  - `:immediate` - No timeout configured (backwards compatible mode)
+  * `:size` — batch reached `batch_size`
+  * `:timeout` — `batch_timeout` elapsed before the batch filled
+  * `:immediate` — no `batch_timeout` configured; events processed as delivered
 
   ### Example
 
@@ -732,12 +718,14 @@ defmodule Commanded.Event.Handler do
         - :subscribe_to - which stream to subscribe to can be either `:all` to
           subscribe to all events or a named stream (default: `:all`).
 
-        - :batch_size - the size of batches to deliver to `handle_batch` in batched
-          mode.
+        - :batch_size - controls the EventStore subscription's in-flight buffer
+          size. When `batch_timeout` is also set, this is the maximum number of
+          events the handler buffers before flushing. Enables `handle_batch/1`.
 
-        - :batch_timeout - maximum milliseconds before flushing a partial batch.
-          Defaults to `:infinity` (no timeout). When set, batches flush on size OR
-          time, whichever comes first. Only applies when `:batch_size` is configured.
+        - :batch_timeout - maximum milliseconds to wait for events to accumulate
+          in the handler buffer before flushing. Defaults to `:infinity` (no
+          buffering; events processed immediately as delivered). Requires
+          `:batch_size`.
 
       The default options supported by `GenServer.start_link/3` are supported,
       including the `:hibernate_after` option which allows the process to go
