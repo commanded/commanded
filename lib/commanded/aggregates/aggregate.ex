@@ -348,7 +348,7 @@ defmodule Commanded.Aggregates.Aggregate do
         # be taken. When it finishes, it will set the timeout.
         {:reply, formatted_reply, state}
       else
-        state = %Aggregate{state | lifespan_timeout: lifespan_timeout}
+        state = %{state | lifespan_timeout: lifespan_timeout}
 
         reply_with_lifespan(formatted_reply, state)
       end

@@ -78,7 +78,7 @@ defmodule Commanded.Event.ErrorEventHandler do
       |> Map.put(:delay, delay)
 
     # Record failure count in context map
-    failure_context = %FailureContext{failure_context | context: context}
+    failure_context = %{failure_context | context: context}
 
     if Map.get(context, :failures) >= 3 do
       # Stop error handler after third failure

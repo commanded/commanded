@@ -60,12 +60,9 @@ defmodule Commanded.Aggregates.AggregateSubscriptionTest do
       events =
         EventStore.stream_forward(DefaultApp, account_number)
         |> Enum.to_list()
-        |> Enum.map(fn recorded_event ->
+        |> Enum.map(fn %EventStore.RecordedEvent{} = recorded_event ->
           # specify invalid stream version
-          %EventStore.RecordedEvent{
-            recorded_event
-            | stream_version: 999
-          }
+          %{recorded_event | stream_version: 999}
         end)
 
       # send invalid events, should stop the aggregate process

@@ -96,7 +96,7 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
         %RecordedEvent{data: data, stream_version: stream_version} = event
         %Aggregate{aggregate_module: aggregate_module, aggregate_state: aggregate_state} = state
 
-        state = %Aggregate{
+        state = %{
           state
           | aggregate_version: stream_version,
             aggregate_state: aggregate_module.apply(aggregate_state, data)
