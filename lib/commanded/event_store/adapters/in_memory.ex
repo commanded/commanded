@@ -65,10 +65,10 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl Commanded.EventStore.Adapter
-  def append_to_stream(adapter_meta, stream_uuid, expected_version, events, _opts \\ []) do
+  def append_to_stream(adapter_meta, stream_uuid, expected_version, events, opts \\ []) do
     event_store = event_store_name(adapter_meta)
 
-    GenServer.call(event_store, {:append, stream_uuid, expected_version, events})
+    GenServer.call(event_store, {:append, stream_uuid, expected_version, events, opts})
   end
 
   @impl Commanded.EventStore.Adapter
@@ -152,10 +152,11 @@ defmodule Commanded.EventStore.Adapters.InMemory do
   end
 
   @impl GenServer
-  def handle_call({:append, stream_uuid, expected_version, events}, _from, %State{} = state) do
+  def handle_call({:append, stream_uuid, expected_version, events, opts}, _from, %State{} = state) do
+    trim = Keyword.get(opts, :trim, false)
     %State{streams: streams} = state
 
-    stream_events = Map.get(streams, stream_uuid)
+    stream_events = if trim, do: [], else: Map.get(streams, stream_uuid)
 
     {reply, state} =
       case {expected_version, stream_events} do

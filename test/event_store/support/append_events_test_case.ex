@@ -147,6 +147,31 @@ defmodule Commanded.EventStore.AppendEventsTestCase do
 
         assert :ok == event_store.append_to_stream(event_store_meta, "stream", 3, build_events(1))
       end
+
+      test "should handle :trim ", %{
+        event_store: event_store,
+        event_store_meta: event_store_meta
+      } do
+        assert :ok ==
+                 event_store.append_to_stream(
+                   event_store_meta,
+                   "stream",
+                   :any_version,
+                   build_events(3)
+                 )
+
+        assert :ok ==
+                 event_store.append_to_stream(
+                   event_store_meta,
+                   "stream",
+                   :any_version,
+                   build_events(4),
+                   trim: true
+                 )
+
+        read_events = event_store.stream_forward(event_store_meta, "stream") |> Enum.to_list()
+        assert length(read_events) == 4
+      end
     end
 
     describe "stream events from an unknown stream" do

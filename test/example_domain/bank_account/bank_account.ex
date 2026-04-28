@@ -127,7 +127,7 @@ defmodule Commanded.ExampleDomain.BankAccount do
   end
 
   def close_account(%BankAccount{state: :active}, %CloseAccount{account_number: account_number}) do
-    %BankAccountClosed{account_number: account_number}
+    {:trim, %BankAccountClosed{account_number: account_number}}
   end
 
   # State mutators

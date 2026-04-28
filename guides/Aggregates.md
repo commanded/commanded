@@ -20,7 +20,7 @@ end
 
 ## Command functions
 
-A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events. You can return a single event or a list of events: `%Event{}`, `[%Event{}]`, `{:ok, %Event{}}`, or `{:ok, [%Event{}]}`.
+A command function receives the aggregate's state and the command to execute. It must return the resultant domain events, which may be one event or multiple events. You can return a single event or a list of events: `%Event{}`, `[%Event{}]`, `{:ok, %Event{}}`, `{:ok, [%Event{}]}`, or `{:trim, <one_or_more_events>}`.
 
 To respond without returning an event you can return `:ok`, `nil` or an empty list as either `[]` or `{:ok, []}`.
 
@@ -316,3 +316,52 @@ Note: The default JSON encoding of a `DateTime` struct uses the `to_iso8601/1` f
 ### Rebuilding an aggregate snapshot
 
 Whenever you change the structure of an aggregate's state you **MUST** increment the `snapshot_version` number. The aggregate state will be rebuilt from its events, ignoring any existing snapshots. They will be overwritten when the next snapshot is taken.
+
+### Returning `:trim` instead of `:ok`
+
+If you return `:trim` instead of `:ok`, with one or more events, then the following will
+happen:
+- The event(s) is/are appended to the event store as normal
+- The aggregate's event stream's _origin_, the oldest valid event, gets set to the
+  first event in this returned set.
+
+This means that whenever you return this, effectively you make all previous events invisible
+and start "fresh". There are a couple of use cases where this can be used:
+
+#### Closing the books.
+
+The aggregate knows it can close itself. It will emit a single event that will
+act as a tombstone: an indicator that the aggregate is closed:
+
+``` elixir
+tombstone = %BooksClosed{new_book_id: abc123, giga_watts_collected: 1.21, frobbers_frobulated: 15}
+{:trim, tombstone}
+```
+
+In this case, the aggregate closes itself with a reference to its successor, and some
+statistics about its lifecycle which presumably will feed into reporting. Presumably, too,
+the aggregate will now throw errors on any attempts to send it further commands.
+
+#### Rolling up a balance
+
+Say that every Sunday night we roll up a balance and replace individual ledger entries
+with just a balance. It's very similar to the previous example, the main difference is
+in your business logic: here you would accept new commands:
+
+```elixir
+balance = %PeriodClosed{period_id: 42, balance: {-1234450, :millicads}}
+{:trim, balance}
+```
+
+The advantage here is faster startup without needing snapshots or indeed any
+in-memory state that is just there to help snapshotting (it is, frankly, very
+close to snapshotting). On restart, the trimmed aggregate stream will just read
+this single event.
+
+#### Garbage collection
+
+Trimmed event streams will result in "unreachable" events. To support that, EventStore
+will support garbage collection, effectively removing events that the application doesn't
+need anymore. See [the EventStore documentation](https://hexdocs.pm/eventstore)
+for details (at the moment of writing this, it is not supported, but plans are to
+add it shortly).
