@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Bug fixes
+
+* The `:causation_id` dispatch option is now honored on persisted events.
+  Previously it was silently overridden by the dispatched command's
+  `command_uuid`, which made chain-of-causation impossible to reconstruct from
+  events alone for multi-event flows (closes
+  [#624](https://github.com/commanded/commanded/issues/624)). When
+  `:causation_id` is not supplied, the command's own `command_uuid` is still
+  used as the fallback — so default behaviour is unchanged. This also fixes a
+  latent bug where process-manager- and event-handler-dispatched commands
+  passed the originating event's id as `:causation_id` (see
+  `process_manager_instance.ex:229` and `Commanded.Event.Handler` examples),
+  but it was being thrown away before persistence.
+
 ## v1.4.9
 
 ### Enhancements
