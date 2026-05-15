@@ -42,7 +42,7 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       assert [^causation_id] = CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
     end
 
-    test "should be set from `command_uuid` on created event" do
+    test "should fall back to `command_uuid` on created event when not provided" do
       command = %OpenAccount{account_number: "ACC123", initial_balance: 500}
 
       :ok = BankRouter.dispatch(command, application: BankApp)
@@ -50,8 +50,18 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       [command_uuid] = CommandAuditMiddleware.dispatched_commands(& &1.command_uuid)
       [event] = EventStore.stream_forward(BankApp, "ACC123") |> Enum.to_list()
 
-      # an event's `causation_id` is the dispatched command's `command_uuid`
       assert event.causation_id == command_uuid
+    end
+
+    test "should be set from explicit `:causation_id` dispatch option on created event" do
+      causation_id = UUID.uuid4()
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 500}
+
+      :ok = BankRouter.dispatch(command, application: BankApp, causation_id: causation_id)
+
+      [event] = EventStore.stream_forward(BankApp, "ACC123") |> Enum.to_list()
+
+      assert event.causation_id == causation_id
     end
 
     test "should be copied onto commands/events by process manager" do
@@ -88,6 +98,17 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       transfer_requested = EventStore.stream_forward(BankApp, transfer_uuid) |> Enum.at(0)
       [_, causation_id, _] = CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
       assert causation_id == transfer_requested.event_id
+
+      # events emitted by a ProcessManager-dispatched command carry the handled event's
+      # id as their `causation_id`
+      money_withdrawn =
+        EventStore.stream_forward(BankApp, "ACC123") |> Enum.to_list() |> Enum.at(-1)
+
+      money_deposited =
+        EventStore.stream_forward(BankApp, "ACC456") |> Enum.to_list() |> Enum.at(-1)
+
+      assert money_withdrawn.causation_id == transfer_requested.event_id
+      assert money_deposited.causation_id == money_withdrawn.event_id
     end
   end
 
@@ -217,11 +238,8 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
 
       assert causation_id == account_opened.event_id
 
-      # should set created event causation id as the command uuid
-      [_command_uuid, command_uuid] =
-        CommandAuditMiddleware.dispatched_commands(& &1.command_uuid)
-
-      assert money_deposited.causation_id == command_uuid
+      # created event causation id should be the handled event's id (#624)
+      assert money_deposited.causation_id == account_opened.event_id
     end
 
     def start_account_bonus_handler(_context) do

@@ -160,7 +160,12 @@ defmodule Commanded.Commands.Dispatcher do
   end
 
   defp to_execution_context(%Pipeline{} = pipeline, %Payload{} = payload) do
-    %Pipeline{command: command, command_uuid: command_uuid, metadata: metadata} = pipeline
+    %Pipeline{
+      command: command,
+      command_uuid: command_uuid,
+      causation_id: causation_id,
+      metadata: metadata
+    } = pipeline
 
     %Payload{
       correlation_id: correlation_id,
@@ -174,7 +179,8 @@ defmodule Commanded.Commands.Dispatcher do
 
     %ExecutionContext{
       command: command,
-      causation_id: command_uuid,
+      # honour caller-supplied `:causation_id`; fall back to command_uuid
+      causation_id: causation_id || command_uuid,
       correlation_id: correlation_id,
       metadata: metadata,
       handler: handler_module,

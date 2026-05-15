@@ -204,6 +204,22 @@ defmodule Commanded.Commands.Router do
 
       :ok = BankApp.dispatch(command, metadata: %{"ip_address" => "127.0.0.1"})
 
+  ## Causation id
+
+  You can associate a `:causation_id` with the dispatched command, which will
+  also be persisted as the `causation_id` of every event the command produces.
+  This lets you reconstruct a chain-of-causation across multiple events
+  without persisting commands separately.
+
+      :ok = BankApp.dispatch(command, causation_id: some_event_id)
+
+  When `:causation_id` is not provided, the command's own `command_uuid` is
+  used as the resulting events' `causation_id`.
+
+  Process managers and event handlers that dispatch follow-up commands
+  already propagate the handled event's id this way, so the full causation
+  chain is observable on the events alone.
+
   """
 
   alias Commanded.Aggregates.DefaultLifespan
