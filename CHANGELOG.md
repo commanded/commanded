@@ -1,9 +1,14 @@
 # Changelog
 
-## Unreleased
+## v1.4.10
 
 ### Enhancements
 
+* Event Handler Documentation Fix by @TylerPachal in https://github.com/commanded/commanded/pull/640
+* Improve Process Manager Docs by @TylerPachal in https://github.com/commanded/commanded/pull/643
+* Improve Router Registration Error by @TylerPachal in https://github.com/commanded/commanded/pull/644
+* Support :selector option for InMemory adapter by @TylerPachal in https://github.com/commanded/commanded/pull/647
+* Fix Warnings for Elixir 1.19 by @TylerPachal in https://github.com/commanded/commanded/pull/648
 * Add `batch_timeout` option for time-based batch flushing
   - Batches now flush on size OR time, whichever comes first
   - Solves unbounded latency problem for low-volume event streams
