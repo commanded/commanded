@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Enhancements
+
+* Add `batch_timeout` option for time-based batch flushing
+  - Batches now flush on size OR time, whichever comes first
+  - Solves unbounded latency problem for low-volume event streams
+  - Defaults to `:infinity` for full backwards compatibility
+  - Follows Broadway/GenStage patterns for familiar API
+  - See event handler guide for usage examples and timeout recommendations
+
 ### Bug fixes
 
 * The `:causation_id` dispatch option is now honored on persisted events.
@@ -15,6 +24,9 @@
   passed the originating event's id as `:causation_id` (see
   `process_manager_instance.ex:229` and `Commanded.Event.Handler` examples),
   but it was being thrown away before persistence.
+
+* Fix race condition in batch processing where timer could fire during batch handling
+  - Buffer and timer now cleared before processing to prevent stale state
 
 ## v1.4.9
 
