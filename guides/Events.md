@@ -279,13 +279,14 @@ Track `flush_reason` to tune batch parameters:
     # metadata.flush_reason is :size | :timeout | :immediate
     # metadata.event_count is the batch size
     # measurements.duration is processing time
-    
+
     if metadata.flush_reason == :timeout and metadata.event_count < 10 do
       Logger.warning("Small timeout flush - consider tuning batch_size")
     end
   end,
   nil
 )
+```
 
 ## Upcasting events
 
