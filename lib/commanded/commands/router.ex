@@ -214,7 +214,7 @@ defmodule Commanded.Commands.Router do
       :ok = BankApp.dispatch(command, causation_id: some_event_id)
 
   When `:causation_id` is not provided, the command's own `command_uuid` is
-  used as the resulting events' `causation_id` — preserving prior behaviour.
+  used as the resulting events' `causation_id`.
 
   Process managers and event handlers that dispatch follow-up commands
   already propagate the handled event's id this way, so the full causation

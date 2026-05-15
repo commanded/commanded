@@ -100,7 +100,7 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       assert causation_id == transfer_requested.event_id
 
       # events emitted by a PM-dispatched command carry the handled event's
-      # id as their `causation_id` — one hop per PM step (#624)
+      # id as their `causation_id` — one hop per PM step
       money_withdrawn =
         EventStore.stream_forward(BankApp, "ACC123") |> Enum.to_list() |> Enum.at(-1)
 

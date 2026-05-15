@@ -179,7 +179,7 @@ defmodule Commanded.Commands.Dispatcher do
 
     %ExecutionContext{
       command: command,
-      # honour caller-supplied `:causation_id`; fall back to command_uuid (#624)
+      # honour caller-supplied `:causation_id`; fall back to command_uuid
       causation_id: causation_id || command_uuid,
       correlation_id: correlation_id,
       metadata: metadata,
