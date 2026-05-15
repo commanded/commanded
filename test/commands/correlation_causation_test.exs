@@ -99,8 +99,8 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       [_, causation_id, _] = CommandAuditMiddleware.dispatched_commands(& &1.causation_id)
       assert causation_id == transfer_requested.event_id
 
-      # events emitted by a PM-dispatched command carry the handled event's
-      # id as their `causation_id` — one hop per PM step
+      # events emitted by a ProcessManager-dispatched command carry the handled event's
+      # id as their `causation_id`
       money_withdrawn =
         EventStore.stream_forward(BankApp, "ACC123") |> Enum.to_list() |> Enum.at(-1)
 
