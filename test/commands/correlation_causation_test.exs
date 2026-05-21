@@ -64,6 +64,16 @@ defmodule Commanded.Commands.CorrelationCasuationTest do
       assert event.causation_id == causation_id
     end
 
+    test "should be `nil` on created event when `causation_id: nil` is passed explicitly" do
+      command = %OpenAccount{account_number: "ACC123", initial_balance: 500}
+
+      :ok = BankRouter.dispatch(command, application: BankApp, causation_id: nil)
+
+      [event] = EventStore.stream_forward(BankApp, "ACC123") |> Enum.to_list()
+
+      assert is_nil(event.causation_id)
+    end
+
     test "should be copied onto commands/events by process manager" do
       transfer_uuid = UUID.uuid4()
 
