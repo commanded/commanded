@@ -547,13 +547,7 @@ defmodule Commanded.Commands.Router do
           command_uuid = Keyword.get_lazy(opts, :command_uuid, &UUID.uuid4/0)
           consistency = Keyword.fetch!(opts, :consistency)
           correlation_id = Keyword.get_lazy(opts, :correlation_id, &UUID.uuid4/0)
-
-          # Resolve `:causation_id` at the router boundary so the fallback
-          # decision happens once and downstream middleware/handlers see the
-          # final value. Three cases:
-          #   - opt absent              -> fall back to command_uuid (legacy)
-          #   - `causation_id: <uuid>`  -> use the uuid
-          #   - `causation_id: nil`     -> use nil (chain root)
+          # `Keyword.fetch/2` distinguishes absence from explicit `nil`
           causation_id =
             case Keyword.fetch(opts, :causation_id) do
               {:ok, value} -> value
