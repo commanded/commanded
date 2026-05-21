@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Enhancements
+
+* Support `causation_id: nil` as a dispatch option to mark resulting events
+  as chain roots. `:causation_id` is now resolved at the router boundary via
+  `Keyword.fetch/2` so omitting the option still falls back to `command_uuid`
+  (legacy behaviour), while passing `causation_id: nil` explicitly persists
+  events with `causation_id` set to `NULL` — letting
+  `WHERE causation_id IS NULL` identify chain roots without a self-join.
+
 ## v1.4.10
 
 ### Enhancements
