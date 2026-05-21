@@ -436,7 +436,12 @@ defmodule Commanded.Commands.Router do
       Options:
 
         - `causation_id` - an optional UUID used to identify the cause of the
-          command being dispatched.
+          command being dispatched. When the option is omitted, the command's
+          own `command_uuid` is used (preserving prior behaviour). Pass
+          `causation_id: nil` explicitly to mark the resulting events as chain
+          roots — they will be persisted with `causation_id` set to `NULL`,
+          letting `WHERE causation_id IS NULL` queries identify roots without
+          a self-join.
 
         - `command_uuid` - an optional UUID used to identify the command being
           dispatched.
@@ -539,10 +544,22 @@ defmodule Commanded.Commands.Router do
           opts = Keyword.merge(@command_opts, opts)
 
           application = Keyword.fetch!(opts, :application)
-          causation_id = Keyword.get(opts, :causation_id)
           command_uuid = Keyword.get_lazy(opts, :command_uuid, &UUID.uuid4/0)
           consistency = Keyword.fetch!(opts, :consistency)
           correlation_id = Keyword.get_lazy(opts, :correlation_id, &UUID.uuid4/0)
+
+          # Resolve `:causation_id` at the router boundary so the fallback
+          # decision happens once and downstream middleware/handlers see the
+          # final value. Three cases:
+          #   - opt absent              -> fall back to command_uuid (legacy)
+          #   - `causation_id: <uuid>`  -> use the uuid
+          #   - `causation_id: nil`     -> use nil (chain root)
+          causation_id =
+            case Keyword.fetch(opts, :causation_id) do
+              {:ok, value} -> value
+              :error -> command_uuid
+            end
+
           metadata = Keyword.fetch!(opts, :metadata) |> validate_metadata()
 
           retry_attempts = Keyword.get(opts, :retry_attempts)
