@@ -219,7 +219,6 @@ defmodule Commanded.ProcessManagers.ProcessManager do
         use Commanded.ProcessManagers.ProcessManager,
           application: ExampleApp,
           name: "TransferMoneyProcessManager",
-          router: BankRouter,
           event_timeout: :timer.minutes(10)
       end
 
