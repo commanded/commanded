@@ -55,6 +55,10 @@ defmodule Commanded.Event.BatchResetEventHandlerTest do
 
       send(handler, :reset)
 
+      # Wait for the :reset message to be handled, otherwise there is a risk the append_to_stream
+      # below gets sent to the old subscription.
+      _ = :sys.get_state(handler)
+
       new_event = [%BankAccountOpened{account_number: "ACC1234", initial_balance: 1_000}]
       :ok = EventStore.append_to_stream(BankApp, stream_uuid, 1, to_event_data(new_event))
 
