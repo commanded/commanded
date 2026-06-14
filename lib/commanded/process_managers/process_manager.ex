@@ -269,7 +269,7 @@ defmodule Commanded.ProcessManagers.ProcessManager do
 
   ### Example
 
-  Start an process manager for each tenant in a multi-tenanted app, guaranteeing
+  Start a process manager for each tenant in a multi-tenanted app, guaranteeing
   that the data and processing remains isolated between tenants.
 
       for tenant <- [:tenant1, :tenant2, :tenant3] do
