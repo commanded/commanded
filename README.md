@@ -40,11 +40,11 @@ Requires Erlang/OTP v21.0 and Elixir v1.11 or later.
 
 MIT License
 
-[![Build Status](https://github.com/commanded/commanded/workflows/Test/badge.svg?branch=master)](https://github.com/commanded/commanded/actions) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Build Status](https://github.com/commanded/commanded/workflows/Test/badge.svg?branch=main)](https://github.com/commanded/commanded/actions) [![Join the chat at https://gitter.im/commanded/Lobby](https://badges.gitter.im/commanded/Lobby.svg)](https://gitter.im/commanded/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ---
 
-> This README and the following guides follow the `master` branch which may not be the currently published version.
+> This README and the following guides follow the `main` branch which may not be the currently published version.
 >
 > [Read the documentation for the latest published version of Commanded on Hex](https://hexdocs.pm/commanded/).
 
