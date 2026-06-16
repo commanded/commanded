@@ -65,7 +65,7 @@ defmodule Commanded.Aggregate.Multi do
 
   If `step_name` is provided, the aggregate state after that step is
   stored under that name. That can be useful in a long multi step multi
-  in which one needs to know what was the agg state while procesisng
+  in which one needs to know what was the agg state while processing
   the multi. It's possible, then, to pattern match the step name in the
   second parameter of the anonymous function to be executed.
 
@@ -100,7 +100,7 @@ defmodule Commanded.Aggregate.Multi do
 
   If `step_name` is provided, the aggregate state after that step will be
   stored under that name. That can be useful in a long multi step multi
-  in which one needs to know what was the agg state while procesisng
+  in which one needs to know what was the agg state while processing
   the multi. It's possible, then, to pattern match the step name in the
   third parameter of the anonymous function to be executed.
 

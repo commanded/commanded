@@ -15,7 +15,7 @@ defmodule Commanded.Commands.ExecutionResult do
 
     - `events` - a list of the created events, it may be an empty list.
 
-    - `metadata` - an map containing the metadata associated with the command
+    - `metadata` - a map containing the metadata associated with the command
       dispatch.
 
   """

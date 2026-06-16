@@ -273,7 +273,7 @@ defmodule Commanded.Event.Handler do
   one at a time in order. The `:concurrency` option determines how many event
   handler processes are started. It must be a positive integer.
 
-  Note with concurrent processing events will likely by processed out of order.
+  Note with concurrent processing events will likely be processed out of order.
   If you need to enforce an order, such as per stream or by using a field from
   an event, you can define a `c:partition_by/2` callback function in the event
   handler module. The function will receive each event and its metadata and must
@@ -288,7 +288,7 @@ defmodule Commanded.Event.Handler do
 
   ### Example
 
-      defmodule ConcurrentProcssingEventHandler do
+      defmodule ConcurrentProcessingEventHandler do
         alias Commanded.EventStore.RecordedEvent
 
         use Commanded.Event.Handler,
@@ -620,7 +620,7 @@ defmodule Commanded.Event.Handler do
   the event handler using the exact error reason returned from the `handle/2`
   function. If the event handler is supervised using restart `permanent` or
   `transient` stopping on error will cause the handler to be restarted. It will
-  likely crash again as it will reprocesse the problematic event. This can lead
+  likely crash again as it will reprocess the problematic event. This can lead
   to cascading failures going up the supervision tree.
 
   ### Example error handling

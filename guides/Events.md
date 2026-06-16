@@ -75,14 +75,14 @@ You should start your event handlers using an OTP `Supervisor` to ensure they ar
 
 You can choose the default error behaviour for *all* of your event handlers in each Application's configuration:
 
-```ellxir
+```elixir
 config :example, ExampleApp,
   on_event_handler_error: :stop # or :backoff or MyCustomErrorHandler
 ```
 
 The default behaviour is to stop the event handler process when any error is encountered. As event handlers are supervised either by a custom supervisor or by the application itself, the handlers are usually restarted right away. If the error is permanent, due to a logic or data bug, then the process will likely crash again right away. This can lead the supervisor itself to give up, crash and this will continue up your supervision tree until it stops your application.
 
-The `:backoff` option, introduced in v1.4.7, cause the even handler to retry after an exponentially increasing backoff period (up to a maximum of 24 hours). The event handler will still not be able to make forward progress until you address the issue, but it won't take your supervisors or applications down with it.
+The `:backoff` option, introduced in v1.4.7, cause the event handler to retry after an exponentially increasing backoff period (up to a maximum of 24 hours). The event handler will still not be able to make forward progress until you address the issue, but it won't take your supervisors or applications down with it.
 
 If you want to provide your own strategy, you can pass in a module that implements an `c:Commanded.Event.Handler.error/3` function that matches the `c:Commanded.Event.Handler.error/3` callback mentioned above.
 
@@ -113,9 +113,9 @@ Transient errors occur due temporary issues such as network connectivity, flakey
 
 #### Permanent errors
 
-Permanent errors occure due to bugs in code, and as such have no hope of resolving themselves. The handler will not be able to make any progress, and will repeatedly crash.
+Permanent errors occur due to bugs in code, and as such have no hope of resolving themselves. The handler will not be able to make any progress, and will repeatedly crash.
 
-Repeated crashes become a problem when the handler crashes more than it's supervisor is configured to tolerate. When that happens, the supervisor itself will crash and this process will continue upwards until finally the application itself crashes. This is obviously bad.
+Repeated crashes become a problem when the handler crashes more than its supervisor is configured to tolerate. When that happens, the supervisor itself will crash and this process will continue upwards until finally the application itself crashes. This is obviously bad.
 
 You can opt to have your event handlers backoff when crashing to avoid this:
 
@@ -128,7 +128,7 @@ This will cause all event handlers from `MyApp.CommandedApp` to back off exponen
 
 It is also possible to configure the error handler for the default behaviour `:stop`.
 
-You can bring your own Commanded application-level behaviour by specifiying a module which implements `c:Commanded.Event.Handler.error/3`
+You can bring your own Commanded application-level behaviour by specifying a module which implements `c:Commanded.Event.Handler.error/3`
 
 ```elixir
 defmodule YoloErrorHandler do

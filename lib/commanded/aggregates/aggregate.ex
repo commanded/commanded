@@ -180,7 +180,7 @@ defmodule Commanded.Aggregates.Aggregate do
     - `aggregate_uuid` - uniquely identifies an instance of the aggregate.
     - `context` - includes command execution arguments
       (see `Commanded.Aggregates.ExecutionContext` for details).
-    - `timeout` - an non-negative integer which specifies how many milliseconds
+    - `timeout` - a non-negative integer which specifies how many milliseconds
       to wait for a reply, or the atom :infinity to wait indefinitely.
       The default value is five seconds (5,000ms).
 
