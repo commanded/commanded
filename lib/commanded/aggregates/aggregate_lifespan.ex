@@ -23,7 +23,7 @@ defmodule Commanded.Aggregates.AggregateLifespan do
 
   ## Supported return values
 
-    - Non-negative integer - specify an inactivity timeout, in millisconds.
+    - Non-negative integer - specify an inactivity timeout, in milliseconds.
     - `:infinity` - prevent the aggregate instance from shutting down.
     - `:hibernate` - send the process into hibernation.
     - `:stop` - immediately shutdown the aggregate process with a `:normal` exit

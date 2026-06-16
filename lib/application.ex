@@ -336,7 +336,7 @@ defmodule Commanded.Application do
 
             The available options are:
 
-            - `:aggregate_state` - to return the update aggregate state in the
+            - `:aggregate_state` - to return the updated aggregate state in the
               successful response: `{:ok, aggregate_state}`.
 
             - `:aggregate_version` - to include the aggregate stream version

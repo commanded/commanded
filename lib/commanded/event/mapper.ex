@@ -69,7 +69,7 @@ defmodule Commanded.Event.Mapper do
   end
 
   @doc """
-  Map an `Commanded.EventStore.RecordedEvent` struct to its event data.
+  Map a `Commanded.EventStore.RecordedEvent` struct to its event data.
   """
   @spec map_from_recorded_event(RecordedEvent.t()) :: event
   def map_from_recorded_event(%RecordedEvent{data: data}), do: data

@@ -46,7 +46,7 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
   @read_event_batch_size 1_000
 
   @doc """
-  Populate the aggregate's state from a snapshot, if present, and it's events.
+  Populate the aggregate's state from a snapshot, if present, and its events.
 
   Attempt to fetch a snapshot for the aggregate to use as its initial state.
   If the snapshot exists, fetch any subsequent events to rebuild its state.

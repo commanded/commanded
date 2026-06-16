@@ -141,7 +141,7 @@ defmodule Commanded.Commands.Router do
 
   The supported options are:
 
-    - `:aggregate_state` - to return the update aggregate state.
+    - `:aggregate_state` - to return the updated aggregate state.
 
     - `:aggregate_version` - to return only the aggregate version.
 
@@ -161,7 +161,7 @@ defmodule Commanded.Commands.Router do
       {:ok, %BankAccount{}} = BankApp.dispatch(command, returning: :aggregate_state)
 
   This is useful when you want to immediately return fields from the aggregate's
-  state without requiring an read model projection and waiting for the event(s)
+  state without requiring a read model projection and waiting for the event(s)
   to be projected. It may also be appropriate to use this feature for unit
   tests.
 
@@ -458,7 +458,7 @@ defmodule Commanded.Commands.Router do
 
             The available options are:
 
-            - `:aggregate_state` - to return the update aggregate state in the
+            - `:aggregate_state` - to return the updated aggregate state in the
               successful response: `{:ok, aggregate_state}`.
 
             - `:aggregate_version` - to include the aggregate stream version

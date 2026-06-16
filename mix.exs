@@ -99,15 +99,10 @@ defmodule Commanded.Mixfile do
         "guides/Commands.md",
         "guides/Events.md",
         "guides/Process Managers.md",
-        "guides/Supervision.md",
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
         "guides/Testing.md",
-        "guides/Deployment.md",
-        "guides/upgrades/0.19-1.0.md": [
-          filename: "0.19-1.0",
-          title: "Upgrade guide v0.19.x to v1.0"
-        ]
+        "guides/Deployment.md"
       ],
       groups_for_extras: [
         Introduction: [
@@ -123,7 +118,6 @@ defmodule Commanded.Mixfile do
           "guides/Process Managers.md"
         ],
         Other: [
-          "guides/Supervision.md",
           "guides/Serialization.md",
           "guides/Read Model Projections.md",
           "guides/Testing.md",

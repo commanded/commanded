@@ -54,7 +54,7 @@
 
 ### Bug fixes
 
-* `Commanded.Event.ErrorHandler` now keeps surounding failure context by @drteeth in https://github.com/commanded/commanded/issues/617
+* `Commanded.Event.ErrorHandler` now keeps surrounding failure context by @drteeth in https://github.com/commanded/commanded/issues/617
 
 ## v1.4.7
 

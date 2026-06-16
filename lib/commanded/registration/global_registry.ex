@@ -71,7 +71,7 @@ defmodule Commanded.Registration.GlobalRegistry do
         {:ok, pid}
 
       {:error, :killed} ->
-        # Process may be killed due to `:global` name registation when another node connects.
+        # Process may be killed due to `:global` name registration when another node connects.
         # Attempting to start again should link to the other named existing process.
         start_link(adapter_meta, name, module, args, start_opts)
 

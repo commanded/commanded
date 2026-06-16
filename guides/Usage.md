@@ -18,127 +18,155 @@ Here's an example bank account opening feature built using Commanded to demonstr
 
 1. Define an `OpenBankAccount` command:
 
-    ```elixir
-    defmodule OpenBankAccount do
-      defstruct [:account_number, :initial_balance]
-    end
-    ```
+   ```elixir
+   defmodule OpenBankAccount do
+     defstruct [:account_number, :initial_balance]
+   end
+   ```
 
 2. Define a corresponding `BankAccountOpened` domain event:
 
-    ```elixir
-    defmodule BankAccountOpened do
-      @derive Jason.Encoder
-      defstruct [:account_number, :initial_balance]
-    end
-    ```
+   ```elixir
+   defmodule BankAccountOpened do
+     @derive Jason.Encoder
+     defstruct [:account_number, :initial_balance]
+   end
+   ```
 
 3. Build a `BankAccount` aggregate to handle the command, protect its business invariants, and return a domain event when successfully handled:
 
-    ```elixir
-    defmodule BankAccount do
-      defstruct [:account_number, :balance]
+   ```elixir
+   defmodule BankAccount do
+     defstruct [:account_number, :balance]
 
-      alias Commanded.Aggregates.Aggregate
+     alias Commanded.Aggregates.Aggregate
 
-      @behaviour Aggregate
+     @behaviour Aggregate
 
-      # Public command API
+     # Public command API
 
-      @impl Aggregate
-      def execute(%BankAccount{account_number: nil}, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
-        when initial_balance > 0
-      do
-        %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
-      end
+     @impl Aggregate
+     def execute(%BankAccount{account_number: nil}, %OpenBankAccount{account_number: account_number, initial_balance: initial_balance})
+       when initial_balance > 0
+     do
+       %BankAccountOpened{account_number: account_number, initial_balance: initial_balance}
+     end
 
-      # Ensure initial balance is never zero or negative
-      @impl Aggregate
-      def execute(%BankAccount{}, %OpenBankAccount{initial_balance: initial_balance})
-        when initial_balance <= 0
-      do
-        {:error, :initial_balance_must_be_above_zero}
-      end
+     # Ensure initial balance is never zero or negative
+     @impl Aggregate
+     def execute(%BankAccount{}, %OpenBankAccount{initial_balance: initial_balance})
+       when initial_balance <= 0
+     do
+       {:error, :initial_balance_must_be_above_zero}
+     end
 
-      # Ensure account has not already been opened
-      @impl Aggregate
-      def execute(%BankAccount{}, %OpenBankAccount{}) do
-        {:error, :account_already_opened}
-      end
+     # Ensure account has not already been opened
+     @impl Aggregate
+     def execute(%BankAccount{}, %OpenBankAccount{}) do
+       {:error, :account_already_opened}
+     end
 
-      # State mutators
+     # State mutators
 
-      @impl Aggregate
-      def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
-        %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
+     @impl Aggregate
+     def apply(%BankAccount{} = account, %BankAccountOpened{} = event) do
+       %BankAccountOpened{account_number: account_number, initial_balance: initial_balance} = event
 
-        %BankAccount{account |
-          account_number: account_number,
-          balance: initial_balance
-        }
-      end
-    end
-    ```
+       %BankAccount{account |
+         account_number: account_number,
+         balance: initial_balance
+       }
+     end
+   end
+   ```
 
 4. Define a router module to route the open account command to the bank account aggregate:
 
-    ```elixir
-    defmodule BankRouter do
-      use Commanded.Commands.Router
+   ```elixir
+   defmodule BankRouter do
+     use Commanded.Commands.Router
 
-      dispatch OpenBankAccount, to: BankAccount, identity: :account_number
-    end
-    ```
+     dispatch OpenBankAccount, to: BankAccount, identity: :account_number
+   end
+   ```
 
 5. Define an application to host the aggregate and supporting processes:
 
-    ```elixir
-    defmodule BankApp do
-      use Commanded.Application,
-        otp_app: :bank,
-        event_store: [adapter: Commanded.EventStore.Adapters.InMemory]
+   ```elixir
+   defmodule BankApp do
+     use Commanded.Application,
+       otp_app: :bank,
+       event_store: [adapter: Commanded.EventStore.Adapters.InMemory]
 
-      router BankRouter
-    end
-    ```
+     router BankRouter
+   end
+   ```
 
-    This application is configured to use in-memory event store included with Commanded for testing.
+   This application is configured to use in-memory event store included with Commanded for testing.
 
 6. Create an event handler module that updates a bank account balance:
 
-    ```elixir
-    defmodule AccountBalanceHandler do
-      use Commanded.Event.Handler,
-        application: BankApp,
-        name: __MODULE__
+   ```elixir
+   defmodule AccountBalanceHandler do
+     use Commanded.Event.Handler,
+       application: BankApp,
+       name: __MODULE__
 
-      def after_start(_state) do
-        with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
-          :ok
-        end
-      end
+     def after_start(_state) do
+       with {:ok, _pid} <- Agent.start_link(fn -> 0 end, name: __MODULE__) do
+         :ok
+       end
+     end
 
-      def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
-        Agent.update(__MODULE__, fn _ -> initial_balance end)
-      end
+     def handle(%BankAccountOpened{initial_balance: initial_balance}, _metadata) do
+       Agent.update(__MODULE__, fn _ -> initial_balance end)
+     end
 
-      def current_balance do
-        Agent.get(__MODULE__, fn balance -> balance end)
-      end
-    end
-    ```
+     def current_balance do
+       Agent.get(__MODULE__, fn balance -> balance end)
+     end
+   end
+   ```
 
 7. Start the application and event handler processes:
 
-    ```elixir
-    {:ok, _pid} = BankApp.start_link()
-    {:ok, _pid} = AccountBalanceHandler.start_link()
-    ```
+   ```elixir
+   {:ok, _pid} = BankApp.start_link()
+   {:ok, _pid} = AccountBalanceHandler.start_link()
+   ```
 
-    In a real application you would use a supervisor to start these processes.
+   In a real application you would use a supervisor to start these processes, more like this:
 
-Finally, we can dispatch a command to open a new bank account:
+   ```elixir
+   defmodule Bank.Supervisor do
+     use Supervisor
 
-```elixir
-:ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123456", initial_balance: 1_000})
-```
+     def start_link(arg) do
+       Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
+     end
+
+     @impl true
+     def init(_arg) do
+       children = [
+         # Application
+         BankApp,
+
+         # Event handler
+         AccountBalanceHandler,
+
+         # You would also start any Process Managers, other event handler and other projectors here
+         # TransferMoneyProcessManager,
+         # AccountsProjector,
+         # {WelcomeEmailHandler, start_from: :current},
+       ]
+
+       Supervisor.init(children, strategy: :one_for_one)
+     end
+   end
+   ```
+
+8. Finally, we can dispatch a command to open a new bank account:
+
+   ```elixir
+   :ok = BankApp.dispatch(%OpenBankAccount{account_number: "ACC123456", initial_balance: 1_000})
+   ```
