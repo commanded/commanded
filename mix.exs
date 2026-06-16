@@ -104,11 +104,7 @@ defmodule Commanded.Mixfile do
         "guides/Read Model Projections.md",
         "guides/Testing.md",
         "guides/InMemoryEventStore.md",
-        "guides/Deployment.md",
-        "guides/upgrades/0.19-1.0.md": [
-          filename: "0.19-1.0",
-          title: "Upgrade guide v0.19.x to v1.0"
-        ]
+        "guides/Deployment.md"
       ],
       groups_for_extras: [
         Introduction: [
