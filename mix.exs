@@ -102,7 +102,6 @@ defmodule Commanded.Mixfile do
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
         "guides/Testing.md",
-        "guides/InMemoryEventStore.md",
         "guides/Deployment.md"
       ],
       groups_for_extras: [

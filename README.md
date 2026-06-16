@@ -14,7 +14,6 @@ Commanded provides a solid technical foundation for you to build on. It allows y
 You can use Commanded with one of the following event stores for persistence:
 
 - [EventStore](https://github.com/commanded/eventstore) - Elixir library using Postgres for persistence.
-- [EventStoreDB](https://www.eventstore.com/) - a stream database built for Event Sourcing.
 - [In-memory event store](https://github.com/commanded/commanded/wiki/In-memory-event-store) - included for test use only.
 
 Please refer to the [CHANGELOG](CHANGELOG.md) for features, bug fixes, and any upgrade advice included for each release.
@@ -52,8 +51,6 @@ MIT License
 
 - [Getting started](guides/Getting%20Started.md)
 - [Choosing an event store](guides/Choosing%20an%20Event%20Store.md)
-  - [PostgreSQL-based EventStore](guides/Choosing%20an%20Event%20Store.md#postgresql-based-elixir-eventstore)
-  - [Greg Young's Event Store](guides/Choosing%20an%20Event%20Store.md#greg-youngs-event-store)
 - [Using Commanded](guides/Usage.md)
   - [Aggregates](guides/Aggregates.md)
     - [Example aggregate](guides/Aggregates.md#example-aggregate)
@@ -95,7 +92,6 @@ MIT License
 - [Used in production?](#used-in-production)
 - [Example application](#example-application)
 - [Learn Commanded in 20 minutes](#learn-commanded-in-20-minutes)
-- [Choosing an event store provider](guides/Choosing%20an%20Event%20Store.md#writing-your-own-event-store-provider)
 - [Tooling](https://github.com/commanded/commanded/wiki/Tooling)
 - [Contributing](#contributing)
 - [Need help?](#need-help)
