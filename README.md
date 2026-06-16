@@ -80,7 +80,6 @@ MIT License
     - [Upcasting events](guides/Events.md#upcasting-events)
   - [Process managers](guides/Process%20Managers.md)
     - [Example process manager](guides/Process%20Managers.md#example-process-manager)
-  - [Supervision](guides/Supervision.md)
   - [Serialization](guides/Serialization.md)
     - [Default JSON serializer](guides/Serialization.md#default-json-serializer)
     - [Configuring JSON serialization](guides/Serialization.md#configuring-json-serialization)

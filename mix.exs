@@ -99,7 +99,6 @@ defmodule Commanded.Mixfile do
         "guides/Commands.md",
         "guides/Events.md",
         "guides/Process Managers.md",
-        "guides/Supervision.md",
         "guides/Serialization.md",
         "guides/Read Model Projections.md",
         "guides/Testing.md",
@@ -120,7 +119,6 @@ defmodule Commanded.Mixfile do
           "guides/Process Managers.md"
         ],
         Other: [
-          "guides/Supervision.md",
           "guides/Serialization.md",
           "guides/Read Model Projections.md",
           "guides/Testing.md",
