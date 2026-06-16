@@ -4,12 +4,12 @@
 
 ### Enhancements
 
-- Event Handler Documentation Fix by @TylerPachal in https://github.com/commanded/commanded/pull/640
-- Improve Process Manager Docs by @TylerPachal in https://github.com/commanded/commanded/pull/643
-- Improve Router Registration Error by @TylerPachal in https://github.com/commanded/commanded/pull/644
-- Support :selector option for InMemory adapter by @TylerPachal in https://github.com/commanded/commanded/pull/647
-- Fix Warnings for Elixir 1.19 by @TylerPachal in https://github.com/commanded/commanded/pull/648
-- Add `batch_timeout` option for time-based batch flushing
+* Event Handler Documentation Fix by @TylerPachal in https://github.com/commanded/commanded/pull/640
+* Improve Process Manager Docs by @TylerPachal in https://github.com/commanded/commanded/pull/643
+* Improve Router Registration Error by @TylerPachal in https://github.com/commanded/commanded/pull/644
+* Support :selector option for InMemory adapter by @TylerPachal in https://github.com/commanded/commanded/pull/647
+* Fix Warnings for Elixir 1.19 by @TylerPachal in https://github.com/commanded/commanded/pull/648
+* Add `batch_timeout` option for time-based batch flushing
   - Batches now flush on size OR time, whichever comes first
   - Solves unbounded latency problem for low-volume event streams
   - Defaults to `:infinity` for full backwards compatibility
@@ -18,7 +18,7 @@
 
 ### Bug fixes
 
-- The `:causation_id` dispatch option is now honored on persisted events.
+* The `:causation_id` dispatch option is now honored on persisted events.
   Previously it was silently overridden by the dispatched command's
   `command_uuid`, which made chain-of-causation impossible to reconstruct from
   events alone for multi-event flows (closes
@@ -30,73 +30,69 @@
   `process_manager_instance.ex:229` and `Commanded.Event.Handler` examples),
   but it was being thrown away before persistence.
 
-- Fix race condition in batch processing where timer could fire during batch handling
+* Fix race condition in batch processing where timer could fire during batch handling
   - Buffer and timer now cleared before processing to prevent stale state
 
 ## v1.4.9
 
 ### Enhancements
 
-- Put telemetry on dehydration by @cdegroot in https://github.com/commanded/commanded/issues/552
-- Add issue template by @yordis in https://github.com/commanded/commanded/issues/630
-- Add generic serializer behaviour by @Nezteb in https://github.com/commanded/commanded/issues/626
-- Add aggregate behaviour by @Nezteb in https://github.com/commanded/commanded/issues/627
-- Batching support by @fmterrorf in https://github.com/commanded/commanded/issues/569
-- Make Aggregate.take_snapshot/3 a blocking call by @satom99 in https://github.com/commanded/commanded/issues/636
+* Put telemetry on dehydration by @cdegroot in https://github.com/commanded/commanded/issues/552
+* Add issue template by @yordis in https://github.com/commanded/commanded/issues/630
+* Add generic serializer behaviour by @Nezteb in https://github.com/commanded/commanded/issues/626
+* Add aggregate behaviour by @Nezteb in https://github.com/commanded/commanded/issues/627
+* Batching support by @fmterrorf in https://github.com/commanded/commanded/issues/569
+* Make Aggregate.take_snapshot/3 a blocking call by @satom99 in https://github.com/commanded/commanded/issues/636
 
 ### Bug fixes
 
-- Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
-- Fix malformed markdown link by @djonn in https://github.com/commanded/commanded/issues/619
-- Update elixir slack link by @afomi in https://github.com/commanded/commanded/issues/620
+* Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
+* Fix malformed markdown link by @djonn in https://github.com/commanded/commanded/issues/619
+* Update elixir slack link by @afomi in https://github.com/commanded/commanded/issues/620
 
 ## v1.4.8
 
 ### Bug fixes
 
-- `Commanded.Event.ErrorHandler` now keeps surounding failure context by @drteeth in https://github.com/commanded/commanded/issues/617
+* `Commanded.Event.ErrorHandler` now keeps surounding failure context by @drteeth in https://github.com/commanded/commanded/issues/617
 
 ## v1.4.7
 
 ### Enhancements
 
-- Application-wide event handler error handling by @drteeth in https://github.com/commanded/commanded/pull/605
-- chore: remove asdf file by @yordis in https://github.com/commanded/commanded/pull/570
-- chore: improve docs about aggregate version by @yordis in https://github.com/commanded/commanded/pull/608
-- Update include_aggregate_version documentation by @TylerPachal in https://github.com/commanded/commanded/pull/609
+* Application-wide event handler error handling by @drteeth in https://github.com/commanded/commanded/pull/605
+* chore: remove asdf file by @yordis in https://github.com/commanded/commanded/pull/570
+* chore: improve docs about aggregate version by @yordis in https://github.com/commanded/commanded/pull/608
+* Update include_aggregate_version documentation by @TylerPachal in https://github.com/commanded/commanded/pull/609
 
 ### Bug fixes
 
-- Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
-- feat: default aggregate lifespan configuration by @yordis in https://github.com/commanded/commanded/pull/548
-- Aggregate.handle\_\* now properly handles lifespans by @drteeth in https://github.com/commanded/commanded/pull/606
-- Allow registration handle_call/cast callbacks to be called by @drteeth in https://github.com/commanded/commanded/pull/607
-- Update local_cluster by @drteeth in https://github.com/commanded/commanded/pull/610
+* Fix flakey test by @drteeth in https://github.com/commanded/commanded/pull/599
+* feat: default aggregate lifespan configuration by @yordis in https://github.com/commanded/commanded/pull/548
+* Aggregate.handle_* now properly handles lifespans by @drteeth in https://github.com/commanded/commanded/pull/606
+* Allow registration handle_call/cast callbacks to be called by @drteeth in https://github.com/commanded/commanded/pull/607
+* Update local_cluster by @drteeth in https://github.com/commanded/commanded/pull/610
 
 ## v1.4.6
 
 ### Enhancements
-
 - Includes changelog updates
 - Version bump
 
 ## v1.4.5
 
 ### Enhancements
-
 - Support OTP 26 and Elixir 1.17 ([#595](https://github.com/commanded/commanded/pull/595)).
 
 ## v1.4.4
 
 ### Enhancements
-
 - feat: put aggregate_state into assigns of the pipeline ([#502](https://github.com/commanded/commanded/pull/502)).
 - Add tag to partition test case ([#525](https://github.com/commanded/commanded/pull/525)).
 - Make before_reset/0 an explicit callback function ([#550](https://github.com/commanded/commanded/pull/550)).
 - New `Event.Handler.after_start/1` callback allows configuration in the handler's process ([#568](https://github.com/commanded/commanded/pull/568)).
 
 ### Bug fixes
-
 - Fix EventData typespec ([#495](https://github.com/commanded/commanded/pull/495)).
 - Fix refute_receive_event examples ([#557](https://github.com/commanded/commanded/pull/557)).
 - Fix interested? function doc ([#562](https://github.com/commanded/commanded/pull/562)).
@@ -114,7 +110,7 @@
 
 ### Bug fixes
 
-- Correct parameter type in `ProcessManager.after_command/1` callback function ([#533](https://github.com/commanded/commanded/pull/533)).
+-  Correct parameter type in `ProcessManager.after_command/1` callback function ([#533](https://github.com/commanded/commanded/pull/533)).
 
 ## v1.4.2
 
@@ -292,7 +288,7 @@
 
 - Use `DateTime` instead of `NaiveDateTime` for all datetimes ([#254](https://github.com/commanded/commanded/pull/254)).
 
-  This affects the `created_at` field defined in the `Commanded.EventStore.RecordedEvent`. You will need to migrate from `NaiveDateTime` to `DateTime` if you use this field in your code (such as in an event handler's metadata).
+    This affects the `created_at` field defined in the `Commanded.EventStore.RecordedEvent`. You will need to migrate from `NaiveDateTime` to `DateTime` if you use this field in your code (such as in an event handler's metadata).
 
 ---
 
@@ -342,7 +338,7 @@
   end
   ```
 
-  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required. You _must_ update all your domain event modules, aggregate state (when using state snapshotting), and process manager state to include `@derive Jason.Encoder` as shown below:
+  Jason has _no support_ for encoding arbitrary structs - explicit implementation of the `Jason.Encoder` protocol is always required. You *must* update all your domain event modules, aggregate state (when using state snapshotting), and process manager state to include `@derive Jason.Encoder` as shown below:
 
   ```elixir
   defmodule AnEvent do
@@ -561,7 +557,7 @@ Using [EventStoreDB](https://www.eventstore.com/):
 
 ### Enhancements
 
-- `Commanded.Event.Handler` and `Commanded.ProcessManagers.ProcessManager` macros to simplify defining, and starting, event handlers and process managers. Note the previous approach to defining and starting may still be used, so this is _not_ a breaking change.
+- `Commanded.Event.Handler` and `Commanded.ProcessManagers.ProcessManager` macros to simplify defining, and starting, event handlers and process managers. Note the previous approach to defining and starting may still be used, so this is *not* a breaking change.
 
 ---
 
@@ -583,7 +579,7 @@ Using [EventStoreDB](https://www.eventstore.com/):
 
   The existing PostgreSQL-based [eventstore](https://github.com/commanded/eventstore) integration has been extracted as a separate package ([commanded_eventstore_adapter](https://github.com/commanded/commanded-eventstore-adapter)). There is also a new adapter for Greg Young's Event Store using the Extreme library ([commanded_extreme_adapter](https://github.com/commanded/commanded-extreme-adapter)).
 
-  You must install the required event store adapter package and update your environment configuration to specify the `:event_store_adapter` module. See the [README](https://github.com/commanded/commanded/blob/main/README.md) for details.
+  You must install the required event store adapter package and update your environment configuration to specify the `:event_store_adapter` module. See the [README](https://github.com/commanded/commanded/blob/master/README.md) for details.
 
 ---
 
