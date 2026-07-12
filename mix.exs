@@ -122,9 +122,6 @@ defmodule Commanded.Mixfile do
           "guides/Read Model Projections.md",
           "guides/Testing.md",
           "guides/Deployment.md"
-        ],
-        Upgrades: [
-          "guides/upgrades/0.19-1.0.md"
         ]
       ],
       groups_for_modules: [
