@@ -6,8 +6,6 @@ defmodule Commanded.Commands.Dispatcher do
   alias Commanded.Middleware.Pipeline
   alias Commanded.Telemetry
 
-  require Logger
-
   defmodule Payload do
     @moduledoc false
 
