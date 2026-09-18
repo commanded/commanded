@@ -980,10 +980,32 @@ defmodule Commanded.Event.Handler do
   def name(application, handler_name, nil), do: {application, __MODULE__, handler_name}
   def name(application, handler_name, index), do: {application, __MODULE__, handler_name, index}
 
+  @handler_identity_key :commanded_event_handler_identity
+
+  # Record the identity of the event handler running in the calling process.
+  @doc false
+  def put_handler_identity(application, handler_name) do
+    Process.put(@handler_identity_key, {application, handler_name})
+
+    :ok
+  end
+
+  # Identity of the event handler running in the calling process, as an
+  # `{application, handler_name}` tuple, or `nil` when the process is not an
+  # event handler.
+  @doc false
+  def handler_identity do
+    Process.get(@handler_identity_key)
+  end
+
   @doc false
   @impl GenServer
   def init(%Handler{} = state) do
+    %Handler{application: application, handler_name: handler_name} = state
+
     Process.flag(:trap_exit, true)
+
+    :ok = put_handler_identity(application, handler_name)
 
     {:ok, state, {:continue, :subscribe_to_events}}
   end
