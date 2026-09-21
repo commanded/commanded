@@ -14,6 +14,11 @@ defmodule Commanded.Event.ResetEventHandlerTest do
   describe "reset event handler" do
     setup do
       start_supervised!(BankApp)
+
+      # The accounts have to outlive the handler, which is restarted by a reset.
+      accounts = [fn -> %{prefix: "", accounts: []} end, [name: BankAccountHandler]]
+      start_supervised!(%{id: :accounts, start: {Agent, :start_link, accounts}})
+
       :ok
     end
 
@@ -35,6 +40,37 @@ defmodule Commanded.Event.ResetEventHandlerTest do
 
       Wait.until(fn ->
         assert BankAccountHandler.current_accounts() == ["PREF_ACC123"]
+      end)
+    end
+
+    test "should ignore events delivered by the subscription before the reset" do
+      stream_uuid = UUID.uuid4()
+      initial_events = [%BankAccountOpened{account_number: "ACC123", initial_balance: 1_000}]
+
+      :ok = EventStore.append_to_stream(BankApp, stream_uuid, 0, to_event_data(initial_events))
+
+      handler = start_supervised!(BankAccountHandler)
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["ACC123"]
+      end)
+
+      # Queue an event behind the `:reset` message in the handler's mailbox.
+      :ok = :sys.suspend(handler)
+
+      send(handler, :reset)
+
+      new_events = [%BankAccountOpened{account_number: "ACC456", initial_balance: 1_000}]
+      :ok = EventStore.append_to_stream(BankApp, stream_uuid, 1, to_event_data(new_events))
+
+      Wait.until(fn ->
+        assert {:messages, [:reset, {:events, [_event]}]} = Process.info(handler, :messages)
+      end)
+
+      :ok = :sys.resume(handler)
+
+      Wait.until(fn ->
+        assert BankAccountHandler.current_accounts() == ["ACC123", "ACC456"]
       end)
     end
 
