@@ -67,7 +67,8 @@ defmodule Commanded.Subscriptions do
     - `:consistency` - override the default consistency (`:strong`), by
       providing an explicit list of handler modules, or their configured names,
       to wait for.
-    - `:exclude` - a PID, or list of PIDs, to exclude from waiting.
+    - `:exclude` - a PID or handler name, or a list of PIDs and handler names,
+      to exclude from waiting.
 
   Returns `:ok` on success, or `{:error, :timeout}` on failure due to timeout.
   """
@@ -208,7 +209,7 @@ defmodule Commanded.Subscriptions do
     %Subscriptions{application: application} = state
 
     Subscriptions.Registry.all(application)
-    |> Enum.reject(fn {_name, _module, pid} -> MapSet.member?(exclude, pid) end)
+    |> Enum.reject(&excluded?(&1, exclude))
     |> Enum.filter(fn {name, module, _pid} ->
       # Optionally filter subscriptions to those provided by the `consistency` option
       case consistency do
@@ -222,6 +223,11 @@ defmodule Commanded.Subscriptions do
     |> Enum.all?(fn {name, _module, _pid} ->
       handled_by?(name, stream_uuid, stream_version, state)
     end)
+  end
+
+  # Is the subscription excluded from waiting, either by its process or by name
+  defp excluded?({name, _module, pid}, exclude) do
+    MapSet.member?(exclude, pid) or MapSet.member?(exclude, name)
   end
 
   # Has the named subscription handled the event for the given stream and version

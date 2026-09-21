@@ -11,13 +11,16 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
 
   require Logger
 
+  alias Commanded.Event.Handler
   alias Commanded.Middleware.Pipeline
   alias Commanded.Subscriptions
 
   import Pipeline
 
   def before_dispatch(%Pipeline{} = pipeline) do
-    Pipeline.assign(pipeline, :dispatcher_pid, self())
+    pipeline
+    |> Pipeline.assign(:dispatcher_pid, self())
+    |> Pipeline.assign(:dispatcher_handler_name, dispatching_handler_name(pipeline))
   end
 
   def after_dispatch(%Pipeline{consistency: :eventual} = pipeline),
@@ -33,11 +36,13 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
       assigns: %{
         aggregate_uuid: aggregate_uuid,
         aggregate_version: aggregate_version,
-        dispatcher_pid: dispatcher_pid
+        dispatcher_pid: dispatcher_pid,
+        dispatcher_handler_name: dispatcher_handler_name
       }
     } = pipeline
 
-    opts = [consistency: consistency, exclude: dispatcher_pid]
+    exclude = [dispatcher_pid | List.wrap(dispatcher_handler_name)]
+    opts = [consistency: consistency, exclude: exclude]
 
     case Subscriptions.wait_for(application, aggregate_uuid, aggregate_version, opts) do
       :ok ->
@@ -53,4 +58,15 @@ defmodule Commanded.Middleware.ConsistencyGuarantee do
   end
 
   def after_failure(%Pipeline{} = pipeline), do: pipeline
+
+  # Name of the event handler dispatching the command, but only when dispatching
+  # to its own application. The handler is excluded by name as well as by
+  # process because a registry adapter may register the handler's subscription
+  # with a process other than the handler itself.
+  defp dispatching_handler_name(%Pipeline{application: application}) do
+    case Handler.handler_identity() do
+      {^application, handler_name} -> handler_name
+      _other -> nil
+    end
+  end
 end

@@ -13,6 +13,7 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
 
   alias Commanded.Commands.ConsistencyApp
   alias Commanded.EventStore
+  alias Commanded.Subscriptions
   alias Commanded.UUID
   alias ConsistencyAggregateRoot.ConsistencyCommand
   alias ConsistencyAggregateRoot.NoOpCommand
@@ -47,6 +48,25 @@ defmodule Commanded.Commands.DispatchConsistencyTest do
     end
 
     test "should allow strongly consistent event handler to dispatch a command" do
+      command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 0}
+
+      assert :ok = ConsistencyApp.dispatch(command, consistency: :strong)
+    end
+
+    test "should allow strongly consistent event handler registered by another process to dispatch a command" do
+      # A custom registry adapter may register a subscription with a process
+      # other than the event handler itself, such as a proxy or supervisor
+      proxy = start_supervised!({Task, fn -> Process.sleep(:infinity) end})
+
+      :ok =
+        Subscriptions.register(
+          ConsistencyApp,
+          "StronglyConsistentEventHandler",
+          StronglyConsistentEventHandler,
+          proxy,
+          :strong
+        )
+
       command = %RequestDispatchCommand{uuid: UUID.uuid4(), delay: 0}
 
       assert :ok = ConsistencyApp.dispatch(command, consistency: :strong)

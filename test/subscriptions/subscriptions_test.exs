@@ -108,6 +108,34 @@ defmodule Commanded.SubscriptionsTest do
       # current process should not block handler
       assert Subscriptions.handled?(DefaultApp, "stream1", 1, exclude: [self()])
     end
+
+    test "should ignore handler excluded by name" do
+      handler = start_handler_process()
+
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, handler, :strong)
+
+      refute Subscriptions.handled?(DefaultApp, "stream1", 1)
+      assert Subscriptions.handled?(DefaultApp, "stream1", 1, exclude: "handler1")
+    end
+
+    test "should ignore handlers excluded by PID and by name" do
+      handler = start_handler_process()
+
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, handler, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, :strong)
+
+      refute Subscriptions.handled?(DefaultApp, "stream1", 1, exclude: [self()])
+      assert Subscriptions.handled?(DefaultApp, "stream1", 1, exclude: [self(), "handler1"])
+    end
+
+    test "should only ignore the excluded handler name" do
+      handler = start_handler_process()
+
+      :ok = Subscriptions.register(DefaultApp, "handler1", Handler1, handler, :strong)
+      :ok = Subscriptions.register(DefaultApp, "handler2", Handler2, handler, :strong)
+
+      refute Subscriptions.handled?(DefaultApp, "stream1", 1, exclude: ["handler1"])
+    end
   end
 
   describe "notify subscribers" do
@@ -142,6 +170,14 @@ defmodule Commanded.SubscriptionsTest do
       :ok = Subscriptions.register(DefaultApp, "handler", Handler, :strong)
 
       assert :ok == Subscriptions.wait_for(DefaultApp, "stream1", 2, exclude: [self()])
+    end
+
+    test "should immediately succeed when excluding handler name" do
+      handler = start_handler_process()
+
+      :ok = Subscriptions.register(DefaultApp, "handler", Handler, handler, :strong)
+
+      assert :ok == Subscriptions.wait_for(DefaultApp, "stream1", 2, exclude: ["handler"])
     end
 
     test "should succeed when waited event is ack'd" do
@@ -376,5 +412,10 @@ defmodule Commanded.SubscriptionsTest do
 
       assert Subscriptions.handled?(DefaultApp, "stream1", 1)
     end
+  end
+
+  # A process standing in for an event handler registered as a subscription
+  defp start_handler_process do
+    start_supervised!({Task, fn -> Process.sleep(:infinity) end})
   end
 end
