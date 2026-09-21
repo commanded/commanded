@@ -3,17 +3,24 @@ defmodule Commanded.Event.BatchResetEventHandlerTest do
 
   import Commanded.Assertions.EventAssertions
 
+  alias Commanded.Event.Handler
   alias Commanded.Event.Mapper
   alias Commanded.EventStore
   alias Commanded.ExampleDomain.BankAccount.BankAccountBatchHandler
   alias Commanded.ExampleDomain.BankAccount.Events.BankAccountOpened
   alias Commanded.ExampleDomain.BankApp
   alias Commanded.Helpers.Wait
+  alias Commanded.Registration
   alias Commanded.UUID
 
   describe "reset batch event handler" do
     setup do
       start_supervised!(BankApp)
+
+      # The accounts have to outlive the handler, which is restarted by a reset.
+      accounts = [fn -> %{prefix: "", accounts: []} end, [name: BankAccountBatchHandler]]
+      start_supervised!(%{id: :accounts, start: {Agent, :start_link, accounts}})
+
       :ok
     end
 
@@ -53,11 +60,21 @@ defmodule Commanded.Event.BatchResetEventHandlerTest do
 
       :ok = BankAccountBatchHandler.change_prefix("PREF_")
 
+      ref = Process.monitor(handler)
+
       send(handler, :reset)
 
-      # Wait for the :reset message to be handled, otherwise there is a risk the append_to_stream
-      # below gets sent to the old subscription.
-      _ = :sys.get_state(handler)
+      # Wait for the restarted handler to subscribe, otherwise there is a risk the
+      # append_to_stream below is missed by the new subscription.
+      assert_receive {:DOWN, ^ref, :process, ^handler, :reset}
+
+      registry_name = Handler.name(BankApp, inspect(BankAccountBatchHandler))
+
+      Wait.until(fn ->
+        assert is_pid(Registration.whereis_name(BankApp, registry_name))
+      end)
+
+      _ = BankApp |> Registration.whereis_name(registry_name) |> :sys.get_state()
 
       new_event = [%BankAccountOpened{account_number: "ACC1234", initial_balance: 1_000}]
       :ok = EventStore.append_to_stream(BankApp, stream_uuid, 1, to_event_data(new_event))
