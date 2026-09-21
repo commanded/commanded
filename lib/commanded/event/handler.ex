@@ -1002,18 +1002,16 @@ defmodule Commanded.Event.Handler do
   @doc false
   @impl GenServer
   def handle_info(:reset, %Handler{} = state) do
-    %Handler{handler_module: handler_module} = state
+    %Handler{handler_module: handler_module, subscription: subscription} = state
 
     case handler_module.before_reset() do
       :ok ->
-        try do
-          state = state |> reset_subscription() |> subscribe_to_events()
+        subscription = Subscription.reset(subscription)
 
-          {:noreply, state}
-        catch
-          {:error, reason} ->
-            {:stop, reason, state}
-        end
+        # Stop after the reset so the supervisor starts a new process that subscribes again.
+        # Events the old subscription has already delivered are dropped with this mailbox.
+        # The exit reason is abnormal so that a `:transient` handler is restarted too.
+        {:stop, :reset, %Handler{state | subscription: subscription}}
 
       {:stop, reason} ->
         Logger.debug(
@@ -1147,14 +1145,6 @@ defmodule Commanded.Event.Handler do
     )
 
     {:noreply, state}
-  end
-
-  defp reset_subscription(%Handler{} = state) do
-    %Handler{subscription: subscription} = state
-
-    subscription = Subscription.reset(subscription)
-
-    %Handler{state | last_seen_event: nil, subscription: subscription, subscribe_timer: nil}
   end
 
   defp subscribe_to_events(%Handler{} = state) do

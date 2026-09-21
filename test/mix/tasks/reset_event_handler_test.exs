@@ -12,6 +12,11 @@ defmodule Commanded.Mix.Tasks.ResetEventHandlerTest do
 
   setup do
     start_supervised!(BankApp)
+
+    # The accounts have to outlive the handler, which is restarted by a reset.
+    accounts = [fn -> %{prefix: "", accounts: []} end, [name: BankAccountHandler]]
+    start_supervised!(%{id: :accounts, start: {Agent, :start_link, accounts}})
+
     :ok
   end
 
