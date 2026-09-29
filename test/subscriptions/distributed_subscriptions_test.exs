@@ -9,9 +9,13 @@ defmodule Commanded.DistributedSubscriptionsTest do
     {"", 0} = System.cmd("epmd", ["-daemon"])
     :ok = LocalCluster.start()
 
+    # Peers also start Mox, which registers `{:global, Mox.Server}`. When two
+    # nodes register the same global name, `:global` keeps the process on the
+    # node whose name sorts first and kills the other. The prefix must sort
+    # after the test node ("manager") so the test node's Mox.Server survives.
     {:ok, cluster} =
       LocalCluster.start_link(3,
-        prefix: "commanded",
+        prefix: "peer",
         applications: [:commanded]
       )
 
