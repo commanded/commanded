@@ -62,7 +62,8 @@ defmodule Commanded.Aggregates.AggregateStateBuilder do
           %Aggregate{
             state
             | aggregate_version: source_version,
-              aggregate_state: data
+              aggregate_state: data,
+              snapshotting: %{snapshotting | snapshot_version: source_version}
           }
 
         {:error, _error} ->

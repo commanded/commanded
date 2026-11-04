@@ -208,6 +208,26 @@ defmodule Commanded.Aggregates.SnapshottingTest do
 
       assert_aggregate_version(ExampleAggregate, aggregate_uuid, 5)
     end
+
+    test "should not snapshot again until interval reached since restored snapshot" do
+      aggregate_uuid = UUID.uuid4()
+      append_items(aggregate_uuid, 10)
+
+      restart_aggregate(ExampleAggregate, aggregate_uuid)
+
+      # Fewer events than `snapshot_every` since the restored snapshot
+      append_items(aggregate_uuid, 1)
+      assert_aggregate_version(ExampleAggregate, aggregate_uuid, 11)
+
+      assert {:ok, %SnapshotData{source_version: 10}} =
+               EventStore.read_snapshot(DefaultApp, aggregate_uuid)
+
+      append_items(aggregate_uuid, 9)
+      assert_aggregate_version(ExampleAggregate, aggregate_uuid, 20)
+
+      assert {:ok, %SnapshotData{source_version: 20}} =
+               EventStore.read_snapshot(DefaultApp, aggregate_uuid)
+    end
   end
 
   describe "mismatched snapshot versions" do
