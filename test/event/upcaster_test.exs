@@ -127,7 +127,11 @@ defmodule Event.UpcasterTest do
 
       assert_receive [{%EventOne{version: 1}, metadata1}]
       assert_receive [{%EventTwo{version: 2}, metadata2}]
-      assert_receive [{%EventFour{version: 2, name: "Chris"}, metadata4}]
+
+      # Ensure the event_type in the metadata is the original event type and not the upcasted version
+      assert_receive [{%EventFour{version: 2, name: "Chris"}, %{event_type: et} = metadata4}]
+      assert et == to_string(EventThree)
+
       assert_receive [{%EventFive{version: 2, event_metadata: event_metadata}, metadata5}]
       refute_receive [{%EventThree{}, _metadata3}]
 
@@ -177,12 +181,14 @@ defmodule Event.UpcasterTest do
              created_at: %DateTime{},
              event_id: event_id,
              event_number: event_number,
+             event_type: event_type,
              stream_id: stream_id,
              stream_version: stream_version
            } = metadata
 
     assert is_binary(event_id)
     assert is_number(event_number)
+    assert is_binary(event_type)
     assert is_binary(stream_id)
     assert is_number(stream_version)
   end

@@ -29,6 +29,7 @@ defmodule Commanded.EventStore.RecordedEventTest do
         event_number: event_number,
         stream_id: stream_id,
         stream_version: stream_version,
+        event_type: event_type,
         correlation_id: correlation_id,
         causation_id: causation_id,
         created_at: created_at
@@ -50,6 +51,7 @@ defmodule Commanded.EventStore.RecordedEventTest do
                event_number: event_number,
                stream_id: stream_id,
                stream_version: stream_version,
+               event_type: event_type,
                correlation_id: correlation_id,
                causation_id: causation_id,
                created_at: created_at,
