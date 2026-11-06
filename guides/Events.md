@@ -168,6 +168,7 @@ In addition to the metadata key/values you provide, the following system values 
 - `event_number` - a globally unique, monotonically incrementing and gapless integer used to order the event amongst all events.
 - `stream_id` - the stream identity for the event.
 - `stream_version` - the version of the stream for the event.
+- `event_type` - the type of the event as it was originally recorded. This is not affected by upcasting, so it may differ from the type of the event passed to `handle/2` when an upcaster has transformed the event into a different type.
 - `causation_id` - an optional UUID identifier used to identify which command caused the event.
 - `correlation_id` - an optional UUID identifier used to correlate related commands/events.
 - `created_at` - the datetime, in UTC, indicating when the event was created.
@@ -189,6 +190,7 @@ defmodule ExampleHandler do
     #   :created_at => #DateTime<2017-10-30 11:19:56.178901Z>,
     #   :event_id => "5e4a0f38-385b-4d57-823b-a1bcf705b7bb",
     #   :event_number => 12345,
+    #   :event_type => "Elixir.ExampleEvent",
     #   :stream_id => "e42a588d-2cda-4314-a471-5d008cce01fc",
     #   :stream_version => 1,
     #   "issuer_id" => "0768d69a-d2b7-48f4-d0e9-083a97f7ebe0",
