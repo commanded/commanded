@@ -325,6 +325,8 @@ end
 An event handler can be reset (using a mix task), it will restart the event store subscription from the configured
 `start_from`. This allow an individual handler to be restart while the app is still running.
 
+A reset deletes the handler's subscription and then stops the handler process with the exit reason `:reset`. Its supervisor starts the handler again and the new process subscribes from the configured `start_from`. Events that the old subscription had already delivered to the handler are discarded with the old process, and so is the handler's state. An event handler has to be supervised to be reset.
+
 You can implement the `before_reset/0` callback that will be called before resetting the event handler.
 
 ```elixir
