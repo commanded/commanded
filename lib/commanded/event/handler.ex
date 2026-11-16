@@ -1377,7 +1377,7 @@ defmodule Commanded.Event.Handler do
         confirm_receipt(events, state)
 
       {:ok, handler_state} ->
-        telemetry_stop(start_time, %{telemetry_metadata | handler_state: state}, :batch)
+        telemetry_stop(start_time, %{telemetry_metadata | handler_state: handler_state}, :batch)
         confirm_receipt(events, %Handler{state | handler_state: handler_state})
 
       {:error, reason} = error ->
