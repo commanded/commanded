@@ -69,7 +69,7 @@ You can optionally override `:start_from` by passing it as param:
 
 Use the `:current` position when you don't want newly created event handlers to go through all previous events. An example would be adding an event handler to send transactional emails to an already deployed system containing many historical events.
 
-You should start your event handlers using an OTP `Supervisor` to ensure they are restarted on error. See the [Supervision guide](https://hexdocs.pm/commanded/supervision.html) for more details.
+You should start your event handlers using an OTP `Supervisor` to ensure they are restarted on error. See the [quick overview in the Usage guide](https://commanded.hexdocs.pm/usage.html#quick-overview) for an example supervisor.
 
 ### Configuration options
 
