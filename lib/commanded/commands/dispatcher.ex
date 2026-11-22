@@ -259,8 +259,10 @@ defmodule Commanded.Commands.Dispatcher do
       {:ok, context} ->
         execute(pipeline, payload, context)
 
-      reply ->
-        reply
+      {:error, error} ->
+        pipeline
+        |> Pipeline.respond({:error, error})
+        |> after_failure(payload)
     end
   end
 end
