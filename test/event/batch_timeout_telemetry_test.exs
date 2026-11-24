@@ -43,6 +43,17 @@ defmodule Commanded.Event.BatchTimeoutTelemetryTest do
     end
   end
 
+  defmodule StatefulTelemetryHandler do
+    use Commanded.Event.Handler,
+      application: Commanded.DefaultApp,
+      name: __MODULE__,
+      batch_size: 10
+
+    def handle_batch(_events) do
+      {:ok, :updated}
+    end
+  end
+
   describe "flush_reason telemetry" do
     test "emits :size flush_reason when batch fills" do
       state = setup_state(TelemetryHandler, batch_size: 3, batch_timeout: 1000)
@@ -59,6 +70,18 @@ defmodule Commanded.Event.BatchTimeoutTelemetryTest do
       # Verify flush_reason is :size
       assert metadata.flush_reason == :size
       assert metadata.event_count == 3
+    end
+
+    test "reports the callback's updated handler state" do
+      state = setup_state(StatefulTelemetryHandler, batch_size: 3, batch_timeout: :infinity)
+
+      events = build_events(3)
+      recorded_events = EventFactory.map_to_recorded_events(events, 1)
+
+      {:noreply, _state} = Handler.handle_info({:events, recorded_events}, state)
+
+      assert_receive {[:commanded, :event, :batch, :stop], _ref, _measurements, metadata}, 200
+      assert metadata.handler_state == :updated
     end
 
     test "emits :timeout flush_reason when timeout triggers" do
