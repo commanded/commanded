@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.4.12
+
+### Enhancements
+
+* Audit dependencies for known vulnerabilities with `mix_audit` in CI
+* Test against Elixir 1.20 / OTP 29. Elixir 1.15 is still supported but no longer tested in CI
+
+### Bug fixes
+
+* Seed aggregate snapshot version from the loaded snapshot by @a-nassim in https://github.com/commanded/commanded/pull/673
+* Return an error when dispatch retries are exhausted, instead of raising a `FunctionClauseError` by @suranyami in https://github.com/commanded/commanded/pull/677
+* Fix flaky distributed subscriptions test by renaming the peer nodes by @vheathen in https://github.com/commanded/commanded/pull/670
+* Restart the event handler after a reset, so batches delivered by the old subscription are not handled after `before_reset/0` by @vheathen in https://github.com/commanded/commanded/pull/669
+* Exclude the dispatching event handler from strong consistency by name, fixing `:consistency_timeout` with custom registry adapters by @vheathen in https://github.com/commanded/commanded/pull/668
+
 ## v1.4.11
 
 ### Bug fixes
