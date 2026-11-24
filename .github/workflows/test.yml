@@ -58,6 +58,9 @@ jobs:
     - name: Analyse code
       run: mix credo --strict
 
+    - name: Audit dependencies
+      run: mix deps.audit
+
     - name: Run tests
       run: |
         epmd -daemon
